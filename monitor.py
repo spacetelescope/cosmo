@@ -14,7 +14,6 @@ __status__ = 'Active'
 import pyfits
 import os
 import sys
-sys.path.insert(0, '../')
 import sqlite3
 import matplotlib as mpl
 mpl.use('agg')
@@ -25,7 +24,7 @@ import datetime
 import shutil
 import time
 import re
-from support import send_email, corrtag_image
+from ..support import send_email, corrtag_image
 import glob
 import numpy as np
 
@@ -642,7 +641,6 @@ def make_plots():
 
 #-----------------------------------------------------
 
-
 def move_to_web():
     """Simple function to move created plots in the MONITOR_DIR
     to the WEB_DIR.  Will move all files that match the string
@@ -657,30 +655,6 @@ def move_to_web():
 
 #-----------------------------------------------------
 
-
-def parse_args():
-    '''
-    Parse command line arguments.  Returns args object.
-    '''
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--make_plots', dest='make_plots', action='store_true',
-                        default=False,
-                        help='Number of processors for parallel')
-    args = parser.parse_args()
-    return args
-
-#-----------------------------------------------------
-
 if __name__ == '__main__':
     os.system('clear')
-
-    args = parse_args()
-    print '#------------------#'
-    print time.asctime()
-    print __file__
-    for attr, value in args.__dict__.iteritems():
-        print '%s:  %s' % (attr, value)
-    print '#------------------#'
-    print
-
     stim_monitor()
