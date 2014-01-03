@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """Routine to monitor the modal gain in each pixel as a
 function of time.  Uses COS Cumulative Image (CCI) files 
 to produce a modal gain map for each time period.  Modal gain
@@ -29,7 +27,6 @@ import time
 from datetime import datetime
 import glob
 import sys
-sys.path.insert(0, '../')
 
 import pyfits
 import numpy as np
@@ -37,7 +34,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import calcos
 
-from support import rebin,init_plots,Logger,enlarge,progress_bar,send_email
+from ..support import rebin,init_plots,Logger,enlarge,progress_bar,send_email
 from constants import *  #Shut yo face
 
 #------------------------------------------------------------

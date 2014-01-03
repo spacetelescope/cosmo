@@ -12,12 +12,11 @@ __status__ = 'Active'
 from datetime import datetime
 import os
 import sys
-sys.path.insert(0, '../')
 import glob
 import pyfits
 import numpy as np
 
-from support import enlarge, rebin
+from ..support import enlarge, rebin
 from constants import * #It's already been said
 from gainmap import make_total_gain
 
@@ -166,22 +165,22 @@ class Phaimage:
         hdu_out[0].header.add_history('The history can be found here.')
 
         #-------EXT=1
-        hdu_out.append(pyfits.core.ImageHDU( data = pha_low_a) )
+        hdu_out.append(pyfits.ImageHDU( data = pha_low_a) )
         hdu_out[1].header.update('EXTNAME', 'FUVA')
         hdu_out[1].header.update('EXTVER', 1)
 
         #-------EXT=2
-        hdu_out.append(pyfits.core.ImageHDU( data = pha_high_a) )
+        hdu_out.append(pyfits.ImageHDU( data = pha_high_a) )
         hdu_out[2].header.update('EXTNAME', 'FUVA')
         hdu_out[2].header.update('EXTVER', 2)
 
         #-------EXT=3
-        hdu_out.append(pyfits.core.ImageHDU( data = pha_low_b) )
+        hdu_out.append(pyfits.ImageHDU( data = pha_low_b) )
         hdu_out[3].header.update('EXTNAME', 'FUVB')
         hdu_out[3].header.update('EXTVER', 1)
 
         #-------EXT=4
-        hdu_out.append(pyfits.core.ImageHDU( data = pha_high_b) )
+        hdu_out.append(pyfits.ImageHDU( data = pha_high_b) )
         hdu_out[4].header.update('EXTNAME', 'FUVB')
         hdu_out[4].header.update('EXTVER', 2)
 

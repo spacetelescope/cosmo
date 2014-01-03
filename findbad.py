@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """Routine to monitor the modal gain in each pixel as a
 function of time.  Uses COS Cumulative Image (CCI) files 
 to produce a modal gain map for each time period.  Modal gain
@@ -29,7 +27,6 @@ import gzip
 import pickle
 import glob
 import sys
-sys.path.insert(0, '../')
 
 import pyfits
 import numpy as np
@@ -38,7 +35,7 @@ import matplotlib.pyplot as plt
 import scipy
 from scipy.optimize import leastsq, newton, curve_fit
 
-from support import rebin,init_plots,Logger,enlarge,progress_bar,send_email
+from ..support import rebin,init_plots,Logger,enlarge,progress_bar,send_email
 from constants import *  #Iknow I know
     
 #---------------------------------------------------------------------------
@@ -443,23 +440,23 @@ def write_projection(date_bad_array,cumulative_gain,data_dict,ending,dethv):
     hdu_out[0].header.update('SEGMENT',segment)
 
     #---Ext 1
-    hdu_out.append(pyfits.core.ImageHDU(data = date_bad_array))
+    hdu_out.append(pyfits.ImageHDU(data = date_bad_array))
     hdu_out[1].header.update('EXTNAME','PROJBAD')
 
     #---Ext 2
-    hdu_out.append(pyfits.core.ImageHDU(data = cumulative_gain))
+    hdu_out.append(pyfits.ImageHDU(data = cumulative_gain))
     hdu_out[2].header.update('EXTNAME','PROJGAIN')
 
     #---Ext 3
-    hdu_out.append(pyfits.core.ImageHDU(data = data_dict['cumulative_counts']))
+    hdu_out.append(pyfits.ImageHDU(data = data_dict['cumulative_counts']))
     hdu_out[3].header.update('EXTNAME','CUMLCNTS')
 
     #---Ext 4
-    hdu_out.append(pyfits.core.ImageHDU(data = data_dict['cumulative_charge']))
+    hdu_out.append(pyfits.ImageHDU(data = data_dict['cumulative_charge']))
     hdu_out[4].header.update('EXTNAME','CUMLCHRG')
 
     #---Ext 4
-    hdu_out.append(pyfits.core.ImageHDU(data = data_dict['slopes']))
+    hdu_out.append(pyfits.ImageHDU(data = data_dict['slopes']))
     hdu_out[5].header.update('EXTNAME','SLOPE')
 
     #---Writeout

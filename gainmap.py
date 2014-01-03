@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """Routine to monitor the modal gain in each pixel as a
 function of time.  Uses COS Cumulative Image (CCI) files 
 to produce a modal gain map for each time period.  Modal gain
@@ -18,8 +16,6 @@ of the threshold results in ~8% loss of flux.  Within
 However, due to the column summing, a 4% loss in a region does not appear to be so in the extracted spectrum.
 """
 
-__all__ = ['explode']
-
 __author__ = 'Justin Ely'
 __maintainer__ = 'Justin Ely'
 __email__ = 'ely@stsci.edu'
@@ -28,15 +24,13 @@ __status__ = 'Active'
 import os
 import shutil
 import sys
-sys.path.insert(0, '../')
-import argparse
 import time
 from datetime import datetime
 import gzip
 import pickle
 import glob
 
-import pyfits
+from astropy.io import fits as pyfits
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -199,7 +193,6 @@ class CCI_object:
 
 def make_all_hv_maps():
     for hv in range(150, 179):
-        print hv
         tmp_hdu = pyfits.open( os.path.join( MONITOR_DIR, 'total_gain.fits') )
         for ext in (1, 2):
             tmp_hdu[ext].data -= .393 * (float(178) - hv)
@@ -265,13 +258,13 @@ def make_all_gainmaps(processors=1):
     populate_keywords_mine()
 
     hdu_out = pyfits.HDUList(pyfits.PrimaryHDU())
-    hdu_out.append(pyfits.core.ImageHDU( data = make_total_gain( 'FUVA', reverse=True ) ) )
+    hdu_out.append(pyfits.ImageHDU( data = make_total_gain( 'FUVA', reverse=True ) ) )
     hdu_out[1].header['EXTNAME'] = 'FUVAINIT'
-    hdu_out.append(pyfits.core.ImageHDU( data = make_total_gain( 'FUVB', reverse=True ) ) )
+    hdu_out.append(pyfits.ImageHDU( data = make_total_gain( 'FUVB', reverse=True ) ) )
     hdu_out[2].header['EXTNAME'] = 'FUVBINIT'
-    hdu_out.append(pyfits.core.ImageHDU( data = make_total_gain( 'FUVA') ) )
+    hdu_out.append(pyfits.ImageHDU( data = make_total_gain( 'FUVA') ) )
     hdu_out[3].header['EXTNAME'] = 'FUVALAST'
-    hdu_out.append(pyfits.core.ImageHDU( data = make_total_gain( 'FUVB') ) )
+    hdu_out.append(pyfits.ImageHDU( data = make_total_gain( 'FUVB') ) )
     hdu_out[4].header['EXTNAME'] = 'FUVBLAST'
     hdu_out.writeto( os.path.join( MONITOR_DIR, 'total_gain.fits' ), clobber=True )
     hdu_out.close()
@@ -303,16 +296,16 @@ def add_cumulative_data(ending):
         if 'CUMLCNTS' in ext_names:
             fits['CUMLCNTS'].data = total_counts
         else:
-            head_to_add = pyfits.core.Header()
+            head_to_add = pyfits.Header()
             head_to_add.update('EXTNAME','CUMLCNTS')
-            fits.append(pyfits.core.ImageHDU(header=head_to_add, data=total_counts))
+            fits.append(pyfits.ImageHDU(header=head_to_add, data=total_counts))
 
         if 'CUMLCHRG' in ext_names:
             fits['CUMLCHRG'].data = total_charge
         else:
-            head_to_add = pyfits.core.Header()
+            head_to_add = pyfits.Header()
             head_to_add.update('EXTNAME','CUMLCHRG')
-            fits.append(pyfits.core.ImageHDU(header=head_to_add, data=total_charge))
+            fits.append(pyfits.ImageHDU(header=head_to_add, data=total_charge))
 
         fits.flush()
         fits.close()
@@ -746,31 +739,31 @@ def write_gainmap( current ):
     hdu_out[1].header.update('EXTNAME','FILES')
 
     #-------EXT=2
-    hdu_out.append(pyfits.core.ImageHDU(data=current.modal_gain_array))
+    hdu_out.append(pyfits.ImageHDU(data=current.modal_gain_array))
     hdu_out[2].header.update('EXTNAME','MOD_GAIN')
 
     #-------EXT=3
-    hdu_out.append(pyfits.core.ImageHDU(data=current.counts))
+    hdu_out.append(pyfits.ImageHDU(data=current.counts))
     hdu_out[3].header.update('EXTNAME','COUNTS')
 
     #-------EXT=4
-    hdu_out.append(pyfits.core.ImageHDU(data=current.extracted_charge))
+    hdu_out.append(pyfits.ImageHDU(data=current.extracted_charge))
     hdu_out[4].header.update('EXTNAME','CHARGE')
 
     #-------EXT=5
-    hdu_out.append(pyfits.core.ImageHDU(data=current.big_array[0]))
+    hdu_out.append(pyfits.ImageHDU(data=current.big_array[0]))
     hdu_out[5].header.update('EXTNAME','cnt00_00')
 
     #-------EXT=6
-    hdu_out.append(pyfits.core.ImageHDU(data=current.big_array[1]))
+    hdu_out.append(pyfits.ImageHDU(data=current.big_array[1]))
     hdu_out[6].header.update('EXTNAME','cnt01_01')
 
     #-------EXT=7
-    hdu_out.append(pyfits.core.ImageHDU(data=np.sum( current.big_array[2:31],axis=0) ))
+    hdu_out.append(pyfits.ImageHDU(data=np.sum( current.big_array[2:31],axis=0) ))
     hdu_out[7].header.update('EXTNAME','cnt02_30')
  
     #-------EXT=8
-    hdu_out.append(pyfits.core.ImageHDU(data=current.big_array[31]))
+    hdu_out.append(pyfits.ImageHDU(data=current.big_array[31]))
     hdu_out[8].header.update('EXTNAME','cnt31_31')
 
 

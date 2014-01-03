@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 """Routine to monitor the modal gain in each pixel as a
 function of time.  Uses COS Cumulative Image (CCI) files 
@@ -26,15 +26,14 @@ __status__ = 'Active'
 import argparse
 import os
 import sys
-sys.path.insert(0, '../')
-import pyfits
+from astropy.io import fits as pyfits
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import glob
 import numpy as np
 
-from support import init_plots, Logger, enlarge, send_email
+from ..support import init_plots, Logger, enlarge, send_email
 import gainmap
 import findbad
 import gsag
@@ -52,9 +51,6 @@ def make_quicklooks(clobber=False):
     print '#-----------------#'
     plt.ioff()
 
-    #y_pos_a = {1: 488, 2: }
-    #y_pos_b = {1: 552}
-    ### in progress.  Also make dave's line plots because people seem to like them
     all_gainmaps = glob.glob( os.path.join(MONITOR_DIR, '*gainmap*.fits') )
     all_gainmaps.sort()
     for gainmap in all_gainmaps:
@@ -255,7 +251,7 @@ def parse_args():
                         default=1,
                         help='Number of processors for making gainmaps')
 
-    parser.add_argument('--regress', dest='regression', action='store_true',
+    parser.add_argument('--regress', dest='regress', action='store_true',
                         default=False,
                         help='Run Regression set')
 
@@ -264,10 +260,10 @@ def parse_args():
 
 #------------------------------------------------------------
 
-def main():
+def main( args ):
     """ Main driver for monitoring program.
     """
-    args = parse_args()
+
     os.system('clear')
     init_plots()
     plt.ioff()
@@ -311,4 +307,4 @@ def main():
 #------------------------------------------------------------
 
 if __name__ == "__main__":
-    main()
+    main( parse_args() )
