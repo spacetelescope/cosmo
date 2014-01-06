@@ -259,13 +259,13 @@ def main( args ):
     print
     
     
-    #gainmap.make_all_gainmaps( args.n_processors )
+    gainmap.make_all_gainmaps( args.n_processors )
    
     phaimage.make_phaimages(True)
 
-    #findbad.time_trends()
+    findbad.time_trends()
      
-    #gsag.main( args.regress )
+    gsag.main( args.regress )
 
     make_quicklooks()
 

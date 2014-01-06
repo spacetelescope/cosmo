@@ -321,12 +321,80 @@ def process_cci(CCI):
 
 #------------------------------------------------------------
 
-def measure_modal_gain( cube ):
-    """ determine the modal gain for input array """
-    ### In progress
-    gain_array = np.zeros( cube[0].shape )
-    pass
+def perform_fit( distribution, sigma_low=0, sigma_high=10):
+    gain_flag = ''
+
+    ###Fit in charge space???
+    fit_parameters,success = fit_gaussian( distribution )
+    fit_height, fit_center, fit_std = fit_parameters
+    variance = fit_std*fit_std
+
+    trial_2, success_2 = fit_gaussian(distribution, b = fit_center - 4)
+    trial_3, success_3 = fit_gaussian(distribution, b = fit_center + 4)
+
+    center_2 = trial_2[1]
+    center_3 = trial_3[1]
+
+    #---Begin checking for bad fits---#
+
+    if ( (center_2 > 31) | (center_2 < 0 ) ): center_2 = fit_center
+    if ( (center_3 > 31) | (center_3 < 0 ) ): center_3 = fit_center
+    if ( (fit_center > 31) | (fit_center < 0 ) ): 
+        print 'Center way off'
+        gain_flag += 'center_'
+
+    if ( (center_2 < fit_center - 1) | (center_3 > fit_center + 1) ):
+        print 'Warning: More than one fit found'# @ %3.4f %3.4f %3.4f'%(fit_center, center_2, center_3)
+        gain_flag += 'peaks_'
+    else:
+        fit_center = np.median([fit_center,trial_2[1],trial_3[1]])
+
+    if not success: 
+        print 'ERROR: Gaussian fit failed internal to routine'# at (x,y): (%d,%d).  Setting gain to 0'%(x,y)
+        gain_flag += 'failure_'
+
+    if (variance < sigma_low) | (variance > sigma_high):
+        print 'ERROR: dist. excluded'# at x=%d, y=%d. Cts: %4.2f Var: %3.2f'%(x,y,distribution.sum(),variance)
+        gain_flag += 'variance_'
+
+    if np.isnan(fit_center):
+        print 'ERROR: dist. excluded'# at x=%d, y=%d. Cts: %4.2f Var: %3.2f'%(x,y,distribution.sum(),variance)
+        gain_flag += 'nan_'
+
+    return fit_center, gain_flag
+
+#------------------------------------------------------------
+
+def measure_gainimage( data_cube, mincounts=30, phlow=1, phhigh=31 ):
+    """ measure the modal gain at each pixel 
+
+    returns a 2d gainmap
+
+    """
+
+    # Suppress certain pharanges
+    for i in range(0, phlow+1) + range(phhigh, len(data_cube) ):
+        data_cube[i] = 0
+
+    collapsed = np.sum( data_cube, axis=0 )
+   
+    out_gain = np.zeros( collapsed.shape )
+    index = np.where( collapsed >= mincounts )
+ 
+    if not len(index):
+        return out_gain
+
+    measurements = [ (perform_fit( data_cube[:,y,x]) ) 
+                     for y,x in zip( *index ) ]
     
+    gain_fits = [ item[0] for item in measurements ]
+    gain_flags = [ item[1] for item in measurements ]
+
+    for y, x, modal_gain, flag in zip(index[0], index[1], gain_fits, gain_flags):
+        if not flag:
+            out_gain[y, x] = modal_gain
+
+    return out_gain
     
 
 #------------------------------------------------------------
@@ -351,11 +419,8 @@ def make_gainmap(current):
     --------
     *gainmap.fits
     *gainmap.png
-    """
 
-    FIT_COUNT_THRESH = 30
-    FIT_SIGMA_LOW = 0
-    FIT_SIGMA_HIGH = 10
+    """
 
     print 
     print 'Creating Modal Gain Map'
@@ -370,62 +435,28 @@ def make_gainmap(current):
     print 'Distribution file will be written to: ',dist_output_name
     dist_file = open( dist_output_name ,'w')
 
-    previous_list = get_previous(current)    
-    for y in xrange(Y_VALID[0], Y_VALID[1]):
-        for x in xrange(X_VALID[0], X_VALID[1]):
-            gain_dist = current.big_array[:,y,x].copy()
-            gain_dist = suppress_background(gain_dist)
-   
-            for past_CCI in previous_list:
-                # Break when distribution gets above threshold
-                if gain_dist.sum() >= FIT_COUNT_THRESH: break
-                prev_dist = suppress_background(past_CCI.big_array[:,y,x])
-                # Break out if the previous distribution was big enough to make it's own fit
-                if prev_dist.sum() >= FIT_COUNT_THRESH: break
-                gain_dist += prev_dist
+    previous_list = get_previous(current)
 
-            if gain_dist.sum() >= FIT_COUNT_THRESH:
-                gain_flag = ''
+    mincounts = 30
+    print 'Adding in previous data to distributions'
+    for past_CCI in previous_list:
+        print past_CCI.input_file_name
+        index = np.where( np.sum( current.big_array[1:31], axis=0 ) <= mincounts )
+        for y, x in zip( *index ):
+            prev_dist = past_CCI.big_array[:, y, x]
+            if prev_dist > mincounts: 
+                continue
+            else:
+                current.big_array[:, y, x] += prev_dist
 
-                ###Fit in charge space???
-                fit_parameters,success = fit_gaussian(gain_dist)
-                fit_height, fit_center, fit_std = fit_parameters
-                variance = fit_std*fit_std
 
-                trial_2,success_2 = fit_gaussian(gain_dist, b = fit_center - 4)
-                trial_3,success_3 = fit_gaussian(gain_dist, b = fit_center + 4)
+    current.modal_gain_array = measure_gainimage( current.big_array )
+    if current.accum_data:
+        current.extracted_charge += current.accum_data*(1.0e-12*10**((modal_gain_array-11.75)/20.5))
 
-                center_2 = trial_2[1]
-                center_3 = trial_3[1]
+    write_gainmap( current )
 
-                #---Begin checking for bad fits---#
-
-                if ( (center_2 > 31) | (center_2 < 0 ) ): center_2 = fit_center
-                if ( (center_3 > 31) | (center_3 < 0 ) ): center_3 = fit_center
-                if ( (fit_center > 31) | (fit_center < 0 ) ): 
-                    print 'Center way off'
-                    gain_flag += 'center_'
-
-                if ( (center_2 < fit_center - 1) | (center_3 > fit_center + 1) ):
-                    print 'Warning: More than one fit found @ %3.4f %3.4f %3.4f'%(fit_center, center_2, center_3)
-                    gain_flag += 'peaks_'
-                else:
-                    fit_center = np.median([fit_center,trial_2[1],trial_3[1]])
-
-                if not success: 
-                    print 'ERROR: Gaussian fit failed internal to routine at (x,y): (%d,%d).  Setting gain to 0'%(x,y)
-                    gain_flag += 'failure_'
-     
-                if (variance < FIT_SIGMA_LOW) | (variance > FIT_SIGMA_HIGH):
-                    print 'ERROR: dist. excluded at x=%d, y=%d. Cts: %4.2f Var: %3.2f'%(x,y,gain_dist.sum(),variance)
-                    gain_flag += 'variance_'
-
-                if np.isnan(fit_center):
-                    print 'ERROR: dist. excluded at x=%d, y=%d. Cts: %4.2f Var: %3.2f'%(x,y,gain_dist.sum(),variance)
-                    gain_flag += 'nan_'
-
-                #---End checking for bad fits---#
-
+    """
                 if gain_flag == '':
                     gain_flag = 'fine'
                     fit_modal_gain = fit_center
@@ -433,8 +464,7 @@ def make_gainmap(current):
 
                     current.modal_gain_array[y,x] = fit_modal_gain
                     current.modal_gain_width[y,x] = fit_gain_width
-                    #if (x > 6000//8 and x < 8000//8):  ### Just to generate some plots
-                    #    plot_gaussian_fit(gain_dist,fit_parameters,'%s_%s_xy_%d_%d_%5.2f.png'%('fine',current.KW_SEGMENT,x,y,current.KW_EXPSTART))
+
                     if fit_center > 21:
                         print '##########################'
                         print 'WARNING  MODAL GAIN: %3.2f'%(fit_center)
@@ -458,12 +488,7 @@ def make_gainmap(current):
                     dist_file.write( '\n')
                 else:
                     plot_gaussian_fit(gain_dist,fit_parameters,'WARNING_%s_%s_xy_%d_%d_%5.2f.png'%(gain_flag,current.KW_SEGMENT,x,y,current.KW_EXPSTART))
-
-                if current.accum_data:
-                    current.extracted_charge[y,x] += current.accum_data*(1.0e-12*10**((fit_modal_gain-11.75)/20.5))
-
-    write_gainmap( current )
-    dist_file.close()
+    """
 
 #------------------------------------------------------------
 
@@ -608,22 +633,6 @@ def get_previous(current_cci):
 
     return out_list
 
-#------------------------------------------------------------
-
-def suppress_background(distribution, FIT_PHLO=1, FIT_PHHI=31):
-    """Set counts in PHA bins 0 and 31 to 0.  Helps measured
-    fits to not be confused by high counts in these bins.  We
-    aren't concerned about measuring peaks in those bins beacuse
-    they are useless anyway.
-    """
-
-    distribution = np.array( distribution )
-
-    out_dist = distribution.copy()
-    out_dist[ : FIT_PHLO ] = 0
-    out_dist[ FIT_PHHI : ] = 0
-
-    return out_dist
 
 #------------------------------------------------------------
 
