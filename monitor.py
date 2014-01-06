@@ -234,32 +234,6 @@ def check_new_files():
 
 #------------------------------------------------------------
 
-def parse_args():
-    '''
-    Parse command line arguments.  Returns args object.
-    '''
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--time_trend', dest='trend_with_time', action='store_true',
-                        default=False,
-                        help='Run time trending')
-
-    parser.add_argument('--no_check', dest='check_for_new', action='store_false',
-                        default=True,
-                        help='Run in serial')
-
-    parser.add_argument('--processors', dest='n_processors', action='store',
-                        default=1,
-                        help='Number of processors for making gainmaps')
-
-    parser.add_argument('--regress', dest='regress', action='store_true',
-                        default=False,
-                        help='Run Regression set')
-
-    args = parser.parse_args()
-    return args
-
-#------------------------------------------------------------
-
 def main( args ):
     """ Main driver for monitoring program.
     """
@@ -285,13 +259,13 @@ def main( args ):
     print
     
     
-    gainmap.make_all_gainmaps( args.n_processors )
+    #gainmap.make_all_gainmaps( args.n_processors )
    
     phaimage.make_phaimages(True)
 
-    findbad.time_trends()
+    #findbad.time_trends()
      
-    gsag.main( args.regress )
+    #gsag.main( args.regress )
 
     make_quicklooks()
 

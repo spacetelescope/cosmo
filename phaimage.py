@@ -206,10 +206,11 @@ def make_phaimages(clobber=False):
     for gainmap in all_gainmaps:
         out_fits = os.path.join( MONITOR_DIR, gainmap + '_phf.fits')
 
-        if os.path.exists( out_fits ) and clobber:
+
+        if os.path.exists( out_fits ) and not clobber:
+            print out_fits, 'Already exists. Skipping'
+        else:
             phaimage = Phaimage(gainmap)
             phaimage.writeout( out_fits, clobber )
-        else:
-            print out_fits, '  Already exists.  Skipping'
 
 #------------------------------------------------------------
