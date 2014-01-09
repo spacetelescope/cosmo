@@ -9,8 +9,9 @@ import numpy as np
 
 from astropy.io import fits
 
-#-------------------------------------------------------------------------------
+from solar import get_solar_data
 
+#-------------------------------------------------------------------------------
 
 def pull_darks(base, detector):
     '''
@@ -60,10 +61,9 @@ def pull_orbital_info( dataset, step=1 ):
         times.copy()[:-1].astype( np.float64 ) * \
         SECOND_PER_MJD 
         
-    if not len( lat ) > 2:
-        raise ValueError( 'Too few events' )
-    if not len( times ) > 2: 
-        raise ValueError( 'Too few events' )
+    if not len( times ):
+        blank = np.array( [0] )
+        return blank, blank, blank, blank, blank, blank
 
     counts = np.histogram( hdu['events'].data['time'], bins=times )[0]
 
@@ -120,5 +120,21 @@ def compile_darkrates(detector='FUV'):
 
 #-------------------------------------------------------------------------------
 
+def make_plots( detector ):
+    db = sqlite3.connect("/grp/hst/cos/Monitors/DB/cos_darkrates.db")
+
+    c = db.cursor()
+    table = '{}_stats'.format(detector)
+
+#-------------------------------------------------------------------------------
+
+def monitor():
+    ### compile_darkrates('FUV')
+    ### compile_darkrates('NUV')
+    
+    get_solar_data( '/grp/hst/cos/Monitors/Darks/' )
+
+#-------------------------------------------------------------------------------
+
 if __name__ == '__main__':
-    compile_darkrates('FUV')
+    monitor()
