@@ -6,10 +6,14 @@ import os
 import sqlite3
 import logging
 import numpy as np
+import scipy
 
 from astropy.io import fits
 
 from solar import get_solar_data
+import plotting
+
+base_dir = '/grp/hst/cos/Monitors/Darks/'
 
 #-------------------------------------------------------------------------------
 
@@ -33,6 +37,30 @@ def pull_darks(base, detector):
                 continue
             
             yield full_filename
+
+#-------------------------------------------------------------------------------
+
+def get_temp( filename ):
+
+    detector = fits.getval( filename, 'DETECTOR' )
+    segment = fits.getval( filename, 'SEGMENT' )
+
+    if detector == 'FUV' and segment == 'FUVA':
+        temp_keyword = 'LDCAMPAT'
+    elif detector == 'FUV' and segment == 'FUVB':
+        temp_keyword = 'LDCAMPBT'
+    elif detector == 'NUV':
+        temp_keyword = 'LMMCETMP'
+    else:
+        raise ValueError('What??? {} {}'.format(detector, segment))
+
+    path, name = os.path.split(filename)
+    rootname = name[:9]
+    spt_file = os.path.join(path, rootname + '_spt.fits')
+
+    temperature = fits.getval(spt_file, temp_keyword, ext=2)
+
+    return temperature
 
 #-------------------------------------------------------------------------------
 
@@ -88,51 +116,94 @@ def compile_darkrates(detector='FUV'):
     c = db.cursor()
     table = '{}_stats'.format(detector)
     try:
-        c.execute("""CREATE TABLE {} ( obsname text,  mjd real, dark real, latitude real, longitude real, sun_lat real, sun_lon real)""".format(table))
+        c.execute("""CREATE TABLE {} ( obsname text,  mjd real, dark real, latitude real, longitude real, sun_lat real, sun_lon real, temp real)""".format(table))
     except sqlite3.OperationalError:
         pass
 
     location = '/grp/hst/cos/Monitors/Darks/{}/'.format( detector )
+    c.execute( """SELECT obsname FROM %s """ %(table))
+    already_done = set( [str(item[0]) for item in c] )
+    
     for filename in pull_darks(location, detector):
         print filename
         obsname = os.path.split( filename )[-1]
-        c.execute( """SELECT * FROM %s WHERE obsname='%s'""" %(table, obsname))
 
-        # Check if the obsname is already present
-        entries = [item for item in c]
-        if len( entries ): 
-            print 'Already checked'
+        if obsname in already_done: 
             continue
     
         counts, mjd, lat, lon, sun_lat, sun_lon = pull_orbital_info( filename, 25 )
+        temp = get_temp(filename)
  
         for i in range(len(mjd)):
-            c.execute( """INSERT INTO %s VALUES (?,?,?,?,?,?,?)""" % (table),
+            c.execute( """INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)""" % (table),
                        (obsname,
                         mjd[i],
                         counts[i],
                         lat[i],
                         lon[i],
                         sun_lat[i],
-                        sun_lon[i]))
+                        sun_lon[i],
+                        temp))
 
         db.commit()
 
 #-------------------------------------------------------------------------------
 
 def make_plots( detector ):
+
+    plt.ioff()
     db = sqlite3.connect("/grp/hst/cos/Monitors/DB/cos_darkrates.db")
 
-    c = db.cursor()
+    cursor = db.cursor()
     table = '{}_stats'.format(detector)
+
+    if detector == 'FUV':
+        search_strings = ['_corrtag_a.fits', '_corrtag_b.fits']
+        segments = ['FUVA', 'FUVB']
+    elif detector == 'NUV':
+        search_strings = ['_corrtag.fits']
+        segments = ['NUV']
+    else:
+        raise ValueError('Only FUV or NUV allowed.  NOT:{}'.format(detector) )
+
+    solar_data = np.genfromtxt(base_dir + 'solar_flux.txt', dtype=None)
+    solar_date = np.array([line[0] for line in solar_data])
+    solar_flux = np.array([line[1] for line in solar_data])
+
+    for key, segment in zip(search_strings, segments):
+        #-- Plot vs time
+        cursor.execute( """SELECT mjd,dark,temp FROM {} WHERE obsname LIKE '%{}%'""".format(table, key))
+
+        data = [ item for item in cursor ]
+        mjd = np.array( [item[0] for item in data] )
+        dark = np.array( [item[1] for item in data] )
+        temp = np.array( [item[2] for item in data] )
+        
+        outname = os.path.join(base_dir, detector, 'dark_vs_time_{}.pdf'.format(segment) )
+        plotting.plot_time( detector, dark, mjd, temp, solar_flux, solar_date, outname )
+        
+        #-- Plot vs orbit
+        cursor.execute( """SELECT dark,latitude,longitude,sun_lat,sun_lon FROM {} WHERE obsname LIKE '%{}%'""".format(table, key))
+        data = [ item for item in cursor ]
+        dark = np.array( [item[0] for item in data] )
+        latitude = np.array( [item[1] for item in data] )
+        longitude = np.array( [item[2] for item in data] )
+        sun_lat = np.array( [item[3] for item in data] )
+        sun_lon = np.array( [item[4] for item in data] )
+
+        outname = os.path.join(base_dir, detector, 'dark_vs_orbit_{}.pdf'.format(segment) )
+        plotting.plot_orbital_rate(longitude, latitude, dark, sun_lon, sun_lat, outname )
 
 #-------------------------------------------------------------------------------
 
 def monitor():
-    ### compile_darkrates('FUV')
-    ### compile_darkrates('NUV')
-    
-    get_solar_data( '/grp/hst/cos/Monitors/Darks/' )
+    """ main monitoring pipeline"""
+
+    #get_solar_data( '/grp/hst/cos/Monitors/Darks/' )
+
+    for detector in ['FUV', 'NUV']:
+        compile_darkrates( detector )
+        make_plots( detector )
 
 #-------------------------------------------------------------------------------
 
