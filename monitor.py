@@ -7,8 +7,11 @@ import sqlite3
 import logging
 import numpy as np
 import scipy
+import matplotlib.pyplot as plt
 
 from astropy.io import fits
+from astropy.time import Time
+import datetime
 
 from solar import get_solar_data
 import plotting
@@ -64,6 +67,27 @@ def get_temp( filename ):
 
 #-------------------------------------------------------------------------------
 
+def mjd_to_decyear( time_array ):
+    """ pull this out when you get it into astropy.time
+
+    """
+
+    times = Time( time_array, scale='tt', format='mjd' )
+
+    out_times = []
+    for value in times:
+        year = value.datetime.year
+        n_days = (value.datetime - datetime.datetime(value.datetime.year, 1, 1)).total_seconds()
+        total_days = (datetime.datetime(value.datetime.year+1, 1, 1) - datetime.datetime(value.datetime.year, 1, 1)).total_seconds()
+
+        fraction = float(n_days) / total_days
+
+        out_times.append( year + fraction )
+
+    return np.array(out_times)
+
+#-------------------------------------------------------------------------------
+
 def pull_orbital_info( dataset, step=1 ):
     """ Pull second by second orbital information from the dataset
 
@@ -78,8 +102,8 @@ def pull_orbital_info( dataset, step=1 ):
     lat = timeline['latitude'][:-1][::step].copy().astype(np.float64)
     lon = timeline['longitude'][:-1][::step].copy().astype(np.float64)
     try:
-        sun_lat = timeline['sun_lon'][:-1][::step].copy().astype(np.float64)
-        sun_lon = timeline['sun_lat'][:-1][::step].copy().astype(np.float64)
+        sun_lat = timeline['sun_lat'][:-1][::step].copy().astype(np.float64)
+        sun_lon = timeline['sun_lon'][:-1][::step].copy().astype(np.float64)
     except KeyError:
         sun_lat = lat.copy() * 0
         sun_lon = lat.copy() * 0
@@ -88,7 +112,9 @@ def pull_orbital_info( dataset, step=1 ):
     mjd = hdu[1].header['EXPSTART']  + \
         times.copy()[:-1].astype( np.float64 ) * \
         SECOND_PER_MJD 
-        
+
+    decyear = mjd_to_decyear( mjd )
+
     if not len( times ):
         blank = np.array( [0] )
         return blank, blank, blank, blank, blank, blank
@@ -106,7 +132,7 @@ def pull_orbital_info( dataset, step=1 ):
         'Arrays are not equal in length {}:{}'.format( len(lat), len(counts) )
 
 
-    return counts, mjd, lat, lon, sun_lat, sun_lon
+    return counts, decyear, lat, lon, sun_lat, sun_lon
 
 #-------------------------------------------------------------------------------
 
@@ -116,7 +142,7 @@ def compile_darkrates(detector='FUV'):
     c = db.cursor()
     table = '{}_stats'.format(detector)
     try:
-        c.execute("""CREATE TABLE {} ( obsname text,  mjd real, dark real, latitude real, longitude real, sun_lat real, sun_lon real, temp real)""".format(table))
+        c.execute("""CREATE TABLE {} ( obsname text, date real, dark real, latitude real, longitude real, sun_lat real, sun_lon real, temp real)""".format(table))
     except sqlite3.OperationalError:
         pass
 
@@ -131,13 +157,13 @@ def compile_darkrates(detector='FUV'):
         if obsname in already_done: 
             continue
     
-        counts, mjd, lat, lon, sun_lat, sun_lon = pull_orbital_info( filename, 25 )
+        counts, date, lat, lon, sun_lat, sun_lon = pull_orbital_info( filename, 25 )
         temp = get_temp(filename)
  
-        for i in range(len(mjd)):
+        for i in range(len(counts)):
             c.execute( """INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)""" % (table),
                        (obsname,
-                        mjd[i],
+                        date[i],
                         counts[i],
                         lat[i],
                         lon[i],
@@ -167,31 +193,46 @@ def make_plots( detector ):
         raise ValueError('Only FUV or NUV allowed.  NOT:{}'.format(detector) )
 
     solar_data = np.genfromtxt(base_dir + 'solar_flux.txt', dtype=None)
-    solar_date = np.array([line[0] for line in solar_data])
+    solar_date = np.array( mjd_to_decyear([line[0] for line in solar_data]) )
     solar_flux = np.array([line[1] for line in solar_data])
 
     for key, segment in zip(search_strings, segments):
         #-- Plot vs time
-        cursor.execute( """SELECT mjd,dark,temp FROM {} WHERE obsname LIKE '%{}%'""".format(table, key))
+        print 'Plotting Time'
+        cursor.execute( """SELECT date,dark,temp FROM {} WHERE obsname LIKE '%{}%'""".format(table, key))
 
         data = [ item for item in cursor ]
         mjd = np.array( [item[0] for item in data] )
         dark = np.array( [item[1] for item in data] )
         temp = np.array( [item[2] for item in data] )
         
-        outname = os.path.join(base_dir, detector, 'dark_vs_time_{}.pdf'.format(segment) )
+        index = np.argsort(mjd)
+        mjd = mjd[index]
+        dark = dark[index]
+        temp = temp[index]
+
+        outname = os.path.join(base_dir, detector, 'dark_vs_time_{}.png'.format(segment) )
         plotting.plot_time( detector, dark, mjd, temp, solar_flux, solar_date, outname )
         
         #-- Plot vs orbit
-        cursor.execute( """SELECT dark,latitude,longitude,sun_lat,sun_lon FROM {} WHERE obsname LIKE '%{}%'""".format(table, key))
+        print 'Plotting Orbit'
+        cursor.execute( """SELECT dark,latitude,longitude,sun_lat,sun_lon,date FROM {} WHERE obsname LIKE '%{}%'""".format(table, key))
         data = [ item for item in cursor ]
         dark = np.array( [item[0] for item in data] )
         latitude = np.array( [item[1] for item in data] )
         longitude = np.array( [item[2] for item in data] )
         sun_lat = np.array( [item[3] for item in data] )
         sun_lon = np.array( [item[4] for item in data] )
+        date = np.array( [item[5] for item in data] )
 
-        outname = os.path.join(base_dir, detector, 'dark_vs_orbit_{}.pdf'.format(segment) )
+        index = np.argsort(date)
+        dark = dark[index]
+        latitude = latitude[index]
+        longitude = longitude[index]
+        sun_lat = sun_lat[index]
+        sun_lon = sun_lon[index]
+        
+        outname = os.path.join(base_dir, detector, 'dark_vs_orbit_{}.png'.format(segment) )
         plotting.plot_orbital_rate(longitude, latitude, dark, sun_lon, sun_lat, outname )
 
 #-------------------------------------------------------------------------------
@@ -199,7 +240,7 @@ def make_plots( detector ):
 def monitor():
     """ main monitoring pipeline"""
 
-    #get_solar_data( '/grp/hst/cos/Monitors/Darks/' )
+    get_solar_data( '/grp/hst/cos/Monitors/Darks/' )
 
     for detector in ['FUV', 'NUV']:
         compile_darkrates( detector )

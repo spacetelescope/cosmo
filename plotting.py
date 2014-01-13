@@ -5,6 +5,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import scipy
+from scipy.ndimage.filters import convolve
 import numpy as np
 
 #-------------------------------------------------------------------------------
@@ -13,13 +14,13 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
     """ Make main dark-rate plots
     """
 
-    fig = plt.figure()
+    fig = plt.figure( figsize=(20,12) )
 
     dark_ax = fig.add_axes([.1, .3, .8, .6])
     sub_ax = fig.add_axes([.1, .09, .8, .19])
 
     dark_ax.plot( date, dark, color='k', marker='o',
-                  linestyle='', markersize=8, label='Dark Count Rate', zorder=1)
+                  linestyle='', markersize=8, label='Dark Count Rate', zorder=1, rasterized=True)
 
     #dark_ax.axvline(x=2012.326, ymin=0, ymax=1, color='b', linestyle='-',
     #                lw=2, label='COS Suspend', zorder=1, alpha=.4)
@@ -69,22 +70,110 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
 #-------------------------------------------------------------------------------
 
 def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
-    fig = plt.figure( )
-    ax = fig.add_subplot( 2,1,1 )
-    colors = ax.scatter( longitude, latitude, c=darkrate, marker='o', alpha=.7, edgecolors='none', 
-                         s=3, lw=0, vmin=darkrate.min(), vmax=darkrate.min() + 3*darkrate.std() )
-    fig.colorbar( colors )
 
-    ax2 = fig.add_subplot( 2,1,2 )
+    color_min = darkrate.min()
+    color_max = darkrate.min() + 3*darkrate.std()
+    
+    fig = plt.figure( figsize=(20,12) )
+    ax = fig.add_subplot( 3,1,1 )
+    colors = ax.scatter( longitude, latitude, c=darkrate, marker='o', alpha=.7, edgecolors='none', 
+                         s=3, lw=0, vmin=color_min, vmax=color_max, rasterized=True )
+    fig.colorbar( colors )
+    ax.set_xlim(0, 360)
+
+
+    """
+    import pyqtgraph as pg
+    pg.mkQApp()
+    
+    import pyqtgraph.opengl as gl
+    view = gl.GLViewWidget()
+    view.show()
+
+    xgrid = gl.GLGridItem()
+    ygrid = gl.GLGridItem()
+    zgrid = gl.GLGridItem()
+    view.addItem(xgrid)
+    view.addItem(ygrid)
+    view.addItem(zgrid)
+    raw_inpu()
+    """
+    '''
+    plt.ion()
+    from mpl_toolkits.mplot3d import Axes3D
+    fig = plt.figure()
+    ax = fig.add_subplot( 1,1,1, projection='3d')
+    ax.scatter( longitude, latitude, zs=darkrate, c=darkrate, 
+                marker='o', alpha=.7, edgecolors='none', 
+                s=5, lw=0, vmin=color_min, vmax=color_max )
+    raw_input()
+    '''
+    ax2 = fig.add_subplot( 3,1,2 )
+
+    #-- Get rid of the SAA passages
+    index_keep = np.where( (longitude < 250) | (latitude > 10) )[0]
+    darkrate = darkrate[index_keep]
+    latitude = latitude[index_keep]
+    longitude = longitude[index_keep]
+    sun_lat = sun_lat[index_keep]
+    sun_lon = sun_lon[index_keep]
+    
     lon_diff = longitude - sun_lon
     lat_diff = latitude - sun_lat
+
     colors = ax2.scatter( lon_diff, lat_diff, c=darkrate, 
                           marker='o', alpha=.7, edgecolors='none', 
-                          s=5, lw=0, vmax=darkrate.min() + 3*darkrate.std() )
+                          s=5, lw=0, vmin=color_min, vmax=color_max, rasterized=True )
+    ax2.set_xlim(-360, 360)
+
+    fig.colorbar( colors )
+
+
+
+    ax3 = fig.add_subplot( 3,1,3 )
+    #-- Cut out the low-points
+    dark_smooth = convolve( darkrate, np.ones(91)/91, mode='mirror' )
+
+    thresh = dark_smooth + 1.5*dark_smooth.std()
+    index_keep = np.where( (darkrate > thresh) )[0]
+
+    if len(index_keep):
+        darkrate = darkrate[index_keep]
+        latitude = latitude[index_keep]
+        longitude = longitude[index_keep]
+        sun_lat = sun_lat[index_keep]
+        sun_lon = sun_lon[index_keep]
+    else:
+        print 'I sure hope this is NUV data'
+
+    lon_diff = longitude - sun_lon
+    lat_diff = latitude - sun_lat
+
+    index = np.where(lon_diff < 0)[0]
+    lon_diff[index] += 360
+
+    colors = ax3.scatter( lon_diff, lat_diff, c=darkrate, 
+                          marker='o', alpha=.7, edgecolors='none', 
+                          s=5, lw=0, vmin=color_min, vmax=color_max, rasterized=True )
+    ax3.set_xlim(0, 360)
+
+    offset = 50
+    ax3.axvline( x=180 + offset, color='blue', ls='--')
+    ax3.axvline( x=offset, color='blue', ls='--')
 
     fig.colorbar( colors )
 
     fig.savefig( outname )
+
+    plt.ion()
+    from mpl_toolkits.mplot3d import Axes3D
+    fig = plt.figure()
+    ax = fig.add_subplot( 1,1,1, projection='3d')
+    ax.scatter( lon_diff, lat_diff, zs=darkrate, c=darkrate, 
+                marker='o', alpha=.7, edgecolors='none', 
+                s=5, lw=0, vmin=color_min, vmax=color_max )
+    raw_input()
+    
 
     '''
     gridx, gridy = np.mgrid[all_lon.min():all_lon.max():.1, all_lat.min():all_lat.max():.1]
