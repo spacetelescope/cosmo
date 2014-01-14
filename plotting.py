@@ -20,7 +20,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
     sub_ax = fig.add_axes([.1, .09, .8, .19])
 
     dark_ax.plot( date, dark, color='k', marker='o',
-                  linestyle='', markersize=8, label='Dark Count Rate', zorder=1, rasterized=True)
+                  linestyle='', markersize=6, label='Dark Count Rate', zorder=1, rasterized=True)
 
     #dark_ax.axvline(x=2012.326, ymin=0, ymax=1, color='b', linestyle='-',
     #                lw=2, label='COS Suspend', zorder=1, alpha=.4)
@@ -65,7 +65,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
         sub_ax.legend(numpoints=1, shadow=True, loc='best')
         sub_ax.grid(True)
 
-    fig.savefig(outname)
+    fig.savefig(outname, bbox_inches='tight')
 
 #-------------------------------------------------------------------------------
 
@@ -74,30 +74,26 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
     color_min = darkrate.min()
     color_max = darkrate.min() + 3*darkrate.std()
     
-    fig = plt.figure( figsize=(20,12) )
+    fig = plt.figure( figsize=(20,15) )
+
+    if 'FUVA' in outname:
+        detector = 'FUVA'
+    elif 'FUVB' in outname:
+        detector = 'FUVB'
+    elif 'NUV' in outname:
+        detector = 'NUV'
+
+    fig.suptitle('Orbital Variation in Darkrate for {}'.format(detector))
+
     ax = fig.add_subplot( 3,1,1 )
     colors = ax.scatter( longitude, latitude, c=darkrate, marker='o', alpha=.7, edgecolors='none', 
                          s=3, lw=0, vmin=color_min, vmax=color_max, rasterized=True )
     fig.colorbar( colors )
     ax.set_xlim(0, 360)
+    ax.set_ylabel('Latitude')
+    ax.set_xlabel('Longitude')
 
-
-    """
-    import pyqtgraph as pg
-    pg.mkQApp()
     
-    import pyqtgraph.opengl as gl
-    view = gl.GLViewWidget()
-    view.show()
-
-    xgrid = gl.GLGridItem()
-    ygrid = gl.GLGridItem()
-    zgrid = gl.GLGridItem()
-    view.addItem(xgrid)
-    view.addItem(ygrid)
-    view.addItem(zgrid)
-    raw_inpu()
-    """
     '''
     plt.ion()
     from mpl_toolkits.mplot3d import Axes3D
@@ -121,10 +117,15 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
     lon_diff = longitude - sun_lon
     lat_diff = latitude - sun_lat
 
+    index = np.where(lon_diff < 0)[0]
+    lon_diff[index] += 360
+
     colors = ax2.scatter( lon_diff, lat_diff, c=darkrate, 
                           marker='o', alpha=.7, edgecolors='none', 
                           s=5, lw=0, vmin=color_min, vmax=color_max, rasterized=True )
-    ax2.set_xlim(-360, 360)
+    ax2.set_xlim(0, 360)
+    ax2.set_ylabel('Latitude - sub-solar point')
+    ax2.set_xlabel('Longitude - sub-solar point')
 
     fig.colorbar( colors )
 
@@ -156,24 +157,12 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
                           marker='o', alpha=.7, edgecolors='none', 
                           s=5, lw=0, vmin=color_min, vmax=color_max, rasterized=True )
     ax3.set_xlim(0, 360)
-
-    offset = 50
-    ax3.axvline( x=180 + offset, color='blue', ls='--')
-    ax3.axvline( x=offset, color='blue', ls='--')
+    ax3.set_ylabel('Latitude - sub-solar point')
+    ax3.set_xlabel('Longitude - sub-solar point')
 
     fig.colorbar( colors )
 
-    fig.savefig( outname )
-
-    plt.ion()
-    from mpl_toolkits.mplot3d import Axes3D
-    fig = plt.figure()
-    ax = fig.add_subplot( 1,1,1, projection='3d')
-    ax.scatter( lon_diff, lat_diff, zs=darkrate, c=darkrate, 
-                marker='o', alpha=.7, edgecolors='none', 
-                s=5, lw=0, vmin=color_min, vmax=color_max )
-    raw_input()
-    
+    fig.savefig( outname, bbox_inches='tight' )
 
     '''
     gridx, gridy = np.mgrid[all_lon.min():all_lon.max():.1, all_lat.min():all_lat.max():.1]

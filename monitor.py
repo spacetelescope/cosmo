@@ -13,10 +13,15 @@ from astropy.io import fits
 from astropy.time import Time
 import datetime
 
+#from .support import corrtag_image
+from support import corrtag_image
 from solar import get_solar_data
 import plotting
 
 base_dir = '/grp/hst/cos/Monitors/Darks/'
+
+DB_NAME = "/grp/hst/cos/Monitors/DB/cos_darkrates.db"
+PHD_TABLE = 'phd'
 
 #-------------------------------------------------------------------------------
 
@@ -94,9 +99,12 @@ def pull_orbital_info( dataset, step=1 ):
     """
 
     SECOND_PER_MJD = 1.15741e-5
+    
 
     hdu = fits.open( dataset )
     timeline = hdu['timeline'].data
+    segment = hdu[0].header['segment']
+    
 
     times = timeline['time'][::step].copy()
     lat = timeline['latitude'][:-1][::step].copy().astype(np.float64)
@@ -120,6 +128,8 @@ def pull_orbital_info( dataset, step=1 ):
         return blank, blank, blank, blank, blank, blank
 
     counts = np.histogram( hdu['events'].data['time'], bins=times )[0]
+    if segment == 'N/A':
+        counts /= 1024 * 1024
 
     if not len( lat ) == len(counts):
         lat = lat[:-1]
@@ -127,17 +137,60 @@ def pull_orbital_info( dataset, step=1 ):
         sun_lat = sun_lat[:-1]
         sun_lon = sun_lon[:-1]
     
-
     assert len(lat) == len(counts), \
         'Arrays are not equal in length {}:{}'.format( len(lat), len(counts) )
-
 
     return counts, decyear, lat, lon, sun_lat, sun_lon
 
 #-------------------------------------------------------------------------------
 
+def compile_phd():
+   db = sqlite3.connect(DB_NAME)    
+   c = db.cursor()
+
+   #-- Find available datasets from master table
+   table = 'FUV_stats'
+   c.execute( """SELECT obsname FROM %s """ %(table))
+   available = set( [str(item[0]) for item in c] )   
+
+   #-- populate PHD table
+   table = PHD_TABLE
+   try:
+       columns = ', '.join(['bin{} real'.format(pha) for pha in range(0,31)])
+       c.execute("""CREATE TABLE {} ( obsname text, {})""".format(table, columns ))
+   except sqlite3.OperationalError:
+       pass
+
+   c.execute( """SELECT obsname FROM %s """ %(table))
+   already_done = set( [str(item[0]) for item in c] )
+
+   for filename in available:
+       obsname = os.path.split(filename)[-1]
+       print filename
+       if obsname in already_done:
+           continue
+
+       counts = pha_hist(filename)
+       table_values = (obsname, ) + tuple(list(counts) )
+       
+       c.execute( """INSERT INTO %s VALUES (?{})""" % (table, ',?'*31 ),
+                  table_values)
+       
+       db.commit()
+
+#-------------------------------------------------------------------------------
+
+def pha_hist(filename):
+    hdu = fits.open( filename )
+    pha_list_all = hdu[1].data['PHA']
+    counts, bins = np.histogram(pha_list_all, bins=31, range=(0, 31))
+    
+    return counts
+
+#-------------------------------------------------------------------------------
+
 def compile_darkrates(detector='FUV'):
-    db = sqlite3.connect("/grp/hst/cos/Monitors/DB/cos_darkrates.db")
+    db = sqlite3.connect(DB_NAME)
 
     c = db.cursor()
     table = '{}_stats'.format(detector)
@@ -175,10 +228,23 @@ def compile_darkrates(detector='FUV'):
 
 #-------------------------------------------------------------------------------
 
+def compile_darkimage(dataset_list, pha=(2,23) ):
+    """ Make a superdark from everything"""
+    output_image = 0
+
+    for filename in dataset_list:
+        hdu = pyfits.open(filename)
+        current_image = corrtag_image(hdu['events'].data, pha=pha)
+        output_image += current_image
+
+    return output_image
+
+#-------------------------------------------------------------------------------
+
 def make_plots( detector ):
 
     plt.ioff()
-    db = sqlite3.connect("/grp/hst/cos/Monitors/DB/cos_darkrates.db")
+    db = sqlite3.connect(DB_NAME)
 
     cursor = db.cursor()
     table = '{}_stats'.format(detector)
@@ -199,17 +265,27 @@ def make_plots( detector ):
     for key, segment in zip(search_strings, segments):
         #-- Plot vs time
         print 'Plotting Time'
-        cursor.execute( """SELECT date,dark,temp FROM {} WHERE obsname LIKE '%{}%'""".format(table, key))
+        cursor.execute( """SELECT date,dark,temp,latitude,longitude FROM {} WHERE obsname LIKE '%{}%'""".format(table, key))
 
         data = [ item for item in cursor ]
         mjd = np.array( [item[0] for item in data] )
         dark = np.array( [item[1] for item in data] )
         temp = np.array( [item[2] for item in data] )
+        latitude = np.array( [item[3] for item in data] )
+        longitude = np.array( [item[4] for item in data] )
         
         index = np.argsort(mjd)
         mjd = mjd[index]
         dark = dark[index]
         temp = temp[index]
+        latitude = latitude[index]
+        longitude = longitude[index]
+
+        index_keep = np.where( (longitude < 250) | (latitude > 10) )[0]
+        mjd = mjd[index_keep]
+        dark = dark[index_keep]
+        temp = temp[index_keep]
+        
 
         outname = os.path.join(base_dir, detector, 'dark_vs_time_{}.png'.format(segment) )
         plotting.plot_time( detector, dark, mjd, temp, solar_flux, solar_date, outname )
@@ -243,7 +319,9 @@ def monitor():
     get_solar_data( '/grp/hst/cos/Monitors/Darks/' )
 
     for detector in ['FUV', 'NUV']:
-        compile_darkrates( detector )
+        #compile_darkrates( detector )
+        #if detector == 'FUV':
+        #    compile_phd()
         make_plots( detector )
 
 #-------------------------------------------------------------------------------
