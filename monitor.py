@@ -173,6 +173,52 @@ def check_present(filename, database_name):
 
 #-----------------------------------------------------
 
+def locate_stims(fits_file):
+
+    DAYS_PER_SECOND = 1. / 60. / 60. / 24.
+
+    file_path, file_name = os.path.split(fits_file)
+
+    EXPTIME = pyfits.getval(fits_file, 'EXPTIME', ext=1)
+    EXPSTART = pyfits.getval(fits_file, 'EXPSTART', ext=1)
+    SEGMENT = pyfits.getval(fits_file, 'SEGMENT')
+
+    if EXPTIME < 10:
+        INCREMENT = .03
+    elif EXPTIME < 100:
+        INCREMENT = 1
+    else:
+        INCREMENT = 30
+
+    INCREMENT = 30
+    START = 0
+    STOP = START + INCREMENT
+
+    stim_info = []
+
+    while STOP < (EXPTIME):
+        im = corrtag_image(
+            fits_file,
+            xtype='RAWX',
+            ytype='RAWY',
+            times=(
+                START,
+                STOP))
+
+        ABS_TIME = EXPSTART + START * DAYS_PER_SECOND
+
+        found_ul_x, found_ul_y = find_stims(im, SEGMENT, 'ul', brf_file)
+        found_lr_x, found_lr_y = find_stims(im, SEGMENT, 'lr', brf_file)
+
+        print '%s \t %15.7f \t %4d \t %5.3f \t %4.3f \t %5.3f \t %4.3f' % (file_name, ABS_TIME, START, found_ul_x, found_ul_y, found_lr_x, found_lr_y)
+        stim_info.append( (ABS_TIME, START, found_ul_x, found_ul_y, found_lr_x, found_lr_y) )
+
+        START += INCREMENT
+        STOP = START + INCREMENT
+
+    return stim_info
+
+#-----------------------------------------------------
 
 def populate_db():
     """Populate a database with STIM locations for each dataset on a sub-sampled timescale
@@ -200,37 +246,9 @@ def populate_db():
         if check_present(file_name, DB_NAME):
             continue
 
-        EXPTIME = pyfits.getval(fits_file, 'EXPTIME', ext=1)
-        EXPSTART = pyfits.getval(fits_file, 'EXPSTART', ext=1)
-        SEGMENT = pyfits.getval(fits_file, 'SEGMENT')
+        stim_info = locate_stims(fits_file)
 
-        if EXPTIME < 10:
-            INCREMENT = .03
-        elif EXPTIME < 100:
-            INCREMENT = 1
-        else:
-            INCREMENT = 30
-
-        INCREMENT = 30
-        START = 0
-        STOP = START + INCREMENT
-
-        while STOP < (EXPTIME):
-            im = corrtag_image(
-                fits_file,
-                xtype='RAWX',
-                ytype='RAWY',
-                times=(
-                    START,
-                    STOP))
-
-            ABS_TIME = EXPSTART + START * DAYS_PER_SECOND
-
-            found_ul_x, found_ul_y = find_stims(im, SEGMENT, 'ul', brf_file)
-            found_lr_x, found_lr_y = find_stims(im, SEGMENT, 'lr', brf_file)
-
-            print '%s \t %15.7f \t %4d \t %5.3f \t %4.3f \t %5.3f \t %4.3f' % (file_name, ABS_TIME, START, found_ul_x, found_ul_y, found_lr_x, found_lr_y)
-
+        for ABS_TIME, START, found_ul_x, found_ul_y, found_lr_x, found_lr_y in stim_info:
             c.execute(
     """INSERT INTO %s VALUES (?,?,?,?,?,?,?)""" % (table),
                 (file_name,
@@ -240,9 +258,6 @@ def populate_db():
                  found_ul_y,
                  found_lr_x,
                  found_lr_y))
-
-            START += INCREMENT
-            STOP = START + INCREMENT
 
         # Don't want to commit the changes until an entire observation is done.
         # This way the procedure can be stopped and restarted without missing
