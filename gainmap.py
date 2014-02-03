@@ -340,26 +340,29 @@ def perform_fit( distribution, sigma_low=0, sigma_high=10):
     if ( (center_2 > 31) | (center_2 < 0 ) ): center_2 = fit_center
     if ( (center_3 > 31) | (center_3 < 0 ) ): center_3 = fit_center
     if ( (fit_center > 31) | (fit_center < 0 ) ): 
-        print 'Center way off'
+        #print 'Center way off'
         gain_flag += 'center_'
 
     if ( (center_2 < fit_center - 1) | (center_3 > fit_center + 1) ):
-        print 'Warning: More than one fit found'# @ %3.4f %3.4f %3.4f'%(fit_center, center_2, center_3)
+        #print 'Warning: More than one fit found'# @ %3.4f %3.4f %3.4f'%(fit_center, center_2, center_3)
         gain_flag += 'peaks_'
     else:
         fit_center = np.median([fit_center,trial_2[1],trial_3[1]])
 
     if not success: 
-        print 'ERROR: Gaussian fit failed internal to routine'# at (x,y): (%d,%d).  Setting gain to 0'%(x,y)
+        #print 'ERROR: Gaussian fit failed internal to routine'# at (x,y): (%d,%d).  Setting gain to 0'%(x,y)
         gain_flag += 'failure_'
 
     if (variance < sigma_low) | (variance > sigma_high):
-        print 'ERROR: dist. excluded'# at x=%d, y=%d. Cts: %4.2f Var: %3.2f'%(x,y,distribution.sum(),variance)
+        #print 'ERROR: dist. excluded'# at x=%d, y=%d. Cts: %4.2f Var: %3.2f'%(x,y,distribution.sum(),variance)
         gain_flag += 'variance_'
 
     if np.isnan(fit_center):
-        print 'ERROR: dist. excluded'# at x=%d, y=%d. Cts: %4.2f Var: %3.2f'%(x,y,distribution.sum(),variance)
+        #print 'ERROR: dist. excluded'# at x=%d, y=%d. Cts: %4.2f Var: %3.2f'%(x,y,distribution.sum(),variance)
         gain_flag += 'nan_'
+
+    if not gain_flag:
+        fit_center = 0
 
     return fit_center, gain_flag
 
@@ -375,6 +378,9 @@ def measure_gainimage( data_cube, mincounts=30, phlow=1, phhigh=31 ):
     # Suppress certain pharanges
     for i in range(0, phlow+1) + range(phhigh, len(data_cube) ):
         data_cube[i] = 0
+
+    #zsize, ysize, xsize = data_cube.shape
+    #out_gain = np.array(map( perform_fit, data_cube.T.reshape( (ysize*xsize,zsize) ) )).reshape( (ysize, xsize) )
 
     collapsed = np.sum( data_cube, axis=0 )
    
@@ -393,7 +399,7 @@ def measure_gainimage( data_cube, mincounts=30, phlow=1, phhigh=31 ):
     for y, x, modal_gain, flag in zip(index[0], index[1], gain_fits, gain_flags):
         if not flag:
             out_gain[y, x] = modal_gain
-
+ 
     return out_gain
     
 
@@ -437,14 +443,16 @@ def make_gainmap(current):
 
     previous_list = get_previous(current)
 
+
     mincounts = 30
     print 'Adding in previous data to distributions'
     for past_CCI in previous_list:
         print past_CCI.input_file_name
         index = np.where( np.sum( current.big_array[1:31], axis=0 ) <= mincounts )
+  
         for y, x in zip( *index ):
             prev_dist = past_CCI.big_array[:, y, x]
-            if prev_dist > mincounts: 
+            if prev_dist.sum() > mincounts: 
                 continue
             else:
                 current.big_array[:, y, x] += prev_dist
@@ -683,11 +691,14 @@ def explode( filename ):
     else:
         raise ValueError( '{} needs to be a filename of a COS corrtag file'.format( filename ) )
     
-    out_cube = np.zeros( (32, 1024, 16384) )
+    out_cube = np.empty( (32, 1024, 16384) )
 
-    for phaval in range(0, 33):
+    for phaval in range(0, 32):
         index = np.where( events['PHA'] == phaval )[0]
-        if not len(index): continue
+
+        if not len(index):
+            out_cube[ phaval ] = 0
+            continue
 
         image, y_range, x_range = np.histogram2d( events['YCORR'][index], 
                                                   events['XCORR'][index], 
