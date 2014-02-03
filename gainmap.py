@@ -361,8 +361,8 @@ def perform_fit( distribution, sigma_low=0, sigma_high=10):
         #print 'ERROR: dist. excluded'# at x=%d, y=%d. Cts: %4.2f Var: %3.2f'%(x,y,distribution.sum(),variance)
         gain_flag += 'nan_'
 
-    if not gain_flag:
-        fit_center = 0
+    #if gain_flag:
+    #    fit_center = 0
 
     return fit_center, gain_flag
 
