@@ -1,5 +1,4 @@
 import numpy as np
-import pyfits
 import glob
 import shutil
 import matplotlib as mpl
@@ -18,6 +17,8 @@ from support import init_plots
 from scipy.optimize import leastsq
 from datetime import datetime
 import itertools
+
+from astropy.io import fits as pyfits
 
 import calcos
 
@@ -307,7 +308,7 @@ def write_data(data):
     detector_col = pyfits.Column('detector', 'A24', 'MJD', array=detector)
     segment_col = pyfits.Column('segment', 'A24', 'pixel', array=segment)
     mjd_col = pyfits.Column('mjd', 'J', 'pixel', array=mjd)
-    shift_col = pyfits.Column('shift', 'F8.4', 'pixel', array=shift)
+    shift_col = pyfits.Column('shift', 'D8.4', 'pixel', array=shift)
     opt_elem_col = pyfits.Column('opt_elem', 'A24', 'pixel', array=opt_elem)
     cenwave_col = pyfits.Column('cenwave', 'J', 'pixel', array=cenwave)
     fppos_col = pyfits.Column('fppos', 'J', 'pixel', array=fppos)
