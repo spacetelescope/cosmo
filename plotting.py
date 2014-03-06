@@ -7,6 +7,12 @@ from matplotlib.ticker import FormatStrFormatter
 import scipy
 from scipy.ndimage.filters import convolve
 import numpy as np
+import math
+
+#-------------------------------------------------------------------------------
+
+def magnitude(x):
+    return int(math.floor(math.log10(x)))
 
 #-------------------------------------------------------------------------------
 
@@ -20,7 +26,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
     sub_ax = fig.add_axes([.1, .09, .8, .19])
 
     dark_ax.plot( date, dark, color='k', marker='o',
-                  linestyle='', markersize=6, label='Dark Count Rate', zorder=1, rasterized=True)
+                  linestyle='', markersize=2, label='Dark Count Rate', zorder=1, rasterized=True)
 
     #dark_ax.axvline(x=2012.326, ymin=0, ymax=1, color='b', linestyle='-',
     #                lw=2, label='COS Suspend', zorder=1, alpha=.4)
@@ -35,6 +41,8 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
 
     dark_ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
     dark_ax.yaxis.set_major_formatter(FormatStrFormatter('%3.2e'))
+
+    dark_ax.yaxis.set_ticks(np.arange(0, dark.max(), 2 * 10 ** magnitude(dark.mean())) )
 
     dark_ax.set_xticklabels(['' for item in dark_ax.get_xticklabels()])
     dark_ax.set_ylabel('Mean Dark Rate cnts/sec/pix')
@@ -60,7 +68,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
         plt.gca().xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
         sub_ax.set_xlabel('Decimal_year')
         sub_ax.set_ylabel('Radio Flux')
-        sub_ax.set_ylim(50, 200)
+        sub_ax.set_ylim(50, 210)
         sub_ax.set_xlim(2009.5, date.max() + .1)
         sub_ax.legend(numpoints=1, shadow=True, loc='best')
         sub_ax.grid(True)

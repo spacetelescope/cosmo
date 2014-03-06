@@ -109,12 +109,17 @@ def pull_orbital_info( dataset, step=1 ):
     if segment == 'N/A':
         xlim = (0, 1024)
         ylim = (0, 1204)
+        pha = (-1, 1)
     elif segment == 'FUVA':
         xlim = (1200, 15099)
         ylim = (380, 680)
+        pha = (2, 23)
     elif segment == 'FUVB':
         xlim = (950, 15049)
         ylim = (440, 720)
+        pha = (2, 23)
+    else:
+        raise ValueError('What segment is this? {}'.format(segment))
 
     times = timeline['time'][::step].copy()
     lat = timeline['latitude'][:-1][::step].copy().astype(np.float64)
@@ -139,8 +144,8 @@ def pull_orbital_info( dataset, step=1 ):
 
 
     events = hdu['events'].data
-    keep_index = np.where( (events['PHA'] > 2) & 
-                           (events['PHA'] < 23) &
+    keep_index = np.where( (events['PHA'] > pha[0]) & 
+                           (events['PHA'] < pha[1]) &
                            (events['XCORR'] > xlim[0]) & 
                            (events['XCORR'] < xlim[1]) & 
                            (events['YCORR'] > ylim[0]) &
@@ -149,7 +154,7 @@ def pull_orbital_info( dataset, step=1 ):
     events = events[keep_index]
     
 
-    counts = np.histogram( hdu['events'].data['time'], bins=times )[0]
+    counts = np.histogram( events['time'], bins=times )[0]
     
     npix = float((xlim[1] - xlim[0]) * (ylim[1] - ylim[0]))
     counts = counts / npix / step
@@ -236,6 +241,7 @@ def compile_darkrates(detector='FUV'):
             print filename, 'running'
 
         counts, date, lat, lon, sun_lat, sun_lon = pull_orbital_info( filename, 25 )
+      
         temp = get_temp(filename)
  
         for i in range(len(counts)):
@@ -343,7 +349,7 @@ def monitor():
 
     get_solar_data( '/grp/hst/cos/Monitors/Darks/' )
 
-    for detector in ['FUV', 'NUV']:
+    for detector in ['FUV']:#, 'NUV']:
         compile_darkrates( detector )
         #if detector == 'FUV':
         #    compile_phd()
