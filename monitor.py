@@ -34,14 +34,16 @@ def pull_darks(base, detector):
 
     for root, dirs, files in os.walk(base):
         for filename in files:
-            full_filename = os.path.join( root, filename )
-            if not '_corrtag' in filename:
+            if not '.fits' in filename:
                 continue
-            if not '.fits' in filename: 
+            elif not '_corrtag' in filename:
+                continue
+
+            full_filename = os.path.join( root, filename )
+            
+            if not fits.getval(full_filename, 'exptype', ext=0) == 'DARK': 
                 continue
             if not fits.getval(full_filename, 'detector', ext=0) == detector: 
-                continue
-            if not fits.getval(full_filename, 'exptype', ext=0) == 'DARK': 
                 continue
             
             yield full_filename
@@ -99,12 +101,20 @@ def pull_orbital_info( dataset, step=1 ):
     """
 
     SECOND_PER_MJD = 1.15741e-5
-    
 
     hdu = fits.open( dataset )
     timeline = hdu['timeline'].data
     segment = hdu[0].header['segment']
     
+    if segment == 'N/A':
+        xlim = (0, 1024)
+        ylim = (0, 1204)
+    elif segment == 'FUVA':
+        xlim = (1200, 15099)
+        ylim = (380, 680)
+    elif segment == 'FUVB':
+        xlim = (950, 15049)
+        ylim = (440, 720)
 
     times = timeline['time'][::step].copy()
     lat = timeline['latitude'][:-1][::step].copy().astype(np.float64)
@@ -127,9 +137,22 @@ def pull_orbital_info( dataset, step=1 ):
         blank = np.array( [0] )
         return blank, blank, blank, blank, blank, blank
 
+
+    events = hdu['events'].data
+    keep_index = np.where( (events['PHA'] > 2) & 
+                           (events['PHA'] < 23) &
+                           (events['XCORR'] > xlim[0]) & 
+                           (events['XCORR'] < xlim[1]) & 
+                           (events['YCORR'] > ylim[0]) &
+                           (events['YCORR'] < ylim[1])
+                           )
+    events = events[keep_index]
+    
+
     counts = np.histogram( hdu['events'].data['time'], bins=times )[0]
-    if segment == 'N/A':
-        counts /= 1024 * 1024
+    
+    npix = float((xlim[1] - xlim[0]) * (ylim[1] - ylim[0]))
+    counts = counts / npix / step
 
     if not len( lat ) == len(counts):
         lat = lat[:-1]
@@ -166,9 +189,10 @@ def compile_phd():
 
    for filename in available:
        obsname = os.path.split(filename)[-1]
-       print filename
        if obsname in already_done:
-           continue
+           print filename, 'done'
+       else:
+           print filename, 'running'
 
        counts = pha_hist(filename)
        table_values = (obsname, ) + tuple(list(counts) )
@@ -204,12 +228,13 @@ def compile_darkrates(detector='FUV'):
     already_done = set( [str(item[0]) for item in c] )
     
     for filename in pull_darks(location, detector):
-        print filename
         obsname = os.path.split( filename )[-1]
+        
+        if obsname in already_done:
+            print filename, 'done'
+        else:
+            print filename, 'running'
 
-        if obsname in already_done: 
-            continue
-    
         counts, date, lat, lon, sun_lat, sun_lon = pull_orbital_info( filename, 25 )
         temp = get_temp(filename)
  
@@ -319,7 +344,7 @@ def monitor():
     get_solar_data( '/grp/hst/cos/Monitors/Darks/' )
 
     for detector in ['FUV', 'NUV']:
-        #compile_darkrates( detector )
+        compile_darkrates( detector )
         #if detector == 'FUV':
         #    compile_phd()
         make_plots( detector )

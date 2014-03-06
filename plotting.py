@@ -33,13 +33,13 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
         dark_ax.axhline(y=1.5E-6, color='r', linestyle='--',
                    lw=3, label='1.5e-6', zorder=1, alpha=.6)
 
-    plt.gca().xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-    plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%3.2e'))
+    dark_ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+    dark_ax.yaxis.set_major_formatter(FormatStrFormatter('%3.2e'))
 
     dark_ax.set_xticklabels(['' for item in dark_ax.get_xticklabels()])
     dark_ax.set_ylabel('Mean Dark Rate cnts/sec/pix')
     dark_ax.set_title('Global Dark Rate: %s' % (detector.upper()))
-    #dark_ax.set_xlim(2009.5, date_to_predict + .3)
+    dark_ax.set_xlim(2009.5, date.max() + .1)
     dark_ax.legend(numpoints=1, shadow=True, loc='upper left')
     dark_ax.grid(True)
 
@@ -49,7 +49,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
         plt.gca().xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
         sub_ax.set_xlabel('Decimal_year')
         sub_ax.set_ylabel('Temperature')
-        #sub_ax.set_xlim(2009.5, date_to_predict + .3)
+        sub_ax.set_xlim(2009.5, date.max() + .1)
         sub_ax.grid(True)
     else:
         solar_smooth = scipy.convolve(solar, np.ones(81) / 81.0, mode='same')
@@ -61,7 +61,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
         sub_ax.set_xlabel('Decimal_year')
         sub_ax.set_ylabel('Radio Flux')
         sub_ax.set_ylim(50, 200)
-        #sub_ax.set_xlim(2009.5, date_to_predict + .3)
+        sub_ax.set_xlim(2009.5, date.max() + .1)
         sub_ax.legend(numpoints=1, shadow=True, loc='best')
         sub_ax.grid(True)
 
