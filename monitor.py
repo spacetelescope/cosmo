@@ -419,7 +419,7 @@ def send_email(missing_obs, missing_dates):
 
     index = np.where(date_diff < 7)[0]
     message = '--- WARNING ---\n'
-    message += 'The following observations had missing stim pulses within the past 3 weeks:\n'
+    message += 'The following observations had missing stim pulses within the past week:\n'
     message += '-' * 40 + '\n'
     message += ''.join(['{} {}\n'.format(obs, date) for obs, date in zip(missing_obs[index], missing_dates.iso[index])])
     
