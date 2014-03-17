@@ -27,6 +27,11 @@ import re
 from ..support import send_email, corrtag_image
 import glob
 import numpy as np
+from astropy.time import Time
+
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 #------------------------------------------------------
 #--------------------Constants-------------------------
@@ -275,11 +280,21 @@ def find_missing():
     db = sqlite3.connect(DB_NAME)
     c = db.cursor()
     c.execute(
-    """SELECT obsname FROM measurements where ul_x='-999' or ul_y='-999' or lr_x='-999' or lr_y='-999'""")
+    """SELECT obsname,abs_time FROM measurements where ul_x='-999' or ul_y='-999' or lr_x='-999' or lr_y='-999'""")
 
-    missed_obsnames = sorted(set([item[0].strip() for item in c]))
+    missed_data = [(item[0].strip(), item[1]) for item in c]
+    all_obs = [item[0] for item in missed_data]
+    all_mjd = [item[1] for item in missed_data]
 
-    return missed_obsnames
+    obs_uniq = list(set(all_obs))
+
+    date_uniq = []
+    for obs in obs_uniq:
+        min_mjd = all_mjd[all_obs.index(obs)]
+        date_uniq.append(min_mjd)
+
+    date_uniq = Time(date_uniq, format='mjd', scale='utc')
+    return obs_uniq, date_uniq
 
 #-----------------------------------------------------
 
@@ -375,22 +390,10 @@ def stim_monitor():
 
     """
 
-    populate_db()
+    #populate_db()
 
-    all_missing = find_missing()
-
-    date_now = datetime.date.today()
-    date_string = '%d:%d:%d' % (date_now.year, date_now.month, date_now.day)
-
-    if len(all_missing):
-        message = 'As of %s, one or more stim pulses were not found in the following observations.\n\n' % (
-            date_string)
-        message += ''.join(['%s\n' % (obs) for obs in all_missing])
-        message += '\n\nPlease investigate,\nCOS Stim Monitor'
-    else:
-        message = 'As of %s, no recent observations had missing stim pulses.\n\nPlease have a nice day,\nCOS Stim Monitor' % (
-            date_string)
-    send_email(subject='Stim Monitor Report', message=message)
+    missing_obs, missing_dates = find_missing()
+    send_email(missing_obs, missing_dates)
 
     make_plots()
 
@@ -400,6 +403,46 @@ def stim_monitor():
 
 #-----------------------------------------------------
 
+def send_email(missing_obs, missing_dates):
+    """inform the parties that retrieval and calibration are done
+
+    """
+
+    sorted_index = np.argsort(missing_dates)
+    missing_obs = np.array(missing_obs)[sorted_index]
+    missing_dates = missing_dates[sorted_index]
+
+    date_now = datetime.date.today()
+    date_now = Time('%d-%d-%d' % (date_now.year, date_now.month, date_now.day), scale='utc', format='iso')
+    date_diff = (date_now - missing_dates).sec / (60. * 60. * 24)
+
+    index = np.where(date_diff < 7)[0]
+    message = '--- WARNING ---\n'
+    message += 'The following observations had missing stim pulses within the past 3 weeks:\n'
+    message += '-' * 40 + '\n'
+    message += ''.join(['{} {}\n'.format(obs, date) for obs, date in zip(missing_obs[index], missing_dates.iso[index])])
+    
+    message += '\n\n\n'
+    message += 'The following is a complete list of observations with missing stims.\n'
+    message += '-' * 40 + '\n'
+    message += ''.join(['{} {}\n'.format(obs, date) for obs, date in zip(missing_obs, missing_dates.iso)])
+
+    svr_addr = 'smtp.stsci.edu'
+    from_addr = 'ely@stsci.edu'
+    recipients = ['ely@stsci.edu', 'sahnow@stsci.edu']
+    to_addr = ', '.join(recipients)
+
+    msg = MIMEMultipart()
+    msg['Subject'] = 'Stim Monitor Report'
+    msg['From'] = from_addr
+    msg['To'] = to_addr
+
+    msg.attach(MIMEText(message))
+    s = smtplib.SMTP(svr_addr)
+    s.sendmail(from_addr, recipients, msg.as_string())
+    s.quit()
+
+#--------------------------------------------------------------------
 
 def make_plots():
     """Make the overall STIM monitor plots.
