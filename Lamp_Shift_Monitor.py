@@ -7,10 +7,7 @@ import matplotlib.pyplot as plt
 import os
 import sys
 sys.path.insert(0, '../')
-import subprocess as sp
-import multiprocessing as mp
 import scipy
-from scipy.signal import medfilt
 from scipy.optimize import curve_fit
 from scipy.stats import linregress
 from support import init_plots
@@ -27,133 +24,6 @@ DATA_DIR = os.path.join(MONITOR_DIR, 'data')
 lref = '/grp/hst/cdbs/lref/'
 
 #----------------------------------------------------------
-
-
-def call_calcos(args_tuple):
-    filename, out_dir = args_tuple
-
-    calcos.calcos(filename, outdir=out_dir)
-
-#----------------------------------------------------------
-
-
-def reprocess():
-    print '#----------------#'
-    print '  Reprocessing '
-    print '#----------------#'
-
-    os.environ['lref'] = '/grp/hst/cdbs/lref'
-    os.environ['data_ref'] = DATA_DIR
-
-    print calcos.__version__
-
-    #calcos = '/Users/ely/CALCOS/2.18.5/calcos.py'
-    # if os.path.exists( '/Users/ely/py-bin/calcos.py' ):
-    #    calcos = '/Users/ely/py-bin/calcos.py'
-    # else:
-    #    calcos = '/user/ely/CALCOS/calcos.py'
-
-    input_list = [item for item in glob.glob(os.path.join(DATA_DIR, '*rawtag*.fits*'))
-                  if not os.path.exists(item.replace('rawtag', 'corrtag'))]
-
-    pool = mp.Pool(processes=20)
-
-    #clist = []
-
-    # for infile in input_list:
-    #    clist.append((calcos,infile,DATA_DIR))
-
-    # pool.map(sp.call,clist)
-
-    pool.map(call_calcos, zip(input_list, itertools.repeat(DATA_DIR)))
-
-#----------------------------------------------------------
-
-
-def grab_files():
-    print '#-----------------------#'
-    print 'Copying over NUV datasets'
-    print '#-----------------------#'
-    '''
-    for root,dirs,files in os.walk('/smov/cos/Data/'):
-        if 'Quality' in root: continue
-        if 'Fasttrack' in root: continue
-        if 'targets' in root: continue
-        if 'podfiles' in root: continue
-        if 'gzip' in root: continue
-        if 'experimental' in root: continue
-        if 'Anomalies' in root: continue
-        if root.endswith('otfrdata'): continue
-        if not len(root.split('/')) == 7: continue
-        if 'otfrdata' in root:
-            print root
-            for ifile in files:
-                if os.path.exists( os.path.join( DATA_DIR,ifile )): continue
-                file_path = os.path.join(root,ifile)
-                if file_path.endswith('_rawtag.fits.gz') and pyfits.getval(file_path,'DETECTOR') == 'NUV':
-                    shutil.copy( file_path, DATA_DIR )
-    '''
-    print '\nSetting WCPTAB header keyword'
-    wcptab = 'data_ref$wide_wcp.fits'
-    for item in glob.glob(os.path.join(DATA_DIR, '*rawtag.fits*')):
-        if pyfits.getval(item, 'EXPSTART', ext=1) < 55535:
-            pyfits.setval(item, 'WCPTAB', value='data_ref$old_wcp.fits', ext=0)
-        else:
-            pyfits.setval(item, 'WCPTAB', value='data_ref$new_wcp.fits', ext=0)
-        #os.chmod( item, 0660 )
-
-#----------------------------------------------------------
-
-
-def find_files_trl():
-    checked = []
-
-    fuv_shifts = []
-    nuv_shifts = []
-    fuv_mjd = []
-    nuv_mjd = []
-
-    for root, dirs, files in os.walk('/smov/cos/Data/'):
-        for infile in files:
-            if infile.endswith('_trl.fits.gz'):
-                rootname = infile[:9]
-                if rootname in checked:
-                    continue
-                x1d_name = os.path.join(
-                    root, infile.replace('_trl.fits', '_x1d.fits'))
-                if not os.path.exists(x1d_name):
-                    continue
-
-                checked.append(rootname)
-                print root, '/', infile
-
-                try:
-                    fits = pyfits.open(os.path.join(root, infile))
-                except TypeError:
-                    continue
-                date = pyfits.getval(x1d_name, 'EXPSTART', ext=1)
-                detector = pyfits.getval(x1d_name, 'DETECTOR', ext=0)
-                segment = pyfits.getval(x1d_name, 'DETECTOR', ext=0)
-
-                obs_shifts = []
-                for line in fits[1].data['TEXT_FILE']:
-                    line = line.strip().replace('[', ']').split(']')
-                    if len(line) == 3 and ('FUV' in line[0] or 'NUV' in line[0]):
-                        obs_shifts.append(float(line[1]))
-
-                if detector == 'FUV':
-                    fuv_shifts.append(obs_shifts)
-                    fuv_mjd.append(date)
-                elif detector == 'NUV':
-                    nuv_shifts.append(obs_shifts)
-                    nuv_mjd.append(date)
-
-                print obs_shifts, date
-
-    return fuv_shifts, fuv_mjd, nuv_shifts, nuv_mjd
-
-#----------------------------------------------------------
-
 
 def fppos_shift(lamptab_name, segment, opt_elem, cenwave, fpoffset):
     lamptab = pyfits.getdata(os.path.join(lref, lamptab_name))
@@ -468,7 +338,6 @@ def make_plots(data_file):
     fig = plt.figure( figsize=(14,8) )
     ax = fig.add_subplot(3,1,1)
     ax.plot( data['MJD'][G130M_A], data['SHIFT'][G130M_A],'b.',label='G130M')
-    #ax.plot( data['MJD'][G160M], medfilt( data['SHIFT'][G160M],131 ) ,'gold',zorder=10)
     ax.plot( data['MJD'][G130M_B], data['SHIFT'][G130M_B],'b.')#,markeredgecolor='k',markeredgewidth=1)
     ax.xaxis.set_ticklabels( ['' for item in ax.xaxis.get_ticklabels()] )
 
@@ -752,8 +621,6 @@ def fp_diff():
 #----------------------------------------------------------
 
 if __name__ == "__main__":
-    # grab_files()
-    # reprocess()
     data = find_files()
     data_file = write_data(data)
     make_plots(data_file)
