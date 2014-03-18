@@ -7,6 +7,11 @@ __all__ = ['check_shifts']
 
 #-------------------------------------------------------------------------------
 
+class OSMError(Exception):
+    pass
+
+#-------------------------------------------------------------------------------
+
 def check_shifts(filename):
     """Check if the found shifts are consistent 
     
@@ -30,6 +35,6 @@ def check_shifts(filename):
         return
 
     if np.any(shifts.mean() - shifts > limits[detector]):
-        raise ValueError('{} has discrepant shift values {}'.format(filename, shifts))
+        raise OSMError('{} has discrepant shift values {}'.format(filename, shifts))
 
 #-------------------------------------------------------------------------------
