@@ -21,7 +21,7 @@ class StimError(Exception):
 def check_stim_global(filename):
     """ Check for stims missing from the entire observation
 
-    CalCOS populates -1 if a stim is missing, this will check for that value
+    Checks for a negative value indicating the stim was not found.
 
     """
 
@@ -32,7 +32,7 @@ def check_stim_global(filename):
 
     missing_stims = []
     for keyword in STIM_KEYWORDS:
-        if hdu[1].header[keyword] == -1:
+        if hdu[1].header[keyword] < 0:
             missing_stims.append(keyword)
 
 
