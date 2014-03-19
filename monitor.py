@@ -424,7 +424,7 @@ def send_email(missing_obs, missing_dates):
 
     svr_addr = 'smtp.stsci.edu'
     from_addr = 'ely@stsci.edu'
-    recipients = ['ely@stsci.edu', 'sahnow@stsci.edu']
+    recipients = ['ely@stsci.edu', 'sahnow@stsci.edu', 'penton@stsci.edu']
     to_addr = ', '.join(recipients)
 
     msg = MIMEMultipart()
