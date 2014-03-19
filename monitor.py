@@ -44,7 +44,6 @@ DB_NAME = os.path.join(MONITOR_DIR, 'Stim_Locations.db')
 
 #-----------------------------------------------------
 
-
 def gaussian(height, center_x, center_y, width_x, width_y):
     """
     Returns a gaussian function with the given parameters
@@ -55,7 +54,6 @@ def gaussian(height, center_x, center_y, width_x, width_y):
         -(((center_x - x) / width_x) ** 2 + ((center_y - y) / width_y) ** 2) / 2)
 
 #-----------------------------------------------------
-
 
 def find_center(data):
     """
@@ -81,7 +79,6 @@ def find_center(data):
     return y, x
 
 #-----------------------------------------------------
-
 
 def get_files(search_string='_rawtag_'):
     '''
@@ -113,7 +110,6 @@ def get_files(search_string='_rawtag_'):
                 yield root + '/' + file_name
 
 #-----------------------------------------------------
-
 
 def brf_positions(brftab, segment, position):
     """ Gets the search ranges for a stimpulse from
@@ -147,7 +143,6 @@ def brf_positions(brftab, segment, position):
 
 #-----------------------------------------------------
 
-
 def find_stims(image, segment, stim, brf_file):
     x1, x2, y1, y2 = brf_positions(brf_file, segment, stim)
     found_x, found_y = find_center(image[y1:y2, x1:x2])
@@ -157,7 +152,6 @@ def find_stims(image, segment, stim, brf_file):
     return found_x + x1, found_y + y1
 
 #-----------------------------------------------------
-
 
 def check_present(filename, database_name):
     """Returns True if filename is already in sql database,
