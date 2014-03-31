@@ -2,17 +2,75 @@
 
 """
 
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import scipy
 from scipy.ndimage.filters import convolve
 import numpy as np
 import math
+import pdb
 
 #-------------------------------------------------------------------------------
 
 def magnitude(x):
     return int(math.floor(math.log10(x)))
+
+#-------------------------------------------------------------------------------
+
+def plot_histogram(dark, outname):
+    fig = plt.figure(figsize=(12, 9))
+
+    ax = fig.add_subplot(2, 1, 1)
+    ax.hist(dark, bins=100, align='mid', histtype='stepfilled')
+    counts, bins = np.histogram(dark, bins=100)
+    cuml_dist = np.cumsum(counts)
+    count_99 = abs(cuml_dist / float(cuml_dist.max()) - .99).argmin()
+
+    mean = dark.mean()
+    med = np.median(dark)
+    std = dark.std()
+    mean_obj = ax.axvline(x=mean, lw=2, ls='--', color='r', label='Mean ')
+    med_obj = ax.axvline(x=med, lw=2, ls='-', color='r', label='Median')
+    two_sig = ax.axvline(x=med + (2*std), lw=2, ls = '-', color='gold')
+    three_sig = ax.axvline(x=med + (3*std), lw=2, ls = '-', color='magenta')
+    dist_99 = ax.axvline(x=bins[count_99], lw=2, ls = '-', color='green')
+
+    ax.grid(True, which='both')
+    ax.set_title('Histogram of Dark Rates')
+    ax.set_ylabel('Frequency')
+    ax.set_xlabel('Counts/pix/sec')
+    ax.set_xlim(dark.min(), dark.max())
+    ax.xaxis.set_major_formatter(FormatStrFormatter('%3.2e'))
+    
+    #--- Logarithmic
+
+    ax = fig.add_subplot(2, 1, 2)
+    #log_bins = np.logspace(np.log10(dark.min()), np.log10(dark.max()), 100)
+    ax.hist(dark, bins=100, align='mid', log=True, histtype='stepfilled')
+    ax.axvline(x=mean, lw=2, ls='--', color='r', label='Mean')
+    ax.axvline(x=med, lw=2, ls='-', color='r', label='Median')
+    ax.axvline(x=med+(2*std), lw=2, ls = '-', color='gold')
+    ax.axvline(x=med+(3*std), lw=2, ls = '-', color='magenta')
+    ax.axvline(x=bins[count_99], lw=2, ls = '-', color='green')
+
+    #ax.set_xscale('log')
+    ax.grid(True, which='both')
+    ax.set_ylabel('Log Frequency')
+    ax.set_xlabel('Counts/pix/sec')
+    ax.set_xlim(dark.min(), dark.max())
+    ax.xaxis.set_major_formatter(FormatStrFormatter('%3.2e'))
+
+    fig.legend([med_obj, mean_obj, two_sig, three_sig, dist_99],
+               ['Median', 
+                'Mean', 
+                '2$\sigma$: {0:.2e}'.format(med+(2*std)), 
+                '3$\sigma$: {0:.2e}'.format(med+(3*std)), 
+                '99$\%$: {0:.2e}'.format(bins[count_99])],
+               shadow=True, numpoints=1,
+               bbox_to_anchor=[0.9, 0.8])
+    fig.savefig(outname)
+    plt.close(fig)
 
 #-------------------------------------------------------------------------------
 
@@ -74,6 +132,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
         sub_ax.grid(True)
 
     fig.savefig(outname, bbox_inches='tight')
+    plt.close(fig)
 
 #-------------------------------------------------------------------------------
 
@@ -101,7 +160,6 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
     ax.set_ylabel('Latitude')
     ax.set_xlabel('Longitude')
 
-    
     '''
     plt.ion()
     from mpl_toolkits.mplot3d import Axes3D
@@ -171,6 +229,7 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
     fig.colorbar( colors )
 
     fig.savefig( outname, bbox_inches='tight' )
+    plt.close(fig)
 
     '''
     gridx, gridy = np.mgrid[all_lon.min():all_lon.max():.1, all_lat.min():all_lat.max():.1]

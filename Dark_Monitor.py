@@ -36,8 +36,11 @@ from time import sleep, localtime, asctime
 from matplotlib.ticker import *
 import argparse
 from support import decimal_year, init_plots, corrtag_image, send_email, rebin, mjd_to_greg
-from support import SybaseInterface
-from support import createXmlFile, submitXmlFile
+#from support import SybaseInterface
+#from support import createXmlFile, submitXmlFile
+
+from mast_interface.SybaseInterface import SybaseInterface
+from mast_interface.DADSAll import createXmlFile, submitXmlFile
 
 #----------------------------------------------------------------------
 #------Constants
@@ -192,7 +195,7 @@ def collect_new(
         proposal_list = NUV_PROPOSALS
         N_obs_req = 2
 
-    query = SybaseInterface("ZEPPO", "dadsops")
+    query = SybaseInterface("HARPO", "dadsops_rep")
     OR_part = "".join(["science.sci_pep_id = %d OR " % (proposal)
                       for proposal in proposal_list])[:-3]
     query.doQuery(query="SELECT science.sci_data_set_name FROM science WHERE ( " +
@@ -214,8 +217,14 @@ def collect_new(
     print 'New observations to retrieve: '
     print new_obs
 
+    if not archive_user: archive_user = raw_input('I need your archive username: ')
+    if not archive_pwd: archive_pwd = raw_input('I need your archive password: ')
+    if not ftp_user: ftp_user = raw_input('I need the ftp username: ')
+    if not ftp_pwd: ftp_pwd = raw_input('I need the ftp password: ')
+    if not email: email = raw_input('Please enter the email address for the notification: ')
+
     xml = createXmlFile(
-        ftp_dir=ftp_dir, set=new_obs, file_type='CTA', archive_user=archive_user,
+        ftp_dir=ftp_dir, set=new_obs, type='CTA', archive_user=archive_user,
         archive_pwd=archive_pwd, email=email, host=host,
         ftp_user=ftp_user, ftp_pwd=ftp_pwd)
 

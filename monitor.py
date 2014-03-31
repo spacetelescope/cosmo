@@ -144,20 +144,27 @@ def pull_orbital_info( dataset, step=1 ):
 
 
     events = hdu['events'].data
-    keep_index = np.where( (events['PHA'] > pha[0]) & 
-                           (events['PHA'] < pha[1]) &
-                           (events['XCORR'] > xlim[0]) & 
-                           (events['XCORR'] < xlim[1]) & 
-                           (events['YCORR'] > ylim[0]) &
-                           (events['YCORR'] < ylim[1])
-                           )
-    events = events[keep_index]
+    filtered_index = np.where( (events['PHA'] > pha[0]) & 
+                               (events['PHA'] < pha[1]) &
+                               (events['XCORR'] > xlim[0]) & 
+                               (events['XCORR'] < xlim[1]) & 
+                               (events['YCORR'] > ylim[0]) &
+                               (events['YCORR'] < ylim[1])
+                               )
+
+    ta_index = np.where( (events['XCORR'] > xlim[0]) & 
+                         (events['XCORR'] < xlim[1]) & 
+                         (events['YCORR'] > ylim[0]) &
+                         (events['YCORR'] < ylim[1])
+                         )
     
 
-    counts = np.histogram( events['time'], bins=times )[0]
+    counts = np.histogram( events[filtered_index]['time'], bins=times )[0]
+    ta_counts = np.histogram( events[ta_index]['time'], bins=times )[0]
     
     npix = float((xlim[1] - xlim[0]) * (ylim[1] - ylim[0]))
     counts = counts / npix / step
+    ta_counts = ta_counts / npix / step
 
     if not len( lat ) == len(counts):
         lat = lat[:-1]
@@ -168,7 +175,7 @@ def pull_orbital_info( dataset, step=1 ):
     assert len(lat) == len(counts), \
         'Arrays are not equal in length {}:{}'.format( len(lat), len(counts) )
 
-    return counts, decyear, lat, lon, sun_lat, sun_lon
+    return counts, ta_counts, decyear, lat, lon, sun_lat, sun_lon
 
 #-------------------------------------------------------------------------------
 
@@ -224,7 +231,7 @@ def compile_darkrates(detector='FUV'):
     c = db.cursor()
     table = '{}_stats'.format(detector)
     try:
-        c.execute("""CREATE TABLE {} ( obsname text, date real, dark real, latitude real, longitude real, sun_lat real, sun_lon real, temp real)""".format(table))
+        c.execute("""CREATE TABLE {} ( obsname text, date real, dark real, ta_dark real, latitude real, longitude real, sun_lat real, sun_lon real, temp real)""".format(table))
     except sqlite3.OperationalError:
         pass
 
@@ -240,15 +247,16 @@ def compile_darkrates(detector='FUV'):
         else:
             print filename, 'running'
 
-        counts, date, lat, lon, sun_lat, sun_lon = pull_orbital_info( filename, 25 )
+        counts, ta_counts, date, lat, lon, sun_lat, sun_lon = pull_orbital_info( filename, 25 )
       
         temp = get_temp(filename)
  
         for i in range(len(counts)):
-            c.execute( """INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)""" % (table),
+            c.execute( """INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)""" % (table),
                        (obsname,
                         date[i],
                         counts[i],
+                        ta_counts[i],
                         lat[i],
                         lon[i],
                         sun_lat[i],
@@ -272,8 +280,10 @@ def compile_darkimage(dataset_list, pha=(2,23) ):
 
 #-------------------------------------------------------------------------------
 
-def make_plots( detector ):
-
+def make_plots( detector, TA=False ):
+    print '#-------------------#'
+    print 'Making plots for {}'.format(detector)
+    print '#-------------------#'
     plt.ioff()
     db = sqlite3.connect(DB_NAME)
 
@@ -293,10 +303,14 @@ def make_plots( detector ):
     solar_date = np.array( mjd_to_decyear([line[0] for line in solar_data]) )
     solar_flux = np.array([line[1] for line in solar_data])
 
+    dark_key = 'dark'
+    if TA:
+        dark_key = 'ta_dark'
+
     for key, segment in zip(search_strings, segments):
         #-- Plot vs time
         print 'Plotting Time'
-        cursor.execute( """SELECT date,dark,temp,latitude,longitude FROM {} WHERE obsname LIKE '%{}%'""".format(table, key))
+        cursor.execute( """SELECT date,{},temp,latitude,longitude FROM {} WHERE obsname LIKE '%{}%'""".format(dark_key, table, key))
 
         data = [ item for item in cursor ]
         mjd = np.array( [item[0] for item in data] )
@@ -317,13 +331,12 @@ def make_plots( detector ):
         dark = dark[index_keep]
         temp = temp[index_keep]
         
-
-        outname = os.path.join(base_dir, detector, 'dark_vs_time_{}.png'.format(segment) )
+        outname = os.path.join(base_dir, detector, '{}_vs_time_{}.png'.format(dark_key, segment) )
         plotting.plot_time( detector, dark, mjd, temp, solar_flux, solar_date, outname )
         
         #-- Plot vs orbit
         print 'Plotting Orbit'
-        cursor.execute( """SELECT dark,latitude,longitude,sun_lat,sun_lon,date FROM {} WHERE obsname LIKE '%{}%'""".format(table, key))
+        cursor.execute( """SELECT {},latitude,longitude,sun_lat,sun_lon,date FROM {} WHERE obsname LIKE '%{}%'""".format(dark_key, table, key))
         data = [ item for item in cursor ]
         dark = np.array( [item[0] for item in data] )
         latitude = np.array( [item[1] for item in data] )
@@ -339,8 +352,33 @@ def make_plots( detector ):
         sun_lat = sun_lat[index]
         sun_lon = sun_lon[index]
         
-        outname = os.path.join(base_dir, detector, 'dark_vs_orbit_{}.png'.format(segment) )
+        outname = os.path.join(base_dir, detector, '{}_vs_orbit_{}.png'.format(dark_key, segment) )
         plotting.plot_orbital_rate(longitude, latitude, dark, sun_lon, sun_lat, outname )
+
+        #-- Plot histogram of darkrates
+        print 'Plotting Hist'
+        cursor.execute( """SELECT {},date FROM {} WHERE obsname LIKE '%{}%'""".format(dark_key, table, key))
+        data = [ item for item in cursor ]
+        dark = np.array( [item[0] for item in data] )
+        date = np.array( [item[1] for item in data] )
+
+        index = np.argsort(date)
+        date = date[index]
+        dark = dark[index]
+        
+        for year in set(map(int, date)):
+            index = np.where( (date >= year) & 
+                              (date < year + 1))
+            
+            outname = os.path.join(base_dir, detector, '{}_hist_{}_{}.pdf'.format(dark_key, year, segment) )
+            plotting.plot_histogram(dark[index], outname )
+            
+        index = np.where(date >= date.max() - .5)
+        outname = os.path.join(base_dir, detector, '{}_hist_-6mo_{}.pdf'.format(dark_key, segment) )
+        plotting.plot_histogram(dark[index], outname )
+
+        outname = os.path.join(base_dir, detector, '{}_hist_{}.pdf'.format(dark_key, segment) )
+        plotting.plot_histogram(dark, outname )
 
 #-------------------------------------------------------------------------------
 
@@ -350,10 +388,11 @@ def monitor():
     get_solar_data( '/grp/hst/cos/Monitors/Darks/' )
 
     for detector in ['FUV']:#, 'NUV']:
-        compile_darkrates( detector )
+        #compile_darkrates( detector )
         #if detector == 'FUV':
         #    compile_phd()
-        make_plots( detector )
+        make_plots(detector)
+        make_plots(detector, TA=True)
 
 #-------------------------------------------------------------------------------
 
