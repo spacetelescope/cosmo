@@ -1,13 +1,9 @@
 import sys
-sys.path.insert(0, '../')
 import os
 import numpy as np
 
-from constants import MONITOR_DIR
-
-import findbad
-import gainmap
-import cci_read
+from ..constants import MONITOR_DIR
+from ...cci import findbad, gainmap, cci_read
 
 PRECISION = sys.float_info.epsilon
 ONES_FILE =  os.path.join( MONITOR_DIR,'tests/ones_cci.fits' )
@@ -43,15 +39,5 @@ def test_time_fitting():
     assert np.all( fit_diff < TOLERANCE ),"Fitting didn't yield a straight line"
     assert np.all( param_diff < TOLERANCE),"Fitting didn't yield the right parameter tuple"
     assert success == True,"Fitting should have succeeded on this simple test"
-
-#------------------------------------------------------------------
-
-def test_suppress_background():
-    distribution = np.array( [10] * 32 )
-    suppressed = distribution.copy()
-    suppressed[0] = 0
-    suppressed[-1] = 0
-    
-    assert ( gainmap.suppress_background( distribution ) == suppressed ).all(),"Distributions not suppressed correctly"
 
 #------------------------------------------------------------------
