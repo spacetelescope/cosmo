@@ -19,6 +19,7 @@ import matplotlib as mpl
 mpl.use('agg')
 from matplotlib.ticker import FormatStrFormatter
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import argparse
 import datetime
 import shutil
@@ -28,6 +29,7 @@ from ..support import send_email, corrtag_image
 import glob
 import numpy as np
 from astropy.time import Time
+from scipy.stats import linregress
 
 import smtplib
 from email.mime.text import MIMEText
@@ -385,7 +387,7 @@ def stim_monitor():
 
     """
 
-    #populate_db()
+    populate_db()
 
     missing_obs, missing_dates = find_missing()
     send_email(missing_obs, missing_dates)
@@ -393,7 +395,6 @@ def stim_monitor():
     make_plots()
 
     move_to_web()
-
     check_individual()
 
 #-----------------------------------------------------
@@ -463,6 +464,7 @@ def make_plots():
     # over all time                 #
     # -------------------------------#
     plt.ioff()
+    
     plt.figure(1, figsize=(18, 12))
     plt.grid(True)
     plt.subplot(2, 2, 1)
@@ -476,28 +478,16 @@ def make_plots():
     ycenter = brf[0]['SY1']
     xwidth = brf[0]['XWIDTH']
     ywidth = brf[0]['YWIDTH']
-    xs = [
-        xcenter -
-        xwidth,
-        xcenter +
-        xwidth,
-        xcenter +
-        xwidth,
-        xcenter -
-        xwidth,
-        xcenter -
-        xwidth]
-    ys = [
-        ycenter -
-        ywidth,
-        ycenter -
-        ywidth,
-        ycenter +
-        ywidth,
-        ycenter +
-        ywidth,
-        ycenter -
-        ywidth]
+    xs = [xcenter - xwidth,
+          xcenter + xwidth,
+          xcenter + xwidth,
+          xcenter - xwidth,
+          xcenter - xwidth]
+    ys = [ycenter - ywidth,
+          ycenter - ywidth,
+          ycenter + ywidth,
+          ycenter + ywidth,
+          ycenter - ywidth]
     plt.plot(xs, ys, color='r', linestyle='--', label='Search Box')
     plt.legend(shadow=True, numpoints=1)
     plt.xlabel('RAWX')
@@ -514,28 +504,16 @@ def make_plots():
     ycenter = brf[0]['SY2']
     xwidth = brf[0]['XWIDTH']
     ywidth = brf[0]['YWIDTH']
-    xs = [
-        xcenter -
-        xwidth,
-        xcenter +
-        xwidth,
-        xcenter +
-        xwidth,
-        xcenter -
-        xwidth,
-        xcenter -
-        xwidth]
-    ys = [
-        ycenter -
-        ywidth,
-        ycenter -
-        ywidth,
-        ycenter +
-        ywidth,
-        ycenter +
-        ywidth,
-        ycenter -
-        ywidth]
+    xs = [xcenter - xwidth,
+          xcenter + xwidth,
+          xcenter + xwidth,
+          xcenter - xwidth,
+          xcenter - xwidth]
+    ys = [ycenter - ywidth,
+          ycenter  -ywidth,
+          ycenter + ywidth,
+          ycenter + ywidth,
+          ycenter - ywidth]
     plt.plot(xs, ys, color='r', linestyle='--', label='Search Box')
     plt.legend(shadow=True, numpoints=1)
     plt.xlabel('RAWX')
@@ -552,28 +530,16 @@ def make_plots():
     ycenter = brf[1]['SY1']
     xwidth = brf[1]['XWIDTH']
     ywidth = brf[1]['YWIDTH']
-    xs = [
-        xcenter -
-        xwidth,
-        xcenter +
-        xwidth,
-        xcenter +
-        xwidth,
-        xcenter -
-        xwidth,
-        xcenter -
-        xwidth]
-    ys = [
-        ycenter -
-        ywidth,
-        ycenter -
-        ywidth,
-        ycenter +
-        ywidth,
-        ycenter +
-        ywidth,
-        ycenter -
-        ywidth]
+    xs = [xcenter - xwidth,
+          xcenter + xwidth,
+          xcenter + xwidth,
+          xcenter - xwidth,
+          xcenter - xwidth]
+    ys = [ycenter - ywidth,
+          ycenter - ywidth,
+          ycenter + ywidth,
+          ycenter + ywidth,
+          ycenter - ywidth]
     plt.plot(xs, ys, color='r', linestyle='--', label='Search Box')
     plt.legend(shadow=True, numpoints=1)
     plt.xlabel('RAWX')
@@ -590,28 +556,16 @@ def make_plots():
     ycenter = brf[1]['SY2']
     xwidth = brf[1]['XWIDTH']
     ywidth = brf[1]['YWIDTH']
-    xs = [
-        xcenter -
-        xwidth,
-        xcenter +
-        xwidth,
-        xcenter +
-        xwidth,
-        xcenter -
-        xwidth,
-        xcenter -
-        xwidth]
-    ys = [
-        ycenter -
-        ywidth,
-        ycenter -
-        ywidth,
-        ycenter +
-        ywidth,
-        ycenter +
-        ywidth,
-        ycenter -
-        ywidth]
+    xs = [xcenter - xwidth,
+          xcenter +xwidth,
+          xcenter + xwidth,
+          xcenter - xwidth,
+          xcenter - xwidth]
+    ys = [ycenter - ywidth,
+          ycenter - ywidth,
+          ycenter + ywidth,
+          ycenter + ywidth,
+          ycenter - ywidth]
     plt.plot(xs, ys, color='r', linestyle='--', label='Search Box')
     plt.legend(shadow=True, numpoints=1)
     plt.xlabel('RAWX')
@@ -646,7 +600,7 @@ def make_plots():
         plt.close(fig)
 
     # ------------------------#
-    # strech and midpoint   #
+    # strech and midpoint     #
     # ------------------------#
     for segment in ['FUVA', 'FUVB']:
         fig = plt.figure(figsize=(18, 12))
@@ -691,6 +645,145 @@ def make_plots():
             os.path.join(MONITOR_DIR, 'STIM_stretch_vs_time_%s.png' %
                          (segment)))
         plt.close(fig)
+
+    # ------------------------#
+    # y vs y and x vs x     #
+    # ------------------------#
+    print 1
+    fig = plt.figure(1, figsize=(18, 12))
+    ax = fig.add_subplot(2, 2, 1)
+    ax.grid(True)
+    x1 = [line[3] for line in data if '_a.fits' in line[0]]
+    x2 = [line[5] for line in data if '_a.fits' in line[0]]
+    times = [line[1] for line in data if '_a.fits' in line[0]]
+    #ax.plot(x1, x2, 'b.', alpha=.7)
+    #ax.scatter(x1, x2, s=5, c=times, alpha=.5, edgecolors='none')
+    im, nothin1, nothin2 = np.histogram2d(x2, x1, bins=200)  ##reverse coords
+    im = np.log(im)
+    ax.imshow(im, aspect='auto', interpolation='none')
+    ax.set_xlabel('x1')
+    ax.set_ylabel('x2')
+    ax.set_title('Segment A: X vs X')
+
+    print 2
+    ax = fig.add_subplot(2, 2, 2)
+    ax.grid(True)
+    y1 = [line[4] for line in data if '_a.fits' in line[0]]
+    y2 = [line[6] for line in data if '_a.fits' in line[0]]
+    times = [line[1] for line in data if '_a.fits' in line[0]]
+    #ax.plot(y1, y2, 'r.', alpha=.7)
+    #ax.scatter(y1, y2, s=5, c=times, alpha=.5, edgecolors='none')
+    im, nothin1, nothin2 = np.histogram2d(y2, y1, bins=200)
+    im = np.log(im)
+    ax.imshow(im, aspect='auto', interpolation='none')
+    ax.set_xlabel('y1')
+    ax.set_ylabel('y2')
+    ax.set_title('Segment A: Y vs Y')
+
+    print 3
+    ax = fig.add_subplot(2, 2, 3)
+    ax.grid(True)
+    x1 = [line[3] for line in data if '_b.fits' in line[0]]
+    x2 = [line[5] for line in data if '_b.fits' in line[0]]
+    times = [line[1] for line in data if '_b.fits' in line[0]]
+    #ax.plot(x1, x2, 'b.', alpha=.7)
+    #ax.scatter(x1, x2, s=5, c=times, alpha=.5, edgecolors='none')
+    im, nothin1, nothin2 = np.histogram2d(x2, x1, bins=200)
+    im = np.log(im)
+    ax.imshow(im, aspect='auto', interpolation='none')
+    ax.set_xlabel('x1')
+    ax.set_ylabel('x2')
+    ax.set_title('Segment B: X vs X')
+
+    print 4
+    ax = fig.add_subplot(2, 2, 4)
+    ax.grid(True)
+    y1 = [line[4] for line in data if '_b.fits' in line[0]]
+    y2 = [line[6] for line in data if '_b.fits' in line[0]]
+    times = [line[1] for line in data if '_b.fits' in line[0]]
+    #ax.plot(y1, y2, 'r.', alpha=.7)
+    #colors = ax.scatter(y1, y2, s=5, c=times, alpha=.5, edgecolors='none')
+    im, nothin1, nothin2 = np.histogram2d(y2, y1, bins=200)
+    im = np.log(im)
+    ax.imshow(im, aspect='auto', interpolation='none')
+    ax.set_xlabel('y1')
+    ax.set_ylabel('y2')
+    ax.set_title('Segment B: Y vs Y')
+
+    #fig.colorbar(colors)
+    fig.savefig(os.path.join(MONITOR_DIR, 'STIM_coord_relations_density.png'))
+    plt.close(fig)
+
+
+
+    print 1
+    fig = plt.figure(1, figsize=(18, 12))
+    ax = fig.add_subplot(2, 2, 1, projection='3d')
+    ax.grid(True)
+    x1 = [line[3] for line in data if '_a.fits' in line[0]]
+    x2 = [line[5] for line in data if '_a.fits' in line[0]]
+    times = [line[1] for line in data if '_a.fits' in line[0]]
+    ax.scatter(x1, x2, times, s=5, c=times, alpha=.5, edgecolors='none')
+    ax.set_xlabel('x1')
+    ax.set_ylabel('x2')
+    ax.set_title('Segment A: X vs X')
+
+    print 2
+    ax = fig.add_subplot(2, 2, 2, projection='3d')
+    ax.grid(True)
+    y1 = [line[4] for line in data if '_a.fits' in line[0]]
+    y2 = [line[6] for line in data if '_a.fits' in line[0]]
+    times = [line[1] for line in data if '_a.fits' in line[0]]
+    ax.scatter(y1, y2, times, s=5, c=times, alpha=.5, edgecolors='none')
+    slope, intercept = trend(y1, y2)
+    print slope, intercept
+    #plt.plot( [min(y1), max(y1)], [slope*min(y1)+intercept, slope*max(y1)+intercept], 'y--', lw=3)
+    ax.set_xlabel('y1')
+    ax.set_ylabel('y2')
+    ax.set_title('Segment A: Y vs Y')
+
+    print 3
+    ax = fig.add_subplot(2, 2, 3, projection='3d')
+    ax.grid(True)
+    x1 = [line[3] for line in data if '_b.fits' in line[0]]
+    x2 = [line[5] for line in data if '_b.fits' in line[0]]
+    times = [line[1] for line in data if '_b.fits' in line[0]]
+    ax.scatter(x1, x2, times, s=5, c=times, alpha=.5, edgecolors='none')
+    ax.set_xlabel('x1')
+    ax.set_ylabel('x2')
+    ax.set_title('Segment B: X vs X')
+
+    print 4
+    ax = fig.add_subplot(2, 2, 4, projection='3d')
+    ax.grid(True)
+    y1 = [line[4] for line in data if '_b.fits' in line[0]]
+    y2 = [line[6] for line in data if '_b.fits' in line[0]]
+    times = [line[1] for line in data if '_b.fits' in line[0]]
+    colors = ax.scatter(y1, y2, times, s=5, c=times, alpha=.5, edgecolors='none')
+    slope, intercept = trend(y1, y2)
+    print slope, intercept
+    #plt.plot( [min(y1), max(y1)], [slope*min(y1)+intercept, slope*max(y1)+intercept], 'y--', lw=3)
+    ax.set_xlabel('y1')
+    ax.set_ylabel('y2')
+    ax.set_title('Segment B: Y vs Y')
+
+    fig.subplots_adjust(right=0.8)
+    cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+    cbar_ax.set_title('MJD')
+    fig.colorbar(colors, cax=cbar_ax)
+    fig.savefig(os.path.join(MONITOR_DIR, 'STIM_coord_relations_time.png'))
+    plt.close(fig)
+
+
+#-----------------------------------------------------
+
+def trend(val1, val2):
+    val1 = np.array(val1)
+    val2 = np.array(val2)
+
+    slope, intercept, r_value, p_value, std_err = linregress(val1, val2)
+
+    return slope, intercept
 
 #-----------------------------------------------------
 
