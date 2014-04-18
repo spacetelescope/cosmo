@@ -42,6 +42,98 @@ def fppos_shift(lamptab_name, segment, opt_elem, cenwave, fpoffset):
 
 #----------------------------------------------------------
 
+def check_internal_drift():
+    checked = []
+    data = []
+    for root, dirs, files in os.walk('/smov/cos/Data/'):
+        if 'Quality' in root:
+            continue
+        if 'Fasttrack' in root:
+            continue
+        if 'targets' in root:
+            continue
+        if 'podfiles' in root:
+            continue
+        if 'gzip' in root:
+            continue
+        if 'experimental' in root:
+            continue
+        if 'Anomalies' in root:
+            continue
+        if root.endswith('otfrdata'):
+            continue
+        if not len(root.split('/')) == 7:
+            continue
+
+        print root
+        for infile in files:
+            if infile in checked: 
+                continue
+            if not '_lampflash.fits' in infile:
+                continue
+
+                checked.append(infile)
+            
+            hdu = pyfits.open(os.path.join(root, infile))
+            exptime = hdu[1].header['exptime']
+
+            if hdu[0].header['DETECTOR'] == 'NUV':
+                continue
+
+            if hdu[1].data == None:
+                continue
+
+            if not hdu[1].header['NUMFLASH'] > 1:
+                continue
+
+            print root, '/', infile
+
+            for segment in ['FUVA', 'FUVB']:
+                index = np.where(hdu[1].data['segment'] == segment)
+                if len(index[0]) > 1:
+                    diff = hdu[1].data[index]['SHIFT_XDISP'][0] - hdu[1].data[index]['SHIFT_XDISP'][-1]
+
+                    data.append((os.path.join(root, infile), segment, diff, exptime))
+                    print segment, diff, exptime
+
+            checked.append(infile)
+
+    with open('drift.txt', 'w') as out:
+        for line in data:
+            out.write('{} {} {} {}\n'.format(line[0], line[1], line[2], line[3]))
+
+
+#----------------------------------------------------------
+
+def plot_drift():
+
+    data = np.genfromtxt('drift.txt', dtype=None)
+
+    fig = plt.figure(figsize=(10,10))
+    fig.suptitle('Lamp drift in external exposures')
+    ax = fig.add_subplot(2, 1, 1)
+    diffs = [line[2] for line in data if line[1] == 'FUVA']
+    exptime = [line[3] for line in data if line[1] == 'FUVA']
+    ax.plot(exptime, diffs, 'o')
+    ax.set_ylabel('Total drift, FUVA (pixels)')
+    ax.set_xlabel('EXPTIME (seconds)')
+    ax.set_ylim(-2, 2)
+
+    ax = fig.add_subplot(2, 1, 2)
+    diffs = [line[2] for line in data if line[1] == 'FUVB']
+    exptime = [line[3] for line in data if line[1] == 'FUVB']
+    ax.plot(exptime, diffs, 'o')
+    ax.set_ylabel('Total drift, FUVB (pixels)')
+    ax.set_xlabel('EXPTIME (seconds)')
+    ax.set_ylim(-2, 2)
+
+    fig.savefig('shifts_vs_exptime.png')
+
+    for line in data:
+        if abs(line[2]) > 2:
+            print line
+
+#----------------------------------------------------------
 
 def find_files():
     print 'Grabbing data'
@@ -71,6 +163,7 @@ def find_files():
             if infile.endswith('_lampflash.fits.gz'):
                 if infile in checked:
                     continue
+
                 checked.append(infile)
                 print root, '/', infile
 
@@ -621,7 +714,10 @@ def fp_diff():
 #----------------------------------------------------------
 
 if __name__ == "__main__":
-    data = find_files()
-    data_file = write_data(data)
-    make_plots(data_file)
-    fp_diff()
+    #data = find_files()
+    #data_file = write_data(data)
+    #make_plots(data_file)
+    #fp_diff()
+
+    #check_internal_drift()
+    plot_drift()
