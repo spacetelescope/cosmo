@@ -47,13 +47,18 @@ X_VALID = (0 // X_BINNING, 16384 // X_BINNING)
 Y_VALID = (0 // Y_BINNING, 1024 // Y_BINNING)
 
 #----Directory and File Constants
-CCI_DIR = '/grp/hst/cos/Data/CumulativeImage/latest/CCI/'
+CCI_DIR = '/smov/cos/Data/CCI/' ## OPUS
+#CCI_DIR = '/grp/hst/cos/Data/CumulativeImage/latest/CCI/' ## Dave
+
+
 MONITOR_DIR = '/grp/hst/cos/Monitors/CCI/'
 TEST_DIR = os.path.join( MONITOR_DIR, 'test_suite')
 WEBPAGE_DIR = '/grp/webpages/COS/cci/'
 
-FUVA_string = '00_cci'  # OPUS USES 'lft00'
-FUVB_string = '01_cci'  # OPUS USES 'lft01'
+FUVA_string = 'lft00' ## OPUS
+FUVB_string = 'lft01' ## OPUS
+#FUVA_string = '00_cci'  ## Dave
+#FUVB_string = '01_cci'  ## Dave
 
 #----Finds to most recently created HVTAB
 hvtable_list = glob.glob('/grp/hst/cdbs/lref/*hv.fits')

@@ -72,13 +72,14 @@ def make_quicklooks(clobber=False):
         if SEGMENT == 'FUVA':
             lower_ext = 1
             upper_ext = 2
-            tail = '-00_cci_gainmap.fits'
+            head = FUVA_string
         elif SEGMENT == 'FUVB':
             lower_ext = 3
             upper_ext = 4
-            tail = '-01_cci_gainmap.fits'
-            
-        phaimage = pyfits.open( gainmap.replace(tail, '_phf.fits') )
+            head = FUVB_string
+        pha_name = gainmap.replace('_gainmap.fits', '_phf.fits').replace(head, 'phaimage' )
+        print pha_name 
+        phaimage = pyfits.open(pha_name)
 
         has_gain = np.zeros( image.shape )
         index = np.where( image > 0 )

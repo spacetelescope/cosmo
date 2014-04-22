@@ -27,19 +27,59 @@ class Phaimage:
    
     """
 
-    def __init__(self,gainmap_root):
+    def __init__(self,gainmap):
         """Open CCI file and create CCI Object"""
 
-        self.out_fits = os.path.join( MONITOR_DIR, gainmap_root + '_phf.fits')
-        self.a_file = MONITOR_DIR + gainmap_root+'-'+FUVA_string+'_gainmap.fits'
-        self.b_file = MONITOR_DIR + gainmap_root+'-'+FUVB_string+'_gainmap.fits'
-
+        self.out_fits = self.outfile(gainmap)
+        self.a_file, self.b_file = self.inputs(gainmap)
+ 
         self.open_fits()
 
         self.a_image = self.fill_gaps( self.a_image, 'FUVA', self.DETHVA )
-        self.b_image = self.fill_gaps( self.b_image, 'FUVB', self.DETHVB  )
+        self.b_image = self.fill_gaps( self.b_image, 'FUVB', self.DETHVB )
 
         self.make_phaimages()
+
+
+    @classmethod
+    def outfile(cls, gainmap):
+        """ return the pulse height image name from the input gainmap 
+
+        """
+
+        gainmap_path, gainmap_name = os.path.split(gainmap)
+        segment = pyfits.getval(gainmap, 'SEGMENT')
+        
+        if segment == 'FUVA':
+            seg_string = FUVA_string
+        elif segment == 'FUVB':
+            seg_string = FUVB_string
+
+        phf_name = gainmap_name.replace(seg_string, 'phaimage').replace('gainmap.fits', 'phf.fits')
+
+        return os.path.join(gainmap_path, phf_name)
+
+
+    @classmethod
+    def inputs(cls, gainmap):
+        """ return the pulse height image name from the input gainmap 
+
+        """
+
+        gainmap_path, gainmap_name = os.path.split(gainmap)
+        segment = pyfits.getval(gainmap, 'SEGMENT')
+        
+        both_inputs = [gainmap]
+
+        if segment == 'FUVA':
+            other_gainmap = gainmap.replace(FUVA_string, FUVB_string)
+        elif segment == 'FUVB':
+            other_gainmap = gainmap.replace(FUVB_string, FUVA_string)
+
+        both_inputs.append(other_gainmap)
+        both_inputs.sort()
+
+        return tuple(both_inputs)
 
 
     def open_fits(self):
@@ -132,8 +172,8 @@ class Phaimage:
         """
         Writes output phaimage fits file from input arrays.
         """
-        if not out_fits:
-            out_fits = os.path.join( MONITOR_DIR, gainmap + '_phf.fits')
+
+        out_fits = out_fits or self.out_fits
  
         # data should be unsigned integer as data can only be 0-31.  np dtype == 'u1'
         pha_low_a = enlarge( self.a_low.astype( np.dtype('u1') ) , y=Y_BINNING, x=X_BINNING )
@@ -190,7 +230,6 @@ class Phaimage:
 
         print 'WROTE: %s'% (out_fits)
 
-
 #------------------------------------------------------------
 
 def make_phaimages(clobber=False):
@@ -200,17 +239,14 @@ def make_phaimages(clobber=False):
     print '#--Making PHAIMAGES--#'
     print '#--------------------#'
 
-    all_gainmaps = list(set( [os.path.split(name)[1][:21] for name in glob.glob(MONITOR_DIR + '*gainmap.fits')] ))
+    all_gainmaps = glob.glob(MONITOR_DIR + '*gainmap.fits')
     all_gainmaps.sort()
 
     for gainmap in all_gainmaps:
-        out_fits = os.path.join( MONITOR_DIR, gainmap + '_phf.fits')
-
-
-        if os.path.exists( out_fits ) and not clobber:
+        if os.path.exists( Phaimage.outfile(gainmap) ) and not clobber:
             print out_fits, 'Already exists. Skipping'
         else:
             phaimage = Phaimage(gainmap)
-            phaimage.writeout( out_fits, clobber )
+            phaimage.writeout(clobber=clobber)
 
 #------------------------------------------------------------

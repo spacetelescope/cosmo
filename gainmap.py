@@ -65,7 +65,7 @@ class CCI_object:
         file_name,ext = os.path.splitext(cci_file)
         self.input_file_name = file_name
         self.open_fits()
-       
+
     def open_fits(self):
         """Open CCI file and populated attributes with 
         header keywords and data arrays.
@@ -517,11 +517,11 @@ def populate_keywords_mine():
             fits.close()
             continue
 
-        if '-00_cci' in cci_file:
+        if FUVA_string in cci_file:
             segment = 'FUVA'
             hv_string = 'HVLEVELA'
 
-        elif '-01_cci' in cci_file:
+        elif FUVB_string in cci_file:
             segment = 'FUVB'
             hv_string = 'HVLEVELB'
 
