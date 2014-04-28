@@ -89,8 +89,8 @@ def check_internal_drift():
             print root, '/', infile
 
             for segment in ['FUVA', 'FUVB']:
-                index = np.where(hdu[1].data['segment'] == segment)
-                if len(index[0]) > 1:
+                index = np.where(hdu[1].data['segment'] == segment)[0]
+                if len(index) > 1:
                     diff = hdu[1].data[index]['SHIFT_XDISP'][0] - hdu[1].data[index]['SHIFT_XDISP'][-1]
 
                     data.append((os.path.join(root, infile), segment, diff, exptime))
@@ -167,21 +167,9 @@ def find_files():
                 checked.append(infile)
                 print root, '/', infile
 
-                if pyfits.getval(os.path.join(root, infile), 'DETECTOR') == 'NUV':
-                    #infile = os.path.splitext(infile)[0]
-                    filename = os.path.join(DATA_DIR, infile)
-                else:
-                    continue  # testing
-                    filename = os.path.join(root, infile)
+                filename = os.path.join(root, infile)
 
-                try:
-                    fits = pyfits.open(filename.strip('.gz'))
-                except TypeError:
-                    continue
-                except IOError:
-                    print filename
-                    print 'File doesnt exist'
-                    continue
+                fits = pyfits.open(filename)
 
                 if fits[1].data == None:
                     continue
@@ -202,7 +190,7 @@ def find_files():
                         lamptab_name, segment, opt_elem, cenwave, fpoffset)
                     shift -= correction
 
-                    # print detector, segment, date, shift
+                    print detector, segment, date, shift
                     data.append(
                         (filename, detector, segment, date, shift, opt_elem, cenwave, fppos))
 
@@ -427,7 +415,9 @@ def make_plots(data_file):
                    (data['OPT_ELEM'] == 'G185M') |
                    (data['OPT_ELEM'] == 'G225M') |
                    (data['OPT_ELEM'] == 'G285M'))[0]
-    '''
+
+    #############
+    
     fig = plt.figure( figsize=(14,8) )
     ax = fig.add_subplot(3,1,1)
     ax.plot( data['MJD'][G130M_A], data['SHIFT'][G130M_A],'b.',label='G130M')
@@ -463,7 +453,8 @@ def make_plots(data_file):
 
     fig.savefig( os.path.join(MONITOR_DIR,'FUV_shifts.png') )
     plt.close(fig)
-    '''
+    
+    ##########
 
     fig = plt.figure(figsize=(14, 18))
     ax = fig.add_subplot(6, 1, 1)
@@ -542,15 +533,15 @@ def make_plots(data_file):
 
     #ax4.xaxis.set_ticklabels( ['' for item in ax4.xaxis.get_ticklabels()] )
 
-    fig.suptitle('NUV SHIFT1[A/B/C]')
+    ax.set_title('NUV SHIFT1[A/B/C]')
     for axis, index in zip([ax, ax2, ax3, ax4], [G185M, G225M, G285M, G230L]):
-        axis.set_ylim(-100, 80)
+        axis.set_ylim(-110, 110)
         axis.set_xlim(data['MJD'].min(), data['MJD'].max() + 50)
         axis.set_ylabel('SHIFT1[A/B/C] (pixels)')
         fit, ydata, parameters, err = fit_data(
             data['MJD'][index], data['SHIFT'][index])
         axis.plot(ydata, fit, 'k-', lw=3, label='%3.5fx' % (parameters[0]))
-        axis.legend(numpoints=1, shadow=True)
+        axis.legend(numpoints=1, shadow=True, fontsize=12, ncol=3)
 
     ax4.set_xlabel('MJD')
 
@@ -563,7 +554,7 @@ def make_plots(data_file):
     ax.set_ylabel('All NUV')
     ax.xaxis.set_ticklabels(['' for item in ax.xaxis.get_ticklabels()])
     ax.set_xlim(data['MJD'].min(), data['MJD'].max() + 50)
-    ax.set_ylim(-100, 80)
+    ax.set_ylim(-110, 110)
 
     mirrora = np.where((data['OPT_ELEM'] == 'MIRRORA')
                        & (data['SHIFT'] > 0))[0]
@@ -575,12 +566,15 @@ def make_plots(data_file):
     ax.legend(numpoints=1, shadow=True)
     ax.set_xlim(data['MJD'].min(), data['MJD'].max() + 50)
     ax.set_ylabel('MIRRORA')
+    ax.set_xlabel('MJD')
     ax.set_ylim(460, 630)
 
-    # ax.set_ylim(-100,100)
-
-    fig.savefig(os.path.join(MONITOR_DIR, 'NUV_shifts.png'))
+    fig.savefig(os.path.join(MONITOR_DIR, 'NUV_shifts.png'), 
+                bbox_inches='tight', 
+                pad_inches=.5)
     plt.close(fig)
+
+    ##############
 
     mirrora = np.where((data['OPT_ELEM'] == 'MIRRORA')
                        & (data['SHIFT'] > 0))[0]
@@ -717,7 +711,8 @@ if __name__ == "__main__":
     #data = find_files()
     #data_file = write_data(data)
     #make_plots(data_file)
+    make_plots('/grp/hst/cos/Monitors/Shifts/all_shifts.fits')
     #fp_diff()
 
     #check_internal_drift()
-    plot_drift()
+    #plot_drift()
