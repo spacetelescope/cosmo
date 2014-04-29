@@ -588,7 +588,7 @@ def make_plots(data_file):
     ax.set_xlabel('MJD')
     ax.set_ylim(460, 630)
 
-    fig.savefig(os.path.join(MONITOR_DIR, 'NUV_x_shifts.png'), 
+    fig.savefig(os.path.join(MONITOR_DIR, 'NUV_shifts.png'), 
                 bbox_inches='tight', 
                 pad_inches=.5)
     plt.close(fig)
