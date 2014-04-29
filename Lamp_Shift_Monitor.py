@@ -1,6 +1,8 @@
+""" Script to compile the spectrum shift data for COS FUV and NUV data.
+
+"""
+
 import numpy as np
-import glob
-import shutil
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -8,22 +10,16 @@ import os
 import sys
 sys.path.insert(0, '../')
 import scipy
-from scipy.optimize import curve_fit
 from scipy.stats import linregress
-from support import init_plots
-from scipy.optimize import leastsq
 from datetime import datetime
-import itertools
 
 from astropy.io import fits as pyfits
-
-import calcos
 
 MONITOR_DIR = '/grp/hst/cos/Monitors/Shifts/'
 DATA_DIR = os.path.join(MONITOR_DIR, 'data')
 lref = '/grp/hst/cdbs/lref/'
 
-#----------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 def fppos_shift(lamptab_name, segment, opt_elem, cenwave, fpoffset):
     lamptab = pyfits.getdata(os.path.join(lref, lamptab_name))
@@ -40,7 +36,7 @@ def fppos_shift(lamptab_name, segment, opt_elem, cenwave, fpoffset):
 
     return offset
 
-#----------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 def check_internal_drift():
     checked = []
@@ -308,70 +304,22 @@ def write_data(data):
     os.chmod(out_name, 0770)
     return out_name
 
-#----------------------------------------------------------
-
+#-------------------------------------------------------------------------------
 
 def fit_data(xdata, ydata):
-    '''
-    exp_func = lambda p,x: p[0] + p[1]* np.exp(  p[2] * x )
-    err_func = lambda p,x,y: exp_func(p,x) - y
-    a = ydata.mean()
-    b = -200
-    c = -1
-    p0 = [a, b, c ]
-    parameters, success = leastsq(err_func, p0, args=(xdata, ydata))
-    print parameters,success
-    fit = exp_func(parameters,xdata)
-    '''
-    '''
-    func = lambda x,a,b: a + b*x
-    coeff, var_matrix = curve_fit(func,xdata,ydata)
-    variance = np.diagonal(var_matrix) #Refer [3]
-
-    SE = np.sqrt(variance) #Refer [4]
-
-    print SE
-
-    results = {'a':[coeff[0],SE[0]],'b':[coeff[1],SE[1]]}
-
-    print "Coeff\tValue\t\tError"
-    for v,c in results.iteritems():
-        print v,"\t",c[0],"\t",c[1]
-
-    print results
-
-    parameters = ( results['b'][0],results['a'][0] )
-    err = results['b'][1]
-    
-    '''
     stats = linregress(xdata, ydata)
+
     parameters = (stats[0], stats[1])
     err = 0
-
-    #parameters = scipy.polyfit( xdata,ydata,1)
     fit = scipy.polyval(parameters, xdata)
 
-    #err = np.sqrt(( (ydata - fit)**2 ).sum() / (ydata - fit).sum() )
-
-    #err = ((ydata - fit)**2 ).sum() - ( parameters[1]**2 * (xdata - xdata.mean())**2 ).sum()
-
-    #err = np.sqrt( ((ydata - fit)**2).sum()  / len(xdata) )
-    '''
-    zeroed = np.fabs(ydata - fit)
-    index = np.where( zeroed < zeroed.mean() + 1*zeroed.std())[0]
-    parameters = scipy.polyfit( xdata[index],ydata[index],1)
-    #parameters[0] = -.033
-    #parameters = (-.032,1757.65)
-    fit = scipy.polyval(parameters,xdata)
-    '''
     return fit, xdata, parameters, err
 
-#----------------------------------------------------------
-
+#-------------------------------------------------------------------------------
 
 def make_plots(data_file):
     print 'Plotting'
-    # init_plots()
+
     mpl.rcParams['figure.subplot.hspace'] = 0.05
     plt.ioff()
     data = pyfits.getdata(data_file)
@@ -440,20 +388,18 @@ def make_plots(data_file):
     fig = plt.figure( figsize=(14,8) )
     ax = fig.add_subplot(3,1,1)
     ax.plot( data['MJD'][G130M_A], data['X_SHIFT'][G130M_A],'b.',label='G130M')
-    ax.plot( data['MJD'][G130M_B], data['X_SHIFT'][G130M_B],'b.')#,markeredgecolor='k',markeredgewidth=1)
+    ax.plot( data['MJD'][G130M_B], data['X_SHIFT'][G130M_B],'b.')
     ax.xaxis.set_ticklabels( ['' for item in ax.xaxis.get_ticklabels()] )
 
     ax2 = fig.add_subplot(3,1,2)
     ax2.plot( data['MJD'][G160M_A], data['X_SHIFT'][G160M_A],'g.',label='G160M')
-    ax2.plot( data['MJD'][G160M_B], data['X_SHIFT'][G160M_B],'g.')#,markeredgecolor='k')
+    ax2.plot( data['MJD'][G160M_B], data['X_SHIFT'][G160M_B],'g.')
     ax2.xaxis.set_ticklabels( ['' for item in ax2.xaxis.get_ticklabels()] )
 
     ax3 = fig.add_subplot(3,1,3)
     ax3.plot( data['MJD'][G140L_A], data['X_SHIFT'][G140L_A],'y.',label='G140L')
-    ax3.plot( data['MJD'][G140L_B], data['X_SHIFT'][G140L_B],'y.')#,markeredgecolor='k')
-    #ax.axhline(y=0,color='red')
-    #ax.axhline(y=269,color='k',lw=3,ls='--',zorder=1,label='Search Range')
-    #ax.axhline(y=-269,color='k',lw=3,ls='--',zorder=1)
+    ax3.plot( data['MJD'][G140L_B], data['X_SHIFT'][G140L_B],'y.')
+
     ax.legend(shadow=True,numpoints=1)
     fig.suptitle('FUV SHIFT1[A/B]')
     ax.set_xlabel('MJD')
@@ -487,8 +433,6 @@ def make_plots(data_file):
     ax.axhline(y=-58, color='k', lw=3, ls='--', zorder=1)
 
     sigma = data['X_SHIFT'][G185M_A].std()
-    #ax.axhline(y=sigma,color='r',lw=3,ls='--',zorder=1,label='1 Sigma')
-    # ax.axhline(y=-sigma,color='r',lw=3,ls='--',zorder=1)
 
     ax.xaxis.set_ticklabels(['' for item in ax.xaxis.get_ticklabels()])
 
@@ -503,8 +447,6 @@ def make_plots(data_file):
     ax2.axhline(y=-58, color='k', lw=3, ls='--', zorder=1)
 
     sigma = data['X_SHIFT'][G225M_A].std()
-    #ax2.axhline(y=sigma,color='r',lw=3,ls='--',zorder=1,label='1 Sigma')
-    # ax2.axhline(y=-sigma,color='r',lw=3,ls='--',zorder=1)
 
     ax2.xaxis.set_ticklabels(['' for item in ax2.xaxis.get_ticklabels()])
 
@@ -519,8 +461,6 @@ def make_plots(data_file):
     ax3.axhline(y=-58, color='k', lw=3, ls='--', zorder=1)
 
     sigma = data['X_SHIFT'][G285M_A].std()
-    #ax3.axhline(y=sigma,color='r',lw=3,ls='--',zorder=1,label='1 Sigma')
-    # ax3.axhline(y=-sigma,color='r',lw=3,ls='--',zorder=1)
 
     ax3.xaxis.set_ticklabels(['' for item in ax3.xaxis.get_ticklabels()])
 
@@ -547,10 +487,6 @@ def make_plots(data_file):
                 xmax=1, color='k', lw=3, ls='--', zorder=1)
     ax4.xaxis.set_ticklabels(['' for item in ax3.xaxis.get_ticklabels()])
     sigma = data['X_SHIFT'][G230L_A].std()
-    #ax4.axhline(y=sigma,color='r',lw=3,ls='--',zorder=1,label='1 Sigma')
-    # ax4.axhline(y=-sigma,color='r',lw=3,ls='--',zorder=1)
-
-    #ax4.xaxis.set_ticklabels( ['' for item in ax4.xaxis.get_ticklabels()] )
 
     ax.set_title('NUV SHIFT1[A/B/C]')
     for axis, index in zip([ax, ax2, ax3, ax4], [G185M, G225M, G285M, G230L]):
