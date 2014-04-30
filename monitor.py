@@ -245,6 +245,13 @@ def populate_db():
     for fits_file in get_files():
         file_path, file_name = os.path.split(fits_file)
         file_name, file_ext = os.path.splitext(file_name)
+        
+        try:
+            hdu = pyfits.open(fits_file)
+        except IOError:
+            print 'Corrupt: {}'.format(fits_file)
+            continue
+
         if check_present(file_name, DB_NAME):
             continue
 
