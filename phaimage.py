@@ -246,6 +246,13 @@ def make_phaimages(clobber=False):
         if os.path.exists( Phaimage.outfile(gainmap) ) and not clobber:
             print out_fits, 'Already exists. Skipping'
         else:
+            inputs = Phaimage.inputs(gainmap)
+
+            for item in inputs:
+                if not os.path.exists(item):
+                    print 'Missing input: {}'.format(item)
+                    continue
+
             phaimage = Phaimage(gainmap)
             phaimage.writeout(clobber=clobber)
 
