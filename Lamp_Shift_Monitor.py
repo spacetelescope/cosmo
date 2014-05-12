@@ -591,6 +591,38 @@ def make_plots(data_file):
 
 #----------------------------------------------------------
 
+def make_plots_2(data_file):
+    """ Making the plots for the shift2 value
+    """
+
+    data = pyfits.getdata(data_file)
+
+    sorted_index = np.argsort(data['MJD'])
+    data = data[sorted_index]
+
+    for cenwave in set(data['cenwave']):
+        cw_index = np.where(data['cenwave'] == cenwave)
+        all_segments = set(data[cw_index]['segment'])
+        n_seg = len(all_segments)
+
+        fig = plt.figure()
+        fig.suptitle('Shift2/{}'.format(cenwave))
+
+        for i, segment in enumerate(all_segments):
+            print cenwave, segment
+            index = np.where( (data['segment'] == segment) &
+                              (data['cenwave'] == cenwave) )
+
+            ax = fig.add_subplot(n_seg, 1, i+1)
+            ax.plot(data[index]['mjd'], data[index]['y_shift'], 'o')
+            ax.set_xlabel('MJD')
+            ax.set_ylabel('SHIFT2 {}'.format(segment))
+
+        fig.savefig(os.path.join(MONITOR_DIR, 'shift2_{}.png'.format(cenwave)))
+        plt.close(fig)
+    
+#----------------------------------------------------------
+
 def fp_diff():
     print "Checking the SHIFT2 difference"
 
@@ -674,6 +706,7 @@ def monitor():
     data = find_files()
     data_file = write_data(data)
     make_plots(data_file)
+    make_plots_2(data_file):
     fp_diff()
 
     check_internal_drift()
