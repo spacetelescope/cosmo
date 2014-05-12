@@ -16,7 +16,7 @@ from datetime import datetime
 from astropy.io import fits as pyfits
 
 MONITOR_DIR = '/grp/hst/cos/Monitors/Shifts/'
-DATA_DIR = os.path.join(MONITOR_DIR, 'data')
+WEB_DIR = '/grp/webpages/COS/shifts/'
 lref = '/grp/hst/cdbs/lref/'
 
 #-------------------------------------------------------------------------------
@@ -39,6 +39,9 @@ def fppos_shift(lamptab_name, segment, opt_elem, cenwave, fpoffset):
 #-------------------------------------------------------------------------------
 
 def check_internal_drift():
+    """Check for magnitude of the shift found by CalCOS in lampflash files
+    """
+
     checked = []
     data = []
     for root, dirs, files in os.walk('/smov/cos/Data/'):
@@ -87,7 +90,7 @@ def check_internal_drift():
             for segment in ['FUVA', 'FUVB']:
                 index = np.where(hdu[1].data['segment'] == segment)[0]
                 if len(index) > 1:
-                    diff = hdu[1].data[index]['SHIFT_XDISP'][0] - hdu[1].data[index]['SHIFT_XDISP'][-1]
+                    diff = hdu[1].data[index]['SHIFT_XDISP'].max() - hdu[1].data[index]['SHIFT_XDISP'].min()
 
                     data.append((os.path.join(root, infile), 
                                  segment, 
@@ -97,7 +100,7 @@ def check_internal_drift():
 
             checked.append(infile)
 
-    with open('drift.txt', 'w') as out:
+    with open(os.path.join(MONITOR_DIR, 'drift.txt'), 'w') as out:
         for line in data:
             out.write('{} {} {} {}\n'.format(line[0], 
                                              line[1], 
@@ -109,7 +112,7 @@ def check_internal_drift():
 
 def plot_drift():
 
-    data = np.genfromtxt('drift.txt', dtype=None)
+    data = np.genfromtxt(os.path.join(MONITOR_DIR, 'drift.txt'), dtype=None)
 
     fig = plt.figure(figsize=(10,10))
     fig.suptitle('Lamp drift in external exposures')
@@ -129,7 +132,7 @@ def plot_drift():
     ax.set_xlabel('EXPTIME (seconds)')
     ax.set_ylim(-2, 2)
 
-    fig.savefig('shifts_vs_exptime.png')
+    fig.savefig(os.path.join(MONITOR_DIR, 'shifts_vs_exptime.png'))
 
     for line in data:
         if abs(line[2]) > 2:
@@ -588,7 +591,6 @@ def make_plots(data_file):
 
 #----------------------------------------------------------
 
-
 def fp_diff():
     print "Checking the SHIFT2 difference"
 
@@ -665,12 +667,23 @@ def fp_diff():
 
 #----------------------------------------------------------
 
-if __name__ == "__main__":
+def monitor():
+    """Run the entire suite of monitoring
+    """
+
     data = find_files()
     data_file = write_data(data)
     make_plots(data_file)
-    #make_plots('/grp/hst/cos/Monitors/Shifts/all_shifts.fits')
     fp_diff()
 
-    #check_internal_drift()
-    #plot_drift()
+    check_internal_drift()
+    plot_drift()
+
+    for item in glob.glob(os.path.join(MONITOR_DIR, '*.p??')):
+        shutil.copy(item, WEB_DIR)
+
+#----------------------------------------------------------
+
+if __name__ == "__main__":
+
+    monitor()
