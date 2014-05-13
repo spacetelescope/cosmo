@@ -2,13 +2,17 @@
 
 """
 
+import glob
+import os
+import shutil
+import sys
+sys.path.insert(0, '../')
+
 import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-import os
-import sys
-sys.path.insert(0, '../')
+
 import scipy
 from scipy.stats import linregress
 from datetime import datetime
@@ -599,7 +603,7 @@ def make_plots_2(data_file):
 
     sorted_index = np.argsort(data['MJD'])
     data = data[sorted_index]
-
+    '''
     for cenwave in set(data['cenwave']):
         cw_index = np.where(data['cenwave'] == cenwave)
         all_segments = set(data[cw_index]['segment'])
@@ -620,7 +624,33 @@ def make_plots_2(data_file):
 
         fig.savefig(os.path.join(MONITOR_DIR, 'shift2_{}.png'.format(cenwave)))
         plt.close(fig)
+    '''
+
+    print "relations"
+    for cenwave in set(data['cenwave']):
+        cw_index = np.where(data['cenwave'] == cenwave)
+        all_segments = set(data[cw_index]['segment'])
+        n_seg = len(all_segments)
+
+        fig = plt.figure()
+        fig.suptitle('Shift2 vs Shift1 {}'.format(cenwave))
+
+        for i, segment in enumerate(all_segments):
+            print cenwave, segment
+            index = np.where( (data['segment'] == segment) &
+                              (data['cenwave'] == cenwave) )
+
+            ax = fig.add_subplot(n_seg, 1, i+1)
+            ax.plot(data[index]['x_shift'], data[index]['y_shift'], 'o')
+            ax.set_xlabel('x_shift')
+            ax.set_ylabel('y_shift')
+            #ax.set_ylabel('SHIFT2 vs SHIFT1 {}'.format(segment))
+            #ax.set_ylim(-20, 20)
+
+        fig.savefig(os.path.join(MONITOR_DIR, 'shift_relation_{}.png'.format(cenwave)))
+        plt.close(fig)
     
+
 #----------------------------------------------------------
 
 def fp_diff():
@@ -706,7 +736,7 @@ def monitor():
     data = find_files()
     data_file = write_data(data)
     make_plots(data_file)
-    make_plots_2(data_file):
+    make_plots_2(data_file)
     fp_diff()
 
     check_internal_drift()
