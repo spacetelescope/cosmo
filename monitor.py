@@ -30,6 +30,7 @@ import glob
 import numpy as np
 from astropy.time import Time
 from scipy.stats import linregress
+import multiprocessing as mp
 
 import smtplib
 from email.mime.text import MIMEText
@@ -37,6 +38,7 @@ from email.mime.multipart import MIMEMultipart
 
 #------------------------------------------------------
 #--------------------Constants-------------------------
+
 DATA_DIR = '/smov/cos/Data/'
 MONITOR_DIR = '/grp/hst/cos/Monitors/Stim/'
 WEB_DIR = '/grp/webpages/COS/stim/'
@@ -47,8 +49,7 @@ DB_NAME = os.path.join(MONITOR_DIR, 'Stim_Locations.db')
 #-----------------------------------------------------
 
 def gaussian(height, center_x, center_y, width_x, width_y):
-    """
-    Returns a gaussian function with the given parameters
+    """ Returns a gaussian function with the given parameters
     """
     width_x = float(width_x)
     width_y = float(width_y)
@@ -58,8 +59,7 @@ def gaussian(height, center_x, center_y, width_x, width_y):
 #-----------------------------------------------------
 
 def find_center(data):
-    """
-    Returns (height, x, y, width_x, width_y)
+    """ Returns (height, x, y, width_x, width_y)
     the gaussian parameters of a 2D distribution by calculating its
     moments
     """
@@ -82,11 +82,10 @@ def find_center(data):
 
 #-----------------------------------------------------
 
-def get_files(search_string='_rawtag_'):
-    '''
-    Walk through directories containing all COS exposures
+def get_files(search_string='_corrtag_'):
+    """ Walk through directories containing all COS exposures
     and return *_flt* path+filename.
-    '''
+    """
     for root, dirs, files in os.walk(DATA_DIR):
         if not re.search('\d\d-\d\d-\d\d\d\d', root):
             continue
@@ -105,6 +104,8 @@ def get_files(search_string='_rawtag_'):
         if 'experimental' in root:
             continue
         if 'Anomalies' in root:
+            continue
+        if 'Test' in root:
             continue
         print root
         for file_name in files:
@@ -174,50 +175,100 @@ def check_present(filename, database_name):
 
 #-----------------------------------------------------
 
-def locate_stims(fits_file):
+def locate_stims(fits_file, start=0, increment=None):
 
     DAYS_PER_SECOND = 1. / 60. / 60. / 24.
 
     file_path, file_name = os.path.split(fits_file)
 
-    EXPTIME = pyfits.getval(fits_file, 'EXPTIME', ext=1)
-    EXPSTART = pyfits.getval(fits_file, 'EXPSTART', ext=1)
-    SEGMENT = pyfits.getval(fits_file, 'SEGMENT')
+    hdu = pyfits.open(fits_file)
+    exptime = hdu[1].header['exptime']
+    expstart = hdu[1].header['expstart']
+    segment = hdu[0].header['segment']
 
-    if EXPTIME < 10:
-        INCREMENT = .03
-    elif EXPTIME < 100:
-        INCREMENT = 1
-    else:
-        INCREMENT = 30
+    # If increment is not supplied, use the rates supplied by the detector
+    if not increment:
+        if exptime < 10:
+            increment = .03
+        elif exptime < 100:
+            increment = 1
+        else:
+            increment = 30
 
-    INCREMENT = 30
-    START = 0
-    STOP = START + INCREMENT
+    stop = start + increment
 
     stim_info = []
 
-    while STOP < (EXPTIME):
-        im = corrtag_image(
-            fits_file,
-            xtype='RAWX',
-            ytype='RAWY',
-            times=(
-                START,
-                STOP))
+    while stop < (exptime):
+        im = corrtag_image(fits_file,
+                           xtype='RAWX',
+                           ytype='RAWY',
+                           times=(start, stop))
+        
+        sci_counts = im.sum()
+        ABS_TIME = expstart + start * DAYS_PER_SECOND
 
-        ABS_TIME = EXPSTART + START * DAYS_PER_SECOND
+        found_ul_x, found_ul_y = find_stims(im, segment, 'ul', brf_file)
+        found_lr_x, found_lr_y = find_stims(im, segment, 'lr', brf_file)
 
-        found_ul_x, found_ul_y = find_stims(im, SEGMENT, 'ul', brf_file)
-        found_lr_x, found_lr_y = find_stims(im, SEGMENT, 'lr', brf_file)
+        print '%s \t %15.7f \t %4d \t %5.3f \t %4.3f \t %5.3f \t %4.3f \t %4.3f' % (file_name, 
+                                                                                    ABS_TIME, 
+                                                                                    start, 
+                                                                                    found_ul_x, 
+                                                                                    found_ul_y, 
+                                                                                    found_lr_x, 
+                                                                                    found_lr_y, 
+                                                                                    sci_counts)
+        stim_info.append( (ABS_TIME, 
+                           start, 
+                           found_ul_x, 
+                           found_ul_y, 
+                           found_lr_x, 
+                           found_lr_y) )
 
-        print '%s \t %15.7f \t %4d \t %5.3f \t %4.3f \t %5.3f \t %4.3f' % (file_name, ABS_TIME, START, found_ul_x, found_ul_y, found_lr_x, found_lr_y)
-        stim_info.append( (ABS_TIME, START, found_ul_x, found_ul_y, found_lr_x, found_lr_y) )
-
-        START += INCREMENT
-        STOP = START + INCREMENT
+        start += increment
+        stop += increment
 
     return stim_info
+
+#-----------------------------------------------------
+
+def insert_into_db(fits_file):
+    """needed to wrap for the parallelization
+    """
+
+    file_path, file_name = os.path.split(fits_file)
+
+    if not file_name.endswith('.fits'):
+        file_name, file_ext = os.path.splitext(file_name)
+    
+    try:
+        hdu = pyfits.open(fits_file)
+    except IOError:
+        print 'Corrupt: {}'.format(fits_file)
+        return
+
+    if check_present(file_name, DB_NAME):
+        return
+
+    stim_info = locate_stims(fits_file)
+
+    table = 'measurements'
+
+    db = sqlite3.connect(DB_NAME)
+    c = db.cursor()
+    for ABS_TIME, START, found_ul_x, found_ul_y, found_lr_x, found_lr_y in stim_info:
+        c.execute("""INSERT INTO %s VALUES (?,?,?,?,?,?,?)""" % (table),
+                  (file_name,
+                   ABS_TIME,
+                   START,
+                   found_ul_x,
+                   found_ul_y,
+                   found_lr_x,
+                   found_lr_y))
+
+    print '#--committing--#'
+    db.commit()
 
 #-----------------------------------------------------
 
@@ -234,48 +285,20 @@ def populate_db():
     c = db.cursor()
     table = 'measurements'
     try:
-        c.execute(
-    """CREATE TABLE %s (obsname text, abs_time real, start real, ul_x real, ul_y real, lr_x real, lr_y real)""" %
-            (table))
+        c.execute("""CREATE TABLE %s (obsname text, abs_time real, start real, ul_x real, ul_y real, lr_x real, lr_y real)""" %
+                  (table))
+        db.commit()
     except sqlite3.OperationalError:
         pass
-
-    DAYS_PER_SECOND = 1. / 60. / 60. / 24.
-
-    for fits_file in get_files():
-        file_path, file_name = os.path.split(fits_file)
-
-        if not file_name.endswith('.fits'):
-            file_name, file_ext = os.path.splitext(file_name)
     
-        
-        
-        try:
-            hdu = pyfits.open(fits_file)
-        except IOError:
-            print 'Corrupt: {}'.format(fits_file)
-            continue
 
-        if check_present(file_name, DB_NAME):
-            continue
-
-        stim_info = locate_stims(fits_file)
-
-        for ABS_TIME, START, found_ul_x, found_ul_y, found_lr_x, found_lr_y in stim_info:
-            c.execute(
-    """INSERT INTO %s VALUES (?,?,?,?,?,?,?)""" % (table),
-                (file_name,
-                 ABS_TIME,
-                 START,
-                 found_ul_x,
-                 found_ul_y,
-                 found_lr_x,
-                 found_lr_y))
+    file_list = get_files()
+    pool = mp.Pool(processes=30)
+    pool.map(insert_into_db, file_list)
 
         # Don't want to commit the changes until an entire observation is done.
         # This way the procedure can be stopped and restarted without missing
         # Parts of an observations
-        db.commit()
 
 #-----------------------------------------------------
 
