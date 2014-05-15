@@ -362,9 +362,9 @@ def check_individual():
     print '#--------------------------#'
     db = sqlite3.connect(DB_NAME)
     c = db.cursor()
-    c.execute("""SELECT obsname FROM measurements""")
+    c.execute("""SELECT DISTINCT obsname FROM measurements ORDER BY obsname""")
 
-    all_obsnames = sorted(set([item[0].strip() for item in c]))
+    all_obsnames = [item[0].strip() for item in c]
 
     for obset_name in all_obsnames:
         plot_name = os.path.join(
@@ -382,25 +382,30 @@ def check_individual():
 
         data = [line for line in c]
 
-        times = [line[0] for line in data]
-        ul_x = [line[1] for line in data]
-        ul_y = [line[2] for line in data]
-        lr_x = [line[3] for line in data]
-        lr_y = [line[4] for line in data]
+        times = np.array([line[0] for line in data])
+        ul_x = np.array([line[1] for line in data])
+        ul_y = np.array([line[2] for line in data])
+        lr_x = np.array([line[3] for line in data])
+        lr_y = np.array([line[4] for line in data])
 
         if np.any(map(coord_deviates, [ul_x, ul_y, lr_x, lr_y])):
             print obset_name
 
             fig = plt.figure(figsize=(12, 10))
             fig.suptitle(obset_name)
-            all_xlabels = [
-                'X, Upper Left',
-                'Y, Upper Left',
-                'X, Lower Right',
-                'Y, Lower Right']
+            all_xlabels = ['X, Upper Left',
+                           'Y, Upper Left',
+                           'X, Lower Right',
+                           'Y, Lower Right']
             for i, coords in enumerate([ul_x, ul_y, lr_x, lr_y]):
                 ax = fig.add_subplot(2, 2, i + 1)
-                ax.plot(times, coords, 'o')
+                index_missing = np.where(coords == -999)
+                index_keep = np.where(coords != -999)
+
+                for t in times[index_missing]:
+                    plt.axvline(x=t, color='r', ls='--')
+
+                ax.plot(times[index_keep], coords[index_keep], 'o')
                 ax.set_xlabel('TIME since EXPSTART')
                 ax.set_ylabel(all_xlabels[i])
                 ax.xaxis.set_major_formatter(FormatStrFormatter('%d'))
