@@ -195,6 +195,8 @@ def locate_stims(fits_file, start=0, increment=None):
         else:
             increment = 30
 
+        increment *= 2
+
     stop = start + increment
 
     stim_info = []
