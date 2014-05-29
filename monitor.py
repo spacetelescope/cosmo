@@ -236,11 +236,11 @@ def compile_darkrates(detector='FUV'):
         pass
 
     location = '/grp/hst/cos/Monitors/Darks/{}/'.format( detector )
-    c.execute( """SELECT obsname FROM %s """ %(table))
+    c.execute( """SELECT DISTINCT obsname FROM %s """ %(table))
     already_done = set( [str(item[0]) for item in c] )
     
     for filename in pull_darks(location, detector):
-        obsname = os.path.split( filename )[-1]
+        obsname = os.path.split(filename)[-1]
         
         if obsname in already_done:
             print filename, 'done'
@@ -388,7 +388,7 @@ def monitor():
     get_solar_data( '/grp/hst/cos/Monitors/Darks/' )
 
     for detector in ['FUV']:#, 'NUV']:
-        #compile_darkrates( detector )
+        compile_darkrates( detector )
         #if detector == 'FUV':
         #    compile_phd()
         make_plots(detector)
