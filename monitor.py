@@ -436,8 +436,21 @@ def make_plots(data_file):
     ax.plot(data['MJD'][G185M_C], data['X_SHIFT']
             [G185M_C], 'bo', markeredgecolor='k')
     ax.axhline(y=0, color='red')
-    ax.axhline(y=58, color='k', lw=3, ls='--', zorder=1, label='Search Range')
-    ax.axhline(y=-58, color='k', lw=3, ls='--', zorder=1)
+
+    #--second timeframe
+    transition_fraction = (56500.0 - data['MJD'].min()) / \
+        (data['MJD'].max() - data['MJD'].min())
+
+    ax.axhline(y=58, xmin=0, xmax=transition_fraction, color='k',
+                lw=3, ls='--', zorder=1, label='Search Range')
+    ax.axhline(y=-58, xmin=0, xmax=transition_fraction,
+                color='k', lw=3, ls='--', zorder=1)
+
+    ax.axhline(y=58 - 20, xmin=transition_fraction, xmax=1,
+                color='k', lw=3, ls='--', zorder=1)
+    ax.axhline(y=-58 - 20, xmin=transition_fraction,
+                xmax=1, color='k', lw=3, ls='--', zorder=1)
+    #--
 
     sigma = data['X_SHIFT'][G185M_A].std()
 
@@ -450,8 +463,21 @@ def make_plots(data_file):
     ax2.plot(data['MJD'][G225M_C], data['X_SHIFT']
              [G225M_C], 'ro', markeredgecolor='k')
     ax2.axhline(y=0, color='red')
-    ax2.axhline(y=58, color='k', lw=3, ls='--', zorder=1, label='Search Range')
-    ax2.axhline(y=-58, color='k', lw=3, ls='--', zorder=1)
+
+    #--second timeframe
+    transition_fraction = (56500.0 - data['MJD'].min()) / \
+        (data['MJD'].max() - data['MJD'].min())
+
+    ax2.axhline(y=58, xmin=0, xmax=transition_fraction, color='k',
+                lw=3, ls='--', zorder=1, label='Search Range')
+    ax2.axhline(y=-58, xmin=0, xmax=transition_fraction,
+                color='k', lw=3, ls='--', zorder=1)
+
+    ax2.axhline(y=58 - 10, xmin=transition_fraction, xmax=1,
+                color='k', lw=3, ls='--', zorder=1)
+    ax2.axhline(y=-58 - 10, xmin=transition_fraction,
+                xmax=1, color='k', lw=3, ls='--', zorder=1)
+    #--
 
     sigma = data['X_SHIFT'][G225M_A].std()
 
@@ -480,6 +506,7 @@ def make_plots(data_file):
 
     ax4.axhline(y=0, color='red')
 
+    #--second timeframe
     transition_fraction = (55535.0 - data['MJD'].min()) / \
         (data['MJD'].max() - data['MJD'].min())
 
@@ -492,6 +519,7 @@ def make_plots(data_file):
                 color='k', lw=3, ls='--', zorder=1)
     ax4.axhline(y=-58 - 40, xmin=transition_fraction,
                 xmax=1, color='k', lw=3, ls='--', zorder=1)
+    #--
     ax4.xaxis.set_ticklabels(['' for item in ax3.xaxis.get_ticklabels()])
     sigma = data['X_SHIFT'][G230L_A].std()
 
