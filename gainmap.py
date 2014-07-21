@@ -77,7 +77,7 @@ class CCI_object:
         else:
             fits = pyfits.open(self.input_file)
 
-        assert (fits['SCI',1].data.shape == (Y_UNBINNED,X_UNBINNED)),'ERROR: Input CCI not standard dimensions'
+        assert (fits['SCI', 1].data.shape == (Y_UNBINNED,X_UNBINNED)),'ERROR: Input CCI not standard dimensions'
 
         self.KW_XBINNING = X_BINNING
         self.KW_YBINNING = Y_BINNING
@@ -316,7 +316,12 @@ def process_cci(CCI):
     """Necessary to pass to pool.map()
     for parallelization of the make_gainmap() function
     """
-    current = open_cci(CCI)
+    try:
+        current = open_cci(CCI)
+    except:
+        print "  WARNING CCI not OK: {}".format(CCI)
+        return
+
     if current: make_gainmap(current) 
 
 #------------------------------------------------------------
