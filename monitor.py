@@ -31,6 +31,7 @@ import numpy as np
 from astropy.time import Time
 from scipy.stats import linregress
 import multiprocessing as mp
+import time
 
 import smtplib
 from email.mime.text import MIMEText
@@ -161,11 +162,11 @@ def check_present(filename, database_name):
     otherwise returns False
     """
 
-    db = sqlite3.connect(database_name)
-    c = db.cursor()
-    c.execute(
-     """SELECT * FROM measurements WHERE obsname='%s'""" %
-     (filename))
+    with sqlite3.connect(database_name) as db:
+        c = db.cursor()
+        c.execute(
+            """SELECT DISTINCT obsname FROM measurements WHERE obsname='%s'""" %
+            (filename))
 
     entries = [item for item in c]
     if len(entries):
@@ -257,20 +258,24 @@ def insert_into_db(fits_file):
 
     table = 'measurements'
 
-    db = sqlite3.connect(DB_NAME)
-    c = db.cursor()
-    for ABS_TIME, START, found_ul_x, found_ul_y, found_lr_x, found_lr_y in stim_info:
-        c.execute("""INSERT INTO %s VALUES (?,?,?,?,?,?,?)""" % (table),
-                  (file_name,
-                   ABS_TIME,
-                   START,
-                   found_ul_x,
-                   found_ul_y,
-                   found_lr_x,
-                   found_lr_y))
+    if len(stim_info):
+        with sqlite3.connect(DB_NAME) as db:
+            c = db.cursor()
+            for ABS_TIME, START, found_ul_x, found_ul_y, found_lr_x, found_lr_y in stim_info:
+                c.execute("""INSERT INTO %s VALUES (?,?,?,?,?,?,?)""" % (table),
+                          (file_name,
+                           ABS_TIME,
+                           START,
+                           found_ul_x,
+                           found_ul_y,
+                           found_lr_x,
+                           found_lr_y))
 
-    print '#--committing--#'
-    db.commit()
+
+            print '#--committing--#'
+            db.commit()
+
+
 
 #-----------------------------------------------------
 
@@ -290,20 +295,20 @@ def populate_db():
         c.execute("""CREATE TABLE %s (obsname text, abs_time real, start real, ul_x real, ul_y real, lr_x real, lr_y real)""" %
                   (table))
         db.commit()
+        db.close()
     except sqlite3.OperationalError:
         pass
     
 
     file_list = get_files()
-    pool = mp.Pool(processes=30)
+    
+    #for item in file_list:
+    #    insert_into_db(item)
+   
+    pool = mp.Pool(processes=10)
     pool.map(insert_into_db, file_list)
 
-        # Don't want to commit the changes until an entire observation is done.
-        # This way the procedure can be stopped and restarted without missing
-        # Parts of an observations
-
 #-----------------------------------------------------
-
 
 def find_missing():
     """Return list of datasets that had a missing stim in
@@ -433,8 +438,10 @@ def stim_monitor():
     missing_obs, missing_dates = find_missing()
     send_email(missing_obs, missing_dates)
 
+    print 'Making Plots'
     make_plots()
 
+    print 'Moving to web'
     move_to_web()
     check_individual()
 
