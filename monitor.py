@@ -387,7 +387,7 @@ def monitor():
 
     get_solar_data( '/grp/hst/cos/Monitors/Darks/' )
 
-    for detector in ['FUV']:#, 'NUV']:
+    for detector in ['FUV', 'NUV']:
         compile_darkrates( detector )
         #if detector == 'FUV':
         #    compile_phd()

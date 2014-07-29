@@ -79,9 +79,15 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
     """
 
     fig = plt.figure( figsize=(20,12) )
+    
+    if detector == 'FUV':
+        dark_ax = fig.add_axes([.1, .3, .8, .6])
+        sub_ax = fig.add_axes([.1, .09, .8, .19])
+    else:
+        dark_ax = fig.add_axes([.1, .5, .8, .4])
+        sub_ax = fig.add_axes([.1, .1, .8, .2]) 
+        sub_ax2 = fig.add_axes([.1, .3, .8, .2]) 
 
-    dark_ax = fig.add_axes([.1, .3, .8, .6])
-    sub_ax = fig.add_axes([.1, .09, .8, .19])
 
     dark_ax.plot( date, dark, color='k', marker='o',
                   linestyle='', markersize=2, label='Dark Count Rate', zorder=1, rasterized=True)
@@ -112,11 +118,24 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
     if detector == 'NUV':
         sub_ax.plot(date, temp, color='r',
                     linestyle='', markersize=8, marker='o')
-        plt.gca().xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-        sub_ax.set_xlabel('Decimal_year')
+        sub_ax.set_xlabel('Decimal Year')
         sub_ax.set_ylabel('Temperature')
+        sub_ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
         sub_ax.set_xlim(2009.5, date.max() + .1)
         sub_ax.grid(True)
+
+        solar_smooth = scipy.convolve(solar, np.ones(81) / 81.0, mode='same')
+        sub_ax2.plot(solar_date, solar, color='orange', marker='',
+                    linestyle='-', label='10.7cm', lw=1, alpha=.9, zorder=1)
+        sub_ax2.plot(solar_date[:-41], solar_smooth[:-41], color='red', marker='',
+                    linestyle='-', label='10.7cm Smoothed', lw=3, alpha=1, zorder=1)
+        sub_ax2.set_xticklabels(['' for item in dark_ax.get_xticklabels()])
+        sub_ax2.set_ylabel('Radio Flux')
+        sub_ax2.set_ylim(50, 210)
+        sub_ax2.set_xlim(2009.5, date.max() + .1)
+        sub_ax2.legend(numpoints=1, shadow=True, loc='best')
+        sub_ax2.grid(True)
+
     else:
         solar_smooth = scipy.convolve(solar, np.ones(81) / 81.0, mode='same')
         sub_ax.plot(solar_date, solar, color='orange', marker='',
