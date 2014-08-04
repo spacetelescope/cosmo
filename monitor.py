@@ -230,8 +230,6 @@ def find_files():
                 opt_elem = fits[0].header['OPT_ELEM']
                 fppos = -1
 
-                if not opt_elem == 'MIRRORA':
-                    continue
                 if not spt[1].header['LQTAYCOR'] > 0:
                     continue
 
