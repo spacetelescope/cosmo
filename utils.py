@@ -20,7 +20,7 @@ class StimError(Exception):
 
 #-------------------------------------------------------------------------------
 
-def check_stim_global(filename):
+def check_stim_global(filename, verbose=0):
     """ Check for stims missing from the entire observation
 
     Checks for a negative value indicating the stim was not found internally
@@ -28,12 +28,16 @@ def check_stim_global(filename):
 
     """
 
+    if verbose:
+        print "Checking for STIMS as found by CalCOS"
+
     hdu = fits.open(filename)    
 
     if not hdu[0].header['DETECTOR'] == 'FUV':
         raise ValueError('Filename {} must be FUV data'.format(filename))
 
     segment = hdu[0].header['SEGMENT']
+    if verbose: print "Segment: {}".format(segment)
 
     missing_stims = []
     for keyword in STIM_KEYWORDS[segment]:
@@ -42,6 +46,10 @@ def check_stim_global(filename):
 
         if (hdu[1].header[keyword] < 0) and (n_events > 0):
             missing_stims.append(keyword)
+
+        if verbose: print "{} @ {} n_events: {}".format(keyword, 
+                                                        hdu[1].header[keyword],
+                                                        n_events)
 
     if len(missing_stims):
         raise StimError('{} has missing stims: {}'.format(filename, 
