@@ -48,7 +48,7 @@ Y_VALID = (0 // Y_BINNING, 1024 // Y_BINNING)
 
 #----Directory and File Constants
 CCI_DIR = '/smov/cos/Data/CCI/' ## OPUS
-#CCI_DIR = '/grp/hst/cos/Data/CumulativeImage/latest/' ## Dave
+#CCI_DIR = '/grp/hst/cos/Data/CumulativeImage/latest/CCI/' ## Dave
 
 
 MONITOR_DIR = '/grp/hst/cos/Monitors/CCI/'
