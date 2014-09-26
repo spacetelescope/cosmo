@@ -392,7 +392,9 @@ def monitor():
         #if detector == 'FUV':
         #    compile_phd()
         make_plots(detector)
-        make_plots(detector, TA=True)
+        
+        if detector == 'FUV':
+            make_plots(detector, TA=True)
 
 #-------------------------------------------------------------------------------
 
