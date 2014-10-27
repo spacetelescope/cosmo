@@ -427,7 +427,7 @@ def make_plots(data_file):
     ##########
 
     fig = plt.figure(figsize=(14, 18))
-    ax = fig.add_subplot(6, 1, 1)
+    ax = fig.add_subplot(7, 1, 1)
     ax.plot(data['MJD'][G185M_A], data['X_SHIFT'][G185M_A], 'bo', label='G185M')
     ax.plot(data['MJD'][G185M_B], data['X_SHIFT']
             [G185M_B], 'bo', markeredgecolor='k')
@@ -454,7 +454,7 @@ def make_plots(data_file):
 
     ax.xaxis.set_ticklabels(['' for item in ax.xaxis.get_ticklabels()])
 
-    ax2 = fig.add_subplot(6, 1, 2)
+    ax2 = fig.add_subplot(7, 1, 2)
     ax2.plot(data['MJD'][G225M_A], data['X_SHIFT'][G225M_A], 'ro', label='G225M')
     ax2.plot(data['MJD'][G225M_B], data['X_SHIFT']
              [G225M_B], 'ro', markeredgecolor='k')
@@ -481,7 +481,7 @@ def make_plots(data_file):
 
     ax2.xaxis.set_ticklabels(['' for item in ax2.xaxis.get_ticklabels()])
 
-    ax3 = fig.add_subplot(6, 1, 3)
+    ax3 = fig.add_subplot(7, 1, 3)
     ax3.plot(data['MJD'][G285M_A], data['X_SHIFT'][G285M_A], 'yo', label='G285M')
     ax3.plot(data['MJD'][G285M_B], data['X_SHIFT']
              [G285M_B], 'yo', markeredgecolor='k')
@@ -495,7 +495,7 @@ def make_plots(data_file):
 
     ax3.xaxis.set_ticklabels(['' for item in ax3.xaxis.get_ticklabels()])
 
-    ax4 = fig.add_subplot(6, 1, 4)
+    ax4 = fig.add_subplot(7, 1, 4)
     ax4.plot(data['MJD'][G230L_A], data['X_SHIFT'][G230L_A], 'go', label='G230L')
     ax4.plot(data['MJD'][G230L_B], data['X_SHIFT']
              [G230L_B], 'go', markeredgecolor='k')
@@ -533,7 +533,7 @@ def make_plots(data_file):
 
     ax4.set_xlabel('MJD')
 
-    ax = fig.add_subplot(6, 1, 5)
+    ax = fig.add_subplot(7, 1, 5)
     ax.plot(data['MJD'][NUV], data['x_shift'][NUV], '.')
     fit, ydata, parameters, err = fit_data(
         data['MJD'][NUV], data['X_SHIFT'][NUV])
@@ -546,7 +546,7 @@ def make_plots(data_file):
 
     mirrora = np.where((data['OPT_ELEM'] == 'MIRRORA')
                        & (data['X_SHIFT'] > 0))[0]
-    ax = fig.add_subplot(6, 1, 6)
+    ax = fig.add_subplot(7, 1, 6)
     ax.plot(data['MJD'][mirrora], data['x_shift'][mirrora], '.')
     fit, ydata, parameters, err = fit_data(
         data['MJD'][mirrora], data['X_SHIFT'][mirrora])
@@ -557,6 +557,20 @@ def make_plots(data_file):
     ax.set_xlabel('MJD')
     ax.set_ylim(460, 630)
 
+    mirrorb = np.where((data['OPT_ELEM'] == 'MIRRORB')
+                       & (data['X_SHIFT'] > 0))[0]
+    ax = fig.add_subplot(7, 1, 7)
+    ax.plot(data['MJD'][mirrorb], data['x_shift'][mirrorb], '.')
+    fit, ydata, parameters, err = fit_data(
+        data['MJD'][mirrorb], data['X_SHIFT'][mirrorb])
+    ax.plot(ydata, fit, 'k-', lw=3, label='%3.5fx' % (parameters[0]))
+    ax.legend(numpoints=1, shadow=True)
+    ax.set_xlim(data['MJD'].min(), data['MJD'].max() + 50)
+    ax.set_ylabel('MIRRORB')
+    ax.set_xlabel('MJD')
+    ax.set_ylim(260, 400)
+
+
     fig.savefig(os.path.join(MONITOR_DIR, 'NUV_shifts.png'), 
                 bbox_inches='tight', 
                 pad_inches=.5)
@@ -564,20 +578,21 @@ def make_plots(data_file):
 
     ##############
 
-    mirrora = np.where((data['OPT_ELEM'] == 'MIRRORA')
-                       & (data['X_SHIFT'] > 0))[0]
-    fig = plt.figure(figsize=(8, 4))
-    ax = fig.add_subplot(1, 1, 1)
-    ax.plot(data['MJD'][mirrora], data['x_shift'][mirrora], '.')
-    fit, ydata, parameters, err = fit_data(
-        data['MJD'][mirrora], data['X_SHIFT'][mirrora])
-    ax.plot(ydata, fit, 'r-', lw=3, label='%3.5f +/- %3.5f' %
-            (parameters[0], err))
-    ax.legend(numpoints=1, shadow=True)
-    ax.set_xlim(data['MJD'].min(), data['MJD'].max() + 50)
-    ax.set_ylim(460, 630)
-    fig.savefig(os.path.join(MONITOR_DIR, 'MIRRORA_shifts.png'))
-    plt.close(fig)
+    for elem in ['MIRRORA', 'MIRRORB']:
+        mirror = np.where((data['OPT_ELEM'] == elem)
+                          & (data['X_SHIFT'] > 0))[0]
+        fig = plt.figure(figsize=(8, 4))
+        ax = fig.add_subplot(1, 1, 1)
+        ax.plot(data['MJD'][mirror], data['x_shift'][mirror], '.')
+        fit, ydata, parameters, err = fit_data(data['MJD'][mirror],
+                                               data['X_SHIFT'][mirror])
+        ax.plot(ydata, fit, 'r-', lw=3, label='%3.5f +/- %3.5f' %
+                (parameters[0], err))
+        ax.legend(numpoints=1, shadow=True)
+        ax.set_xlim(data['MJD'].min(), data['MJD'].max() + 50)
+        #ax.set_ylim(460, 630)
+        fig.savefig(os.path.join(MONITOR_DIR, '{}_shifts.png'.format(elem.upper())))
+        plt.close(fig)
 
     print 'Plotting cenwaves'
     for grating in list(set(data['opt_elem'])):
