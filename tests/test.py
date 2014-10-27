@@ -1,6 +1,7 @@
 import sys
 import os
 import numpy as np
+from astropy.io import fits
 
 from ..constants import MONITOR_DIR
 from ...cci import findbad, gainmap, cci_read
@@ -39,5 +40,23 @@ def test_time_fitting():
     assert np.all( fit_diff < TOLERANCE ),"Fitting didn't yield a straight line"
     assert np.all( param_diff < TOLERANCE),"Fitting didn't yield the right parameter tuple"
     assert success == True,"Fitting should have succeeded on this simple test"
+
+#------------------------------------------------------------------
+
+def test_rename():
+    """Test the CCI renaming script
+    """
+
+
+    test_data = os.path.join(os.getcwd(), 'lft01_2013007232606_cci.fits.gz')
+    hdu_out = fits.HDUList(fits.PrimaryHDU())
+    hdu_out[0].header['DETHV'] = '167'
+    hdu_out.writeto(test_data, clobber=True)  
+
+    print gainmap.rename(test_data, write=False)
+
+    assert gainmap.rename(test_data, write=False) == 'l_2013007232606_01_167_cci.fits.gz', \
+        'Renaming not functioning properly'
+
 
 #------------------------------------------------------------------

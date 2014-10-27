@@ -153,7 +153,7 @@ class CCI_object:
         Will also search for and add in accum data if any exists.
         """
         print 'Making array of cumulative counts'   
-        out_array = np.sum(in_array,axis=0)
+        out_array = np.sum(in_array, axis=0)
 
         ###Test before implementation
         ###Should only effect counts and charge extensions.
@@ -188,6 +188,35 @@ class CCI_object:
         for pha,layer in enumerate(in_array):
             out_array += (coulomb_value[pha]*layer)
         return out_array
+
+#------------------------------------------------------------
+
+def rename(input_file, write=True):
+    """Test the CCI renaming script
+    """
+
+    with pyfits.open(input_file) as hdu:
+        path, name = os.path.split(input_file)
+        name_split = name.split('_')
+
+        dethv = hdu[0].header['DETHV']
+        
+        time_str = name_split[1]
+        filetype = name_split[0][3:]
+
+        ext = ''
+        if '.fits' in name:
+            ext += '.fits'
+        if '.gz' in name:
+            ext += '.gz'
+
+        out_name = 'l_{}_{}_{}_cci{}'.format(time_str, filetype, dethv, ext)
+        out_file = os.path.join(path, out_name)
+
+        if write:
+            hdu.writeto(out_name)
+
+        return out_name
 
 #------------------------------------------------------------
 
@@ -246,6 +275,7 @@ def make_all_gainmaps(processors=1):
     for ending in [FUVA_string,FUVB_string]:
         CCI_list = glob.glob( CCI_DIR + '*'+ending+'*')
         CCI_list.sort()
+
         if processors == 1:
             for CCI in CCI_list:
                 process_cci( CCI )
@@ -758,7 +788,7 @@ def write_gainmap( current ):
     #-------EXT=1
     included_files = np.array( current.file_list )
     files_col = pyfits.Column('files','24A','rootname',array=included_files)
-    tab = pyfits.new_table( [files_col] )
+    tab = pyfits.new_table([files_col])
 
     hdu_out.append( tab )
     hdu_out[1].header.update('EXTNAME','FILES')
