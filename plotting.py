@@ -139,6 +139,11 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
         sub_ax = fig.add_axes([.1, .1, .8, .2]) 
         sub_ax2 = fig.add_axes([.1, .3, .8, .2]) 
 
+            
+        temp_index = np.where(temp > 15)[0]
+        dark = dark[temp_index]
+        date = date[temp_index]
+        temp = temp[temp_index]
 
     dark_ax.plot(date, 
                  dark, 
@@ -158,6 +163,8 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
     #                lw=2, label='Feb Safe', zorder=1, alpha=.4)
 
     if detector == 'NUV':
+        pass
+        '''
         fit_index = np.where(date > 2013.0)[0]
         parameters = linregress(date[fit_index], dark[fit_index])
         fit = scipy.polyval(parameters[:2], date[fit_index])
@@ -173,6 +180,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
                                                      dark_predicted),
                      color='red',
                      fontsize=14)
+        '''
     else:
         dark_ax.axhline(y=1.5E-6, color='r', linestyle='--',
                    lw=3, label='1.5e-6', zorder=1, alpha=.6)
@@ -202,6 +210,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
         sub_ax.set_ylabel('Temperature')
         sub_ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
         sub_ax.set_xlim(2009.5, date.max() + .1)
+        #sub_ax.set_ylim(15, 27)
         sub_ax.grid(True)
 
         solar_smooth = scipy.convolve(solar, np.ones(81) / 81.0, mode='same')

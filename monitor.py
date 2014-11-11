@@ -33,6 +33,12 @@ def pull_darks(base, detector):
     '''
 
     for root, dirs, files in os.walk(base):
+
+        if 'gzip' in root: continue
+        if 'experimental' in root: continue
+
+        print root
+
         for filename in files:
             if not '.fits' in filename:
                 continue
@@ -50,7 +56,7 @@ def pull_darks(base, detector):
 
 #-------------------------------------------------------------------------------
 
-def get_temp( filename ):
+def get_temp(filename):
 
     detector = fits.getval( filename, 'DETECTOR' )
     segment = fits.getval( filename, 'SEGMENT' )
@@ -68,7 +74,10 @@ def get_temp( filename ):
     rootname = name[:9]
     spt_file = os.path.join(path, rootname + '_spt.fits')
 
-    temperature = fits.getval(spt_file, temp_keyword, ext=2)
+    try:
+        temperature = fits.getval(spt_file, temp_keyword, ext=2)
+    except IOError:
+        temperature = fits.getval(spt_file + '.gz', temp_keyword, ext=2)
 
     return temperature
 
@@ -235,7 +244,7 @@ def compile_darkrates(detector='FUV'):
     except sqlite3.OperationalError:
         pass
 
-    location = '/grp/hst/cos/Monitors/Darks/{}/'.format( detector )
+    location = '/smov/cos/Data/'
     c.execute( """SELECT DISTINCT obsname FROM %s """ %(table))
     already_done = set( [str(item[0]) for item in c] )
     
@@ -385,10 +394,10 @@ def make_plots( detector, TA=False ):
 def monitor():
     """ main monitoring pipeline"""
 
-    get_solar_data( '/grp/hst/cos/Monitors/Darks/' )
+    get_solar_data('/grp/hst/cos/Monitors/Darks/')
 
     for detector in ['FUV', 'NUV']:
-        compile_darkrates( detector )
+        compile_darkrates(detector)
         #if detector == 'FUV':
         #    compile_phd()
         make_plots(detector)
