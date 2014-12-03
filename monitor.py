@@ -8,6 +8,8 @@ import logging
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
+import shutil
+import glob
 
 from astropy.io import fits
 from astropy.time import Time
@@ -19,6 +21,7 @@ from solar import get_solar_data
 import plotting
 
 base_dir = '/grp/hst/cos/Monitors/Darks/'
+web_directory = '/grp/webpages/COS/'
 
 DB_NAME = "/grp/hst/cos/Monitors/DB/cos_darkrates.db"
 PHD_TABLE = 'phd'
@@ -391,6 +394,29 @@ def make_plots( detector, TA=False ):
 
 #-------------------------------------------------------------------------------
 
+def move_products():
+    '''
+    Move created pdf files to webpage directory
+    '''
+    print '#-------------------#'
+    print 'Moving products into'
+    print 'webpage directory'
+    print '#-------------------#'
+
+    for detector in ['FUV', 'NUV']:
+
+        write_dir = web_directory + detector.lower() + '_darks/'
+        move_list = glob.glob(base_dir + detector + '/*.p??')
+
+        for item in move_list:
+            path, file_to_move = os.path.split(item)
+            shutil.copy(item, write_dir + file_to_move)
+            print 'Moving: %s' % (file_to_move)
+
+        os.system('chmod 777 ' + write_dir + '*.pdf')
+
+#-------------------------------------------------------------------------------
+
 def monitor():
     """ main monitoring pipeline"""
 
@@ -404,6 +430,8 @@ def monitor():
         
         if detector == 'FUV':
             make_plots(detector, TA=True)
+
+    move_products()
 
 #-------------------------------------------------------------------------------
 
