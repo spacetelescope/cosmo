@@ -311,9 +311,13 @@ def make_plots( detector, TA=False ):
     else:
         raise ValueError('Only FUV or NUV allowed.  NOT:{}'.format(detector) )
 
-    solar_data = np.genfromtxt(base_dir + 'solar_flux.txt', dtype=None)
-    solar_date = np.array( mjd_to_decyear([line[0] for line in solar_data]) )
-    solar_flux = np.array([line[1] for line in solar_data])
+    try:
+        solar_data = np.genfromtxt(base_dir + 'solar_flux.txt', dtype=None)
+        solar_date = np.array( mjd_to_decyear([line[0] for line in solar_data]) )
+        solar_flux = np.array([line[1] for line in solar_data])
+    except TypeError:
+        solar_date = np.ones(1000)
+        solar_flux = np.ones(1000)
 
     dark_key = 'dark'
     if TA:
@@ -423,13 +427,13 @@ def monitor():
     get_solar_data('/grp/hst/cos/Monitors/Darks/')
 
     for detector in ['FUV', 'NUV']:
-        compile_darkrates(detector)
+        #compile_darkrates(detector)
         #if detector == 'FUV':
         #    compile_phd()
         make_plots(detector)
         
-        if detector == 'FUV':
-            make_plots(detector, TA=True)
+        #if detector == 'FUV':
+        #    make_plots(detector, TA=True)
 
     move_products()
 

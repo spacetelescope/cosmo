@@ -193,7 +193,14 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
 
     dark_ax.set_xticklabels(['' for item in dark_ax.get_xticklabels()])
     dark_ax.set_ylabel('Mean Dark Rate cnts/sec/pix')
-    dark_ax.set_title('Global Dark Rate: %s' % (detector.upper()))
+
+    if 'FUVA' in outname:
+        segment = 'FUVA'
+    elif 'FUVB' in outname:
+        segment = 'FUVB'
+    else:
+        segment = 'NUV'
+    dark_ax.set_title('Global Dark Rate: %s' % (segment.upper()))
     dark_ax.set_xlim(2009.5, date.max() + .1)
     dark_ax.legend(numpoints=1, shadow=True, loc='upper left')
     dark_ax.grid(True)
