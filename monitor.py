@@ -30,7 +30,7 @@ PHD_TABLE = 'phd'
 
 def pull_darks(base, detector):
     '''
-    Recursively find all darks in the given base directory taken with the 
+    Recursively find all darks in the given base directory taken with the
     given detector
 
     '''
@@ -49,12 +49,12 @@ def pull_darks(base, detector):
                 continue
 
             full_filename = os.path.join( root, filename )
-            
-            if not fits.getval(full_filename, 'exptype', ext=0) == 'DARK': 
+
+            if not fits.getval(full_filename, 'exptype', ext=0) == 'DARK':
                 continue
-            if not fits.getval(full_filename, 'detector', ext=0) == detector: 
+            if not fits.getval(full_filename, 'detector', ext=0) == detector:
                 continue
-            
+
             yield full_filename
 
 #-------------------------------------------------------------------------------
@@ -117,7 +117,7 @@ def pull_orbital_info( dataset, step=1 ):
     hdu = fits.open( dataset )
     timeline = hdu['timeline'].data
     segment = hdu[0].header['segment']
-    
+
     if segment == 'N/A':
         xlim = (0, 1024)
         ylim = (0, 1204)
@@ -143,10 +143,10 @@ def pull_orbital_info( dataset, step=1 ):
         sun_lat = lat.copy() * 0
         sun_lon = lat.copy() * 0
 
-    
+
     mjd = hdu[1].header['EXPSTART']  + \
         times.copy()[:-1].astype( np.float64 ) * \
-        SECOND_PER_MJD 
+        SECOND_PER_MJD
 
     decyear = mjd_to_decyear( mjd )
 
@@ -156,24 +156,24 @@ def pull_orbital_info( dataset, step=1 ):
 
 
     events = hdu['events'].data
-    filtered_index = np.where( (events['PHA'] > pha[0]) & 
+    filtered_index = np.where( (events['PHA'] > pha[0]) &
                                (events['PHA'] < pha[1]) &
-                               (events['XCORR'] > xlim[0]) & 
-                               (events['XCORR'] < xlim[1]) & 
+                               (events['XCORR'] > xlim[0]) &
+                               (events['XCORR'] < xlim[1]) &
                                (events['YCORR'] > ylim[0]) &
                                (events['YCORR'] < ylim[1])
                                )
 
-    ta_index = np.where( (events['XCORR'] > xlim[0]) & 
-                         (events['XCORR'] < xlim[1]) & 
+    ta_index = np.where( (events['XCORR'] > xlim[0]) &
+                         (events['XCORR'] < xlim[1]) &
                          (events['YCORR'] > ylim[0]) &
                          (events['YCORR'] < ylim[1])
                          )
-    
+
 
     counts = np.histogram( events[filtered_index]['time'], bins=times )[0]
     ta_counts = np.histogram( events[ta_index]['time'], bins=times )[0]
-    
+
     npix = float((xlim[1] - xlim[0]) * (ylim[1] - ylim[0]))
     counts = counts / npix / step
     ta_counts = ta_counts / npix / step
@@ -183,7 +183,7 @@ def pull_orbital_info( dataset, step=1 ):
         lon = lon[:-1]
         sun_lat = sun_lat[:-1]
         sun_lon = sun_lon[:-1]
-    
+
     assert len(lat) == len(counts), \
         'Arrays are not equal in length {}:{}'.format( len(lat), len(counts) )
 
@@ -192,13 +192,13 @@ def pull_orbital_info( dataset, step=1 ):
 #-------------------------------------------------------------------------------
 
 def compile_phd():
-   db = sqlite3.connect(DB_NAME)    
+   db = sqlite3.connect(DB_NAME)
    c = db.cursor()
 
    #-- Find available datasets from master table
    table = 'FUV_stats'
    c.execute( """SELECT obsname FROM %s """ %(table))
-   available = set( [str(item[0]) for item in c] )   
+   available = set( [str(item[0]) for item in c] )
 
    #-- populate PHD table
    table = PHD_TABLE
@@ -220,10 +220,10 @@ def compile_phd():
 
        counts = pha_hist(filename)
        table_values = (obsname, ) + tuple(list(counts) )
-       
+
        c.execute( """INSERT INTO %s VALUES (?{})""" % (table, ',?'*31 ),
                   table_values)
-       
+
        db.commit()
 
 #-------------------------------------------------------------------------------
@@ -232,7 +232,7 @@ def pha_hist(filename):
     hdu = fits.open( filename )
     pha_list_all = hdu[1].data['PHA']
     counts, bins = np.histogram(pha_list_all, bins=31, range=(0, 31))
-    
+
     return counts
 
 #-------------------------------------------------------------------------------
@@ -250,19 +250,19 @@ def compile_darkrates(detector='FUV'):
     location = '/smov/cos/Data/'
     c.execute( """SELECT DISTINCT obsname FROM %s """ %(table))
     already_done = set( [str(item[0]) for item in c] )
-    
+
     for filename in pull_darks(location, detector):
         obsname = os.path.split(filename)[-1]
-        
+
         if obsname in already_done:
             print filename, 'done'
         else:
             print filename, 'running'
 
         counts, ta_counts, date, lat, lon, sun_lat, sun_lon = pull_orbital_info( filename, 25 )
-      
+
         temp = get_temp(filename)
- 
+
         for i in range(len(counts)):
             c.execute( """INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)""" % (table),
                        (obsname,
@@ -334,7 +334,7 @@ def make_plots( detector, TA=False ):
         temp = np.array( [item[2] for item in data] )
         latitude = np.array( [item[3] for item in data] )
         longitude = np.array( [item[4] for item in data] )
-        
+
         index = np.argsort(mjd)
         mjd = mjd[index]
         dark = dark[index]
@@ -346,10 +346,10 @@ def make_plots( detector, TA=False ):
         mjd = mjd[index_keep]
         dark = dark[index_keep]
         temp = temp[index_keep]
-        
+
         outname = os.path.join(base_dir, detector, '{}_vs_time_{}.png'.format(dark_key, segment) )
         plotting.plot_time( detector, dark, mjd, temp, solar_flux, solar_date, outname )
-        
+
         #-- Plot vs orbit
         print 'Plotting Orbit'
         cursor.execute( """SELECT {},latitude,longitude,sun_lat,sun_lon,date FROM {} WHERE obsname LIKE '%{}%'""".format(dark_key, table, key))
@@ -367,7 +367,7 @@ def make_plots( detector, TA=False ):
         longitude = longitude[index]
         sun_lat = sun_lat[index]
         sun_lon = sun_lon[index]
-        
+
         outname = os.path.join(base_dir, detector, '{}_vs_orbit_{}.png'.format(dark_key, segment) )
         plotting.plot_orbital_rate(longitude, latitude, dark, sun_lon, sun_lat, outname )
 
@@ -381,14 +381,14 @@ def make_plots( detector, TA=False ):
         index = np.argsort(date)
         date = date[index]
         dark = dark[index]
-        
+
         for year in set(map(int, date)):
-            index = np.where( (date >= year) & 
+            index = np.where( (date >= year) &
                               (date < year + 1))
-            
+
             outname = os.path.join(base_dir, detector, '{}_hist_{}_{}.pdf'.format(dark_key, year, segment) )
             plotting.plot_histogram(dark[index], outname )
-            
+
         index = np.where(date >= date.max() - .5)
         outname = os.path.join(base_dir, detector, '{}_hist_-6mo_{}.pdf'.format(dark_key, segment) )
         plotting.plot_histogram(dark[index], outname )
@@ -427,13 +427,13 @@ def monitor():
     get_solar_data('/grp/hst/cos/Monitors/Darks/')
 
     for detector in ['FUV', 'NUV']:
-        #compile_darkrates(detector)
+        compile_darkrates(detector)
         #if detector == 'FUV':
         #    compile_phd()
         make_plots(detector)
-        
-        #if detector == 'FUV':
-        #    make_plots(detector, TA=True)
+
+        if detector == 'FUV':
+            make_plots(detector, TA=True)
 
     move_products()
 
