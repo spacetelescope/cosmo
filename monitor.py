@@ -195,6 +195,7 @@ def find_files():
                     segment = line['SEGMENT']
                     x_shift = line['SHIFT_DISP']
                     y_shift = line['SHIFT_XDISP']
+                    found = line['SPEC_FOUND']
 
                     correction = fppos_shift(lamptab_name, 
                                              segment, 
@@ -212,7 +213,8 @@ def find_files():
                                  y_shift, 
                                  opt_elem, 
                                  cenwave, 
-                                 fppos))
+                                 fppos,
+				 found))
 
             elif infile.endswith('_rawacq.fits.gz'):
                 if infile in checked:
@@ -247,7 +249,8 @@ def find_files():
                              y_shift,
                              opt_elem,
                              cenwave,
-                             fppos))
+                             fppos,
+                             'N/A'))
 
     data = list(set(data))
     data.sort()
@@ -282,6 +285,7 @@ def write_data(data):
     opt_elem = np.array([line[6] for line in data])
     cenwave = np.array([line[7] for line in data])
     fppos = np.array([line[8] for line in data])
+    found = np.array([line[9] for line in data])
 
     dataset_col = pyfits.Column('dataset', 'A72', 'name', array=dataset)
     detector_col = pyfits.Column('detector', 'A24', 'MJD', array=detector)
@@ -292,6 +296,7 @@ def write_data(data):
     opt_elem_col = pyfits.Column('opt_elem', 'A24', 'pixel', array=opt_elem)
     cenwave_col = pyfits.Column('cenwave', 'J', 'pixel', array=cenwave)
     fppos_col = pyfits.Column('fppos', 'J', 'pixel', array=fppos)
+    found_col = pyfits.Column('found', 'A5', 'bool', array=found)
 
     tab = pyfits.new_table([dataset_col, 
                             detector_col, 
@@ -301,7 +306,8 @@ def write_data(data):
                             mjd_col, 
                             opt_elem_col, 
                             cenwave_col, 
-                            fppos_col])
+                            fppos_col,
+                            found_col])
 
     hdu_out.append(tab)
 
