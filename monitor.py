@@ -1,15 +1,15 @@
 #!/usr/bin/python
 
 """Routine to monitor the modal gain in each pixel as a
-function of time.  Uses COS Cumulative Image (CCI) files 
+function of time.  Uses COS Cumulative Image (CCI) files
 to produce a modal gain map for each time period.  Modal gain
-maps for each period are collated to monitor the progress of 
-each pixel(superpixel) with time.  Pixels that drop below 
+maps for each period are collated to monitor the progress of
+each pixel(superpixel) with time.  Pixels that drop below
 a threshold value are flagged and collected into a
 gain sag table reference file (gsagtab).
 
 The PHA modal gain threshold is set by global variable MODAL_GAIN_LIMIT.
-Allowing the modal gain of a distribution to come within 1 gain bin 
+Allowing the modal gain of a distribution to come within 1 gain bin
 of the threshold results in ~8% loss of flux.  Within
 2 gain bins, ~4%
 3 gain bins, ~2%
@@ -55,8 +55,8 @@ def make_quicklooks(clobber=False):
     all_gainmaps.sort()
     for gainmap in all_gainmaps:
         out_image_file = gainmap.replace('gainmap.fits', 'quicklook.png')
-        if os.path.exists( out_image_file ): 
-            if clobber: 
+        if os.path.exists( out_image_file ):
+            if clobber:
                 pass
             else:
                 continue
@@ -78,7 +78,7 @@ def make_quicklooks(clobber=False):
             upper_ext = 4
             head = FUVB_string
         pha_name = gainmap.replace('_gainmap.fits', '_phf.fits').replace(head, 'phaimage' )
-        print pha_name 
+        print pha_name
         phaimage = pyfits.open(pha_name)
 
         has_gain = np.zeros( image.shape )
@@ -100,7 +100,7 @@ def make_quicklooks(clobber=False):
         ax = fig.add_axes( rectangle )
 
         cax = ax.imshow(image, aspect='auto', cmap=mpl.cm.get_cmap('hot_r')  )
-        
+
         plot_flagged(ax, SEGMENT, DETHV, mjd=EXPSTART, color='blue')
         ax.set_xlim(0, 16384)
         ax.set_ylim(0, 1024)
@@ -149,7 +149,7 @@ def make_quicklooks(clobber=False):
 def make_cumulative_plots():
     """
     Make plots showing cumulative gain for each HV setting.
-    
+
     """
 
     print 'Making cumulative gainmaps'
@@ -158,7 +158,7 @@ def make_cumulative_plots():
 
         dethv = fits[0].header['DETHV']
         segment = fits[0].header['SEGMENT']
- 
+
         fig = plt.figure(figsize = (25, 14))
         ax = fig.add_subplot(1, 1, 1)
         gain_image = enlarge( fits['PROJGAIN'].data,
@@ -184,7 +184,7 @@ def plot_flagged(ax, segment, hv, mjd=60000, color='r'):
     Plot a box at each flagged location
 
     """
-    
+
     gsagtab_filename = '/grp/hst/cos/Monitors/CCI/gsag_%s.fits'% (TIMESTAMP)
     if os.path.exists( gsagtab_filename ):
         gsagtab = pyfits.open('/grp/hst/cos/Monitors/CCI/gsag_%s.fits'% (TIMESTAMP))
@@ -192,7 +192,7 @@ def plot_flagged(ax, segment, hv, mjd=60000, color='r'):
         all_gsagtables = glob.glob( os.path.join(MONITOR_DIR, 'gsag*.fits') )
         all_gsagtables.sort()
         gsagtab = pyfits.open( all_gsagtables[-1] )
-    
+
     if segment == 'FUVA':
         hv_keyword = 'HVLEVELA'
     elif segment == 'FUVB':
@@ -211,7 +211,7 @@ def plot_flagged(ax, segment, hv, mjd=60000, color='r'):
         dx = line['dx']
         ly = line['ly']
         dy = line['dy']
-    
+
         x_values = [lx, lx+dx, lx+dx, lx, lx]
         y_values = [ly, ly, ly+dy, ly+dy, ly]
         ax.plot(x_values, y_values, color)
@@ -219,14 +219,14 @@ def plot_flagged(ax, segment, hv, mjd=60000, color='r'):
 #------------------------------------------------------------
 
 def check_new_files():
-    """Compares the number of made gainmaps to the number of 
+    """Compares the number of made gainmaps to the number of
     available CCI files and returns the number.
     """
 
-    N_CCI = len( glob.glob( os.path.join( CCI_DIR, '*'+FUVA_string+'*' ) ) 
+    N_CCI = len( glob.glob( os.path.join( CCI_DIR, '*'+FUVA_string+'*' ) )
                  + glob.glob( os.path.join( CCI_DIR, '*'+FUVB_string+'*' ) ) )
 
-    N_GAINMAPS = len( glob.glob( os.path.join( MONITOR_DIR,  '*'+FUVA_string+'*gainmap.fits' ) ) 
+    N_GAINMAPS = len( glob.glob( os.path.join( MONITOR_DIR,  '*'+FUVA_string+'*gainmap.fits' ) )
                       + glob.glob( os.path.join( MONITOR_DIR,  '*'+FUVB_string+'*gainmap.fits' ) ) )
 
     N_new = N_CCI - N_GAINMAPS
@@ -242,14 +242,14 @@ def main( args ):
     os.system('clear')
     init_plots()
     plt.ioff()
-    
+
     if args.check_for_new:
         N_NEW_CCI = check_new_files()
         if not N_NEW_CCI:  sys.exit('No new CCI files to include')
         else:  print 'Found %d New CCI files to include'% (N_NEW_CCI)
 
     logname = os.path.join( MONITOR_DIR, 'run_%s.txt'% (TIMESTAMP) )
-    sys.stdout = Logger( logname ) 
+    sys.stdout = Logger( logname )
 
     print '#------------------#'
     print TIMESTAMP
@@ -258,15 +258,15 @@ def main( args ):
         print '%s:  %s'% (attr, value)
     print '#------------------#'
     print
-    
-    
-    gainmap.make_all_gainmaps( args.n_processors )
-   
+
+
+    gainmap.make_all_gainmaps(args.n_processors)
+
     phaimage.make_phaimages(True)
 
     findbad.time_trends()
-     
-    gsag.main( args.regress )
+
+    gsag.main(args.regress)
 
     make_quicklooks()
 
@@ -282,4 +282,4 @@ def main( args ):
 #------------------------------------------------------------
 
 if __name__ == "__main__":
-    main( parse_args() )
+    main(parse_args())

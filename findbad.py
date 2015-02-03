@@ -1,13 +1,13 @@
 """Routine to monitor the modal gain in each pixel as a
-function of time.  Uses COS Cumulative Image (CCI) files 
+function of time.  Uses COS Cumulative Image (CCI) files
 to produce a modal gain map for each time period.  Modal gain
-maps for each period are collated to monitor the progress of 
-each pixel(superpixel) with time.  Pixels that drop below 
+maps for each period are collated to monitor the progress of
+each pixel(superpixel) with time.  Pixels that drop below
 a threshold value are flagged and collected into a
 gain sag table reference file (gsagtab).
 
 The PHA modal gain threshold is set by global variable MODAL_GAIN_LIMIT.
-Allowing the modal gain of a distribution to come within 1 gain bin 
+Allowing the modal gain of a distribution to come within 1 gain bin
 of the threshold results in ~8% loss of flux.  Within
 2 gain bins, ~4%
 3 gain bins, ~2%
@@ -37,7 +37,7 @@ from scipy.optimize import leastsq, newton, curve_fit
 
 from ..support import rebin,init_plots,Logger,enlarge,progress_bar,send_email
 from constants import *  #Iknow I know
-    
+
 #---------------------------------------------------------------------------
 
 def time_trends():
@@ -64,7 +64,7 @@ def time_trends():
     print '\n#----------------------#'
     print 'Finding trends with time'
     print '#----------------------#'
-    
+
     print 'Cleaning previous products'
     for item in glob.glob( os.path.join(MONITOR_DIR,'flagged_bad_??_cci_*.txt') ):
         os.remove(item)
@@ -77,7 +77,7 @@ def time_trends():
 
     for item in glob.glob( os.path.join(MONITOR_DIR,'cumulative_gainmap_*.png') ):
         os.remove(item)
-  
+
 
     anomoly_out = open( os.path.join( MONITOR_DIR,'found_jumps.txt'), 'w' )
     anomoly_out.write('bad locations\n')
@@ -89,7 +89,7 @@ def time_trends():
         for dethv in possible_dethv:
             print '\n\nSegment: %s  HV: %d'%(ending,dethv)
             data_dict = compile_gain_maps(ending,dethv)
-            if not data_dict: 
+            if not data_dict:
                 print 'No measured locations found for this HV setting'
                 continue
             date_list = data_dict['date_list']
@@ -136,7 +136,7 @@ def time_trends():
                     sorted_index = x_fit.argsort()
                     x_fit = x_fit[sorted_index]
                     y_fit = y_fit[sorted_index]
- 
+
                     if len(x_fit) > 10:
                         fit,parameters,success = time_fitting(x_fit,y_fit)
                         if success:
@@ -160,7 +160,7 @@ def time_trends():
                     below_thresh = np.where(y_fit <= MODAL_GAIN_LIMIT)[0]
                     for point_index in below_thresh:
                         n_last_few_points = len(np.where(y_fit[point_index-4:point_index] <= (MODAL_GAIN_LIMIT + .5))[0])
-                        if (n_last_few_points >= 3): 
+                        if (n_last_few_points >= 3):
                             first_bad_index = point_index
                             break
 
@@ -177,7 +177,7 @@ def time_trends():
                         plt.savefig(MONITOR_DIR+'BAD_NOW_'+str(y)+'_'+str(x)+'_'+ending+'_'+str(dethv)+'.png')
                         plt.cla()
                         """
-                        
+
                     elif ( (len(below_thresh)) ):
                         first_bad_index = below_thresh[0]
                         MJD_bad = x_fit[first_bad_index]
@@ -193,7 +193,7 @@ def time_trends():
                         #print '##########################'
                         #print 'WARNING Region project to go bad within 30 days'
                         #print '##########################'
-                        
+
                         #--Cool, but takes FOREVER becuase it makes a lot of plots.  Maybe shrink the range, and exclude already bad ones.--#
                         """
                         if MAKE_PLOTS:
@@ -229,7 +229,7 @@ def time_trends():
             #save_arrays(data_dict, ending, dethv)
         print '\nfinished time trending'
     anomoly_out.close()
- 
+
 #------------------------------------------------------------
 
 def time_fitting(x_fit,y_fit):
@@ -240,7 +240,7 @@ def time_fitting(x_fit,y_fit):
     import numpy as np
     x_fit = np.array( x_fit )
     y_fit = np.array( y_fit )
-    
+
     ###First fit iteration and remove outliers
     POLY_FIT_ORDER = 1
 
@@ -255,7 +255,7 @@ def time_fitting(x_fit,y_fit):
     ###Final Fit
     x_fit_clipped = x_fit[include_index]
     y_fit_clipped = y_fit[include_index]
-    
+
     parameters = scipy.polyfit(x_fit_clipped,y_fit_clipped,POLY_FIT_ORDER)
     fit = scipy.polyval(parameters,x_fit)
 
@@ -298,7 +298,7 @@ def compile_gain_maps(ending,hv_value):
         if current_hv != hv_value:
             continue
 
-        hdu = pyfits.open(gainmap,memmap=False) 
+        hdu = pyfits.open(gainmap,memmap=False)
 
         charge_data = hdu['CHARGE'].data
 
@@ -341,10 +341,10 @@ def get_possible_hv(ending):
     elif ending == FUVB_string:
         segment = 'FUVB'
         hv_column = 'HVLEVELB'
-    
+
     all_hv = list(set(hvtab[segment].data[hv_column]))
     all_hv.sort()
-        
+
     return all_hv
 
 #------------------------------------------------------------
@@ -354,7 +354,7 @@ def check_rapid_changes(x_values,y_values):
 
     An email will be sent if any rapid dip or jump is seen.
     """
-    gain_thresh = 5  
+    gain_thresh = 5
     mjd_thresh = 28
     #Set initial values at ridiculous numbers
     previous_gain = y_values[0]
@@ -378,12 +378,12 @@ def write_bad_pixels(locations,ending,dethv):
    """ Writes out locations flagged as bad to txt files.
 
    Bad locations will be written out in superpixel sized
-   blocks, but in unbinned detector coordinates, 
+   blocks, but in unbinned detector coordinates,
    in the same format used by the gain sag table,
 
    Output table format:
    X   DX   Y   DY  MJD
-   
+
    Parameters
    ----------
    locations: cci object
@@ -413,7 +413,7 @@ def write_bad_pixels(locations,ending,dethv):
        dy = Y_BINNING
        mjd = location[2]
        bpix.write('%5.1i  %3.1i  %4.1i  %3.1i  %5.3f\n'%(x,dx,y,dy,mjd))
-   
+
    bpix.close()
    print 'Bad pixel locations found: %d'%(len(locations))
 
@@ -468,7 +468,7 @@ def write_projection(date_bad_array,cumulative_gain,data_dict,ending,dethv):
 def save_arrays(data_dict, ending, hv_value):
     """Pickles array dictionary for later interactive analysis
 
-    One array is created for each HV setting and detector combo.  
+    One array is created for each HV setting and detector combo.
     """
 
     print 'Pickling array dictionary'

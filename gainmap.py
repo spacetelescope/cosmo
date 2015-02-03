@@ -1,13 +1,13 @@
 """Routine to monitor the modal gain in each pixel as a
-function of time.  Uses COS Cumulative Image (CCI) files 
+function of time.  Uses COS Cumulative Image (CCI) files
 to produce a modal gain map for each time period.  Modal gain
-maps for each period are collated to monitor the progress of 
-each pixel(superpixel) with time.  Pixels that drop below 
+maps for each period are collated to monitor the progress of
+each pixel(superpixel) with time.  Pixels that drop below
 a threshold value are flagged and collected into a
 gain sag table reference file (gsagtab).
 
 The PHA modal gain threshold is set by global variable MODAL_GAIN_LIMIT.
-Allowing the modal gain of a distribution to come within 1 gain bin 
+Allowing the modal gain of a distribution to come within 1 gain bin
 of the threshold results in ~8% loss of flux.  Within
 2 gain bins, ~4%
 3 gain bins, ~2%
@@ -29,6 +29,8 @@ from datetime import datetime
 import gzip
 import pickle
 import glob
+import itertools
+import sqlite3
 
 from astropy.io import fits as pyfits
 import numpy as np
@@ -50,10 +52,10 @@ from constants import *  ## I know this is bad, but shut up.
 
 class CCI_object:
     """Creates a cci_object designed for use in the monitor.
-    
+
     Each COS cumulative image fits file is made into its
     own cci_object where the data is more easily used.
-    Takes a while to make, contains a few large arrays and 
+    Takes a while to make, contains a few large arrays and
     various header keywords from the original file.
     """
     def __init__(self,CCI):
@@ -67,7 +69,7 @@ class CCI_object:
         self.open_fits()
 
     def open_fits(self):
-        """Open CCI file and populated attributes with 
+        """Open CCI file and populated attributes with
         header keywords and data arrays.
         """
         print '\nOpening %s'%(self.input_file_name)
@@ -107,20 +109,20 @@ class CCI_object:
             found_DETHV = hvtab[self.KW_SEGMENT].data[hv_string][dethv_index]
 
             #assert ( found_DETHV == self.DETHV ), 'ERROR:  HVTAB does not agree with DETHV! %d != %d'%(found_DETHV,self.DETHV)
-            if found_DETHV != self.KW_DETHV: 
+            if found_DETHV != self.KW_DETHV:
                print 'WARNING, HVTAB does not agree with DETHV'
                print found_DETHV,self.KW_DETHV
-        
+
         self.file_list = [ line['rootname'] for line in fits[1].data ]
 
-        self.make_c_array() 
+        self.make_c_array()
         #self.make_big_array(fits)
         self.get_counts(self.big_array)
         self.extracted_charge = self.pha_to_coulombs(self.big_array)
 
         self.modal_gain_array = np.zeros((YLEN,XLEN))
         self.modal_gain_width = np.zeros((YLEN,XLEN))
-        
+
         self.KW_cnt00_00 = len(self.big_array[0].nonzero()[0])
         self.KW_cnt01_01 = len(self.big_array[1].nonzero()[0])
         self.KW_cnt02_30 = len(self.big_array[2:31].nonzero()[0])
@@ -141,18 +143,18 @@ class CCI_object:
         Takes a very long time.
         """
         print 'Making 3D array from pha extensions:'
-        big_array = np.array([rebin(extension.data,bins = (Y_BINNING,X_BINNING)) 
+        big_array = np.array([rebin(extension.data,bins = (Y_BINNING,X_BINNING))
                                for i,extension in enumerate(fits[2:]) if os.write(1,'-')])
         os.write(1,'\n')
         self.big_array = big_array
 
     def get_counts(self, in_array):
         """collapse pha arrays to get total counts accross all
-        PHA bins.  
+        PHA bins.
 
         Will also search for and add in accum data if any exists.
         """
-        print 'Making array of cumulative counts'   
+        print 'Making array of cumulative counts'
         out_array = np.sum(in_array, axis=0)
 
         ###Test before implementation
@@ -200,7 +202,7 @@ def rename(input_file, write=True):
         name_split = name.split('_')
 
         dethv = hdu[0].header['DETHV']
-        
+
         time_str = name_split[1]
         filetype = name_split[0][3:]
 
@@ -252,11 +254,11 @@ def make_total_gain( segment, start_mjd=55055, end_mjd=70000, min_hv=163, max_hv
         cci_data = cci_hdu[ 'MOD_GAIN' ].data
 
         dethv = cci_hdu[0].header['DETHV']
- 
+
         index = np.where( cci_data )
         cci_data[index] += .393 * (float(178) - dethv)
 
-        index_both = np.where( (cci_data > 0) & (out_data > 0) ) 
+        index_both = np.where( (cci_data > 0) & (out_data > 0) )
         mean_data = np.mean( [cci_data, out_data], axis=0 )
 
         out_data[index] = cci_data[index]
@@ -271,6 +273,17 @@ def make_all_gainmaps(processors=1):
     """ Main driver for monitoring program.
 
     """
+
+    db = sqlite3.connect(DB_NAME)
+    c = db.cursor()
+    table = 'gain'
+    try:
+        c.execute("""CREATE TABLE %s (cci text, expstart real, seg text, hv int, x int, y int, gain real, counts real, sigma real)""" %
+                  (table))
+        db.commit()
+        db.close()
+    except sqlite3.OperationalError:
+        pass
 
     for ending in [FUVA_string,FUVB_string]:
         CCI_list = glob.glob( CCI_DIR + '*'+ending+'*')
@@ -311,7 +324,7 @@ def add_cumulative_data(ending):
     """
     data_list = glob.glob( os.path.join(MONITOR_DIR,'*%s*gainmap.fits'%ending) )
     data_list.sort()
-    print 'Adding cumulative data to gainmaps for %s'%(ending)    
+    print 'Adding cumulative data to gainmaps for %s'%(ending)
     shape = pyfits.getdata( data_list[0] ,ext=('MOD_GAIN',1)).shape
     total_counts = np.zeros( shape )
     total_charge = np.zeros( shape )
@@ -352,7 +365,7 @@ def process_cci(CCI):
         print "  WARNING CCI not OK: {}".format(CCI)
         return
 
-    if current: make_gainmap(current) 
+    if current: make_gainmap(current)
 
 #------------------------------------------------------------
 
@@ -360,7 +373,7 @@ def perform_fit( distribution, sigma_low=0, sigma_high=10):
     gain_flag = ''
 
     ###Fit in charge space???
-    fit_parameters,success = fit_gaussian( distribution )
+    fit_parameters,success = fit_gaussian(distribution)
     fit_height, fit_center, fit_std = fit_parameters
     variance = fit_std*fit_std
 
@@ -374,7 +387,7 @@ def perform_fit( distribution, sigma_low=0, sigma_high=10):
 
     if ( (center_2 > 31) | (center_2 < 0 ) ): center_2 = fit_center
     if ( (center_3 > 31) | (center_3 < 0 ) ): center_3 = fit_center
-    if ( (fit_center > 31) | (fit_center < 0 ) ): 
+    if ( (fit_center > 31) | (fit_center < 0 ) ):
         #print 'Center way off'
         gain_flag += 'center_'
 
@@ -384,7 +397,7 @@ def perform_fit( distribution, sigma_low=0, sigma_high=10):
     else:
         fit_center = np.median([fit_center,trial_2[1],trial_3[1]])
 
-    if not success: 
+    if not success:
         #print 'ERROR: Gaussian fit failed internal to routine'# at (x,y): (%d,%d).  Setting gain to 0'%(x,y)
         gain_flag += 'failure_'
 
@@ -403,8 +416,8 @@ def perform_fit( distribution, sigma_low=0, sigma_high=10):
 
 #------------------------------------------------------------
 
-def measure_gainimage( data_cube, mincounts=30, phlow=1, phhigh=31 ):
-    """ measure the modal gain at each pixel 
+def measure_gainimage(data_cube, mincounts=30, phlow=1, phhigh=31):
+    """ measure the modal gain at each pixel
 
     returns a 2d gainmap
 
@@ -414,29 +427,33 @@ def measure_gainimage( data_cube, mincounts=30, phlow=1, phhigh=31 ):
     for i in range(0, phlow+1) + range(phhigh, len(data_cube) ):
         data_cube[i] = 0
 
-    #zsize, ysize, xsize = data_cube.shape
-    #out_gain = np.array(map( perform_fit, data_cube.T.reshape( (ysize*xsize,zsize) ) )).reshape( (ysize, xsize) )
+    counts_im = np.sum(data_cube, axis=0)
 
-    collapsed = np.sum( data_cube, axis=0 )
-   
-    out_gain = np.zeros( collapsed.shape )
-    index = np.where( collapsed >= mincounts )
- 
-    if not len(index):
-        return out_gain
+    out_gain = np.zeros(counts_im.shape)
+    out_counts = np.zeros(counts_im.shape)
+    out_std = np.zeros(counts_im.shape)
 
-    measurements = [ (perform_fit( data_cube[:,y,x]) ) 
-                     for y,x in zip( *index ) ]
-    
-    gain_fits = [ item[0] for item in measurements ]
-    gain_flags = [ item[1] for item in measurements ]
+    index_search = np.where(counts_im >= mincounts)
+    if not len(index_search):
+        return out_gain, out_counts, out_std
 
-    for y, x, modal_gain, flag in zip(index[0], index[1], gain_fits, gain_flags):
-        if not flag:
-            out_gain[y, x] = modal_gain
- 
-    return out_gain
-    
+    for y, x in itertools.izip(*index_search):
+        dist = data_cube[:,y,x]
+        (height, gain, std), success = fit_gaussian(dist)
+
+        #-- Immediate rejection conditions
+        if not success:
+            continue
+        if np.isnan(gain):
+            continue
+        if (gain <= 0) or (gain >= 31):
+            continue
+
+        out_gain[y, x] = gain
+        out_counts[y, x] = dist.sum()
+        out_std[y, x] = std
+
+    return out_gain, out_counts, out_std
 
 #------------------------------------------------------------
 
@@ -444,7 +461,7 @@ def make_gainmap(current):
     """Make modal gainmap for cos cumulative image.
 
     Modal gain array is created for each cumulative image and
-    output to pdf and fits files.  The gain distribution is 
+    output to pdf and fits files.  The gain distribution is
     fit and excluded by various parameters.
 
     Parameters
@@ -463,41 +480,70 @@ def make_gainmap(current):
 
     """
 
-    print 
+    print
     print 'Creating Modal Gain Map'
     print 'for %s'%(current.input_file_name)
-    
+
     if not current.KW_NUMFILES:
         print 'CCI contines no data.  Skipping modal gain measurements'
-        write_gainmap( current )
-        return 
+        write_gainmap(current)
+        return
 
     dist_output_name = os.path.join( MONITOR_DIR, current.input_file_name + '_dist.txt')
     print 'Distribution file will be written to: ',dist_output_name
-    dist_file = open( dist_output_name ,'w')
+    dist_file = open(dist_output_name ,'w')
 
     previous_list = get_previous(current)
-
 
     mincounts = 30
     print 'Adding in previous data to distributions'
     for past_CCI in previous_list:
         print past_CCI.input_file_name
         index = np.where( np.sum( current.big_array[1:31], axis=0 ) <= mincounts )
-  
+
         for y, x in zip( *index ):
             prev_dist = past_CCI.big_array[:, y, x]
-            if prev_dist.sum() > mincounts: 
+            if prev_dist.sum() > mincounts:
                 continue
             else:
                 current.big_array[:, y, x] += prev_dist
 
+    gainmap, counts, std = measure_gainimage(current.big_array)
+    current.modal_gain_array = gainmap
 
-    current.modal_gain_array = measure_gainimage( current.big_array )
+    index = np.where(gainmap > 0)
+    #-- update db
+    table = 'gain'
+    with sqlite3.connect(DB_NAME) as db:
+        c = db.cursor()
+
+        for y, x in itertools.izip(*index):
+            gain = gainmap[y, x]
+            dist_counts = counts[y, x]
+            dist_std = std[y, x]
+            segment = current.KW_SEGMENT
+            cci_name = current.input_file_name
+            dethv = current.KW_DETHV
+            expstart = current.KW_EXPSTART
+
+            c.execute("""INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)""" % (table),
+                                                                            (cci_name,
+                                                                             expstart,
+                                                                             segment,
+                                                                             dethv,
+                                                                             x,
+                                                                             y,
+                                                                             gain,
+                                                                             dist_counts,
+                                                                             dist_std))
+
+        db.commit()
+
+
     if current.accum_data:
         current.extracted_charge += current.accum_data*(1.0e-12*10**((modal_gain_array-11.75)/20.5))
 
-    write_gainmap( current )
+    write_gainmap(current)
 
     """
                 if gain_flag == '':
@@ -514,11 +560,11 @@ def make_gainmap(current):
                         print 'Modal gain has been measured to be greater than 21. '
                         print 'PHA upper limit of 23 may cause flux to be lost.'
                         print '##########################'
-                        send_email( subject='CCI high modal gain found', 
+                        send_email( subject='CCI high modal gain found',
                                     message='Modal gain of %3.2f found on segment %s at (x,y,MJD) %d,%d,%5.5f'%(fit_center,current.KW_SEGMENT,x,y,current.KW_EXPSTART) )
                         plot_gaussian_fit(gain_dist,fit_parameters,'WARNING_%s_%s_xy_%d_%d_%5.2f.png'%('g21',current.KW_SEGMENT,x,y,current.KW_EXPSTART))
 
-                    
+
                     ###Used for measuring all the distributions.
                     for item in gain_dist:
                         dist_file.write( str(item)+'   ')
@@ -547,7 +593,7 @@ def populate_keywords_mine():
         fits=pyfits.open(cci_file,mode='update')
         detector=fits[0].header['DETECTOR']
         old_hv = fits[0].header['DETHV']
-        if not detector == 'FUV': 
+        if not detector == 'FUV':
             print ' skipping, NUV'
             fits.close()
             continue
@@ -587,7 +633,7 @@ def gaussian(p,x):
 
 def fit_gaussian(dist, a = None, b = None, c = None):
     '''
-    Fits the input distribution to a gaussian using scipy least-squares routing. 
+    Fits the input distribution to a gaussian using scipy least-squares routing.
 
     Returns the parameters for the fit and SUCCESS/FAILURE True/False flag.
     '''
@@ -599,11 +645,11 @@ def fit_gaussian(dist, a = None, b = None, c = None):
     if not b: b = np.argmax(dist)
     #if not c: c = dist.std()
     if not c: c = 7
- 
+
     p0 = [a, b, c]
     parameters, success = leastsq(err_func, p0, args=(x, dist))
     found_center = parameters[1]
- 
+
     return parameters,success
 
 #------------------------------------------------------------
@@ -611,7 +657,7 @@ def fit_gaussian(dist, a = None, b = None, c = None):
 def get_previous(current_cci):
     """Populates list of CCI objects.
 
-    A list of cci_objects with the same DETHV and within 
+    A list of cci_objects with the same DETHV and within
     NUM_DAYS_PREVIOUS before current_cci will be created.
 
     Parameters
@@ -638,7 +684,7 @@ def get_previous(current_cci):
     segment = current_cci.KW_SEGMENT
     cci_name = current_cci.input_file
 
-    if ( (not NUM_DAYS_PREVIOUS) or (not expstart) ): 
+    if ( (not NUM_DAYS_PREVIOUS) or (not expstart) ):
         print 'None to find'
         return out_list
 
@@ -657,19 +703,19 @@ def get_previous(current_cci):
     current_cci_index = cci_list.index(cci_name)
 
     for cci_file in cci_list[:current_cci_index][::-1]:
-        cci_hv = pyfits.getval(cci_file,'DETHV') 
+        cci_hv = pyfits.getval(cci_file,'DETHV')
         cci_expstart = pyfits.getval(cci_file,'EXPSTART')
 
-        if (cci_expstart < (expstart - NUM_DAYS_PREVIOUS) ): 
+        if (cci_expstart < (expstart - NUM_DAYS_PREVIOUS) ):
             break
 
-        if (cci_hv == dethv): 
+        if (cci_hv == dethv):
             out_list.append( CCI_object(cci_file) )
 
         if len(out_list) >= 2* NUM_DAYS_PREVIOUS:
             print 'Breaking off list.  %d files retrieved'%(2 * NUM_DAYS_PREVIOUS)
             break
-   
+
     print 'Found: %d files'%( len(out_list) )
     print [item.input_file_name for item in out_list]
     print '-----------------------------------'
@@ -683,8 +729,8 @@ def open_cci(cci_name):
     """Opens cumulative image fits file and returns an open
     cci_object.
 
-    Should only work, and only be used, on COS FUV TTAG 
-    CCI's,though never tested for failure.  If output 
+    Should only work, and only be used, on COS FUV TTAG
+    CCI's,though never tested for failure.  If output
     already exists it will return None.
 
     Parameters
@@ -700,7 +746,7 @@ def open_cci(cci_name):
 
     path,cci_file = os.path.split(cci_name)
 
-    if cci_file[-3:] == '.gz': 
+    if cci_file[-3:] == '.gz':
         cci_file = cci_file[:-3]
 
     file_name,ext = os.path.splitext(cci_file)
@@ -718,14 +764,14 @@ def open_cci(cci_name):
 def explode( filename ):
     """ Expand an events list into a 3D data cube of images
     for each PHA value 0-32
-    
+
     """
 
     if isinstance( filename, str ):
         events = pyfits.getdata( filename, ext=('events',1) )
     else:
         raise ValueError( '{} needs to be a filename of a COS corrtag file'.format( filename ) )
-    
+
     out_cube = np.empty( (32, 1024, 16384) )
 
     for phaval in range(0, 32):
@@ -735,10 +781,10 @@ def explode( filename ):
             out_cube[ phaval ] = 0
             continue
 
-        image, y_range, x_range = np.histogram2d( events['YCORR'][index], 
-                                                  events['XCORR'][index], 
-                                                  bins=(1024, 16384), 
-                                                  range=( (0,1023), (0,16384) ) 
+        image, y_range, x_range = np.histogram2d( events['YCORR'][index],
+                                                  events['XCORR'][index],
+                                                  bins=(1024, 16384),
+                                                  range=( (0,1023), (0,16384) )
                                                   )
         out_cube[ phaval ] = image
 
@@ -759,7 +805,7 @@ def write_gainmap( current ):
     #-------Ext=0
     hdu_out=pyfits.HDUList(pyfits.PrimaryHDU())
 
-    hdu_out[0].header.update('TELESCOP','HST')   
+    hdu_out[0].header.update('TELESCOP','HST')
     hdu_out[0].header.update('INSTRUME','COS')
     hdu_out[0].header.update('DETECTOR','FUV')
     hdu_out[0].header.update('OPT_ELEM','ANY')
@@ -816,7 +862,7 @@ def write_gainmap( current ):
     #-------EXT=7
     hdu_out.append(pyfits.ImageHDU(data=np.sum( current.big_array[2:31],axis=0) ))
     hdu_out[7].header.update('EXTNAME','cnt02_30')
- 
+
     #-------EXT=8
     hdu_out.append(pyfits.ImageHDU(data=current.big_array[31]))
     hdu_out[8].header.update('EXTNAME','cnt31_31')
@@ -852,6 +898,6 @@ def plot_gaussian_fit(gain_dist,fit_parameters,title):
     ax.set_title('%3.2f %3.2f %3.2f'%(fit_parameters[0],fit_parameters[1],fit_parameters[2]))
 
     fig.savefig( os.path.join(MONITOR_DIR,title) )
-    plt.close(fig)   
-    
+    plt.close(fig)
+
 #------------------------------------------------------------

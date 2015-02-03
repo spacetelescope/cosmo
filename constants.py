@@ -9,7 +9,7 @@ __email__ = 'ely@stsci.edu'
 __status__ = 'Active'
 
 __all__ = ['X_UNBINNED',
-           'Y_UNBINNED', 
+           'Y_UNBINNED',
            'X_BINNING',
            'Y_BINNING',
            'XLEN',
@@ -24,8 +24,8 @@ __all__ = ['X_UNBINNED',
            'FUVB_string',
            'HVTAB',
            'MODAL_GAIN_LIMIT',
-           'TIMESTAMP'
-           ]
+           'TIMESTAMP',
+           'DB_NAME']
 
 import os
 import time
@@ -55,6 +55,7 @@ MONITOR_DIR = '/grp/hst/cos/Monitors/CCI/'
 #MONITOR_DIR = '/grp/hst/cos/Monitors/CCI_DAVE/'
 TEST_DIR = os.path.join( MONITOR_DIR, 'test_suite')
 WEBPAGE_DIR = '/grp/webpages/COS/cci/'
+DB_NAME = '/grp/hst/cos/Monitors/DB/cci.db'
 
 FUVA_string = 'lft00'
 FUVB_string = 'lft01'
@@ -67,5 +68,3 @@ MODAL_GAIN_LIMIT = 3
 
 date_time = str(datetime.now())
 TIMESTAMP = (date_time.split()[0]+'T'+date_time.split()[1] ).replace(':','-')
-
-
