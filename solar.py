@@ -2,6 +2,7 @@
 
 """
 
+from astropy.io import ascii
 import datetime
 import numpy as np
 import os
@@ -21,7 +22,7 @@ def grab_solar_files(file_dir):
     for item in sorted(ftp.nlst()):
         if (item.endswith('_DSD.txt')):
             year = int(item[:4])
-            if year >= 1997:
+            if year >= 2000:
                 print 'Retrieving: {}'.format(item)
                 destination = os.path.join(file_dir, item)
                 ftp.retrbinary('RETR {}'.format(item), open(destination, 'wb').write)
@@ -35,14 +36,10 @@ def compile_txt( file_dir ):
     input_list = glob.glob(os.path.join(file_dir, '*DSD.txt'))
     input_list.sort()
     for item in input_list:
-        try:
-            data = np.genfromtxt(item, skiprows=13, dtype=None)
-        except IOError:
-            continue
-        except StopIteration:
-            continue
+        print 'Reading {}'.format(item)        
+        data = ascii.read(item, data_start=1, comment='[#,:]')
         for line in data:
-            line_date = Time('{}-{}-{} 00:00:00'.format(line[0], line[1], line[2]),
+            line_date = Time('{}-{}-{} 00:00:00'.format(line['col1'], line['col2'], line['col3']),
                              scale='utc', format='iso').mjd
             line_flux = line[3]
             if line_flux > 0:
