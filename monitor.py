@@ -294,6 +294,7 @@ def populate_db():
     try:
         c.execute("""CREATE TABLE %s (obsname text, abs_time real, start real, ul_x real, ul_y real, lr_x real, lr_y real)""" %
                   (table))
+        c.execute("""CREATE INDEX dataset ON measurements (obsname)""") 
         db.commit()
         db.close()
     except sqlite3.OperationalError:
