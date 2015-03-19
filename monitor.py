@@ -214,7 +214,7 @@ def find_files():
                                  opt_elem, 
                                  cenwave, 
                                  fppos,
-				 found))
+                                 found))
 
             elif infile.endswith('_rawacq.fits.gz'):
                 if infile in checked:
@@ -250,7 +250,7 @@ def find_files():
                              opt_elem,
                              cenwave,
                              fppos,
-                             'N/A'))
+                             False))
 
     data = list(set(data))
     data.sort()
@@ -296,7 +296,7 @@ def write_data(data):
     opt_elem_col = pyfits.Column('opt_elem', 'A24', 'pixel', array=opt_elem)
     cenwave_col = pyfits.Column('cenwave', 'J', 'pixel', array=cenwave)
     fppos_col = pyfits.Column('fppos', 'J', 'pixel', array=fppos)
-    found_col = pyfits.Column('found', 'A5', 'bool', array=found)
+    found_col = pyfits.Column('found', 'L', 'bool', array=found)
 
     tab = pyfits.new_table([dataset_col, 
                             detector_col, 
