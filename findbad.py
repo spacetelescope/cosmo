@@ -26,17 +26,133 @@ import shutil
 import gzip
 import pickle
 import glob
+import sqlite3
 import sys
 
 import pyfits
 import numpy as np
 import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
+#from matplotlib.backends.backend_pdf import PdfPages
 import scipy
 from scipy.optimize import leastsq, newton, curve_fit
 
 from ..support import rebin,init_plots,Logger,enlarge,progress_bar,send_email
 from constants import *  #Iknow I know
+
+#---------------------------------------------------------------------------
+
+def time_trends_db():
+    print '\n#----------------------#'
+    print 'Finding trends with time'
+    print '#----------------------#'
+
+    print 'Cleaning previous products'
+    for item in glob.glob( os.path.join(MONITOR_DIR,'flagged_bad_??_cci_*.txt') ):
+        os.remove(item)
+
+    for item in glob.glob( os.path.join(MONITOR_DIR,'*.pkl') ):
+        os.remove(item)
+
+    for item in glob.glob( os.path.join(MONITOR_DIR,'proj_bad_??_cci*.fits') ):
+        os.remove(item)
+
+    for item in glob.glob( os.path.join(MONITOR_DIR,'cumulative_gainmap_*.png') ):
+        os.remove(item)
+
+    print "Connecting to the DB"
+    with sqlite3.connect(DB_NAME) as db:
+        #-- New table to store flagged times
+        c = db.cursor()
+        c.execute("""DROP TABLE flagged""")
+        c.execute("""CREATE TABLE flagged (mjd real, seg text, hv int, x int, y int)""")
+        c.execute("""CREATE INDEX position ON flagged (x,y)""")
+        db.commit()
+        #--
+
+        c = db.cursor()
+        c.execute("""SELECT DISTINCT seg FROM gain""")
+        all_segments = [str(item[0]) for item in c]
+
+        for segment in all_segments:
+            c.execute("""SELECT DISTINCT hv FROM gain WHERE seg='%s'""" % (segment))
+
+            all_dethv = [item[0] for item in c]
+            print "For {} found hvlevels: {}".format(segment, all_dethv)
+
+            for hvlevel in all_dethv:
+                print segment, hvlevel
+                c.execute("""SELECT DISTINCT x,y FROM gain WHERE seg='%s' AND hv='%s' AND gain<=3 AND counts>=60""" % (segment, hvlevel))
+                all_coords = [item for item in c]
+
+                bad_locations = []
+
+                plotfile = os.path.join(MONITOR_DIR, 'flagged_{}_{}.pdf'.format(segment, hvlevel))
+                print plotfile
+                with open('blank', 'w') as pdf:#PdfPages(plotfile) as pdf:
+
+                    for x, y in all_coords:
+                        c.execute("""SELECT gain,counts,sigma,expstart FROM gain WHERE seg='%s' AND hv='%s' AND x='%s' AND y='%s'""" % (segment, hvlevel, x, y))
+
+                        all_gain = []
+                        all_counts = []
+                        all_std = []
+                        all_expstart = []
+                        for item in c:
+                            all_gain.append(item[0])
+                            all_counts.append(item[1])
+                            all_std.append(item[2])
+                            all_expstart.append(item[3])
+
+                        all_gain = np.array(all_gain)
+                        all_expstart = np.array(all_expstart)
+
+                        below_thresh = np.where(all_gain <=3)[0]
+
+                        if len(below_thresh):
+                            MJD_bad = round(all_expstart[below_thresh].min(), 3)
+                            bad_locations.append((x, y, MJD_bad))
+                            '''
+                            if hvlevel > 160:
+                            	fig = plt.figure(figsize=(16, 6))
+                            	ax = fig.add_subplot(3, 1, 1)
+                            	ax.set_title('{} {}'.format(x, y))
+
+                            	ax.plot(all_expstart, all_gain, marker='o', color='b')
+                            	ax.axhline(y=3, color='r', lw=2, ls='--', alpha=.5, zorder=0)
+                            	ax.axvline(x=MJD_bad, color='r', lw=2, alpha=.5, zorder=0)
+
+                            	ax2 = fig.add_subplot(3, 1, 2)
+                            	ax2.plot(all_expstart, all_counts, marker='o')
+
+
+                            	ax3 = fig.add_subplot(3, 1, 3)
+                            	ax3.plot(all_expstart, all_std, marker='o')
+
+                            	#ifig.set_rasterized(True)
+                            	fig.savefig(os.path.join(MONITOR_DIR, 'flagged_{}_{}_{}_{}.pdf'.format(segment, hvlevel, x, y)),
+                                	        bbox_inches='tight',
+                                        	dip=300)
+                            	plt.close(fig)
+                            	#pdf.savefig(fig, bbox_inches='tight', dpi=400)
+                            '''
+                            print "inserting {} {} {} {} {}".format(segment, hvlevel, x, y, MJD_bad)
+                            print all_gain, all_counts
+                            c.execute("""INSERT INTO flagged VALUES (?,?,?,?,?)""", (MJD_bad,
+                                                                                     segment,
+                                                                                     hvlevel,
+                                                                                     x,
+                                                                                     y))
+
+                db.commit()
+
+                if segment == 'FUVA':
+                    ending = FUVA_string
+                elif segment == 'FUVB':
+                    ending = FUVB_string
+
+                write_bad_pixels(bad_locations, ending, hvlevel)
 
 #---------------------------------------------------------------------------
 
@@ -83,7 +199,7 @@ def time_trends():
     anomoly_out.write('bad locations\n')
 
 
-    for ending in [FUVA_string,FUVB_string]:
+    for ending in [FUVA_string, FUVB_string]:
         possible_dethv = get_possible_hv(ending)
 
         for dethv in possible_dethv:

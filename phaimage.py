@@ -24,7 +24,7 @@ from gainmap import make_total_gain
 
 class Phaimage:
     """Creates a Phaimage object designed for use in the monitor.
-   
+
     """
 
     def __init__(self,gainmap):
@@ -32,7 +32,7 @@ class Phaimage:
 
         self.out_fits = self.outfile(gainmap)
         self.a_file, self.b_file = self.inputs(gainmap)
- 
+
         self.open_fits()
 
         self.a_image = self.fill_gaps( self.a_image, 'FUVA', self.DETHVA )
@@ -43,13 +43,13 @@ class Phaimage:
 
     @classmethod
     def outfile(cls, gainmap):
-        """ return the pulse height image name from the input gainmap 
+        """ return the pulse height image name from the input gainmap
 
         """
 
         gainmap_path, gainmap_name = os.path.split(gainmap)
         segment = pyfits.getval(gainmap, 'SEGMENT')
-        
+
         if segment == 'FUVA':
             seg_string = FUVA_string
         elif segment == 'FUVB':
@@ -62,13 +62,13 @@ class Phaimage:
 
     @classmethod
     def inputs(cls, gainmap):
-        """ return the pulse height image name from the input gainmap 
+        """ return the pulse height image name from the input gainmap
 
         """
 
         gainmap_path, gainmap_name = os.path.split(gainmap)
         segment = pyfits.getval(gainmap, 'SEGMENT')
-        
+
         both_inputs = [gainmap]
 
         if segment == 'FUVA':
@@ -83,7 +83,7 @@ class Phaimage:
 
 
     def open_fits(self):
-        """Open CCI file and populated attributes with 
+        """Open CCI file and populated attributes with
         header keywords and data arrays.
         """
 
@@ -107,9 +107,9 @@ class Phaimage:
         """ Fill in gaps with available accumulated and extrapolated maps """
 
         dethv = int( dethv )
-        
+
         extname = '{}INIT'.format( segment )
-        fill_data = pyfits.getdata( os.path.join( MONITOR_DIR, 'total_gain.fits' ), 
+        fill_data = pyfits.getdata( os.path.join( MONITOR_DIR, 'total_gain.fits' ),
                                     ext=(extname, 1 ) )
 
         fill_data = rebin( fill_data, bins=(Y_BINNING, X_BINNING) ) / float((Y_BINNING * X_BINNING))
@@ -129,14 +129,14 @@ class Phaimage:
 
     def make_phaimages(self):
         """Creates *_phf.fits reference files for each CCI period
- 
+
         """
 
         self.a_low = self.set_limits( self.a_image, 'low' )
         self.a_high = self.set_limits( self.a_image, 'high' )
         self.b_low = self.set_limits( self.b_image, 'low' )
         self.b_high = self.set_limits( self.b_image, 'high' )
-     
+
         assert not np.any( self.a_low < 0 ), 'low image contains negative values'
         assert not np.any( self.a_high > 23 ), 'high image contains too high values'
         assert not np.any( self.b_low < 0 ), 'low image contains negative values'
@@ -174,7 +174,7 @@ class Phaimage:
         """
 
         out_fits = out_fits or self.out_fits
- 
+
         # data should be unsigned integer as data can only be 0-31.  np dtype == 'u1'
         pha_low_a = enlarge( self.a_low.astype( np.dtype('u1') ) , y=Y_BINNING, x=X_BINNING )
         pha_high_a = enlarge( self.a_high.astype( np.dtype('u1') ), y=Y_BINNING, x=X_BINNING )
@@ -244,7 +244,7 @@ def make_phaimages(clobber=False):
 
     for gainmap in all_gainmaps:
         if os.path.exists( Phaimage.outfile(gainmap) ) and not clobber:
-            print out_fits, 'Already exists. Skipping'
+            print Phaimage.outfile(gainmap), 'Already exists. Skipping'
         else:
             inputs = Phaimage.inputs(gainmap)
 

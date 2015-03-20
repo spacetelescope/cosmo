@@ -1,13 +1,13 @@
 """Routine to monitor the modal gain in each pixel as a
-function of time.  Uses COS Cumulative Image (CCI) files 
+function of time.  Uses COS Cumulative Image (CCI) files
 to produce a modal gain map for each time period.  Modal gain
-maps for each period are collated to monitor the progress of 
-each pixel(superpixel) with time.  Pixels that drop below 
+maps for each period are collated to monitor the progress of
+each pixel(superpixel) with time.  Pixels that drop below
 a threshold value are flagged and collected into a
 gain sag table reference file (gsagtab).
 
 The PHA modal gain threshold is set by global variable MODAL_GAIN_LIMIT.
-Allowing the modal gain of a distribution to come within 1 gain bin 
+Allowing the modal gain of a distribution to come within 1 gain bin
 of the threshold results in ~8% loss of flux.  Within
 2 gain bins, ~4%
 3 gain bins, ~2%
@@ -27,6 +27,7 @@ import time
 from datetime import datetime
 import glob
 import sys
+import sqlite3
 
 import pyfits
 import numpy as np
@@ -42,12 +43,13 @@ from constants import *  #Shut yo face
 def main(run_regress=False):
     """ Main driver for monitoring program.
     """
-    new_gsagtab = make_gsagtab()
-    populate_down( new_gsagtab )
+    new_gsagtab = make_gsagtab_db()
+    #new_gsagtab = make_gsagtab()
+    #populate_down( new_gsagtab )
     old_gsagtab = get_cdbs_gsagtab()
 
     compare_gsag(new_gsagtab,old_gsagtab)
-    
+
     if run_regress:
         test_gsag_calibration(new_gsagtab)
     else:
@@ -105,14 +107,14 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
 
         only_new_hv = new_hv.difference( old_hv )
         only_old_hv = old_hv.difference( new_hv )
-        
+
         both_hv = list( new_hv.union( old_hv ) )
         both_hv.sort()
 
         print '#---',segment,'---#'
 
         #assert ( len(only_old_hv) == 0 ),'There is an HV value found in the old table that is not found in the new.'
-        if len(only_old_hv) > 0: 
+        if len(only_old_hv) > 0:
             print 'WARNING: There is an HV value found in the old table that is not found in the new.'
 
         if len( only_new_hv ):
@@ -124,14 +126,14 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
 
         for hv in both_hv:
             report_file.write( '#----- %d \n'%(hv) )
-        
+
             old_ext_index = get_index( old, segment, hv )
             new_ext_index = get_index( new, segment, hv )
-            
+
             if old_ext_index == -1:
                 print '%s %d: not found in old table'%( segment, hv )
                 continue
-            
+
             if new_ext_index == -1:
                 print 'WARNING: %s %d: not found in new table'%( segment, hv )
                 continue
@@ -141,10 +143,10 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
                 new_ext = new[ new_ext_index ]
 
                 #Get (y,x,mjd) triple for each flagged region.  Assumes binning is the same
-                old_regions = set( [ (y,x,mjd) for x,y,mjd in 
+                old_regions = set( [ (y,x,mjd) for x,y,mjd in
                                      zip(old_ext.data['ly'], old_ext.data['lx'], old_ext.data['Date']) ] )
 
-                new_regions = set( [ (y,x,mjd) for x,y,mjd in 
+                new_regions = set( [ (y,x,mjd) for x,y,mjd in
                                      zip(new_ext.data['ly'], new_ext.data['lx'], new_ext.data['Date']) ] )
 
                 #Strip triple down to (y,x) coordinate pair to check just locations
@@ -152,7 +154,7 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
                 new_coords = set( [ (item[0],item[1]) for item in new_regions ] )
 
                 only_old_coords = old_coords.difference( new_coords )
-                only_new_coords = new_coords.difference( old_coords ) 
+                only_new_coords = new_coords.difference( old_coords )
                 both_coords = old_coords.union( new_coords )
 
                 N_old = len(only_old_coords)
@@ -189,7 +191,7 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
                         print 'MJD difference of %5.7f days'%(mjd_difference)
                         print 'at (y,x):  (%d,%d)'%coord_pair
                         report_file.write( 'MJD difference of %5.7f days at (y,x):  (%d,%d)'%(mjd_difference,coord_pair[0],coord_pair[1]) )
-                            
+
 #------------------------------------------------------------
 
 def test_gsag_calibration(gsagtab):
@@ -199,7 +201,7 @@ def test_gsag_calibration(gsagtab):
     """
     print '#-------------------------#'
     print 'Calibrating with %s'%(gsagtab)
-    print '#-------------------------#' 
+    print '#-------------------------#'
 
     os.environ['lref'] = '/grp/hst/cdbs/lref/'
     os.environ['testdir'] = TEST_DIR
@@ -230,7 +232,7 @@ def test_gsag_calibration(gsagtab):
 
     if len(failed_runs):
         send_email(subject='GSAGTAB Calibration Error',message='Failed calibration\n\n'+'\n'+'\n'.join(failed_runs) )
-        
+
     ###Now run some quick test.
 
 #------------------------------------------------------------
@@ -330,10 +332,10 @@ def get_coords(txt):
     """
     coords = []
     lines = []
-    try: 
+    try:
         lines = np.genfromtxt(txt, dtype=None, skiprows=2)
         coords = [(line[0],line[1]) for line in lines]
-    except: 
+    except:
         pass
 
     return coords,lines
@@ -344,12 +346,12 @@ def populate_down(gsag_file):
     """Copies found locations from one HV level to each lower
     HV level if the coords have not already been flagged.
 
-    A regions will always be flagged at the MJD found in that 
-    HV setting, if it has been found.  Else, the MJD will be 
+    A regions will always be flagged at the MJD found in that
+    HV setting, if it has been found.  Else, the MJD will be
     the time when the region was flagged in the higher HV
     setting. In the event we go back down to a lower voltage,
-    and a region is newly flagged as bad in that HV, it is 
-    possible that the MJD would change from one gsagtab to 
+    and a region is newly flagged as bad in that HV, it is
+    possible that the MJD would change from one gsagtab to
     the next.  This does not pose a problem for data as no
     data will have been taken at the lower HV in the
     intervening time.
@@ -359,7 +361,7 @@ def populate_down(gsag_file):
     print 'Populating flagged regions to lower HV settings'
     print '#---------------------------------------------#'
     gsagtab = pyfits.open(gsag_file)
-    for segment,hv_keyword in zip( ['FUVA','FUVB'],['HVLEVELA','HVLEVELB'] ):
+    for segment,hv_keyword in zip( ['FUVA','FUVB'], ['HVLEVELA','HVLEVELB'] ):
         all_hv = [ (ext.header[hv_keyword],i+1) for i,ext in enumerate(gsagtab[1:]) if ext.header['segment'] == segment ]
         all_hv.sort()
 
@@ -369,10 +371,11 @@ def populate_down(gsag_file):
             N_changes = 0
 
             for higher_dethv,higher_ext in all_hv:
-                if not (higher_dethv > current_dethv): continue
+                if not (higher_dethv > current_dethv):
+                    continue
                 higher_lines = [ tuple(line) for line in gsagtab[higher_ext].data[0].array ]
                 higher_coords= [ (line[1],line[2]) for line in higher_lines ]
-                
+
                 for coord, line in zip(higher_coords,higher_lines):
                     if not (coord in current_coords):
                         # If coordinate from higher HV is not in current HV, append
@@ -381,7 +384,7 @@ def populate_down(gsag_file):
                         N_changes += 1
 
                     else:
-                        # If coordinated from higher HV is in current HV, 
+                        # If coordinated from higher HV is in current HV,
                         # check to see if MJD is earlier.  If yes, take new value.
                         # MJD is first element in tuple e.g. line[0]
                         index = current_coords.index( coord )
@@ -392,21 +395,22 @@ def populate_down(gsag_file):
                             print '--Earlier time found',line[0],'-->',current_line[0]
                             N_changes += 1
 
-            current_lines.sort()
-            date = [ line[0] for line in current_lines ]
-            lx = [ line[1] for line in current_lines ] 
-            ly = [ line[2] for line in current_lines ]
-            dx = [ line[3] for line in current_lines ]
-            dy = [ line[4] for line in current_lines ] 
-            dq = [ line[5] for line in current_lines ]
+
             if N_changes:
                 print 'Updating %s/%d ext:%d with %d changes'%(segment,current_dethv,current_ext,N_changes)
+                current_lines.sort()
+                date = [ line[0] for line in current_lines ]
+                lx = [ line[1] for line in current_lines ]
+                ly = [ line[2] for line in current_lines ]
+                dx = [ line[3] for line in current_lines ]
+                dy = [ line[4] for line in current_lines ]
+                dq = [ line[5] for line in current_lines ]
+                gsagtab[current_ext] = gsagtab_extension(date, lx, dx, ly, dy, dq, current_dethv, hv_keyword, segment)
             else:
                 print 'No Changes to %s/%d ext:%d '%(segment,current_dethv,current_ext)
-            gsagtab[current_ext] = gsagtab_extension(date, lx, dx, ly, dy, dq, current_dethv, hv_keyword, segment)
 
     gsagtab.writeto(gsag_file,clobber=True)
-    
+
 #------------------------------------------------------------
 
 def gsagtab_extension(date, lx, dx, ly, dy, dq, dethv, hv_string, segment):
@@ -424,7 +428,7 @@ def gsagtab_extension(date, lx, dx, ly, dy, dq, dethv, hv_string, segment):
     dy_col = pyfits.Column('dy','J','pixel',array=dy)
     dq_col = pyfits.Column('DQ','J','',array=dq)
     tab = pyfits.new_table([date_col,lx_col,ly_col,dx_col,dy_col,dq_col])
-    
+
     tab.header.add_comment(' ',after='TFIELDS')
     tab.header.add_comment('  *** Column formats ***',after='TFIELDS')
     tab.header.add_comment(' ',after='TFIELDS')
@@ -479,8 +483,8 @@ def make_gsagtab():
     out_fits = os.path.join(MONITOR_DIR,'gsag_%s.fits'%(TIMESTAMP) )
     input_list = glob.glob(os.path.join(MONITOR_DIR,'flagged_bad_??_cci_???.txt'))
     input_list.sort()
-    
-    #Populates regions found in HV == X, Segment Y, to any 
+
+    #Populates regions found in HV == X, Segment Y, to any
     #extensions of lower HV for same segment.
 
     hdu_out=pyfits.HDUList(pyfits.PrimaryHDU())
@@ -493,12 +497,12 @@ def make_gsagtab():
     hdu_out[0].header.update('COSCOORD','USER')
     hdu_out[0].header.update('VCALCOS','2.0')
     hdu_out[0].header.update('USEAFTER','May 11 2009 00:00:00')
-    
+
     today_string = date_string(datetime.now())
     hdu_out[0].header.update('PEDIGREE','INFLIGHT 25/05/2009 %s'%( today_string  ))
     hdu_out[0].header.update('FILETYPE','GAIN SAG REFERENCE TABLE')
 
-    descrip_string = 'Gives locations of gain-sag regions as of %s'%( str(datetime.now().date() ))     
+    descrip_string = 'Gives locations of gain-sag regions as of %s'%( str(datetime.now().date() ))
     while len(descrip_string) < 67:
         descrip_string += '-'
     hdu_out[0].header.update('DESCRIP',descrip_string )
@@ -512,9 +516,9 @@ def make_gsagtab():
     hdu_out[0].header.add_history('')
     hdu_out[0].header.add_history('A region will be flagged as bad when the detected')
     hdu_out[0].header.add_history('flux is found to drop by 5%.  This happens when')
-    hdu_out[0].header.add_history('the measured modal gain of a region falls to ')  
+    hdu_out[0].header.add_history('the measured modal gain of a region falls to ')
     hdu_out[0].header.add_history('%d given current lower pulse height filtering.'%(MODAL_GAIN_LIMIT) )
-    
+
     possible_hv_strings = ['000','100'] + map(str,range(142,179))
 
     for segment_string in [FUVA_string,FUVB_string]:
@@ -571,8 +575,123 @@ def make_gsagtab():
             tab = gsagtab_extension( date,lx,dx,ly,dy,dq,hv_level,HVLEVEL_string,segment)
 
             hdu_out.append(tab)
-  
+
     hdu_out.writeto(out_fits,clobber=True)
+    print 'WROTE: GSAGTAB to %s'%(out_fits)
+    return out_fits
+
+#------------------------------------------------------------
+
+def make_gsagtab_db():
+    """Create GSAGTAB from flagged locations.
+
+    Grabs txt files of flagged bad regions from MONITOR_DIR
+    and combines them into a gsagtab.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
+
+    Products
+    --------
+    new_gsagtab.fits
+    """
+    print 'Making new GSAGTAB'
+    out_fits = os.path.join(MONITOR_DIR, 'gsag_%s.fits'%(TIMESTAMP))
+    #Populates regions found in HV == X, Segment Y, to any
+    #extensions of lower HV for same segment.
+
+    hdu_out=pyfits.HDUList(pyfits.PrimaryHDU())
+    date_time = str(datetime.now())
+    date_time = date_time.split()[0]+'T'+date_time.split()[1]
+    hdu_out[0].header.update('DATE',date_time,'Creation UTC (CCCC-MM-DD) date')
+    hdu_out[0].header.update('TELESCOP','HST')
+    hdu_out[0].header.update('INSTRUME','COS')
+    hdu_out[0].header.update('DETECTOR','FUV')
+    hdu_out[0].header.update('COSCOORD','USER')
+    hdu_out[0].header.update('VCALCOS','2.0')
+    hdu_out[0].header.update('USEAFTER','May 11 2009 00:00:00')
+
+    today_string = date_string(datetime.now())
+    hdu_out[0].header.update('PEDIGREE','INFLIGHT 25/05/2009 %s'%( today_string  ))
+    hdu_out[0].header.update('FILETYPE','GAIN SAG REFERENCE TABLE')
+
+    descrip_string = 'Gives locations of gain-sag regions as of %s'%( str(datetime.now().date() ))
+    while len(descrip_string) < 67:
+        descrip_string += '-'
+    hdu_out[0].header.update('DESCRIP',descrip_string )
+    hdu_out[0].header.update('COMMENT',"= 'This file was created by J. Ely'")
+    hdu_out[0].header.add_history('Flagged regions in higher voltages have been backwards populated')
+    hdu_out[0].header.add_history('to all lower HV levels for the same segment.')
+    hdu_out[0].header.add_history('')
+    hdu_out[0].header.add_history('A region will be flagged as bad when the detected')
+    hdu_out[0].header.add_history('flux is found to drop by 5%.  This happens when')
+    hdu_out[0].header.add_history('the measured modal gain of a region falls to ')
+    hdu_out[0].header.add_history('%d given current lower pulse height filtering.'%(MODAL_GAIN_LIMIT) )
+
+    possible_hv_strings = ['000', '100'] + map(str, range(142,179))
+
+    #--working on it
+    print "Connecting"
+    with sqlite3.connect(DB_NAME) as db:
+        c = db.cursor()
+        c.execute("""SELECT DISTINCT seg FROM gain""")
+
+        segments = [item[0] for item in c]
+
+        print "looping over segments"
+        for seg in segments:
+            hvlevel_string = 'HVLEVEL' + seg[-1].upper()
+
+            for hv_level in possible_hv_strings:
+                date = []
+                lx = [] 
+                dx = []
+                ly = []
+                dy = []
+                dq = [] 
+
+                hv_level = int(hv_level)
+                print seg, hv_level
+                c.execute("""SELECT DISTINCT x,y FROM flagged WHERE seg='%s' and hv>='%s'""" %(seg, hv_level))
+                coords = [(item[0], item[1]) for item in c]
+
+                for x,y in coords:
+                    c.execute("""SELECT MJD FROM flagged WHERE seg='%s' AND x='%s' and y='%s' and hv>='%s'""" % (seg, x, y, hv_level))
+                    flagged_dates = [item[0] for item in c]
+                    if len(flagged_dates):
+                        bad_date = min(flagged_dates)
+                    else:
+                        continue
+
+
+                    lx.append(x*X_BINNING)
+                    dx.append(X_BINNING)
+                    ly.append(y*Y_BINNING)
+                    dy.append(Y_BINNING)
+                    date.append(bad_date)
+                    dq.append(8192)
+
+                if not len(lx):
+                    #Extension tables cannot have 0 entries, a
+                    #region of 0 extent centered on (0,0) is
+                    #sufficient to prevent CalCOS crash.
+                    date.append(0)
+                    lx.append(0)
+                    ly.append(0)
+                    dx.append(0)
+                    dy.append(0)
+                    dq.append(8192)
+
+                print len(date), ' found bad regions'
+                tab = gsagtab_extension(date, lx, dx, ly, dy, dq, hv_level, hvlevel_string, seg)
+                hdu_out.append(tab)
+
+    hdu_out.writeto(out_fits, clobber=True)
     print 'WROTE: GSAGTAB to %s'%(out_fits)
     return out_fits
 

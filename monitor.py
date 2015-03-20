@@ -165,7 +165,7 @@ def make_cumulative_plots():
                               y=1024/fits['PROJGAIN'].header['NAXIS2'],
                               x=16384/fits['PROJGAIN'].header['NAXIS1'] )
         cax = ax.imshow( gain_image, aspect='auto')
-        #plot_flagged(ax, segment, dethv, color='white')
+        plot_flagged(ax, segment, dethv, color='white')
         ax.set_xlim(0, 16384)
         ax.set_ylim(0, 1024)
         ax.grid(False)
@@ -260,15 +260,16 @@ def main( args ):
     print
 
 
-    gainmap.make_all_gainmaps(args.n_processors)
+    #gainmap.make_all_gainmaps(args.n_processors)
 
-    phaimage.make_phaimages(True)
+    #phaimage.make_phaimages(False)
 
-    findbad.time_trends()
+    findbad.time_trends_db()
+    #findbad.time_trends()
 
     gsag.main(args.regress)
 
-    make_quicklooks()
+    make_quicklooks(True)
 
     make_cumulative_plots()
 

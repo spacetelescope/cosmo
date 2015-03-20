@@ -280,6 +280,7 @@ def make_all_gainmaps(processors=1):
     try:
         c.execute("""CREATE TABLE %s (cci text, expstart real, seg text, hv int, x int, y int, gain real, counts real, sigma real)""" %
                   (table))
+        c.execute("""CREATE INDEX coord ON %s (x,y)""" % (table))
         db.commit()
         db.close()
     except sqlite3.OperationalError:
@@ -448,6 +449,8 @@ def measure_gainimage(data_cube, mincounts=30, phlow=1, phhigh=31):
             continue
         if (gain <= 0) or (gain >= 31):
             continue
+        if (out_std <= 0) or (out_std >= 2):
+            continue
 
         out_gain[y, x] = gain
         out_counts[y, x] = dist.sum()
@@ -488,10 +491,6 @@ def make_gainmap(current):
         print 'CCI contines no data.  Skipping modal gain measurements'
         write_gainmap(current)
         return
-
-    dist_output_name = os.path.join( MONITOR_DIR, current.input_file_name + '_dist.txt')
-    print 'Distribution file will be written to: ',dist_output_name
-    dist_file = open(dist_output_name ,'w')
 
     previous_list = get_previous(current)
 
@@ -564,17 +563,6 @@ def make_gainmap(current):
                                     message='Modal gain of %3.2f found on segment %s at (x,y,MJD) %d,%d,%5.5f'%(fit_center,current.KW_SEGMENT,x,y,current.KW_EXPSTART) )
                         plot_gaussian_fit(gain_dist,fit_parameters,'WARNING_%s_%s_xy_%d_%d_%5.2f.png'%('g21',current.KW_SEGMENT,x,y,current.KW_EXPSTART))
 
-
-                    ###Used for measuring all the distributions.
-                    for item in gain_dist:
-                        dist_file.write( str(item)+'   ')
-                    dist_file.write( str(fit_modal_gain)+ '   ')
-                    dist_file.write( str(fit_gain_width)+ '   ')
-                    dist_file.write( str(current.KW_EXPSTART) + '   ')
-                    dist_file.write( str(current.KW_SEGMENT) + '   ')
-                    dist_file.write( str(x) + '   ')
-                    dist_file.write( str(y) + '   ')
-                    dist_file.write( '\n')
                 else:
                     plot_gaussian_fit(gain_dist,fit_parameters,'WARNING_%s_%s_xy_%d_%d_%5.2f.png'%(gain_flag,current.KW_SEGMENT,x,y,current.KW_EXPSTART))
     """
