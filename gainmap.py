@@ -161,9 +161,9 @@ class CCI_object:
         ###Should only effect counts and charge extensions.
         ### no implications for modal gain arrays or measurements
         if self.KW_SEGMENT == 'FUVA':
-            accum_name = self.input_file_name.replace('-00_cci','-02_cci')  ##change when using OPUS data
+            accum_name = self.input_file_name.replace('00_','02_')  ##change when using OPUS data
         elif self.KW_SEGMENT == 'FUVB':
-            accum_name = self.input_file_name.replace('-01_cci','-03_cci')  ##change when using OPUS data
+            accum_name = self.input_file_name.replace('01_','03_')  ##change when using OPUS data
         else:
             accum_name = None
             print 'ERROR: name not standard'
@@ -193,15 +193,19 @@ class CCI_object:
 
 #------------------------------------------------------------
 
-def rename(input_file, write=True):
+def rename(input_file, mode='move'):
     """Test the CCI renaming script
     """
+
+    options = ['copy', 'move', 'print']
+    if not mode in options:
+        raise ValueError("mode: {} must be in {}".format(mode, options))
 
     with pyfits.open(input_file) as hdu:
         path, name = os.path.split(input_file)
         name_split = name.split('_')
 
-        dethv = hdu[0].header['DETHV']
+        dethv = int(hdu[0].header['DETHV'])
 
         time_str = name_split[1]
         filetype = name_split[0][3:]
@@ -212,13 +216,27 @@ def rename(input_file, write=True):
         if '.gz' in name:
             ext += '.gz'
 
-        out_name = 'l_{}_{}_{}_cci{}'.format(time_str, filetype, dethv, ext)
+
+        if hdu[0].header['DETECTOR'] == 'FUV':
+            if dethv == -1:
+                dethv = 999
+            out_name = 'l_{}_{}_{}_cci{}'.format(time_str, filetype, int(dethv), ext)
+
+        elif hdu[0].header['DETECTOR'] == 'NUV':
+            out_name = 'l_{}_{}_cci{}'.format(time_str, filetype, ext)
+
         out_file = os.path.join(path, out_name)
 
-        if write:
+        if mode == 'copy':
             hdu.writeto(out_name)
 
-        return out_name
+    if mode == 'print':
+        print out_name
+    elif mode == 'move':
+        print "{} --> {}".format(input_file, out_name)
+        shutil.move(input_file, out_name)
+
+    return out_name
 
 #------------------------------------------------------------
 
@@ -287,7 +305,7 @@ def make_all_gainmaps(processors=1):
         pass
 
     for ending in [FUVA_string,FUVB_string]:
-        CCI_list = glob.glob( CCI_DIR + '*'+ending+'*')
+        CCI_list = glob.glob( CCI_DIR + '*'+ending+'*.fits*')
         CCI_list.sort()
 
         if processors == 1:
@@ -298,8 +316,6 @@ def make_all_gainmaps(processors=1):
             pool.map(process_cci,CCI_list)
 
         add_cumulative_data(ending)
-
-    populate_keywords_mine()
 
     hdu_out = pyfits.HDUList(pyfits.PrimaryHDU())
     hdu_out.append(pyfits.ImageHDU( data = make_total_gain( 'FUVA', reverse=True ) ) )
@@ -449,7 +465,7 @@ def measure_gainimage(data_cube, mincounts=30, phlow=1, phhigh=31):
             continue
         if (gain <= 0) or (gain >= 31):
             continue
-        if (out_std <= 0) or (out_std >= 2):
+        if (std <= 0) or (std >= 2):
             continue
 
         out_gain[y, x] = gain
@@ -566,48 +582,6 @@ def make_gainmap(current):
                 else:
                     plot_gaussian_fit(gain_dist,fit_parameters,'WARNING_%s_%s_xy_%d_%d_%5.2f.png'%(gain_flag,current.KW_SEGMENT,x,y,current.KW_EXPSTART))
     """
-
-#------------------------------------------------------------
-
-def populate_keywords_mine():
-    """Populated header keywords of gainmap fits files according to HVTAB
-    Some of the files dave made were populated incorrectly.  This can probably
-    be removed, or modified into just a verification, when using OPUS created
-    CCI files.
-    """
-    print '\nPopulating HV keywords.\nREMOVE WHEN THEY ARE POPULATED THEMSELVES'
-    hvtab=pyfits.open(HVTAB)
-    for cci_file in glob.glob( os.path.join(MONITOR_DIR,'*_cci_gainmap.fits') ):
-        fits=pyfits.open(cci_file,mode='update')
-        detector=fits[0].header['DETECTOR']
-        old_hv = fits[0].header['DETHV']
-        if not detector == 'FUV':
-            print ' skipping, NUV'
-            fits.close()
-            continue
-
-        if FUVA_string in cci_file:
-            segment = 'FUVA'
-            hv_string = 'HVLEVELA'
-
-        elif FUVB_string in cci_file:
-            segment = 'FUVB'
-            hv_string = 'HVLEVELB'
-
-        expstart = fits[0].header['EXPSTART']
-        if not expstart:
-            set_hv = 0
-        else:
-            dethv_index = np.where(hvtab[segment].data['DATE'] < expstart)[0][-1]
-            set_hv = hvtab[segment].data[hv_string][dethv_index]
-
-        if set_hv != old_hv:
-            fits[0].header.update('DETHV',set_hv)
-
-        print cci_file,old_hv,'-->',set_hv
-
-        fits.flush()
-        fits.close()
 
 #------------------------------------------------------------
 

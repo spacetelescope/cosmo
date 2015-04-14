@@ -55,9 +55,9 @@ def make_quicklooks(clobber=False):
     all_gainmaps.sort()
     for gainmap in all_gainmaps:
         out_image_file = gainmap.replace('gainmap.fits', 'quicklook.png')
-        if os.path.exists( out_image_file ):
+        if os.path.exists(out_image_file):
             if clobber:
-                pass
+                pas
             else:
                 continue
 
@@ -77,9 +77,10 @@ def make_quicklooks(clobber=False):
             lower_ext = 3
             upper_ext = 4
             head = FUVB_string
-        pha_name = gainmap.replace('_gainmap.fits', '_phf.fits').replace(head, 'phaimage' )
+        #pha_name = gainmap.replace('_gainmap.fits', '_phf.fits').replace(head, 'phaimage' )
+        path, name = os.path.split(gainmap)
+        pha_name = os.path.join(path, 'l_' + name.split('_')[1] + '_phaimage_cci_phf.fits')
         print pha_name
-        phaimage = pyfits.open(pha_name)
 
         has_gain = np.zeros( image.shape )
         index = np.where( image > 0 )
@@ -91,8 +92,13 @@ def make_quicklooks(clobber=False):
             peak = 100 + collapsed[100:600].argmax()
 
         row_gain = image[peak]
-        row_pha_lower = phaimage[lower_ext].data[peak]
-        row_pha_upper = phaimage[upper_ext].data[peak]
+        if os.path.exists(pha_name):
+            phaimage = pyfits.open(pha_name)
+            row_pha_lower = phaimage[lower_ext].data[peak]
+            row_pha_upper = phaimage[upper_ext].data[peak]
+        else:
+            row_pha_lower = np.ones(image.shape[1]) * 3
+            row_pha_upper = np.ones(image.shape[1]) * 23
 
         #------Plotting-----------#
         fig = plt.figure(figsize=(22, 10))
@@ -187,11 +193,13 @@ def plot_flagged(ax, segment, hv, mjd=60000, color='r'):
 
     gsagtab_filename = '/grp/hst/cos/Monitors/CCI/gsag_%s.fits'% (TIMESTAMP)
     if os.path.exists( gsagtab_filename ):
-        gsagtab = pyfits.open('/grp/hst/cos/Monitors/CCI/gsag_%s.fits'% (TIMESTAMP))
+        gsagtab = pyfits.open(gsagtab_filename)
+        print "Using {}".format(gsagtab_filename)
     else:
-        all_gsagtables = glob.glob( os.path.join(MONITOR_DIR, 'gsag*.fits') )
+        all_gsagtables = glob.glob( os.path.join(MONITOR_DIR, 'gsag_????-??-*.fits') )
         all_gsagtables.sort()
-        gsagtab = pyfits.open( all_gsagtables[-1] )
+        gsagtab = pyfits.open(all_gsagtables[-1])
+        print "Using {}".format(all_gsagtables[-1])
 
     if segment == 'FUVA':
         hv_keyword = 'HVLEVELA'
@@ -223,19 +231,20 @@ def check_new_files():
     available CCI files and returns the number.
     """
 
-    N_CCI = len( glob.glob( os.path.join( CCI_DIR, '*'+FUVA_string+'*' ) )
-                 + glob.glob( os.path.join( CCI_DIR, '*'+FUVB_string+'*' ) ) )
+    N_CCI = len( glob.glob( os.path.join( CCI_DIR, '*'+FUVA_string+'*.fits.gz' ) )
+                 + glob.glob( os.path.join( CCI_DIR, '*'+FUVB_string+'*.fits.gz' ) ) )
+
 
     N_GAINMAPS = len( glob.glob( os.path.join( MONITOR_DIR,  '*'+FUVA_string+'*gainmap.fits' ) )
                       + glob.glob( os.path.join( MONITOR_DIR,  '*'+FUVB_string+'*gainmap.fits' ) ) )
-
+ 
     N_new = N_CCI - N_GAINMAPS
-
+    
     return N_new
 
 #------------------------------------------------------------
 
-def main( args ):
+def main(args):
     """ Main driver for monitoring program.
     """
 
@@ -260,14 +269,14 @@ def main( args ):
     print
 
 
-    #gainmap.make_all_gainmaps(args.n_processors)
+    gainmap.make_all_gainmaps(args.n_processors)
 
-    #phaimage.make_phaimages(False)
+    phaimage.make_phaimages(False)
 
     findbad.time_trends_db()
     #findbad.time_trends()
 
-    gsag.main(args.regress)
+    #gsag.main(args.regress)
 
     make_quicklooks(True)
 

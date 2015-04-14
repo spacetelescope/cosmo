@@ -57,8 +57,8 @@ TEST_DIR = os.path.join( MONITOR_DIR, 'test_suite')
 WEBPAGE_DIR = '/grp/webpages/COS/cci/'
 DB_NAME = '/grp/hst/cos/Monitors/DB/cci.db'
 
-FUVA_string = 'lft00'
-FUVB_string = 'lft01'
+FUVA_string = '_00_'
+FUVB_string = '_01_'
 
 #----Finds to most recently created HVTAB
 hvtable_list = glob.glob('/grp/hst/cdbs/lref/*hv.fits')

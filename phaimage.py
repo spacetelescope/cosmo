@@ -49,13 +49,14 @@ class Phaimage:
 
         gainmap_path, gainmap_name = os.path.split(gainmap)
         segment = pyfits.getval(gainmap, 'SEGMENT')
+	dethv = int(pyfits.getval(gainmap, 'DETHV'))
 
         if segment == 'FUVA':
             seg_string = FUVA_string
         elif segment == 'FUVB':
             seg_string = FUVB_string
 
-        phf_name = gainmap_name.replace(seg_string, 'phaimage').replace('gainmap.fits', 'phf.fits')
+        phf_name = gainmap_name.replace(seg_string, '_phaimage_').replace('gainmap.fits', 'phf.fits').replace('_{}_'.format(dethv), '_')
 
         return os.path.join(gainmap_path, phf_name)
 
@@ -68,13 +69,20 @@ class Phaimage:
 
         gainmap_path, gainmap_name = os.path.split(gainmap)
         segment = pyfits.getval(gainmap, 'SEGMENT')
+        dethv = int(pyfits.getval(gainmap, 'DETHV'))
 
         both_inputs = [gainmap]
 
         if segment == 'FUVA':
-            other_gainmap = gainmap.replace(FUVA_string, FUVB_string)
+            other_root = gainmap.replace(FUVA_string, FUVB_string).replace('_{}_'.format(dethv), '_???_')
         elif segment == 'FUVB':
-            other_gainmap = gainmap.replace(FUVB_string, FUVA_string)
+            other_root = gainmap.replace(FUVB_string, FUVA_string).replace('_{}_'.format(dethv), '_???_')
+
+        other_gainmap = glob.glob(other_root)
+        if len(other_gainmap) != 1:
+            raise IOError("too many gainmaps found {}".format(other_gainmap))
+        else:
+            other_gainmap = other_gainmap[0] 
 
         both_inputs.append(other_gainmap)
         both_inputs.sort()
@@ -246,7 +254,10 @@ def make_phaimages(clobber=False):
         if os.path.exists( Phaimage.outfile(gainmap) ) and not clobber:
             print Phaimage.outfile(gainmap), 'Already exists. Skipping'
         else:
-            inputs = Phaimage.inputs(gainmap)
+            try: 
+                inputs = Phaimage.inputs(gainmap)
+            except:
+                continue
 
             for item in inputs:
                 if not os.path.exists(item):
