@@ -93,7 +93,8 @@ class Headers(Base):
     qualcom2 = Column(String(67))
     qualcom3 = Column(String(67))
     quality = Column(String(67))
-    cal_ver = Column(String(67))
+    opus_ver = Column(String(30))
+    cal_ver = Column(String(30))
 
     obstype = Column(String(20))
     obsmode = Column(String(20))
@@ -114,6 +115,46 @@ class Headers(Base):
     asn_tab = Column(String(18))
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('header', order_by=id))
+    file = relationship("Files", backref=backref('headers', order_by=id))
 
+#-------------------------------------------------------------------------------
+
+class Data(Base):
+    __tablename__ = "data"
+
+    id = Column(Integer, primary_key=True)
+
+    hvlevela = Column(Integer)
+    hvlevelb = Column(Integer)
+    date_obs = Column(String(10))
+    time_obs = Column(String(8))
+    expstart = Column(Float)
+    expend = Column(Float)
+    exptime = Column(Float)
+    shift1a = Column(Float)
+    shift2a = Column(Float)
+    shift1b = Column(Float)
+    shift2b = Column(Float)
+    shift1c = Column(Float)
+    shift2c = Column(Float)
+
+    sp_loc_a = Column(Float)
+    sp_loc_b = Column(Float)
+    sp_loc_c = Column(Float)
+    sp_nom_a = Column(Float)
+    sp_nom_b = Column(Float)
+    sp_nom_c = Column(Float)
+    sp_off_a = Column(Float)
+    sp_off_b = Column(Float)
+    sp_off_c = Column(Float)
+    sp_err_a = Column(Float)
+    sp_err_b = Column(Float)
+    sp_err_c = Column(Float)
+
+    flux_mean = Column(Float)
+    flux_max = Column(Float)
+    flux_std = Column(Float)
+
+    file_id = Column(Integer, ForeignKey('files.id'))
+    file = relationship("Files", backref=backref('Data', order_by=id))
 #-------------------------------------------------------------------------------
