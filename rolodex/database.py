@@ -8,7 +8,7 @@ import numpy as np
 import multiprocessing as mp
 
 from census import find_all_datasets
-from db_tables import Base, session, engine, Files, Lampflash
+from db_tables import Base, session, engine, Files, Lampflash, Headers
 
 #-------------------------------------------------------------------------------
 
@@ -53,6 +53,8 @@ def populate_lampflash():
                                 outerjoin(Lampflash, Files.id == Lampflash.file_id).\
                                 filter(Lampflash.file_id == None)]
 
+
+    ### Multiprocessing for this
     for f_key, full_filename in files_to_add:
         print(full_filename)
 
@@ -99,6 +101,55 @@ def populate_lampflash():
 
 #-------------------------------------------------------------------------------
 
+def populate_primary_headers():
+
+    files_to_add = [(result.id, os.path.join(result.path, result.name))
+                        for result in session.query(Files).\
+                                filter(Files.name.like('%_raw%')).\
+                                outerjoin(Headers, Files.id == Headers.file_id).\
+                                filter(Headers.file_id == None)]
+
+
+    ### Multiprocessing for this
+    for f_key, full_filename in files_to_add:
+        print(full_filename)
+
+        with fits.open(full_filename) as hdu:
+            session.add(Headers(filetype=hdu[0].header['filetype'],
+                               instrume=hdu[0].header['instrume'],
+                               rootname=hdu[0].header['rootname'],
+                               imagetyp=hdu[0].header['imagetyp'],
+                               targname=hdu[0].header['targname'],
+                               ra_targ=hdu[0].header['ra_targ'],
+                               dec_targ=hdu[0].header['dec_targ'],
+                               proposid=hdu[0].header['proposid'],
+                               qualcom1=hdu[0].header['qualcom1'],
+                               qualcom2=hdu[0].header['qualcom2'],
+                               qualcom3=hdu[0].header['qualcom3'],
+                               quality=hdu[0].header['quality'],
+                               cal_ver=hdu[0].header['cal_ver'],
+                               obstype=hdu[0].header['obstype'],
+                               obsmode=hdu[0].header['obsmode'],
+                               exptype=hdu[0].header['exptype'],
+                               detector=hdu[0].header['detector'],
+                               segment=hdu[0].header['segment'],
+                               detecthv=hdu[0].header['detecthv'],
+                               life_adj=hdu[0].header['life_adj'],
+                               fppos=hdu[0].header['fppos'],
+                               exp_num=hdu[0].header['exp_num']
+                               cenwave=hdu[0].header['cenwave'],
+                               aperture=hdu[0].header['aperture'],
+                               opt_elem=hdu[0].header['opt_elem'],
+                               shutter=hdu[0].header['shutter'],
+                               extended=hdu[0].header['extended'],
+                               obset_id=hdu[0].header['obset_id'],
+                               asn_id=hdu[0].header['asn_id'],
+                               asn_tab=hdu[0].header['asn_tab'],
+                               file_id=f_key))
+            session.commit()
+
+#-------------------------------------------------------------------------------
+
 if __name__ == "__main__":
     with open('../configure.yaml', 'r') as f:
         settings = yaml.load(f)
@@ -107,5 +158,5 @@ if __name__ == "__main__":
 
     print(settings)
     #insert_files(**settings)
-    populate_lampflash()
-    #populate_tables_for_filetypes(**settings)
+    #populate_lampflash()
+    populate_primary_headers()

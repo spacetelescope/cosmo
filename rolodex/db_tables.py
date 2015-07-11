@@ -76,3 +76,44 @@ class Lampflash(Base):
     file = relationship("Files", backref=backref('lampflash', order_by=id))
 
 #-------------------------------------------------------------------------------
+
+class Headers(Base):
+    __tablename__ = "headers"
+
+    id = Column(Integer, primary_key=True)
+    filetype = Column(String(67))
+    instrume = Column(String(3))
+    rootname = Column(String(9))
+    imagetyp = Column(String(20))
+    targname = Column(String(67))
+    ra_targ = Column(Float(20))
+    dec_targ = Column(Float(20))
+    proposid = Column(Integer)
+    qualcom1 = Column(String(67))
+    qualcom2 = Column(String(67))
+    qualcom3 = Column(String(67))
+    quality = Column(String(67))
+    cal_ver = Column(String(67))
+
+    obstype = Column(String(20))
+    obsmode = Column(String(20))
+    exptype = Column(String(20))
+    detector = Column(String(20))
+    segment = Column(String(20))
+    detecthv = Column(String(20))
+    life_adj = Column(Integer)
+    fppos = Column(Integer)
+    exp_num = Column(Integer)
+    cenwave = Column(Integer)
+    aperture = Column(String(3))
+    opt_elem = Column(String(5))
+    shutter = Column(String(20))
+    extended = Column(String(20))
+    obset_id = Column(String(2))
+    asn_id = Column(String(9))
+    asn_tab = Column(String(18))
+
+    file_id = Column(Integer, ForeignKey('files.id'))
+    file = relationship("Files", backref=backref('header', order_by=id))
+
+#-------------------------------------------------------------------------------
