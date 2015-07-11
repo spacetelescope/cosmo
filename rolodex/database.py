@@ -227,13 +227,19 @@ def update_data((args)):
 #-------------------------------------------------------------------------------
 
 if __name__ == "__main__":
+
     with open('../configure.yaml', 'r') as f:
         settings = yaml.load(f)
 
+    #for table in reversed(Base.metadata.sorted_tables):
+    #    session.execute(table.delete())
+    #    session.commit()
+
+    #Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
     print(settings)
     insert_files(**settings)
-    #populate_lampflash()
-    #populate_primary_headers(settings['num_cpu'])
-    #populate_data(settings['num_cpu'])
+    populate_lampflash()
+    populate_primary_headers(settings['num_cpu'])
+    populate_data(settings['num_cpu'])

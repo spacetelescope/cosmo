@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import ForeignKey, Column, Integer, String, Float, Boolean
+from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker, relationship, backref
 
@@ -50,6 +50,8 @@ class Files(Base):
     id = Column(Integer, primary_key=True)
     path = Column(String(70))
     name = Column(String(40))
+
+    Index('idx_fullpath', 'path', 'name', unique=True)
 
     def __repr__(self):
         return "<Files(path='{}', name='{}')>".format(self.path, self.name)
@@ -116,6 +118,9 @@ class Headers(Base):
 
     file_id = Column(Integer, ForeignKey('files.id'))
     file = relationship("Files", backref=backref('headers', order_by=id))
+
+    Index('idx_rootname', 'rootname', unique=False)
+    Index('idx_config', 'segment', 'fppox', 'cenwave', 'opt_elem', unique=False)
 
 #-------------------------------------------------------------------------------
 
