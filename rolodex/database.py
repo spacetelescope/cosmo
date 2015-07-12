@@ -32,16 +32,26 @@ def fppos_shift(lamptab_name, segment, opt_elem, cenwave, fpoffset):
 def insert_files(**kwargs):
     """Create table of path, filename"""
 
+    print("Querying previously found files")
     previous_files = {os.path.join(path, fname) for path, fname in session.query(Files.path, Files.name)}
 
     data_location = kwargs.get('data_location', './')
-    for path, filename in find_all_datasets(data_location):
+    print("Looking for new files in {}".format(data_location))
+
+    for i, (path, filename) in enumerate(find_all_datasets(data_location)):
         if os.path.join(path, filename) in previous_files:
+            print("Already found: {}".format(os.path.join(path, filename)))
             continue
 
-        print("Found {}".format(os.path.join(path, filename)))
+        print("NEW: Found {}".format(os.path.join(path, filename)))
         session.add(Files(path=path, name=filename))
-        session.commit()
+
+        #-- Commit every 20 files to not lose too much progress if
+        #-- a failure happens.
+        if not i%20:
+            session.commit()
+
+    session.commit()
 
 #-------------------------------------------------------------------------------
 
@@ -131,10 +141,10 @@ def update_header((args)):
                            ra_targ=hdu[0].header['ra_targ'],
                            dec_targ=hdu[0].header['dec_targ'],
                            proposid=hdu[0].header['proposid'],
-                           qualcom1=hdu[0].header['qualcom1'],
-                           qualcom2=hdu[0].header['qualcom2'],
-                           qualcom3=hdu[0].header['qualcom3'],
-                           quality=hdu[0].header['quality'],
+                           qualcom1=hdu[0].header.get('qualcom1', ''),
+                           qualcom2=hdu[0].header.get('qualcom2', ''),
+                           qualcom3=hdu[0].header.get('qualcom3', ''),
+                           quality=hdu[0].header.get('quality', ''),
                            cal_ver=hdu[0].header['cal_ver'],
                            opus_ver=hdu[0].header['opus_ver'],
                            obstype=hdu[0].header['obstype'],
@@ -240,6 +250,6 @@ if __name__ == "__main__":
 
     print(settings)
     insert_files(**settings)
-    populate_lampflash()
     populate_primary_headers(settings['num_cpu'])
     populate_data(settings['num_cpu'])
+    populate_lampflash()
