@@ -9,7 +9,9 @@ import numpy as np
 import multiprocessing as mp
 
 from census import find_all_datasets
-from db_tables import Base, Session, engine, Files, Lampflash, Headers, Data
+from db_tables import Base, Session, engine
+from db_tables import Files, Headers
+from db_tables import Lampflash, Variability, Stims, Phd, Gain
 
 #-------------------------------------------------------------------------------
 
@@ -43,12 +45,12 @@ def insert_files(**kwargs):
     for i, (path, filename) in enumerate(find_all_datasets(data_location)):
         full_filepath = os.path.join(path, filename)
         if full_filepath in previous_files:
-            print("Already found: {}".format(full_filepath)
+            print("Already found: {}".format(full_filepath))
             continue
 
-        print("NEW: Found {}".format(full_filepath)
+        print("NEW: Found {}".format(full_filepath))
         with fits.open(full_filepath, 'readonly') as hdu:
-            asssociation = hdu[0].header.get('asn_id', None)
+            association = hdu[0].header.get('asn_id', None)
             rootname = hdu[0].header.get('rootname', None)
 
         session.add(Files(path=path,
@@ -284,6 +286,8 @@ def delete_file_from_all(filename):
         print("Removing file {}".format(file_path))
         os.remove(file_path)
 
+    session.close()
+
 #-------------------------------------------------------------------------------
 
 def clear_all_databases():
@@ -292,9 +296,13 @@ def clear_all_databases():
     if not raw_input("Are you sure you want to delete everything? Y/n") == 'Y':
         sys.exit("Not deleting, getting out of here.")
 
+    session = Session()
     for table in reversed(Base.metadata.sorted_tables):
-        session.execute(table.delete())
-        session.commit()
+        try:
+            session.execute(table.delete())
+            session.commit()
+        except:
+            pass
 
 #-------------------------------------------------------------------------------
 
@@ -303,7 +311,11 @@ if __name__ == "__main__":
     with open('../configure.yaml', 'r') as f:
         settings = yaml.load(f)
 
+    #clear_all_databases()
+
     Base.metadata.create_all(engine)
+    #Base.metadata.drop_all(engine, checkfirst=False)
+    #Base.metadata.create_all(engine)
 
     print(settings)
     insert_files(**settings)

@@ -48,6 +48,7 @@ class Files(Base):
     __tablename__ = 'files'
 
     id = Column(Integer, primary_key=True)
+
     path = Column(String(70))
     name = Column(String(40))
     rootname = Column(String(9))
@@ -56,9 +57,6 @@ class Files(Base):
     Index('idx_fullpath', 'path', 'name', unique=True)
     Index('idx_rootname', 'rootname')
     Index('association', 'association')
-
-    def __repr__(self):
-        return "<Files(path='{}', name='{}')>".format(self.path, self.name)
 
 #-------------------------------------------------------------------------------
 
