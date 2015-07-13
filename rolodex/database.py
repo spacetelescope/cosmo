@@ -41,12 +41,20 @@ def insert_files(**kwargs):
     print("Looking for new files in {}".format(data_location))
 
     for i, (path, filename) in enumerate(find_all_datasets(data_location)):
-        if os.path.join(path, filename) in previous_files:
-            print("Already found: {}".format(os.path.join(path, filename)))
+        full_filepath = os.path.join(path, filename)
+        if full_filepath in previous_files:
+            print("Already found: {}".format(full_filepath)
             continue
 
-        print("NEW: Found {}".format(os.path.join(path, filename)))
-        session.add(Files(path=path, name=filename))
+        print("NEW: Found {}".format(full_filepath)
+        with fits.open(full_filepath, 'readonly') as hdu:
+            asssociation = hdu[0].header.get('asn_id', None)
+            rootname = hdu[0].header.get('rootname', None)
+
+        session.add(Files(path=path,
+                          name=filename,
+                          rootname=rootname,
+                          association=association))
 
         #-- Commit every 20 files to not lose too much progress if
         #-- a failure happens.
