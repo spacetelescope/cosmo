@@ -3,6 +3,7 @@ from __future__ import print_function
 from astropy.io import fits
 import os
 from sqlalchemy import and_, or_
+import sys
 import yaml
 import numpy as np
 import multiprocessing as mp
@@ -249,7 +250,44 @@ def update_data((args)):
 
         session.commit()
         session.close()
-        
+
+#-------------------------------------------------------------------------------
+
+def delete_file_from_all(filename):
+    """Delete a filename from all databases and directory structure
+
+    Parameters
+    ----------
+    filename : str
+        name of the file, will be pattern-matched with %filename%
+
+    """
+
+    session = Session()
+
+    files_to_remove = [(result.id, os.path.join(result.path, result.name))
+                            for result in session.query(Files).\
+                                    filter(Files.name.like('%{}%'.format(filename)))]
+
+
+    for (file_id, file_path) in files_to_remove:
+        for table in reversed(Base.metadata.sorted_tables):
+            session.query(table).filter(table.file_id==file_id).delete()
+        print("Removing file {}".format(file_path))
+        os.remove(file_path)
+
+#-------------------------------------------------------------------------------
+
+def clear_all_databases():
+    """Dump all databases of all contents...seriously"""
+
+    if not raw_input("Are you sure you want to delete everything? Y/n") == 'Y':
+        sys.exit("Not deleting, getting out of here.")
+
+    for table in reversed(Base.metadata.sorted_tables):
+        session.execute(table.delete())
+        session.commit()
+
 #-------------------------------------------------------------------------------
 
 if __name__ == "__main__":
@@ -257,11 +295,6 @@ if __name__ == "__main__":
     with open('../configure.yaml', 'r') as f:
         settings = yaml.load(f)
 
-    #for table in reversed(Base.metadata.sorted_tables):
-    #    session.execute(table.delete())
-    #    session.commit()
-
-    #Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
     print(settings)
