@@ -8,7 +8,7 @@ import numpy as np
 import multiprocessing as mp
 
 from census import find_all_datasets
-from db_tables import Base, session, engine, Files, Lampflash, Headers, Data
+from db_tables import Base, Session, engine, Files, Lampflash, Headers, Data
 
 #-------------------------------------------------------------------------------
 
@@ -32,6 +32,7 @@ def fppos_shift(lamptab_name, segment, opt_elem, cenwave, fpoffset):
 def insert_files(**kwargs):
     """Create table of path, filename"""
 
+    session = Session()
     print("Querying previously found files")
     previous_files = {os.path.join(path, fname) for path, fname in session.query(Files.path, Files.name)}
 
@@ -52,11 +53,13 @@ def insert_files(**kwargs):
             session.commit()
 
     session.commit()
+    session.close()
 
 #-------------------------------------------------------------------------------
 
 def populate_lampflash():
 
+    session = Session()
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
                                 filter(Files.name.like('%lampflash%')).\
@@ -108,17 +111,21 @@ def populate_lampflash():
                                       found=found,
                                       file_id=f_key))
             session.commit()
+    session.close()
 
 #-------------------------------------------------------------------------------
 
 def populate_primary_headers(num_cpu=1):
     print("adding to primary headers")
+
+    session = Session()
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
                                 filter(or_(Files.name.like('%_rawaccum%'),
                                            Files.name.like('%_rawtag%'))).\
                                 outerjoin(Headers, Files.id == Headers.file_id).\
                                 filter(Headers.file_id == None)]
+    session.close()
 
     args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
 
@@ -132,6 +139,8 @@ def update_header((args)):
 
     filename, f_key = args
     print(filename)
+
+    session = Session()
     with fits.open(filename) as hdu:
         session.add(Headers(filetype=hdu[0].header['filetype'],
                            instrume=hdu[0].header['instrume'],
@@ -166,16 +175,20 @@ def update_header((args)):
                            asn_tab=hdu[0].header['asn_tab'],
                            file_id=f_key))
         session.commit()
+        session.close()
 
 #-------------------------------------------------------------------------------
 
 def populate_data(num_cpu=1):
     print("adding to data")
+
+    session = Session()
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
                                 filter(Files.name.like('%_x1d.fits%')).\
                                 outerjoin(Data, Files.id == Data.file_id).\
                                 filter(Data.file_id == None)]
+    session.close()
 
     args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
 
@@ -189,6 +202,8 @@ def update_data((args)):
 
     filename, f_key = args
     print(filename)
+
+    session = Session()
 
     with fits.open(filename) as hdu:
         if len(hdu[1].data):
@@ -233,7 +248,8 @@ def update_data((args)):
 
 
         session.commit()
-
+        session.close()
+        
 #-------------------------------------------------------------------------------
 
 if __name__ == "__main__":
@@ -250,6 +266,6 @@ if __name__ == "__main__":
 
     print(settings)
     insert_files(**settings)
-    populate_primary_headers(settings['num_cpu'])
-    populate_data(settings['num_cpu'])
-    populate_lampflash()
+    #populate_primary_headers(settings['num_cpu'])
+    #populate_data(settings['num_cpu'])
+    #populate_lampflash()
