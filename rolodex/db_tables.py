@@ -52,11 +52,9 @@ class Files(Base):
     path = Column(String(70))
     name = Column(String(40))
     rootname = Column(String(9))
-    association = Column(String(9))
 
     Index('idx_fullpath', 'path', 'name', unique=True)
     Index('idx_rootname', 'rootname')
-    Index('association', 'association')
 
 #-------------------------------------------------------------------------------
 

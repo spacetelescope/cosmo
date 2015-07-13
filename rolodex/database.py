@@ -49,14 +49,13 @@ def insert_files(**kwargs):
             continue
 
         print("NEW: Found {}".format(full_filepath))
-        with fits.open(full_filepath, 'readonly') as hdu:
-            association = hdu[0].header.get('asn_id', None)
-            rootname = hdu[0].header.get('rootname', None)
+        rootname = name.split('_')[0]
+        if not len(rootname) == 9:
+            rootname = None
 
         session.add(Files(path=path,
                           name=filename,
-                          rootname=rootname,
-                          association=association))
+                          rootname=rootname)
 
         #-- Commit every 20 files to not lose too much progress if
         #-- a failure happens.
@@ -299,6 +298,7 @@ def clear_all_databases():
     session = Session()
     for table in reversed(Base.metadata.sorted_tables):
         try:
+            print("Deleting {}".format(table.name))
             session.execute(table.delete())
             session.commit()
         except:
