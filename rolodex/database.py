@@ -9,7 +9,8 @@ import numpy as np
 import multiprocessing as mp
 
 from census import find_all_datasets
-from db_tables import Base, Session, engine
+from db_tables import load_connection
+from db_tables import Base
 from db_tables import Files, Headers, Data
 from db_tables import Lampflash, Variability, Stims, Phd, Gain
 
@@ -150,6 +151,8 @@ def update_header((args)):
     filename, f_key = args
     print(filename)
 
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     session = Session()
     try:
         with fits.open(filename) as hdu:
@@ -192,6 +195,7 @@ def update_header((args)):
 
     session.commit()
     session.close()
+    engine.dispose()
 
 #-------------------------------------------------------------------------------
 
@@ -219,6 +223,7 @@ def update_data((args)):
     filename, f_key = args
     print(filename)
 
+    Session, engine = load_connection(SETTINGS['connection_string'])
     session = Session()
 
     try:
@@ -270,6 +275,7 @@ def update_data((args)):
 
     session.commit()
     session.close()
+    engine.dispose()
 
 #-------------------------------------------------------------------------------
 
@@ -322,7 +328,9 @@ def clear_all_databases():
 if __name__ == "__main__":
 
     with open('../configure.yaml', 'r') as f:
-        settings = yaml.load(f)
+        SETTINGS = yaml.load(f)
+
+    Session, engine = load_connection(SETTINGS['connection_string'])
 
     clear_all_databases()
 
@@ -330,8 +338,8 @@ if __name__ == "__main__":
     #Base.metadata.drop_all(engine, checkfirst=False)
     #Base.metadata.create_all(engine)
 
-    print(settings)
-    #insert_files(**settings)
-    populate_primary_headers(settings['num_cpu'])
-    populate_data(settings['num_cpu'])
+    print(SETTINGS)
+    #insert_files(**SETTINGS)
+    populate_primary_headers(SETTINGS['num_cpu'])
+    populate_data(SETTINGS['num_cpu'])
     #populate_lampflash()

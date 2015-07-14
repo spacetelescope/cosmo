@@ -32,15 +32,9 @@ def load_connection(connection_string, echo=False):
     """
 
     engine = create_engine(connection_string, echo=echo)
-    Base = declarative_base(engine)
     Session = sessionmaker(bind=engine)
 
-    return Session, Base, engine
-
-with open('../configure.yaml', 'r') as f:
-    SETTINGS = yaml.load(f)
-
-Session, Base, engine = load_connection(SETTINGS['connection_string'])
+    return Session, engine
 
 #-------------------------------------------------------------------------------
 
