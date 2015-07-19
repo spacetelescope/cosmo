@@ -12,7 +12,7 @@ from census import find_all_datasets
 from db_tables import load_connection
 from db_tables import Base
 from db_tables import Files, Headers, Data
-from db_tables import Lampflash, Variability, Stims, Phd, Gain
+from db_tables import Lampflash, Variability, Stims, Phd
 
 #-------------------------------------------------------------------------------
 
@@ -130,12 +130,19 @@ def populate_primary_headers(num_cpu=1):
     print("adding to primary headers")
 
     session = Session()
+    #files_to_add = [(result.id, os.path.join(result.path, result.name))
+    #                    for result in session.query(Files).\
+    #                            filter(or_(Files.name.like('%_rawaccum%'),
+    #                                       Files.name.like('%_rawtag%'))).\
+    #                            outerjoin(Headers, Files.id == Headers.file_id).\
+    #                            filter(Headers.file_id == None)]
+
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
-                                filter(or_(Files.name.like('%_rawaccum%'),
-                                           Files.name.like('%_rawtag%'))).\
-                                outerjoin(Headers, Files.id == Headers.file_id).\
-                                filter(Headers.file_id == None)]
+                                filter(Files.name.like('%_x1d.fits%')).\
+                                outerjoin(Data, Files.id == Data.file_id).\
+                                filter(Data.file_id == None)]
+
     session.close()
 
     args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
@@ -187,6 +194,38 @@ def update_header((args)):
                                 obset_id=hdu[0].header['obset_id'],
                                 asn_id=hdu[0].header['asn_id'],
                                 asn_tab=hdu[0].header['asn_tab'],
+
+                                hvlevela=hdu[1].header.get('hvlevela', -999),
+                                hvlevelb=hdu[1].header.get('hvlevelb', -999),
+                                date_obs=hdu[1].header['date-obs'],
+                                dpixel1a=hdu[1].header.get('dpixel1a', -999),
+                                dpixel1b=hdu[1].header.get('dpixel1b', -999),
+                                time_obs=hdu[1].header['time-obs'],
+                                expstart=hdu[1].header['expstart'],
+                                expend=hdu[1].header['expend'],
+                                exptime=hdu[1].header['exptime'],
+                                numflash=hdu[1].header.get('numflash', None),
+                                ra_aper=hdu[1].header['ra_aper'],
+                                dec_aper=hdu[1].header['dec_aper'],
+                                shift1a=hdu[1].header.get('shift1a', -999),
+                                shift1b=hdu[1].header.get('shift1b', -999),
+                                shift1c=hdu[1].header.get('shift1c', -999),
+                                shift2a=hdu[1].header.get('shift2a', -999),
+                                shift2b=hdu[1].header.get('shift2b', -999),
+                                shift2c=hdu[1].header.get('shift2c', -999),
+                                sp_loc_a=hdu[1].header.get('sp_loc_a', -999),
+                                sp_loc_b=hdu[1].header.get('sp_loc_b', -999),
+                                sp_loc_c=hdu[1].header.get('sp_loc_c', -999),
+                                sp_nom_a=hdu[1].header.get('sp_nom_a', -999),
+                                sp_nom_b=hdu[1].header.get('sp_nom_b', -999),
+                                sp_nom_c=hdu[1].header.get('sp_nom_c', -999),
+                                sp_off_a=hdu[1].header.get('sp_off_a', -999),
+                                sp_off_b=hdu[1].header.get('sp_off_b', -999),
+                                sp_off_c=hdu[1].header.get('sp_off_c', -999),
+                                sp_err_a=hdu[1].header.get('sp_err_a', -999),
+                                sp_err_b=hdu[1].header.get('sp_err_b', -999),
+                                sp_err_c=hdu[1].header.get('sp_err_c', -999),
+
                                 file_id=f_key))
     except IOError as e:
         print(e.message)
@@ -237,33 +276,7 @@ def update_data((args)):
                 flux_max = None
                 flux_std = None
 
-            session.add(Data(hvlevela=hdu[1].header.get('hvlevela', -999),
-                             hvlevelb=hdu[1].header.get('hvlevelb', -999),
-                             date_obs=hdu[1].header['date-obs'],
-                             time_obs=hdu[1].header['time-obs'],
-                             expstart=hdu[1].header['expstart'],
-                             expend=hdu[1].header['expend'],
-                             exptime=hdu[1].header['exptime'],
-                             shift1a=hdu[1].header.get('shift1a', -999),
-                             shift1b=hdu[1].header.get('shift1b', -999),
-                             shift1c=hdu[1].header.get('shift1c', -999),
-                             shift2a=hdu[1].header.get('shift2a', -999),
-                             shift2b=hdu[1].header.get('shift2b', -999),
-                             shift2c=hdu[1].header.get('shift2c', -999),
-                             sp_loc_a=hdu[1].header.get('sp_loc_a', -999),
-                             sp_loc_b=hdu[1].header.get('sp_loc_b', -999),
-                             sp_loc_c=hdu[1].header.get('sp_loc_c', -999),
-                             sp_nom_a=hdu[1].header.get('sp_nom_a', -999),
-                             sp_nom_b=hdu[1].header.get('sp_nom_b', -999),
-                             sp_nom_c=hdu[1].header.get('sp_nom_c', -999),
-                             sp_off_a=hdu[1].header.get('sp_off_a', -999),
-                             sp_off_b=hdu[1].header.get('sp_off_b', -999),
-                             sp_off_c=hdu[1].header.get('sp_off_c', -999),
-                             sp_err_a=hdu[1].header.get('sp_err_a', -999),
-                             sp_err_b=hdu[1].header.get('sp_err_b', -999),
-                             sp_err_c=hdu[1].header.get('sp_err_c', -999),
-
-                             flux_mean=flux_mean,
+            session.add(Data(flux_mean=flux_mean,
                              flux_max=flux_max,
                              flux_std=flux_std,
                              file_id=f_key))
@@ -332,11 +345,10 @@ if __name__ == "__main__":
 
     Session, engine = load_connection(SETTINGS['connection_string'])
 
-    clear_all_databases()
+    #clear_all_databases()
 
-    Base.metadata.create_all(engine)
     #Base.metadata.drop_all(engine, checkfirst=False)
-    #Base.metadata.create_all(engine)
+    Base.metadata.create_all(engine)
 
     print(SETTINGS)
     #insert_files(**SETTINGS)
