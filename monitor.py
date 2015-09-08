@@ -41,7 +41,7 @@ def pull_darks(base, detector):
         if 'experimental' in root: continue
 
         print root
-
+        
         for filename in files:
             if not '.fits' in filename:
                 continue
@@ -115,8 +115,11 @@ def pull_orbital_info( dataset, step=1 ):
     SECOND_PER_MJD = 1.15741e-5
 
     hdu = fits.open( dataset )
-    timeline = hdu['timeline'].data
-    segment = hdu[0].header['segment']
+    try:
+        timeline = hdu['timeline'].data
+        segment = hdu[0].header['segment']
+    except KeyError:
+        return None, None, None, None, None, None, None
 
     if segment == 'N/A':
         xlim = (0, 1024)
@@ -260,6 +263,9 @@ def compile_darkrates(detector='FUV'):
             print filename, 'running'
 
         counts, ta_counts, date, lat, lon, sun_lat, sun_lon = pull_orbital_info( filename, 25 )
+        if counts == None:
+            print "bad File {}".format(filename)
+            continue
 
         temp = get_temp(filename)
 
