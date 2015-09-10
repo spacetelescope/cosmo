@@ -50,9 +50,15 @@ def pull_darks(base, detector):
 
             full_filename = os.path.join( root, filename )
 
-            if not fits.getval(full_filename, 'exptype', ext=0) == 'DARK':
+            try:
+                hdu = fits.open(full_filename)
+            except:
+                print "bad file {}".format(full_filename)
+                continue    
+
+            if not hdu[0].header['exptype'] == 'DARK':
                 continue
-            if not fits.getval(full_filename, 'detector', ext=0) == detector:
+            if not hdu[0].header['detector'] == detector:
                 continue
 
             yield full_filename
