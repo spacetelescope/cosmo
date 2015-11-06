@@ -1,5 +1,6 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean
+from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker, relationship, backref
 
@@ -32,15 +33,9 @@ def load_connection(connection_string, echo=False):
     """
 
     engine = create_engine(connection_string, echo=echo)
-    Base = declarative_base(engine)
     Session = sessionmaker(bind=engine)
 
-    return Session, Base, engine
-
-with open('../configure.yaml', 'r') as f:
-    SETTINGS = yaml.load(f)
-
-Session, Base, engine = load_connection(SETTINGS['connection_string'])
+    return Session, engine
 
 #-------------------------------------------------------------------------------
 
@@ -115,27 +110,19 @@ class Headers(Base):
     obset_id = Column(String(2))
     asn_id = Column(String(9))
     asn_tab = Column(String(18))
-
-    file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('headers', order_by=id))
-
-    Index('idx_rootname', 'rootname', unique=False)
-    Index('idx_config', 'segment', 'fppox', 'cenwave', 'opt_elem', unique=False)
-
-#-------------------------------------------------------------------------------
-
-class Data(Base):
-    __tablename__ = "data"
-
-    id = Column(Integer, primary_key=True)
-
+    ###randseed = Column(Integer) #-- Errors for some reason.
     hvlevela = Column(Integer)
     hvlevelb = Column(Integer)
+    dpixel1a = Column(Float)
+    dpixel1b = Column(Float)
     date_obs = Column(String(10))
     time_obs = Column(String(8))
     expstart = Column(Float)
     expend = Column(Float)
     exptime = Column(Float)
+    numflash = Column(Integer)
+    ra_aper = Column(Float)
+    dec_aper = Column(Float)
     shift1a = Column(Float)
     shift2a = Column(Float)
     shift1b = Column(Float)
@@ -155,6 +142,19 @@ class Data(Base):
     sp_err_a = Column(Float)
     sp_err_b = Column(Float)
     sp_err_c = Column(Float)
+
+    file_id = Column(Integer, ForeignKey('files.id'))
+    file = relationship("Files", backref=backref('headers', order_by=id))
+
+    Index('idx_rootname', 'rootname', unique=False)
+    Index('idx_config', 'segment', 'fppox', 'cenwave', 'opt_elem', unique=False)
+
+#-------------------------------------------------------------------------------
+
+class Data(Base):
+    __tablename__ = "data"
+
+    id = Column(Integer, primary_key=True)
 
     flux_mean = Column(Float)
     flux_max = Column(Float)
@@ -245,7 +245,7 @@ class Phd(Base):
     file = relationship("Files", backref=backref('Phd', order_by=id))
 
 #-------------------------------------------------------------------------------
-
+'''
 class Gain(Base):
     __tablename__ = 'gain'
 
@@ -261,5 +261,5 @@ class Gain(Base):
 
     file_id = Column(Integer, ForeignKey('files.id'))
     file = relationship("Files", backref=backref('Gain', order_by=id))
-
+'''
 #-------------------------------------------------------------------------------
