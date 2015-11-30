@@ -25,6 +25,45 @@ Session, engine = load_connection(SETTINGS['connection_string'])
 
 #-------------------------------------------------------------------------------
 
+def mp_insert(args):
+    filename, table, function = args
+    insert_with_yield(filename, table, function)
+
+#-------------------------------------------------------------------------------
+
+def insert_with_yield(filename, table, function):
+    """
+    Insert or update the table with information in the record_dict.
+    Parameters
+    ----------
+    table :
+        The table of the database to update.
+    data : dict
+        A dictionary of the information to update.  Each key of the
+        dictionary must be a column in the Table.
+    id_num : string
+        The row ID to update.  If id_test is blank, then a new row is
+        inserted.
+    """
+
+    Session, engine = load_connection(SETTINGS['connection_string'])
+    session = Session()
+
+    for data in function(filename):
+        print(data.values())
+        try:
+            session.add(table(**data))
+        except IOError as e:
+            print(e.message)
+            #-- Handle empty or corrupt FITS files
+            session.add(table())
+
+    session.commit()
+    session.close()
+    engine.dispose()
+
+#-------------------------------------------------------------------------------
+
 def insert_files(**kwargs):
     """Create table of path, filename"""
 
@@ -72,35 +111,10 @@ def populate_lampflash(num_cpu=1):
     session.close()
 
 
-    args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
+    args = [(full_filename, Lampflash, pull_flashes) for f_key, full_filename in files_to_add]
 
     pool = mp.Pool(processes=num_cpu)
-    pool.map(update_lampflash, args)
-
-#-------------------------------------------------------------------------------
-
-def update_lampflash((args)):
-    filename, f_key = args
-
-    Session, engine = load_connection(SETTINGS['connection_string'])
-    session = Session()
-
-    for data in pull_flashes(filename):
-        data['x_shift'] = round(data['x_shift'], 5)
-        data['y_shift'] = round(data['y_shift'], 5)
-        data['file_id'] = f_key
-        print(data.values())
-
-        try:
-            session.add(Lampflash(**data))
-        except IOError as e:
-            print(e.message)
-            #-- Handle empty or corrupt FITS files
-            session.add(LampFlash(file_id=f_key))
-
-    session.commit()
-    session.close()
-    engine.dispose()
+    pool.map(mp_insert, args)
 
 #-------------------------------------------------------------------------------
 
