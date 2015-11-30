@@ -1,4 +1,4 @@
-from __future__ import print_function, absolute_import
+from __future__ import print_function, absolute_import, division
 
 from astropy.io import fits
 import os
@@ -10,10 +10,10 @@ import multiprocessing as mp
 
 
 from ..filesystem import find_all_datasets
-from db_tables import load_connection
-from db_tables import Base
-from db_tables import Files, Headers, Data
-from db_tables import Lampflash, Variability, Stims, Phd
+from .db_tables import load_connection
+from .db_tables import Base
+from .db_tables import Files, Headers, Data
+from .db_tables import Lampflash, Variability, Stims, Phd
 
 
 config_file = os.path.join(os.environ['HOME'], "configure.yaml")
