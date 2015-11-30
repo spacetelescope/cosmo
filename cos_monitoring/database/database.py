@@ -10,6 +10,7 @@ import multiprocessing as mp
 
 
 from ..filesystem import find_all_datasets
+from ..osm.monitor import pull_flashes
 from .db_tables import load_connection
 from .db_tables import Base
 from .db_tables import Files, Headers, Data
@@ -21,24 +22,6 @@ with open(config_file, 'r') as f:
     SETTINGS = yaml.load(f)
 
 Session, engine = load_connection(SETTINGS['connection_string'])
-
-
-#-------------------------------------------------------------------------------
-
-def fppos_shift(lamptab_name, segment, opt_elem, cenwave, fpoffset):
-    lamptab = fits.getdata(os.path.join(os.environ['lref'], lamptab_name))
-
-    if 'FPOFFSET' not in lamptab.names:
-        return 0
-
-    index = np.where((lamptab['segment'] == segment) &
-                     (lamptab['opt_elem'] == opt_elem) &
-                     (lamptab['cenwave'] == cenwave) &
-                     (lamptab['fpoffset'] == fpoffset))[0]
-
-    offset = lamptab['FP_PIXEL_SHIFT'][index][0]
-
-    return offset
 
 #-------------------------------------------------------------------------------
 
@@ -77,61 +60,47 @@ def insert_files(**kwargs):
 
 #-------------------------------------------------------------------------------
 
-def populate_lampflash():
-
+def populate_lampflash(num_cpu=1):
+    print("adding to lampflash")
     session = Session()
+    ### also should have the _rawacqs as well
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
                                 filter(Files.name.like('%lampflash%')).\
                                 outerjoin(Lampflash, Files.id == Lampflash.file_id).\
                                 filter(Lampflash.file_id == None)]
-
-
-    ### Multiprocessing for this
-    for f_key, full_filename in files_to_add:
-        print(full_filename)
-
-        with fits.open(full_filename) as hdu:
-
-            date = hdu[1].header['EXPSTART']
-            proposid = hdu[0].header['PROPOSID']
-            detector = hdu[0].header['DETECTOR']
-            opt_elem = hdu[0].header['OPT_ELEM']
-            cenwave = hdu[0].header['CENWAVE']
-            fppos = hdu[0].header['FPPOS']
-            fpoffset = fppos - 3
-            lamptab_name = hdu[0].header['LAMPTAB'].split('$')[-1]
-
-            for i,line in enumerate(hdu[1].data):
-                segment = line['SEGMENT']
-                x_shift = line['SHIFT_DISP']
-                y_shift = line['SHIFT_XDISP']
-                found = line['SPEC_FOUND']
-
-                correction = fppos_shift(lamptab_name,
-                                         segment,
-                                         opt_elem,
-                                         cenwave,
-                                         fpoffset)
-                x_shift -= correction
-
-                x_shift = round(x_shift, 5)
-                y_shift = round(y_shift, 5)
-                print(date, proposid, detector, opt_elem, cenwave, fppos, lamptab_name, i, x_shift, y_shift, found)
-                session.add(Lampflash(date=date,
-                                      proposid=proposid,
-                                      detector=detector,
-                                      opt_elem=opt_elem,
-                                      cenwave=cenwave,
-                                      fppos=fppos,
-                                      lamptab=lamptab_name,
-                                      flash=i,
-                                      x_shift=x_shift,
-                                      y_shift=y_shift,
-                                      found=found,
-                                      file_id=f_key))
-            session.commit()
     session.close()
+
+
+    args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
+
+    pool = mp.Pool(processes=num_cpu)
+    pool.map(update_lampflash, args)
+
+#-------------------------------------------------------------------------------
+
+def update_lampflash((args)):
+    filename, f_key = args
+
+    Session, engine = load_connection(SETTINGS['connection_string'])
+    session = Session()
+
+    for data in pull_flashes(filename):
+        data['x_shift'] = round(data['x_shift'], 5)
+        data['y_shift'] = round(data['y_shift'], 5)
+        data['file_id'] = f_key
+        print(data.values())
+
+        try:
+            session.add(Lampflash(**data))
+        except IOError as e:
+            print(e.message)
+            #-- Handle empty or corrupt FITS files
+            session.add(LampFlash(file_id=f_key))
+
+    session.commit()
+    session.close()
+    engine.dispose()
 
 #-------------------------------------------------------------------------------
 
@@ -168,8 +137,8 @@ def update_header((args)):
     print(filename)
 
     Session, engine = load_connection(SETTINGS['connection_string'])
-
     session = Session()
+
     try:
         with fits.open(filename) as hdu:
             session.add(Headers(filetype=hdu[0].header['filetype'],
@@ -354,10 +323,10 @@ def clean_slate(config_file=None):
     Base.metadata.create_all(engine)
 
     print(SETTINGS)
-    insert_files(**SETTINGS)
-    populate_primary_headers(SETTINGS['num_cpu'])
-    populate_data(SETTINGS['num_cpu'])
-    populate_lampflash()
+    #insert_files(**SETTINGS)
+    #populate_primary_headers(SETTINGS['num_cpu'])
+    #populate_data(SETTINGS['num_cpu'])
+    populate_lampflash(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 

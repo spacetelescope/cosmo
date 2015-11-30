@@ -6,7 +6,6 @@ import glob
 import os
 import shutil
 import sys
-sys.path.insert(0, '../')
 
 import numpy as np
 import matplotlib as mpl
@@ -17,7 +16,7 @@ import scipy
 from scipy.stats import linregress
 from datetime import datetime
 
-from astropy.io import fits as pyfits
+from astropy.io import fits
 
 MONITOR_DIR = '/grp/hst/cos/Monitors/Shifts/'
 WEB_DIR = '/grp/webpages/COS/shifts/'
@@ -26,7 +25,7 @@ lref = '/grp/hst/cdbs/lref/'
 #-------------------------------------------------------------------------------
 
 def fppos_shift(lamptab_name, segment, opt_elem, cenwave, fpoffset):
-    lamptab = pyfits.getdata(os.path.join(lref, lamptab_name))
+    lamptab = fits.getdata(os.path.join(lref, lamptab_name))
 
     if 'FPOFFSET' not in lamptab.names:
         return 0
@@ -39,6 +38,73 @@ def fppos_shift(lamptab_name, segment, opt_elem, cenwave, fpoffset):
     offset = lamptab['FP_PIXEL_SHIFT'][index][0]
 
     return offset
+
+#-------------------------------------------------------------------------------
+
+def pull_flashes(filename):
+    """Calculate lampflash values for given file
+
+    Parameters
+    ----------
+    filename : str
+        file to calculate lamp shifts from
+
+    Returns
+    -------
+    out_info : dict
+        dictionary of pertinent value
+
+    """
+
+    with fits.open(filename) as hdu:
+
+        out_info = {'date': hdu[1].header['EXPSTART'],
+                    'proposid': hdu[0].header['PROPOSID'],
+                    'detector': hdu[0].header['DETECTOR'],
+                    'opt_elem': hdu[0].header['OPT_ELEM'],
+                    'cenwave': hdu[0].header['CENWAVE'],
+                    'fppos': hdu[0].header.get('FPPOS', None),
+                    'lamptab': hdu[0].header['LAMPTAB'].split('$')[-1]}
+
+        if '_lampflash.fits' in filename:
+            fpoffset = out_info['fppos'] - 3
+
+            for i, line in enumerate(hdu[1].data):
+                out_info['flash'] = (i // 2) + 1
+                out_info['x_shift'] = line['SHIFT_DISP'] - fppos_shift(out_info['lamptab'],
+                                                                       line['segment'],
+                                                                       out_info['opt_elem'],
+                                                                       out_info['cenwave'],
+                                                                       fpoffset)
+
+                out_info['y_shift'] = line['SHIFT_XDISP']
+                out_info['found'] = line['SPEC_FOUND']
+
+                #-- don't need too much precision here
+                out_info['x_shift'] = round(out_info['x_shift'], 5)
+                out_info['y_shift'] = round(out_info['y_shift'], 5)
+
+                yield out_info
+
+
+        elif '_rawacq.fits.gz' in filename:
+            #-- Technically it wasn't found.
+            out_info['found'] = False
+            out_info['fppos'] = -1
+            out_info['flash'] = 1
+
+            spt = fits.open(filename.replace('rawacq', 'spt'))
+
+            if not spt[1].header['LQTAYCOR'] > 0:
+                out_info['x_shift'] = None
+                out_info['y_shift'] = None
+            else:
+                # These are in COS RAW coordinates, so shifted 90 degrees from
+                # user and backwards
+                out_info['x_shift'] = 1023 - spt[1].header['LQTAYCOR']
+                out_info['y_shift'] = 1023 - spt[1].header['LQTAXCOR']
+
+            yield out_info
 
 #-------------------------------------------------------------------------------
 
@@ -70,14 +136,14 @@ def check_internal_drift():
 
         print root
         for infile in files:
-            if infile in checked: 
+            if infile in checked:
                 continue
             if not '_lampflash.fits' in infile:
                 continue
 
                 checked.append(infile)
-            
-            hdu = pyfits.open(os.path.join(root, infile))
+
+            hdu = fits.open(os.path.join(root, infile))
             exptime = hdu[1].header['exptime']
 
             if hdu[0].header['DETECTOR'] == 'NUV':
@@ -96,9 +162,9 @@ def check_internal_drift():
                 if len(index) > 1:
                     diff = hdu[1].data[index]['SHIFT_XDISP'].max() - hdu[1].data[index]['SHIFT_XDISP'].min()
 
-                    data.append((os.path.join(root, infile), 
-                                 segment, 
-                                 diff, 
+                    data.append((os.path.join(root, infile),
+                                 segment,
+                                 diff,
                                  exptime))
                     #print segment, diff, exptime
 
@@ -106,9 +172,9 @@ def check_internal_drift():
 
     with open(os.path.join(MONITOR_DIR, 'drift.txt'), 'w') as out:
         for line in data:
-            out.write('{} {} {} {}\n'.format(line[0], 
-                                             line[1], 
-                                             line[2], 
+            out.write('{} {} {} {}\n'.format(line[0],
+                                             line[1],
+                                             line[2],
                                              line[3]))
 
 
@@ -142,179 +208,6 @@ def plot_drift():
         if abs(line[2]) > 2:
             print line
 
-#----------------------------------------------------------
-
-def find_files():
-    print 'Grabbing data'
-    checked = []
-    data = []
-    for root, dirs, files in os.walk('/smov/cos/Data/'):
-        if 'Quality' in root:
-            continue
-        if 'Fasttrack' in root:
-            continue
-        if 'targets' in root:
-            continue
-        if 'podfiles' in root:
-            continue
-        if 'gzip' in root:
-            continue
-        if 'experimental' in root:
-            continue
-        if 'Anomalies' in root:
-            continue
-        if root.endswith('otfrdata'):
-            continue
-        if not len(root.split('/')) == 7:
-            continue
-        
-        for infile in files:
-            if infile.endswith('_lampflash.fits.gz'):
-                if infile in checked:
-                    continue
-
-                checked.append(infile)
-
-                filename = os.path.join(root, infile)
-
-                fits = pyfits.open(filename)
-
-                if fits[1].data == None:
-                    continue
-
-                date = fits[1].header['EXPSTART']
-                proposid = fits[0].header['PROPOSID']
-                detector = fits[0].header['DETECTOR']
-                opt_elem = fits[0].header['OPT_ELEM']
-                cenwave = fits[0].header['CENWAVE']
-                fppos = fits[0].header['FPPOS']
-                fpoffset = fppos - 3
-                lamptab_name = fits[0].header['LAMPTAB'].split('$')[-1]
-
-                for line in fits[1].data:
-                    segment = line['SEGMENT']
-                    x_shift = line['SHIFT_DISP']
-                    y_shift = line['SHIFT_XDISP']
-                    found = line['SPEC_FOUND']
-
-                    correction = fppos_shift(lamptab_name, 
-                                             segment, 
-                                             opt_elem, 
-                                             cenwave, 
-                                             fpoffset)
-                    x_shift -= correction
-
-                    print filename, detector, segment, date, x_shift, y_shift
-                    data.append((filename, 
-                                 detector, 
-                                 segment, 
-                                 date, 
-                                 x_shift, 
-                                 y_shift, 
-                                 opt_elem, 
-                                 cenwave, 
-                                 fppos,
-                                 found))
-
-            elif infile.endswith('_rawacq.fits.gz'):
-                if infile in checked:
-                    continue
-                checked.append(infile)
-
-                filename = os.path.join(root, infile)
-                fits = pyfits.open(filename)
-                spt = pyfits.open(filename.replace('rawacq', 'spt'))
-
-                date = fits[1].header['EXPSTART']
-                detector = 'None'
-                segment = 'None'
-                cenwave = fits[0].header['CENWAVE']
-                opt_elem = fits[0].header['OPT_ELEM']
-                fppos = -1
-
-                if not spt[1].header['LQTAYCOR'] > 0:
-                    continue
-
-                # These are in COS RAW coordinates, so shifted 90 degrees from
-                # user and backwards
-                x_shift = 1023 - spt[1].header['LQTAYCOR']
-                y_shift = 1023 - spt[1].header['LQTAXCOR']
-
-                print filename, detector, segment, date, x_shift, y_shift
-                data.append((filename, 
-                             detector,
-                             segment,
-                             date,
-                             x_shift,
-                             y_shift,
-                             opt_elem,
-                             cenwave,
-                             fppos,
-                             False))
-
-    data = list(set(data))
-    data.sort()
-    return data
-
-#----------------------------------------------------------
-
-def write_data(data):
-    print 'Writing Data to file'
-    out_name = os.path.join(MONITOR_DIR, 'all_shifts.fits')
-
-    hdu_out = pyfits.HDUList(pyfits.PrimaryHDU())
-    date_time = str(datetime.now())
-    date_time = date_time.split()[0] + 'T' + date_time.split()[1]
-    hdu_out[0].header['DATE'] = (date_time, 'Creation UTC (CCCC-MM-DD) date')
-    hdu_out[0].header['TELESCOP'] = 'HST'
-    hdu_out[0].header['INSTRUME'] = 'COS'
-    hdu_out[0].header['DETECTOR'] = 'FUV'
-    hdu_out[0].header['COSCOORD'] = 'USER'
-    hdu_out[0].header['USEAFTER'] = 'May 11 2009 00:00:00'
-    hdu_out[0].header['PEDIGREE'] = 'INFLIGHT'
-    hdu_out[0].header['FILETYPE'] = 'SHIFT TABLE'
-    hdu_out[0].header['DESCRIP'] = 'Gives all shift values for COS datasets'
-    hdu_out[0].header['COMMENT'] = "= 'This file was created by J. Ely'"
-
-    dataset = np.array([line[0] for line in data])
-    detector = np.array([line[1] for line in data])
-    segment = np.array([line[2] for line in data])
-    mjd = np.array([line[3] for line in data])
-    x_shift = np.array([line[4] for line in data])
-    y_shift = np.array([line[5] for line in data])
-    opt_elem = np.array([line[6] for line in data])
-    cenwave = np.array([line[7] for line in data])
-    fppos = np.array([line[8] for line in data])
-    found = np.array([line[9] for line in data])
-
-    dataset_col = pyfits.Column('dataset', 'A72', 'name', array=dataset)
-    detector_col = pyfits.Column('detector', 'A24', 'MJD', array=detector)
-    segment_col = pyfits.Column('segment', 'A24', 'pixel', array=segment)
-    mjd_col = pyfits.Column('mjd', 'J', 'pixel', array=mjd)
-    x_shift_col = pyfits.Column('x_shift', 'D8.4', 'pixel', array=x_shift)
-    y_shift_col = pyfits.Column('y_shift', 'D8.4', 'pixel', array=y_shift)
-    opt_elem_col = pyfits.Column('opt_elem', 'A24', 'pixel', array=opt_elem)
-    cenwave_col = pyfits.Column('cenwave', 'J', 'pixel', array=cenwave)
-    fppos_col = pyfits.Column('fppos', 'J', 'pixel', array=fppos)
-    found_col = pyfits.Column('found', 'L', 'bool', array=found)
-
-    tab = pyfits.new_table([dataset_col, 
-                            detector_col, 
-                            segment_col,
-                            x_shift_col, 
-                            y_shift_col, 
-                            mjd_col, 
-                            opt_elem_col, 
-                            cenwave_col, 
-                            fppos_col,
-                            found_col])
-
-    hdu_out.append(tab)
-
-    hdu_out.writeto(out_name, clobber=True)
-    os.chmod(out_name, 0770)
-    return out_name
-
 #-------------------------------------------------------------------------------
 
 def fit_data(xdata, ydata):
@@ -333,7 +226,7 @@ def make_plots(data_file):
 
     mpl.rcParams['figure.subplot.hspace'] = 0.05
     plt.ioff()
-    data = pyfits.getdata(data_file)
+    data = fits.getdata(data_file)
 
     sorted_index = np.argsort(data['MJD'])
     data = data[sorted_index]
@@ -395,7 +288,7 @@ def make_plots(data_file):
                    (data['OPT_ELEM'] == 'G285M'))[0]
 
     #############
-    
+
     fig = plt.figure( figsize=(14,8) )
     ax = fig.add_subplot(3,1,1)
     ax.plot( data['MJD'][G130M_A], data['X_SHIFT'][G130M_A],'b.',label='G130M')
@@ -429,7 +322,7 @@ def make_plots(data_file):
 
     fig.savefig( os.path.join(MONITOR_DIR,'FUV_shifts.png') )
     plt.close(fig)
-    
+
     ##########
 
     fig = plt.figure(figsize=(14, 18))
@@ -577,8 +470,8 @@ def make_plots(data_file):
     ax.set_ylim(260, 400)
 
 
-    fig.savefig(os.path.join(MONITOR_DIR, 'NUV_shifts.png'), 
-                bbox_inches='tight', 
+    fig.savefig(os.path.join(MONITOR_DIR, 'NUV_shifts.png'),
+                bbox_inches='tight',
                 pad_inches=.5)
     plt.close(fig)
 
@@ -646,7 +539,7 @@ def make_plots_2(data_file):
     """ Making the plots for the shift2 value
     """
 
-    data = pyfits.getdata(data_file)
+    data = fits.getdata(data_file)
 
     sorted_index = np.argsort(data['MJD'])
     data = data[sorted_index]
@@ -696,14 +589,14 @@ def make_plots_2(data_file):
 
         fig.savefig(os.path.join(MONITOR_DIR, 'shift_relation_{}.png'.format(cenwave)))
         plt.close(fig)
-    
+
 
 #----------------------------------------------------------
 
 def fp_diff():
     print "Checking the SHIFT2 difference"
 
-    fits = pyfits.open(os.path.join(MONITOR_DIR, 'all_shifts.fits'))
+    fits = fits.open(os.path.join(MONITOR_DIR, 'all_shifts.fits'))
     data = fits[1].data
 
     index = np.where((data['detector'] == 'FUV'))[0]
@@ -718,24 +611,24 @@ def fp_diff():
         diff_dict[cenwave] = []
 
     ofile = open(os.path.join(MONITOR_DIR, 'shift_data.txt'), 'w')
-    for i, name in enumerate(datasets):
+    for name in datasets:
         a_shift = None
         b_shift = None
         try:
             a_shift = data['x_shift'][np.where((data['dataset'] == name) &
                                                (data['segment'] == 'FUVA'))[0]][0]
-            b_shift = data['x_shift'][np.where((data['dataset'] == name) & 
+            b_shift = data['x_shift'][np.where((data['dataset'] == name) &
                                                (data['segment'] == 'FUVB'))[0]][0]
         except IndexError:
             continue
 
-        cenwave = data['cenwave'][np.where((data['dataset'] == name) & 
+        cenwave = data['cenwave'][np.where((data['dataset'] == name) &
                                            (data['segment'] == 'FUVA'))[0]][0]
-        opt_elem = data['opt_elem'][np.where((data['dataset'] == name) & 
+        opt_elem = data['opt_elem'][np.where((data['dataset'] == name) &
                                              (data['segment'] == 'FUVA'))[0]][0]
-        fppos = data['fppos'][np.where((data['dataset'] == name) & 
+        fppos = data['fppos'][np.where((data['dataset'] == name) &
                                        (data['segment'] == 'FUVA'))[0]][0]
-        mjd = data['mjd'][np.where((data['dataset'] == name) & 
+        mjd = data['mjd'][np.where((data['dataset'] == name) &
                                    (data['segment'] == 'FUVA'))[0]][0]
         diff = a_shift - b_shift
 
@@ -780,8 +673,6 @@ def monitor():
     """Run the entire suite of monitoring
     """
 
-    data = find_files()
-    data_file = write_data(data)
     make_plots(data_file)
     make_plots_2(data_file)
     fp_diff()
