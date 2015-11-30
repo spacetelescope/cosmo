@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, absolute_import
 
 from astropy.io import fits
 import os
@@ -8,11 +8,20 @@ import yaml
 import numpy as np
 import multiprocessing as mp
 
-from census import find_all_datasets
+
+from ..filesystem import find_all_datasets
 from db_tables import load_connection
 from db_tables import Base
 from db_tables import Files, Headers, Data
 from db_tables import Lampflash, Variability, Stims, Phd
+
+
+config_file = os.path.join(os.environ['HOME'], "configure.yaml")
+with open(config_file, 'r') as f:
+    SETTINGS = yaml.load(f)
+
+Session, engine = load_connection(SETTINGS['connection_string'])
+
 
 #-------------------------------------------------------------------------------
 
@@ -284,7 +293,7 @@ def update_data((args)):
     except IOError as e:
         print(e.message)
         #-- Handle empty or corrupt FITS files
-        session.add(Headers(file_id=f_key))
+        session.add(Data(file_id=f_key))
 
     session.commit()
     session.close()
@@ -319,7 +328,7 @@ def delete_file_from_all(filename):
 
 #-------------------------------------------------------------------------------
 
-def clear_all_databases():
+def clear_all_databases(SETTINGS):
     """Dump all databases of all contents...seriously"""
 
     if not raw_input("Are you sure you want to delete everything? Y/n") == 'Y':
@@ -328,7 +337,8 @@ def clear_all_databases():
     session = Session()
     for table in reversed(Base.metadata.sorted_tables):
         if table.name == 'files':
-            continue
+            #continue
+            pass
         try:
             print("Deleting {}".format(table.name))
             session.execute(table.delete())
@@ -338,20 +348,18 @@ def clear_all_databases():
 
 #-------------------------------------------------------------------------------
 
-if __name__ == "__main__":
-
-    with open('../configure.yaml', 'r') as f:
-        SETTINGS = yaml.load(f)
-
-    Session, engine = load_connection(SETTINGS['connection_string'])
-
-    #clear_all_databases()
-
+def clean_slate(config_file=None):
+    #clear_all_databases(SETTINGS)
     #Base.metadata.drop_all(engine, checkfirst=False)
     Base.metadata.create_all(engine)
 
     print(SETTINGS)
-    #insert_files(**SETTINGS)
+    insert_files(**SETTINGS)
     populate_primary_headers(SETTINGS['num_cpu'])
     populate_data(SETTINGS['num_cpu'])
-    #populate_lampflash()
+    populate_lampflash()
+
+#-------------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    clean_slate('~/configure.yaml')
