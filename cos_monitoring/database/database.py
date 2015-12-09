@@ -34,7 +34,7 @@ def mp_insert(args):
 def insert_with_yield(filename, table, function):
     """
     Insert or update the table with information in the record_dict.
-    
+
     Parameters
     ----------
     table :
@@ -181,13 +181,20 @@ def update_header((args)):
                                 exp_num=hdu[0].header['exp_num'],
                                 cenwave=hdu[0].header['cenwave'],
                                 aperture=hdu[0].header['aperture'],
+                                propaper=hdu[0].header['propaper'],
+                                apmos=hdu[0].header['apmos'],
+                                aperxpos=hdu[0].header['aperxpos'],
+                                aperypos=hdu[0].header['aperypos'],
                                 opt_elem=hdu[0].header['opt_elem'],
                                 shutter=hdu[0].header['shutter'],
                                 extended=hdu[0].header['extended'],
                                 obset_id=hdu[0].header['obset_id'],
+                                postarg1=hdu[0].header['postarg1'],
+                                postarg2=hdu[0].header['postarg2'],
+                                proctime=hdu[0].header['proctime'],
+                                propttl1=hdu[0].header['propttl1'],
                                 asn_id=hdu[0].header['asn_id'],
                                 asn_tab=hdu[0].header['asn_tab'],
-
                                 hvlevela=hdu[1].header.get('hvlevela', -999),
                                 hvlevelb=hdu[1].header.get('hvlevelb', -999),
                                 date_obs=hdu[1].header['date-obs'],
@@ -197,6 +204,7 @@ def update_header((args)):
                                 expstart=hdu[1].header['expstart'],
                                 expend=hdu[1].header['expend'],
                                 exptime=hdu[1].header['exptime'],
+                                overflow=hdu[1].header['overflow'],
                                 numflash=hdu[1].header.get('numflash', None),
                                 ra_aper=hdu[1].header['ra_aper'],
                                 dec_aper=hdu[1].header['dec_aper'],
@@ -218,6 +226,15 @@ def update_header((args)):
                                 sp_err_a=hdu[1].header.get('sp_err_a', -999),
                                 sp_err_b=hdu[1].header.get('sp_err_b', -999),
                                 sp_err_c=hdu[1].header.get('sp_err_c', -999),
+                                nevents=hdu[1].header.get('nevents', -1),
+                                neventsa=hdu[1].header.get('neventsa', -1),
+                                neventsb=hdu[1].header.get('neventsb', -1),
+                                deventa=hdu[1].header.get('deventa', -1),
+                                deventb=hdu[1].header.get('deventb', -1),
+                                feventa=hdu[1].header.get('feventa', -1),
+                                feventb=hdu[1].header.get('feventb', -1),
+                                dethvla=hdu[1].header.get('dethvla', -1),
+                                dethvlb=hdu[1].header.get('dethvlb', -1),
 
                                 file_id=f_key))
     except IOError as e:
@@ -333,15 +350,15 @@ def clear_all_databases(SETTINGS):
 #-------------------------------------------------------------------------------
 
 def clean_slate(config_file=None):
-    #clear_all_databases(SETTINGS)
+    clear_all_databases(SETTINGS)
     #Base.metadata.drop_all(engine, checkfirst=False)
     Base.metadata.create_all(engine)
 
     print(SETTINGS)
-    #insert_files(**SETTINGS)
-    #populate_primary_headers(SETTINGS['num_cpu'])
+    insert_files(**SETTINGS)
+    populate_primary_headers(SETTINGS['num_cpu'])
     #populate_data(SETTINGS['num_cpu'])
-    populate_lampflash(SETTINGS['num_cpu'])
+    #populate_lampflash(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
