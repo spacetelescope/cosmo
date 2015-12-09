@@ -13,23 +13,22 @@ def csv_generator(headers, keywords, filename):
     Pulls headers and keywords from SQL query to make a csv table.
 
     Parameters
-    ---------------
-    headers: Class (<class 'sqlalchemy.engine.result.RowProxy'>)
-            All of the header information returned from SQL query.
-    keywords: List
-            A list of column names returned from SQL query.
-    filename: str
-            The names of CSV output file.
+    ----------
+    headers : class (<class 'sqlalchemy.engine.result.RowProxy'>)
+        All of the header information returned from SQL query.
+    keywords : list
+        A list of column names returned from SQL query.
+    filename : str
+        The names of CSV output file.
 
     Returns
-    ---------------
+    -------
     None
 
     Outputs
-    ---------------
-    t: CSV file
-            A CSV files that contains all of the queried header information.
-
+    -------
+    t : CSV file
+        A CSV files that contains all of the queried header information.
     """
     datarows = []
     for item in headers:

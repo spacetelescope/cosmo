@@ -34,6 +34,7 @@ def mp_insert(args):
 def insert_with_yield(filename, table, function):
     """
     Insert or update the table with information in the record_dict.
+    
     Parameters
     ----------
     table :
