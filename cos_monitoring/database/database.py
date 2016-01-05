@@ -2,7 +2,7 @@ from __future__ import print_function, absolute_import, division
 
 from astropy.io import fits
 import os
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, text
 import sys
 import yaml
 import numpy as np
@@ -34,7 +34,7 @@ def mp_insert(args):
 def insert_with_yield(filename, table, function):
     """
     Insert or update the table with information in the record_dict.
-    
+
     Parameters
     ----------
     table :
@@ -122,19 +122,46 @@ def populate_lampflash(num_cpu=1):
 def populate_primary_headers(num_cpu=1):
     print("adding to primary headers")
 
-    session = Session()
-    #files_to_add = [(result.id, os.path.join(result.path, result.name))
-    #                    for result in session.query(Files).\
-    #                            filter(or_(Files.name.like('%_rawaccum%'),
-    #                                       Files.name.like('%_rawtag%'))).\
-    #                            outerjoin(Headers, Files.id == Headers.file_id).\
-    #                            filter(Headers.file_id == None)]
+    t = """
+        CREATE TEMPORARY TABLE which_file (rootname CHAR(9), has_x1d BOOLEAN,has_corr BOOLEAN, has_raw BOOLEAN);
+        CREATE INDEX info ON which_file (rootname, has_x1d, has_corr, has_raw);
 
-    files_to_add = [(result.id, os.path.join(result.path, result.name))
-                        for result in session.query(Files).\
-                                filter(Files.name.like('%_x1d.fits%')).\
-                                outerjoin(Data, Files.id == Data.file_id).\
-                                filter(Data.file_id == None)]
+        INSERT INTO which_file (rootname, has_x1d, has_corr, has_raw)
+          SELECT rootname,
+               IF(SUM(name LIKE '%_x1d%'), true, false) as has_x1d,
+               IF(SUM(name LIKE '%_corrtag%'), true, false) as has_corr,
+               IF(SUM(name LIKE '%_rawtag%'), true, false) as has_raw
+                   FROM files GROUP BY rootname;
+        """
+
+    q = """
+        SELECT
+         CASE
+                           WHEN which_file.has_x1d = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                files.name LIKE CONCAT(which_file.rootname, '_x1d.fits%') LIMIT 1)
+                           WHEN which_file.has_corr = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
+                           WHEN which_file.has_raw = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                files.name LIKE CONCAT(which_file.rootname, '_rawtag%') LIMIT 1)
+                           ELSE 3
+                         END as file_to_grab,
+         CASE
+                            WHEN which_file.has_x1d = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_x1d.fits%') LIMIT 1)
+                            WHEN which_file.has_corr = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                  files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
+                            WHEN which_file.has_raw = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_rawtag%') LIMIT 1)
+                            ELSE 3
+                          END as file_id
+        FROM which_file
+            WHERE has_x1d = 1 OR has_corr = 1 OR has_raw = 1;
+    """
+
+    engine.execute(text(t))
+
+    files_to_add = [(result.file_id, result.file_to_grab) for result in engine.execute(text(q))
+                        if not result.file_id == None]
 
     session.close()
 
@@ -333,14 +360,14 @@ def clear_all_databases(SETTINGS):
 #-------------------------------------------------------------------------------
 
 def clean_slate(config_file=None):
-    #clear_all_databases(SETTINGS)
+    clear_all_databases(SETTINGS)
     #Base.metadata.drop_all(engine, checkfirst=False)
     Base.metadata.create_all(engine)
 
     print(SETTINGS)
-    #insert_files(**SETTINGS)
-    #populate_primary_headers(SETTINGS['num_cpu'])
-    #populate_data(SETTINGS['num_cpu'])
+    insert_files(**SETTINGS)
+    populate_primary_headers(SETTINGS['num_cpu'])
+    populate_data(SETTINGS['num_cpu'])
     populate_lampflash(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
