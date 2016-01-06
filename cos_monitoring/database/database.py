@@ -123,15 +123,18 @@ def populate_primary_headers(num_cpu=1):
     print("adding to primary headers")
 
     t = """
-        CREATE TEMPORARY TABLE which_file (rootname CHAR(9), has_x1d BOOLEAN,has_corr BOOLEAN, has_raw BOOLEAN);
-        CREATE INDEX info ON which_file (rootname, has_x1d, has_corr, has_raw);
+        CREATE TEMPORARY TABLE which_file (rootname CHAR(9), has_x1d BOOLEAN,has_corr BOOLEAN, has_raw BOOLEAN, has_acq BOOLEAN);
+        CREATE INDEX info ON which_file (rootname, has_x1d, has_corr, has_raw, has_acq);
 
-        INSERT INTO which_file (rootname, has_x1d, has_corr, has_raw)
+        INSERT INTO which_file (rootname, has_x1d, has_corr, has_raw, has_acq)
           SELECT rootname,
                IF(SUM(name LIKE '%_x1d%'), true, false) as has_x1d,
                IF(SUM(name LIKE '%_corrtag%'), true, false) as has_corr,
-               IF(SUM(name LIKE '%_rawtag%'), true, false) as has_raw
-                   FROM files GROUP BY rootname;
+               IF(SUM(name LIKE '%_rawtag%'), true, false) as has_raw,
+               IF(SUM(name LIKE '%_rawacq%'), true, false) as has_acq
+                   FROM files
+                   WHERE rootname NOT IN (SELECT headers.rootname from headers)
+                   GROUP BY rootname;
         """
 
     q = """
@@ -143,19 +146,23 @@ def populate_primary_headers(num_cpu=1):
                                                                                                  files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
                            WHEN which_file.has_raw = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_rawtag%') LIMIT 1)
-                           ELSE 3
+                           WHEN which_file.has_acq = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                files.name LIKE CONCAT(which_file.rootname, '_rawacq%') LIMIT 1)
+                           ELSE NULL
                          END as file_to_grab,
          CASE
                             WHEN which_file.has_x1d = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
                                                                                                  files.name LIKE CONCAT(which_file.rootname, '_x1d.fits%') LIMIT 1)
                             WHEN which_file.has_corr = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                  files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
                             WHEN which_file.has_raw = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
                                                                                                  files.name LIKE CONCAT(which_file.rootname, '_rawtag%') LIMIT 1)
-                            ELSE 3
+                            WHEN which_file.has_acq = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_rawacq%') LIMIT 1)
+                            ELSE NULL
                           END as file_id
         FROM which_file
-            WHERE has_x1d = 1 OR has_corr = 1 OR has_raw = 1;
+            WHERE (has_x1d = 1 OR has_corr = 1 OR has_raw = 1 OR has_acq);
     """
 
     engine.execute(text(t))
@@ -163,7 +170,8 @@ def populate_primary_headers(num_cpu=1):
     files_to_add = [(result.file_id, result.file_to_grab) for result in engine.execute(text(q))
                         if not result.file_id == None]
 
-    session.close()
+
+    print("Found {} files to add".format(len(files_to_add)))
 
     args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
 
@@ -211,9 +219,9 @@ def update_header((args)):
                                 opt_elem=hdu[0].header['opt_elem'],
                                 shutter=hdu[0].header['shutter'],
                                 extended=hdu[0].header['extended'],
-                                obset_id=hdu[0].header['obset_id'],
-                                asn_id=hdu[0].header['asn_id'],
-                                asn_tab=hdu[0].header['asn_tab'],
+                                obset_id=hdu[0].header.get('obset_id', None),
+                                asn_id=hdu[0].header.get('asn_id', 'None'),
+                                asn_tab=hdu[0].header.get('asn_tab', 'None'),
 
                                 hvlevela=hdu[1].header.get('hvlevela', -999),
                                 hvlevelb=hdu[1].header.get('hvlevelb', -999),
@@ -367,8 +375,8 @@ def clean_slate(config_file=None):
     print(SETTINGS)
     insert_files(**SETTINGS)
     populate_primary_headers(SETTINGS['num_cpu'])
-    populate_data(SETTINGS['num_cpu'])
-    populate_lampflash(SETTINGS['num_cpu'])
+    #populate_data(SETTINGS['num_cpu'])
+    #populate_lampflash(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
