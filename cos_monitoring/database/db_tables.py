@@ -4,7 +4,10 @@ from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker, relationship, backref
 
-import yaml
+try:
+    import yaml
+except ImportError:
+    from .yaml import yaml
 
 Base = declarative_base()
 

@@ -4,10 +4,13 @@ from astropy.io import fits
 import os
 from sqlalchemy import and_, or_, text
 import sys
-import yaml
 import numpy as np
 import multiprocessing as mp
 
+try:
+    import yaml
+except ImportError:
+    from .yaml import yaml
 
 from ..filesystem import find_all_datasets
 from ..osm.monitor import pull_flashes
