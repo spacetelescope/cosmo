@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean
+from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean, Numeric
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker, relationship, backref
@@ -48,8 +48,8 @@ class Files(Base):
     name = Column(String(40))
     rootname = Column(String(9))
 
-    Index('idx_fullpath', 'path', 'name', unique=True)
-    Index('idx_rootname', 'rootname')
+    __table_args__ = (Index('idx_fullpath', 'path', 'name', unique=True), )
+    __table_args__ = (Index('idx_rootname', 'rootname'), )
 
 #-------------------------------------------------------------------------------
 
@@ -117,8 +117,8 @@ class Headers(Base):
     dpixel1b = Column(Float)
     date_obs = Column(String(10))
     time_obs = Column(String(8))
-    expstart = Column(Float(10))
-    expend = Column(Float(10))
+    expstart = Column(Numeric(8, 3))
+    expend = Column(Numeric(8, 3))
     exptime = Column(Float)
     numflash = Column(Integer)
     ra_aper = Column(Float)
@@ -146,8 +146,8 @@ class Headers(Base):
     file_id = Column(Integer, ForeignKey('files.id'))
     file = relationship("Files", backref=backref('headers', order_by=id))
 
-    Index('idx_rootname', 'rootname', unique=False)
-    Index('idx_config', 'segment', 'fppox', 'cenwave', 'opt_elem', unique=False)
+    __table_args__ = (Index('idx_rootname', 'rootname', unique=False), )
+    __table_args__ = (Index('idx_config', 'segment', 'fppos', 'cenwave', 'opt_elem', unique=False), )
 
 #-------------------------------------------------------------------------------
 
