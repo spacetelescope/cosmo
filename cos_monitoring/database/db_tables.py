@@ -104,7 +104,7 @@ class Headers(Base):
     exp_num = Column(Integer)
     cenwave = Column(Integer)
     aperture = Column(String(3))
-    opt_elem = Column(String(5))
+    opt_elem = Column(String(6))
     shutter = Column(String(20))
     extended = Column(String(20))
     obset_id = Column(String(2))
