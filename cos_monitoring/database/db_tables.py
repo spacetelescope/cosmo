@@ -42,6 +42,27 @@ def load_connection(connection_string, echo=False):
 
 #-------------------------------------------------------------------------------
 
+class Dark(Base):
+    __tablename__ = "dark"
+
+    id = Column(Integer, primary_key=True)
+
+    obsname = Column(String)
+    detector = Column(String(4))
+    date = Column(String)
+    dark = Column(Float)
+    ta_dark = Column(Float)
+    latitude = Column(Float)
+    longitude = Column(Float)
+    sun_lat = Column(Float)
+    sun_lon = Column(Float)
+    temp = Column(Float)
+
+    file_id = Column(Integer, ForeignKey('files.id'))
+    file = relationship("Files", backref=backref('lampflash', order_by=id))
+
+#-------------------------------------------------------------------------------
+
 class Files(Base):
     __tablename__ = 'files'
 
@@ -73,7 +94,7 @@ class Lampflash(Base):
     found = Column(Boolean)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('lampflash', order_by=id))
+    #file = relationship("Files", backref=backref('lampflash', order_by=id))
 
 #-------------------------------------------------------------------------------
 
@@ -147,13 +168,13 @@ class Headers(Base):
     sp_err_c = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('headers', order_by=id))
+    #file = relationship("Files", backref=backref('headers', order_by=id))
 
     __table_args__ = (Index('idx_rootname', 'rootname', unique=False), )
     __table_args__ = (Index('idx_config', 'segment', 'fppos', 'cenwave', 'opt_elem', unique=False), )
 
 #-------------------------------------------------------------------------------
-
+"""
 class Data(Base):
     __tablename__ = "data"
 
@@ -164,8 +185,8 @@ class Data(Base):
     flux_std = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Data', order_by=id))
-
+    #file = relationship("Files", backref=backref('Data', order_by=id))
+"""
 #-------------------------------------------------------------------------------
 
 class Stims(Base):
@@ -183,7 +204,7 @@ class Stims(Base):
     counts = Column(Integer)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Stims', order_by=id))
+    #file = relationship("Files", backref=backref('Stims', order_by=id))
 
 #-------------------------------------------------------------------------------
 
@@ -202,7 +223,7 @@ class Variability(Base):
     temperature = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Variability', order_by=id))
+    #file = relationship("Files", backref=backref('Variability', order_by=id))
 
 #-------------------------------------------------------------------------------
 
@@ -245,7 +266,7 @@ class Phd(Base):
     pha_31 = Column(Integer)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Phd', order_by=id))
+    #file = relationship("Files", backref=backref('Phd', order_by=id))
 
 #-------------------------------------------------------------------------------
 '''
@@ -263,6 +284,6 @@ class Gain(Base):
     sigma = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Gain', order_by=id))
+    #file = relationship("Files", backref=backref('Gain', order_by=id))
 '''
 #-------------------------------------------------------------------------------

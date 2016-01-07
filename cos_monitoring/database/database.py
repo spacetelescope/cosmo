@@ -16,7 +16,7 @@ from ..filesystem import find_all_datasets
 from ..osm.monitor import pull_flashes
 from .db_tables import load_connection
 from .db_tables import Base
-from .db_tables import Files, Headers, Data
+from .db_tables import Files, Headers
 from .db_tables import Lampflash, Variability, Stims, Phd
 
 
@@ -106,7 +106,7 @@ def insert_files(**kwargs):
 def populate_lampflash(num_cpu=1):
     print("adding to lampflash")
     session = Session()
-    ### also should have the _rawacqs as well
+
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
                                 filter(Files.name.like('%lampflash%')).\
@@ -299,9 +299,9 @@ def update_data((args)):
     try:
         with fits.open(filename) as hdu:
             if len(hdu[1].data):
-                flux_mean=round(hdu[1].data['flux'].ravel().mean(), 5)
-                flux_max=round(hdu[1].data['flux'].ravel().max(), 5)
-                flux_std=round(hdu[1].data['flux'].ravel().std(), 5)
+                flux_mean=hdu[1].data['flux'].ravel().mean()
+                flux_max=hdu[1].data['flux'].ravel().max()
+                flux_std=hdu[1].data['flux'].ravel().std()
             else:
                 flux_mean = None
                 flux_max = None
@@ -370,16 +370,21 @@ def clear_all_databases(SETTINGS):
 
 #-------------------------------------------------------------------------------
 
+def do_all():
+    print(SETTINGS)
+    ###insert_files(**SETTINGS)
+    populate_primary_headers(SETTINGS['num_cpu'])
+    #populate_data(SETTINGS['num_cpu'])
+    populate_lampflash(SETTINGS['num_cpu'])
+
+#-------------------------------------------------------------------------------
+
 def clean_slate(config_file=None):
     clear_all_databases(SETTINGS)
     #Base.metadata.drop_all(engine, checkfirst=False)
     Base.metadata.create_all(engine)
 
-    print(SETTINGS)
-    insert_files(**SETTINGS)
-    populate_primary_headers(SETTINGS['num_cpu'])
-    #populate_data(SETTINGS['num_cpu'])
-    #populate_lampflash(SETTINGS['num_cpu'])
+    do_all()
 
 #-------------------------------------------------------------------------------
 
