@@ -42,21 +42,21 @@ def load_connection(connection_string, echo=False):
 
 #-------------------------------------------------------------------------------
 
-class Dark(Base):
-    __tablename__ = "dark"
+class Darks(Base):
+    __tablename__ = "darks"
 
     id = Column(Integer, primary_key=True)
 
-    obsname = Column(String(20))
+    obsname = Column(String(30))
     detector = Column(String(4))
-    date = Column(String(20))
-    dark = Column(Float)
-    ta_dark = Column(Float)
-    latitude = Column(Float)
-    longitude = Column(Float)
-    sun_lat = Column(Float)
-    sun_lon = Column(Float)
-    temp = Column(Float)
+    date = Column(Numeric(7, 2))
+    dark = Column(Numeric(12, 10))
+    ta_dark = Column(Numeric(12, 10))
+    latitude = Column(Numeric(8, 3))
+    longitude = Column(Numeric(8, 3))
+    sun_lat = Column(Numeric(8, 3))
+    sun_lon = Column(Numeric(8, 3))
+    temp = Column(Numeric(8, 4))
 
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('lampflash', order_by=id))

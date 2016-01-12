@@ -28,43 +28,6 @@ PHD_TABLE = 'phd'
 
 #-------------------------------------------------------------------------------
 
-def pull_darks(base, detector):
-    '''
-    Recursively find all darks in the given base directory taken with the
-    given detector
-
-    '''
-
-    for root, dirs, files in os.walk(base):
-
-        if 'gzip' in root: continue
-        if 'experimental' in root: continue
-
-        print root
-        
-        for filename in files:
-            if not '.fits' in filename:
-                continue
-            elif not '_corrtag' in filename:
-                continue
-
-            full_filename = os.path.join( root, filename )
-
-            try:
-                hdu = fits.open(full_filename)
-            except:
-                print "bad file {}".format(full_filename)
-                continue    
-
-            if not hdu[0].header['exptype'] == 'DARK':
-                continue
-            if not hdu[0].header['detector'] == detector:
-                continue
-
-            yield full_filename
-
-#-------------------------------------------------------------------------------
-
 def get_temp(filename):
 
     detector = fits.getval( filename, 'DETECTOR' )
@@ -113,19 +76,25 @@ def mjd_to_decyear( time_array ):
 
 #-------------------------------------------------------------------------------
 
-def pull_orbital_info( dataset, step=1 ):
+def pull_orbital_info(dataset, step=25):
     """ Pull second by second orbital information from the dataset
 
     """
 
     SECOND_PER_MJD = 1.15741e-5
 
+    info = {}
+    info['obsname'] = os.path.split(dataset)[-1]
+
     hdu = fits.open( dataset )
     try:
         timeline = hdu['timeline'].data
         segment = hdu[0].header['segment']
     except KeyError:
-        return None, None, None, None, None, None, None
+        return
+
+    info['detector'] = segment
+    info['temp'] = get_temp(dataset)
 
     if segment == 'N/A':
         xlim = (0, 1024)
@@ -161,7 +130,7 @@ def pull_orbital_info( dataset, step=1 ):
 
     if not len( times ):
         blank = np.array( [0] )
-        return blank, blank, blank, blank, blank, blank
+        return
 
 
     events = hdu['events'].data
@@ -196,7 +165,18 @@ def pull_orbital_info( dataset, step=1 ):
     assert len(lat) == len(counts), \
         'Arrays are not equal in length {}:{}'.format( len(lat), len(counts) )
 
-    return counts, ta_counts, decyear, lat, lon, sun_lat, sun_lon
+
+    for i in range(len(counts)):
+        ### - better solution than round?
+        info['date'] = round(decyear[i], 3)
+        info['dark'] = round(counts[i], 7)
+        info['ta_dark'] = round(ta_counts[i], 7)
+        info['latitude'] = round(lat[i], 7)
+        info['longitude'] = round(lon[i], 7)
+        info['sun_lat'] = round(sun_lat[i], 7)
+        info['sun_lon'] = round(sun_lon[i], 7)
+
+        yield info
 
 #-------------------------------------------------------------------------------
 
@@ -243,51 +223,6 @@ def pha_hist(filename):
     counts, bins = np.histogram(pha_list_all, bins=31, range=(0, 31))
 
     return counts
-
-#-------------------------------------------------------------------------------
-
-def compile_darkrates(detector='FUV'):
-    db = sqlite3.connect(DB_NAME)
-
-    c = db.cursor()
-    table = '{}_stats'.format(detector)
-    try:
-        c.execute("""CREATE TABLE {} ( obsname text, date real, dark real, ta_dark real, latitude real, longitude real, sun_lat real, sun_lon real, temp real)""".format(table))
-    except sqlite3.OperationalError:
-        pass
-
-    location = '/smov/cos/Data/'
-    c.execute( """SELECT DISTINCT obsname FROM %s """ %(table))
-    already_done = set( [str(item[0]) for item in c] )
-
-    for filename in pull_darks(location, detector):
-        obsname = os.path.split(filename)[-1]
-
-        if obsname in already_done:
-            print filename, 'done'
-        else:
-            print filename, 'running'
-
-        counts, ta_counts, date, lat, lon, sun_lat, sun_lon = pull_orbital_info( filename, 25 )
-        if counts == None:
-            print "bad File {}".format(filename)
-            continue
-
-        temp = get_temp(filename)
-
-        for i in range(len(counts)):
-            c.execute( """INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)""" % (table),
-                       (obsname,
-                        date[i],
-                        counts[i],
-                        ta_counts[i],
-                        lat[i],
-                        lon[i],
-                        sun_lat[i],
-                        sun_lon[i],
-                        temp))
-
-        db.commit()
 
 #-------------------------------------------------------------------------------
 

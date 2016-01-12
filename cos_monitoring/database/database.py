@@ -12,13 +12,14 @@ try:
 except ImportError:
     from .yaml import yaml
 
+from ..dark.monitor import pull_orbital_info
 from ..filesystem import find_all_datasets
 from ..osm.monitor import pull_flashes
 from ..stim.monitor import locate_stims
 from .db_tables import load_connection
 from .db_tables import Base
 from .db_tables import Files, Headers
-from .db_tables import Lampflash, Variability, Stims, Phd
+from .db_tables import Lampflash, Variability, Stims, Phd, Darks
 
 
 config_file = os.path.join(os.environ['HOME'], "configure.yaml")
@@ -137,6 +138,36 @@ def populate_stims(num_cpu=1):
 
 
     args = [(full_filename, Stims, locate_stims) for f_key, full_filename in files_to_add]
+
+    pool = mp.Pool(processes=num_cpu)
+    pool.map(mp_insert, args)
+
+#-------------------------------------------------------------------------------
+
+def populate_darks(num_cpu=1):
+    """
+    SELECT files.id,files.path,files.name,headers.targname FROM files JOIN headers ON files.id = headers.file_id WHERE headers.targname='DARK';
+    """
+    print("Adding to Darks")
+    session = Session()
+    '''
+    files_to_add = [(result.id, os.path.join(result.path, result.name))
+                        for result in session.query(Files).\
+                                filter(Darks.name.like('%corrtag\_%')).\
+                                outerjoin(Darks, Files.id == Darks.file_id).\
+                                filter(Darks.file_id == None)]
+    '''
+
+    files_to_add = [(result.id, os.path.join(result.path, result.name))
+                        for result in session.query(Files).\
+                            outerjoin(Headers, Files.id == Headers.file_id).\
+                            outerjoin(Darks, Files.id == Darks.file_id).\
+                            filter(Headers.targname == 'DARK').\
+                            filter(Darks.file_id == None)]
+
+    session.close()
+
+    args = [(full_filename, Darks, pull_orbital_info) for f_key, full_filename in files_to_add]
 
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
@@ -393,12 +424,13 @@ def clear_all_databases(SETTINGS):
 
 def do_all():
     print(SETTINGS)
-    #Base.metadata.create_all(engine)
+    Base.metadata.create_all(engine)
     insert_files(**SETTINGS)
     populate_primary_headers(SETTINGS['num_cpu'])
     #populate_data(SETTINGS['num_cpu'])
     populate_lampflash(SETTINGS['num_cpu'])
     populate_stims(SETTINGS['num_cpu'])
+    populate_darks(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
