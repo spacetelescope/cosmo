@@ -21,12 +21,18 @@ from .db_tables import Base
 from .db_tables import Files, Headers
 from .db_tables import Lampflash, Variability, Stims, Phd, Darks
 
-
-config_file = os.path.join(os.environ['HOME'], "configure.yaml")
-with open(config_file, 'r') as f:
-    SETTINGS = yaml.load(f)
-
+settings = open_settings()
 Session, engine = load_connection(SETTINGS['connection_string'])
+
+#-------------------------------------------------------------------------------
+
+def open_settings(config_file=None):
+    config_file = config_file or os.path.join(os.environ['HOME'], "configure.yaml")
+
+    with open(config_file, 'r') as f:
+        settings = yaml.load(f)
+
+    return settins
 
 #-------------------------------------------------------------------------------
 
