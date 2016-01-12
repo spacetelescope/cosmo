@@ -47,9 +47,9 @@ class Dark(Base):
 
     id = Column(Integer, primary_key=True)
 
-    obsname = Column(String)
+    obsname = Column(String(20))
     detector = Column(String(4))
-    date = Column(String)
+    date = Column(String(20))
     dark = Column(Float)
     ta_dark = Column(Float)
     latitude = Column(Float)
@@ -59,7 +59,7 @@ class Dark(Base):
     temp = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('lampflash', order_by=id))
+    #file = relationship("Files", backref=backref('lampflash', order_by=id))
 
 #-------------------------------------------------------------------------------
 
@@ -196,14 +196,16 @@ class Stims(Base):
     id = Column(Integer, primary_key=True)
 
     time = Column(Float)
-    abs_time = Column(Float)
-    stim1_x = Column(Float)
-    stim1_y = Column(Float)
-    stim2_x = Column(Float)
-    stim2_y = Column(Float)
-    counts = Column(Integer)
+    abs_time = Column(Numeric(10, 5))
+    stim1_x = Column(Numeric(8, 3))
+    stim1_y = Column(Numeric(8, 3))
+    stim2_x = Column(Numeric(8, 3))
+    stim2_y = Column(Numeric(8, 3))
+    counts = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
+
+    #__table_args__ = (Index('idx_dataset', 'rootname', unique=False), )
     #file = relationship("Files", backref=backref('Stims', order_by=id))
 
 #-------------------------------------------------------------------------------

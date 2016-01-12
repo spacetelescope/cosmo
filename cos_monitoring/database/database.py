@@ -14,6 +14,7 @@ except ImportError:
 
 from ..filesystem import find_all_datasets
 from ..osm.monitor import pull_flashes
+from ..stim.monitor import locate_stims
 from .db_tables import load_connection
 from .db_tables import Base
 from .db_tables import Files, Headers
@@ -54,6 +55,7 @@ def insert_with_yield(filename, table, function):
     session = Session()
 
     for data in function(filename):
+        print(data.keys())
         print(data.values())
         try:
             session.add(table(**data))
@@ -116,6 +118,25 @@ def populate_lampflash(num_cpu=1):
 
 
     args = [(full_filename, Lampflash, pull_flashes) for f_key, full_filename in files_to_add]
+
+    pool = mp.Pool(processes=num_cpu)
+    pool.map(mp_insert, args)
+
+#-------------------------------------------------------------------------------
+
+def populate_stims(num_cpu=1):
+    print("Adding to stims")
+    session = Session()
+
+    files_to_add = [(result.id, os.path.join(result.path, result.name))
+                        for result in session.query(Files).\
+                                filter(Files.name.like('%corrtag\_%')).\
+                                outerjoin(Stims, Files.id == Stims.file_id).\
+                                filter(Stims.file_id == None)]
+    session.close()
+
+
+    args = [(full_filename, Stims, locate_stims) for f_key, full_filename in files_to_add]
 
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
@@ -372,10 +393,12 @@ def clear_all_databases(SETTINGS):
 
 def do_all():
     print(SETTINGS)
-    ###insert_files(**SETTINGS)
+    #Base.metadata.create_all(engine)
+    insert_files(**SETTINGS)
     populate_primary_headers(SETTINGS['num_cpu'])
     #populate_data(SETTINGS['num_cpu'])
     populate_lampflash(SETTINGS['num_cpu'])
+    populate_stims(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 

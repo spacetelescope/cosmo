@@ -25,7 +25,7 @@ import datetime
 import shutil
 import time
 import re
-from ..support import send_email, corrtag_image
+from ..utils import corrtag_image
 import glob
 import numpy as np
 from astropy.time import Time
@@ -83,38 +83,6 @@ def find_center(data):
 
 #-----------------------------------------------------
 
-def get_files(search_string='_corrtag_'):
-    """ Walk through directories containing all COS exposures
-    and return *_flt* path+filename.
-    """
-    for root, dirs, files in os.walk(DATA_DIR):
-        if not re.search('\d\d-\d\d-\d\d\d\d', root):
-            continue
-        if root.endswith('gzip'):
-            continue
-        if root.endswith('podfiles'):
-            continue
-        if 'experimental' in root:
-            continue
-        if 'Quality' in root:
-            continue
-        if 'Fasttrack' in root:
-            continue
-        if 'targets' in root:
-            continue
-        if 'experimental' in root:
-            continue
-        if 'Anomalies' in root:
-            continue
-        if 'Test' in root:
-            continue
-        print root
-        for file_name in files:
-            if (search_string in file_name):
-                yield root + '/' + file_name
-
-#-----------------------------------------------------
-
 def brf_positions(brftab, segment, position):
     """ Gets the search ranges for a stimpulse from
     the given baseline reference table
@@ -125,6 +93,8 @@ def brf_positions(brftab, segment, position):
         row = 0
     elif segment == 'FUVB':
         row = 1
+    else:
+        raise ValueError("Segment {} not understood.".format(segment))
 
     if position == 'ul':
         x_loc = 'SX1'
@@ -182,10 +152,10 @@ def locate_stims(fits_file, start=0, increment=None):
 
     file_path, file_name = os.path.split(fits_file)
 
-    hdu = pyfits.open(fits_file)
-    exptime = hdu[1].header['exptime']
-    expstart = hdu[1].header['expstart']
-    segment = hdu[0].header['segment']
+    with pyfits.open(fits_file) as hdu:
+        exptime = hdu[1].header['exptime']
+        expstart = hdu[1].header['expstart']
+        segment = hdu[0].header['segment']
 
     # If increment is not supplied, use the rates supplied by the detector
     if not increment:
@@ -200,114 +170,28 @@ def locate_stims(fits_file, start=0, increment=None):
 
     stop = start + increment
 
-    stim_info = []
+    stim_info = {}
 
-    while stop < (exptime):
+    for sub_start in np.arange(start, exptime, increment):
         im = corrtag_image(fits_file,
                            xtype='RAWX',
                            ytype='RAWY',
-                           times=(start, stop))
-        
-        sci_counts = im.sum()
-        ABS_TIME = expstart + start * DAYS_PER_SECOND
+                           times=(sub_start, sub_start + increment))
+
+        ABS_TIME = expstart + sub_start * DAYS_PER_SECOND
 
         found_ul_x, found_ul_y = find_stims(im, segment, 'ul', brf_file)
         found_lr_x, found_lr_y = find_stims(im, segment, 'lr', brf_file)
 
-        print '%s \t %15.7f \t %4d \t %5.3f \t %4.3f \t %5.3f \t %4.3f \t %4.3f' % (file_name, 
-                                                                                    ABS_TIME, 
-                                                                                    start, 
-                                                                                    found_ul_x, 
-                                                                                    found_ul_y, 
-                                                                                    found_lr_x, 
-                                                                                    found_lr_y, 
-                                                                                    sci_counts)
-        stim_info.append( (ABS_TIME, 
-                           start, 
-                           found_ul_x, 
-                           found_ul_y, 
-                           found_lr_x, 
-                           found_lr_y) )
+        stim_info['time'] = round(sub_start, 5)
+        stim_info['abs_time'] = round(ABS_TIME, 5)
+        stim_info['stim1_x'] = round(found_ul_x, 3)
+        stim_info['stim1_y'] = round(found_ul_y, 3)
+        stim_info['stim2_x'] = round(found_lr_x, 3)
+        stim_info['stim2_y'] = round(found_lr_y, 3)
+        stim_info['counts'] = round(im.sum(), 7)
 
-        start += increment
-        stop += increment
-
-    return stim_info
-
-#-----------------------------------------------------
-
-def insert_into_db(fits_file):
-    """needed to wrap for the parallelization
-    """
-
-    file_path, file_name = os.path.split(fits_file)
-
-    if not file_name.endswith('.fits'):
-        file_name, file_ext = os.path.splitext(file_name)
-    
-    try:
-        hdu = pyfits.open(fits_file)
-    except IOError:
-        print 'Corrupt: {}'.format(fits_file)
-        return
-
-    if check_present(file_name, DB_NAME):
-        return
-
-    stim_info = locate_stims(fits_file)
-
-    table = 'measurements'
-
-    if len(stim_info):
-        with sqlite3.connect(DB_NAME) as db:
-            c = db.cursor()
-            for ABS_TIME, START, found_ul_x, found_ul_y, found_lr_x, found_lr_y in stim_info:
-                c.execute("""INSERT INTO %s VALUES (?,?,?,?,?,?,?)""" % (table),
-                          (file_name,
-                           ABS_TIME,
-                           START,
-                           found_ul_x,
-                           found_ul_y,
-                           found_lr_x,
-                           found_lr_y))
-
-
-            print '#--committing--#'
-            db.commit()
-
-
-
-#-----------------------------------------------------
-
-def populate_db():
-    """Populate a database with STIM locations for each dataset on a sub-sampled timescale
-
-    Database contains:
-    ------------------
-    obsname, absolute time, time since EXPSTART, X (upper left), Y (upper left), X (lower right), Y (lower right)
-
-    """
-
-    db = sqlite3.connect(DB_NAME)
-    c = db.cursor()
-    table = 'measurements'
-    try:
-        c.execute("""CREATE TABLE %s (obsname text, abs_time real, start real, ul_x real, ul_y real, lr_x real, lr_y real)""" %
-                  (table))
-        c.execute("""CREATE INDEX dataset ON measurements (obsname)""") 
-        db.commit()
-        db.close()
-    except sqlite3.OperationalError:
-        pass
-    
-
-    file_list = get_files()
-    
-    #for item in file_list:
-    #    insert_into_db(item)
-   
-    pool = mp.Pool(processes=10)
-    pool.map(insert_into_db, file_list)
+        yield stim_info
 
 #-----------------------------------------------------
 
@@ -337,7 +221,6 @@ def find_missing():
 
 #-----------------------------------------------------
 
-
 def coord_deviates(position_array):
     """Simple test for the deviation of a list of coordinates.
 
@@ -356,7 +239,6 @@ def coord_deviates(position_array):
         return False
 
 #-----------------------------------------------------
-
 
 def check_individual():
     """Run tests on each individual datasets.
@@ -422,7 +304,6 @@ def check_individual():
 
 #-----------------------------------------------------
 
-
 def stim_monitor():
     """Main function to monitor the stim pulses in COS observations
 
@@ -466,7 +347,7 @@ def send_email(missing_obs, missing_dates):
     message += 'The following observations had missing stim pulses within the past week:\n'
     message += '-' * 40 + '\n'
     message += ''.join(['{} {}\n'.format(obs, date) for obs, date in zip(missing_obs[index], missing_dates.iso[index])])
-    
+
     message += '\n\n\n'
     message += 'The following is a complete list of observations with missing stims.\n'
     message += '-' * 40 + '\n'
@@ -513,7 +394,7 @@ def make_plots():
     # over all time                 #
     # -------------------------------#
     plt.ioff()
-    
+
     plt.figure(1, figsize=(18, 12))
     plt.grid(True)
     plt.subplot(2, 2, 1)
