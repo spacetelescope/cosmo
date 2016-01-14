@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division
+
 """ Interface to the noaa site and grab daily 10.7 cm solar flux measurements
 
 """
@@ -36,7 +38,7 @@ def compile_txt( file_dir ):
     input_list = glob.glob(os.path.join(file_dir, '*DSD.txt'))
     input_list.sort()
     for item in input_list:
-        print 'Reading {}'.format(item)        
+        print 'Reading {}'.format(item)
         data = ascii.read(item, data_start=1, comment='[#,:]')
         for line in data:
             line_date = Time('{}-{}-{} 00:00:00'.format(line['col1'], line['col2'], line['col3']),

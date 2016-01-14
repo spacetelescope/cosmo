@@ -22,6 +22,7 @@ setup(
     requires = ['numpy', 'scipy', 'astropy'],
     entry_points = {'console_scripts': ['clean_slate=cos_monitoring.database:clean_slate',
                                         'do_all=cos_monitoring.database:do_all',
+                                        'run_all_monitors=cos_monitoring.database:run_all_monitors',
                                         'create_master_csv=scripts.create_master_csv:main'],
     },
     install_requires = ['setuptools',

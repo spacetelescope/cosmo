@@ -1,3 +1,7 @@
+from __future__ import print_function, absolute_import, division
+
+import os
+
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean, Numeric
 from sqlalchemy.dialects import mysql
@@ -9,7 +13,19 @@ try:
 except ImportError:
     from .yaml import yaml
 
+__all__ = ['open_settings', 'load_connection']
+
 Base = declarative_base()
+
+#-------------------------------------------------------------------------------
+
+def open_settings(config_file=None):
+    config_file = config_file or os.path.join(os.environ['HOME'], "configure.yaml")
+
+    with open(config_file, 'r') as f:
+        settings = yaml.load(f)
+
+    return settings
 
 #-------------------------------------------------------------------------------
 

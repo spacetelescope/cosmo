@@ -1,10 +1,11 @@
+from __future__ import print_function, absolute_import, division
+
 """
 Perform regular monitoring of the COS FUV and NUV dark rates
 
 """
 import os
 import sqlite3
-import logging
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
@@ -15,10 +16,11 @@ from astropy.io import fits
 from astropy.time import Time
 import datetime
 
-#from .support import corrtag_image
-from support import corrtag_image
-from solar import get_solar_data
-import plotting
+from .solar import get_solar_data
+from .plotting import plot_histogram, plot_time, plot_orbital_rate
+
+from ..utils import corrtag_image
+from ..database.db_tables import open_settings, load_connection
 
 base_dir = '/grp/hst/cos/Monitors/Darks/'
 web_directory = '/grp/webpages/COS/'
@@ -93,10 +95,8 @@ def pull_orbital_info(dataset, step=25):
     except KeyError:
         return
 
-    info['detector'] = segment
-    info['temp'] = get_temp(dataset)
-
     if segment == 'N/A':
+        segment = 'NUV'
         xlim = (0, 1024)
         ylim = (0, 1204)
         pha = (-1, 1)
@@ -110,6 +110,9 @@ def pull_orbital_info(dataset, step=25):
         pha = (2, 23)
     else:
         raise ValueError('What segment is this? {}'.format(segment))
+
+    info['detector'] = segment
+    info['temp'] = get_temp(dataset)
 
     times = timeline['time'][::step].copy()
     lat = timeline['latitude'][:-1][::step].copy().astype(np.float64)
@@ -203,9 +206,9 @@ def compile_phd():
    for filename in available:
        obsname = os.path.split(filename)[-1]
        if obsname in already_done:
-           print filename, 'done'
+           print(filename, 'done')
        else:
-           print filename, 'running'
+           print(filename, 'running')
 
        counts = pha_hist(filename)
        table_values = (obsname, ) + tuple(list(counts) )
@@ -239,15 +242,11 @@ def compile_darkimage(dataset_list, pha=(2,23) ):
 
 #-------------------------------------------------------------------------------
 
-def make_plots( detector, TA=False ):
-    print '#-------------------#'
-    print 'Making plots for {}'.format(detector)
-    print '#-------------------#'
+def make_plots(detector, TA=False):
+    print('#-------------------#')
+    print('Making plots for {}'.format(detector))
+    print('#-------------------#')
     plt.ioff()
-    db = sqlite3.connect(DB_NAME)
-
-    cursor = db.cursor()
-    table = '{}_stats'.format(detector)
 
     if detector == 'FUV':
         search_strings = ['_corrtag_a.fits', '_corrtag_b.fits']
@@ -270,17 +269,20 @@ def make_plots( detector, TA=False ):
     if TA:
         dark_key = 'ta_dark'
 
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     for key, segment in zip(search_strings, segments):
         #-- Plot vs time
-        print 'Plotting Time'
-        cursor.execute( """SELECT date,{},temp,latitude,longitude FROM {} WHERE obsname LIKE '%{}%'""".format(dark_key, table, key))
+        print('Plotting Time')
+        data = engine.execute( """SELECT date,{},temp,latitude,longitude FROM darks WHERE detector = '{}' """.format(dark_key, segment))
+        data = [row for row in data]
 
-        data = [ item for item in cursor ]
-        mjd = np.array( [item[0] for item in data] )
-        dark = np.array( [item[1] for item in data] )
-        temp = np.array( [item[2] for item in data] )
-        latitude = np.array( [item[3] for item in data] )
-        longitude = np.array( [item[4] for item in data] )
+        mjd = np.array( [float(item.date) for item in data] )
+        dark = np.array( [float(item[1]) for item in data] )
+        temp = np.array( [float(item.temp) for item in data] )
+        latitude = np.array( [float(item.latitude) for item in data] )
+        longitude = np.array( [float(item.longitude) for item in data] )
 
         index = np.argsort(mjd)
         mjd = mjd[index]
@@ -295,18 +297,19 @@ def make_plots( detector, TA=False ):
         temp = temp[index_keep]
 
         outname = os.path.join(base_dir, detector, '{}_vs_time_{}.png'.format(dark_key, segment) )
-        plotting.plot_time( detector, dark, mjd, temp, solar_flux, solar_date, outname )
+        plot_time( detector, dark, mjd, temp, solar_flux, solar_date, outname )
 
         #-- Plot vs orbit
-        print 'Plotting Orbit'
-        cursor.execute( """SELECT {},latitude,longitude,sun_lat,sun_lon,date FROM {} WHERE obsname LIKE '%{}%'""".format(dark_key, table, key))
-        data = [ item for item in cursor ]
-        dark = np.array( [item[0] for item in data] )
-        latitude = np.array( [item[1] for item in data] )
-        longitude = np.array( [item[2] for item in data] )
-        sun_lat = np.array( [item[3] for item in data] )
-        sun_lon = np.array( [item[4] for item in data] )
-        date = np.array( [item[5] for item in data] )
+        print('Plotting Orbit')
+        data = engine.execute( """SELECT {},latitude,longitude,sun_lat,sun_lon,date FROM darks WHERE detector = '{}' """.format(dark_key, segment))
+        data = [row for row in data]
+
+        dark = np.array( [float(item[0]) for item in data] )
+        latitude = np.array( [float(item[1]) for item in data] )
+        longitude = np.array( [float(item[2]) for item in data] )
+        sun_lat = np.array( [float(item[3]) for item in data] )
+        sun_lon = np.array( [float(item[4]) for item in data] )
+        date = np.array( [float(item[5]) for item in data] )
 
         index = np.argsort(date)
         dark = dark[index]
@@ -316,14 +319,15 @@ def make_plots( detector, TA=False ):
         sun_lon = sun_lon[index]
 
         outname = os.path.join(base_dir, detector, '{}_vs_orbit_{}.png'.format(dark_key, segment) )
-        plotting.plot_orbital_rate(longitude, latitude, dark, sun_lon, sun_lat, outname )
+        plot_orbital_rate(longitude, latitude, dark, sun_lon, sun_lat, outname )
 
         #-- Plot histogram of darkrates
-        print 'Plotting Hist'
-        cursor.execute( """SELECT {},date FROM {} WHERE obsname LIKE '%{}%'""".format(dark_key, table, key))
-        data = [ item for item in cursor ]
-        dark = np.array( [item[0] for item in data] )
-        date = np.array( [item[1] for item in data] )
+        print('Plotting Hist')
+        data = engine.execute( """SELECT {},date FROM darks WHERE detector = '{}' """.format(dark_key, segment))
+        data = [ item for item in data]
+
+        dark = np.array([float(item[0]) for item in data] )
+        date = np.array([float(item[1]) for item in data] )
 
         index = np.argsort(date)
         date = date[index]
@@ -334,14 +338,14 @@ def make_plots( detector, TA=False ):
                               (date < year + 1))
 
             outname = os.path.join(base_dir, detector, '{}_hist_{}_{}.pdf'.format(dark_key, year, segment) )
-            plotting.plot_histogram(dark[index], outname )
+            plot_histogram(dark[index], outname )
 
         index = np.where(date >= date.max() - .5)
         outname = os.path.join(base_dir, detector, '{}_hist_-6mo_{}.pdf'.format(dark_key, segment) )
-        plotting.plot_histogram(dark[index], outname )
+        plot_histogram(dark[index], outname )
 
         outname = os.path.join(base_dir, detector, '{}_hist_{}.pdf'.format(dark_key, segment) )
-        plotting.plot_histogram(dark, outname )
+        plot_histogram(dark, outname )
 
 #-------------------------------------------------------------------------------
 
@@ -349,10 +353,10 @@ def move_products():
     '''
     Move created pdf files to webpage directory
     '''
-    print '#-------------------#'
-    print 'Moving products into'
-    print 'webpage directory'
-    print '#-------------------#'
+    print('#-------------------#')
+    print('Moving products into')
+    print('webpage directory')
+    print('#-------------------#')
 
     for detector in ['FUV', 'NUV']:
 
@@ -362,7 +366,7 @@ def move_products():
         for item in move_list:
             path, file_to_move = os.path.split(item)
             shutil.copy(item, write_dir + file_to_move)
-            print 'Moving: %s' % (file_to_move)
+            print('Moving: %s' % (file_to_move))
 
         os.system('chmod 777 ' + write_dir + '*.pdf')
 
@@ -374,9 +378,6 @@ def monitor():
     get_solar_data('/grp/hst/cos/Monitors/Darks/')
 
     for detector in ['FUV', 'NUV']:
-        compile_darkrates(detector)
-        #if detector == 'FUV':
-        #    compile_phd()
         make_plots(detector)
 
         if detector == 'FUV':

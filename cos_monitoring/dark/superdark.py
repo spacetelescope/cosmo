@@ -1,4 +1,6 @@
-from astropy.io import fits 
+from __future__ import absolute_import, division
+
+from astropy.io import fits
 import numpy as np
 
 #-------------------------------------------------------------------------------

@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division
+
 """ Make darkrate plots
 
 """
@@ -19,7 +21,7 @@ def magnitude(x):
     ----------
     x : int,float
         number from which to find the order
-    
+
     Returns
     -------
     order : int
@@ -71,7 +73,7 @@ def plot_histogram(dark, outname):
     ax.set_xlabel('Counts/pix/sec')
     ax.set_xlim(dark.min(), dark.max())
     ax.xaxis.set_major_formatter(FormatStrFormatter('%3.2e'))
-    
+
     #--- Logarithmic
 
     ax = fig.add_subplot(2, 1, 2)
@@ -92,10 +94,10 @@ def plot_histogram(dark, outname):
     ax.xaxis.set_major_formatter(FormatStrFormatter('%3.2e'))
 
     fig.legend([med_obj, mean_obj, two_sig, three_sig, dist_95, dist_99],
-               ['Median', 
-                'Mean', 
-                '2$\sigma$: {0:.2e}'.format(med+(2*std)), 
-                '3$\sigma$: {0:.2e}'.format(med+(3*std)), 
+               ['Median',
+                'Mean',
+                '2$\sigma$: {0:.2e}'.format(med+(2*std)),
+                '3$\sigma$: {0:.2e}'.format(med+(3*std)),
                 '95$\%$: {0:.2e}'.format(bins[count_95]),
                 '99$\%$: {0:.2e}'.format(bins[count_99])],
                shadow=True,
@@ -130,29 +132,33 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
     """
 
     fig = plt.figure(figsize=(20, 12))
-    
+
+    sorted_index = np.argsort(solar_date)
+    solar = solar[sorted_index]
+    solar_date = solar_date[sorted_index]
+
     if detector == 'FUV':
         dark_ax = fig.add_axes([.1, .3, .8, .6])
         sub_ax = fig.add_axes([.1, .09, .8, .19])
     else:
         dark_ax = fig.add_axes([.1, .5, .8, .4])
-        sub_ax = fig.add_axes([.1, .1, .8, .2]) 
-        sub_ax2 = fig.add_axes([.1, .3, .8, .2]) 
+        sub_ax = fig.add_axes([.1, .1, .8, .2])
+        sub_ax2 = fig.add_axes([.1, .3, .8, .2])
 
-            
+
         temp_index = np.where(temp > 15)[0]
         dark = dark[temp_index]
         date = date[temp_index]
         temp = temp[temp_index]
 
-    dark_ax.plot(date, 
-                 dark, 
-                 color='k', 
+    dark_ax.plot(date,
+                 dark,
+                 color='k',
                  marker='o',
-                 linestyle='', 
-                 markersize=2, 
-                 label='Dark Count Rate', 
-                 zorder=1, 
+                 linestyle='',
+                 markersize=2,
+                 label='Dark Count Rate',
+                 zorder=1,
                  rasterized=True)
 
     #dark_ax.axvline(x=2012.326, ymin=0, ymax=1, color='b', linestyle='-',
@@ -169,13 +175,13 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
         parameters = linregress(date[fit_index], dark[fit_index])
         fit = scipy.polyval(parameters[:2], date[fit_index])
         dark_ax.plot(date[fit_index], fit, ls='--', lw=3, color='r')
-        
+
         date_to_predict = 2016.25
 
         #-- parameters[0:2] are slope, intercept
         dark_predicted = scipy.polyval(parameters[:2], date_to_predict)
-        dark_ax.text(2010, 
-                     8.1e-4, 
+        dark_ax.text(2010,
+                     8.1e-4,
                      'Fit at {:.2f} = {:.2e}'.format(date_to_predict,
                                                      dark_predicted),
                      color='red',
@@ -188,7 +194,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
     dark_ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
     dark_ax.yaxis.set_major_formatter(FormatStrFormatter('%3.2e'))
 
-    dark_ax.yaxis.set_ticks(np.arange(0, dark.max(), 
+    dark_ax.yaxis.set_ticks(np.arange(0, dark.max(),
                                       2 * 10 ** magnitude(dark.mean())))
 
     dark_ax.set_xticklabels(['' for item in dark_ax.get_xticklabels()])
@@ -207,9 +213,9 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
 
     if detector == 'NUV':
         sub_ax.plot(date,
-                    temp, 
+                    temp,
                     color='r',
-                    linestyle='', 
+                    linestyle='',
                     markersize=8,
                     marker='o')
 
@@ -222,22 +228,22 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
 
         solar_smooth = scipy.convolve(solar, np.ones(81) / 81.0, mode='same')
         sub_ax2.plot(solar_date,
-                     solar, 
-                     color='orange', 
+                     solar,
+                     color='orange',
                      marker='',
-                     linestyle='-', 
-                     label='10.7cm', 
-                     lw=1, 
+                     linestyle='-',
+                     label='10.7cm',
+                     lw=1,
                      alpha=.9,
                      zorder=1)
-        sub_ax2.plot(solar_date[:-41], 
-                     solar_smooth[:-41], 
+        sub_ax2.plot(solar_date[:-41],
+                     solar_smooth[:-41],
                      color='red',
                      marker='',
-                     linestyle='-', 
-                     label='10.7cm Smoothed', 
-                     lw=3, 
-                     alpha=1, 
+                     linestyle='-',
+                     label='10.7cm Smoothed',
+                     lw=3,
+                     alpha=1,
                      zorder=1)
 
         sub_ax2.set_xticklabels(['' for item in dark_ax.get_xticklabels()])
@@ -249,18 +255,18 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
 
     else:
         solar_smooth = scipy.convolve(solar, np.ones(81) / 81.0, mode='same')
-        sub_ax.plot(solar_date, 
-                    solar, 
-                    color='orange', 
+        sub_ax.plot(solar_date,
+                    solar,
+                    color='orange',
                     marker='',
-                    linestyle='-', 
-                    label='10.7cm', 
-                    lw=1, 
+                    linestyle='-',
+                    label='10.7cm',
+                    lw=1,
                     alpha=.9,
                     zorder=1)
-        sub_ax.plot(solar_date[:-41], 
+        sub_ax.plot(solar_date[:-41],
                     solar_smooth[:-41],
-                    color='red', 
+                    color='red',
                     marker='',
                     linestyle='-',
                     label='10.7cm Smoothed',
@@ -302,7 +308,7 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
 
     color_min = darkrate.min()
     color_max = darkrate.min() + 3 * darkrate.std()
-    
+
     fig = plt.figure(figsize=(20, 15))
 
     if 'FUVA' in outname:
@@ -316,15 +322,15 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
 
     ax = fig.add_subplot(3, 1, 1)
     colors = ax.scatter(longitude,
-                        latitude, 
-                        c=darkrate, 
-                        marker='o', 
-                        alpha=.7, 
-                        edgecolors='none', 
-                        s=3, 
-                        lw=0, 
-                        vmin=color_min, 
-                        vmax=color_max, 
+                        latitude,
+                        c=darkrate,
+                        marker='o',
+                        alpha=.7,
+                        edgecolors='none',
+                        s=3,
+                        lw=0,
+                        vmin=color_min,
+                        vmax=color_max,
                         rasterized=True )
     fig.colorbar(colors)
 
@@ -337,8 +343,8 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
     from mpl_toolkits.mplot3d import Axes3D
     fig = plt.figure()
     ax = fig.add_subplot( 1,1,1, projection='3d')
-    ax.scatter( longitude, latitude, zs=darkrate, c=darkrate, 
-                marker='o', alpha=.7, edgecolors='none', 
+    ax.scatter( longitude, latitude, zs=darkrate, c=darkrate,
+                marker='o', alpha=.7, edgecolors='none',
                 s=5, lw=0, vmin=color_min, vmax=color_max )
     raw_input()
     '''
@@ -351,23 +357,23 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
     longitude = longitude[index_keep]
     sun_lat = sun_lat[index_keep]
     sun_lon = sun_lon[index_keep]
-    
+
     lon_diff = longitude - sun_lon
     lat_diff = latitude - sun_lat
 
     index = np.where(lon_diff < 0)[0]
     lon_diff[index] += 360
 
-    colors = ax2.scatter(lon_diff, 
-                         lat_diff, 
-                         c=darkrate, 
+    colors = ax2.scatter(lon_diff,
+                         lat_diff,
+                         c=darkrate,
                          marker='o',
-                         alpha=.7, 
-                         edgecolors='none', 
-                         s=5, 
-                         lw=0, 
+                         alpha=.7,
+                         edgecolors='none',
+                         s=5,
+                         lw=0,
                          vmin=color_min,
-                         vmax=color_max, 
+                         vmax=color_max,
                          rasterized=True)
     fig.colorbar(colors)
 
@@ -399,12 +405,12 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
 
     colors = ax3.scatter(lon_diff,
                          lat_diff,
-                         c=darkrate, 
-                         marker='o', 
+                         c=darkrate,
+                         marker='o',
                          alpha=.7,
-                         edgecolors='none', 
+                         edgecolors='none',
                          s=5,
-                         lw=0, 
+                         lw=0,
                          vmin=color_min,
                          vmax=color_max,
                          rasterized=True)
@@ -418,11 +424,11 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
     plt.close(fig)
 
     '''
-    gridx, gridy = np.mgrid[all_lon.min():all_lon.max():.1, 
+    gridx, gridy = np.mgrid[all_lon.min():all_lon.max():.1,
                             all_lat.min():all_lat.max():.1]
     thing = griddata(zip(all_lon, all_lat),
-                     darkrate, 
-                     (gridx, gridy), 
+                     darkrate,
+                     (gridx, gridy),
                      method='nearest' )
     image = medfilt(thing.T, (5,5))
     '''

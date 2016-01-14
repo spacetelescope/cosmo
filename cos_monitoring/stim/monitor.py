@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import absolute_import
+
 """Script to monitor the COS FUV STIM pulses in TIME-TAG observations.
 
 1: move through /smov/cos/Data/ and populate an sql database of STIM locations.

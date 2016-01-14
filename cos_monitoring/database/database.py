@@ -7,32 +7,18 @@ import sys
 import numpy as np
 import multiprocessing as mp
 
-try:
-    import yaml
-except ImportError:
-    from .yaml import yaml
-
+from ..dark.monitor import monitor as dark_monitor
 from ..dark.monitor import pull_orbital_info
 from ..filesystem import find_all_datasets
 from ..osm.monitor import pull_flashes
 from ..stim.monitor import locate_stims
-from .db_tables import load_connection
+from .db_tables import load_connection, open_settings
 from .db_tables import Base
 from .db_tables import Files, Headers
 from .db_tables import Lampflash, Variability, Stims, Phd, Darks
 
-settings = open_settings()
+SETTINGS = open_settings()
 Session, engine = load_connection(SETTINGS['connection_string'])
-
-#-------------------------------------------------------------------------------
-
-def open_settings(config_file=None):
-    config_file = config_file or os.path.join(os.environ['HOME'], "configure.yaml")
-
-    with open(config_file, 'r') as f:
-        settings = yaml.load(f)
-
-    return settins
 
 #-------------------------------------------------------------------------------
 
@@ -61,15 +47,18 @@ def insert_with_yield(filename, table, function):
     Session, engine = load_connection(SETTINGS['connection_string'])
     session = Session()
 
-    for data in function(filename):
-        print(data.keys())
-        print(data.values())
-        try:
+    try:
+        for i, data in enumerate(function(filename)):
+            if i == 0:
+                print(data.keys())
+            print(data.values())
             session.add(table(**data))
-        except IOError as e:
-            print(e.message)
-            #-- Handle empty or corrupt FITS files
-            session.add(table())
+
+    except IOError as e:
+        print(e.message)
+        #-- Handle empty or corrupt FITS files
+        session.add(table())
+
 
     session.commit()
     session.close()
@@ -434,9 +423,14 @@ def do_all():
     insert_files(**SETTINGS)
     populate_primary_headers(SETTINGS['num_cpu'])
     #populate_data(SETTINGS['num_cpu'])
-    populate_lampflash(SETTINGS['num_cpu'])
+    #populate_lampflash(SETTINGS['num_cpu'])
     populate_stims(SETTINGS['num_cpu'])
     populate_darks(SETTINGS['num_cpu'])
+
+#-------------------------------------------------------------------------------
+
+def run_all_monitors():
+    dark_monitor()
 
 #-------------------------------------------------------------------------------
 
