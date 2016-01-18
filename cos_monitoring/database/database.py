@@ -12,6 +12,7 @@ from ..dark.monitor import pull_orbital_info
 from ..filesystem import find_all_datasets
 from ..osm.monitor import pull_flashes
 from ..stim.monitor import locate_stims
+from ..stim.monitor import stim_monitor
 from .db_tables import load_connection, open_settings
 from .db_tables import Base
 from .db_tables import Files, Headers
@@ -23,12 +24,16 @@ Session, engine = load_connection(SETTINGS['connection_string'])
 #-------------------------------------------------------------------------------
 
 def mp_insert(args):
-    filename, table, function = args
-    insert_with_yield(filename, table, function)
+    if len(args) == 3:
+        filename, table, function = args
+        insert_with_yield(filename, table, function)
+    elif len(args) == 4:
+        filename, table, function, foreign_key = args
+        insert_with_yield(filename, table, function, foreign_key)
 
 #-------------------------------------------------------------------------------
 
-def insert_with_yield(filename, table, function):
+def insert_with_yield(filename, table, function, foreign_key=None):
     """
     Insert or update the table with information in the record_dict.
 
@@ -49,6 +54,8 @@ def insert_with_yield(filename, table, function):
 
     try:
         for i, data in enumerate(function(filename)):
+            if foreign_key:
+                data['file_id'] = foreign_key
             if i == 0:
                 print(data.keys())
             print(data.values())
@@ -113,7 +120,7 @@ def populate_lampflash(num_cpu=1):
     session.close()
 
 
-    args = [(full_filename, Lampflash, pull_flashes) for f_key, full_filename in files_to_add]
+    args = [(full_filename, Lampflash, pull_flashes, f_key) for f_key, full_filename in files_to_add]
 
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
@@ -132,7 +139,7 @@ def populate_stims(num_cpu=1):
     session.close()
 
 
-    args = [(full_filename, Stims, locate_stims) for f_key, full_filename in files_to_add]
+    args = [(full_filename, Stims, locate_stims, f_key) for f_key, full_filename in files_to_add]
 
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
@@ -162,7 +169,7 @@ def populate_darks(num_cpu=1):
 
     session.close()
 
-    args = [(full_filename, Darks, pull_orbital_info) for f_key, full_filename in files_to_add]
+    args = [(full_filename, Darks, pull_orbital_info, f_key) for f_key, full_filename in files_to_add]
 
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
@@ -423,14 +430,15 @@ def do_all():
     insert_files(**SETTINGS)
     populate_primary_headers(SETTINGS['num_cpu'])
     #populate_data(SETTINGS['num_cpu'])
-    #populate_lampflash(SETTINGS['num_cpu'])
-    populate_stims(SETTINGS['num_cpu'])
+    populate_lampflash(SETTINGS['num_cpu'])
     populate_darks(SETTINGS['num_cpu'])
+    populate_stims(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
 def run_all_monitors():
     dark_monitor()
+    stim_monitor()
 
 #-------------------------------------------------------------------------------
 

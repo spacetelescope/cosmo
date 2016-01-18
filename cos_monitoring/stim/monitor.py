@@ -27,9 +27,9 @@ import datetime
 import shutil
 import time
 import re
-from ..utils import corrtag_image
 import glob
 import numpy as np
+from astropy.table import Table
 from astropy.time import Time
 from scipy.stats import linregress
 import multiprocessing as mp
@@ -38,6 +38,9 @@ import time
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+
+from ..utils import corrtag_image, bin_corrtag
+from ..database.db_tables import open_settings, load_connection
 
 #------------------------------------------------------
 #--------------------Constants-------------------------
@@ -129,27 +132,8 @@ def find_stims(image, segment, stim, brf_file):
 
 #-----------------------------------------------------
 
-def check_present(filename, database_name):
-    """Returns True if filename is already in sql database,
-    otherwise returns False
-    """
-
-    with sqlite3.connect(database_name) as db:
-        c = db.cursor()
-        c.execute(
-            """SELECT DISTINCT obsname FROM measurements WHERE obsname='%s'""" %
-            (filename))
-
-    entries = [item for item in c]
-    if len(entries):
-        return True
-    else:
-        return False
-
-#-----------------------------------------------------
-
 def locate_stims(fits_file, start=0, increment=None):
-
+    print(fits_file)
     DAYS_PER_SECOND = 1. / 60. / 60. / 24.
 
     file_path, file_name = os.path.split(fits_file)
@@ -158,6 +142,11 @@ def locate_stims(fits_file, start=0, increment=None):
         exptime = hdu[1].header['exptime']
         expstart = hdu[1].header['expstart']
         segment = hdu[0].header['segment']
+
+        try:
+            hdu[1].data
+        except:
+            yield {}
 
     # If increment is not supplied, use the rates supplied by the detector
     if not increment:
@@ -175,7 +164,7 @@ def locate_stims(fits_file, start=0, increment=None):
     stim_info = {}
 
     for sub_start in np.arange(start, exptime, increment):
-        im = corrtag_image(fits_file,
+        im = bin_corrtag(fits_file,
                            xtype='RAWX',
                            ytype='RAWY',
                            times=(sub_start, sub_start + increment))
@@ -202,12 +191,19 @@ def find_missing():
     any time period.
     """
 
-    db = sqlite3.connect(DB_NAME)
-    c = db.cursor()
-    c.execute(
-    """SELECT obsname,abs_time FROM measurements where ul_x='-999' or ul_y='-999' or lr_x='-999' or lr_y='-999'""")
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
 
-    missed_data = [(item[0].strip(), item[1]) for item in c]
+    data = engine.execute("""SELECT headers.rootname,stims.abs_time
+                                    FROM stims
+                                    JOIN headers ON stims.file_id = headers.file_id
+                                    WHERE stims.stim1_x='-999'
+                                        OR stims.stim1_y='-999'
+                                        OR stim2_x='-999'
+                                        OR stim2_y='-999'
+                                    ORDER BY stims.abs_time""")
+
+    missed_data = [(item[0].strip(), float(item[1])) for item in data]
     all_obs = [item[0] for item in missed_data]
     all_mjd = [item[1] for item in missed_data]
 
@@ -223,25 +219,6 @@ def find_missing():
 
 #-----------------------------------------------------
 
-def coord_deviates(position_array):
-    """Simple test for the deviation of a list of coordinates.
-
-    Returns True if the standard deviation of the array about the mean
-    is greater than a threshold value.  Otherwise returns False.
-
-    """
-
-    position_array = np.array(position_array)
-
-    deviation = (position_array - position_array.mean()).std()
-
-    if deviation > 2:
-        return True
-    else:
-        return False
-
-#-----------------------------------------------------
-
 def check_individual():
     """Run tests on each individual datasets.
 
@@ -249,60 +226,37 @@ def check_individual():
     over the exposure and produces a plot if so.
 
     """
-    print '#--------------------------#'
-    print 'Checking individual datasets'
-    print '#--------------------------#'
-    db = sqlite3.connect(DB_NAME)
-    c = db.cursor()
-    c.execute("""SELECT DISTINCT obsname FROM measurements ORDER BY obsname""")
+    print('#--------------------------#')
+    print('Checking individual datasets')
+    print('#--------------------------#')
 
-    all_obsnames = [item[0].strip() for item in c]
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
 
-    for obset_name in all_obsnames:
-        plot_name = os.path.join(
-            MONITOR_DIR,
-            obset_name.replace(
-                '.fits.gz',
-                '.png').replace(
-                '.fits',
-                '.png'))
-        if os.path.exists(plot_name):
-            continue
-        c.execute(
-     """SELECT start,ul_x,ul_y,lr_x,lr_y FROM measurements WHERE obsname='%s'""" %
-            (obset_name))
+    query = """SELECT headers.rootname,
+                      headers.segment,
+                      headers.proposid,
+                      headers.targname,
+                      STD(stims.stim1_x) as stim1_xstd,
+                      STD(stims.stim1_y) as stim1_ystd,
+                      STD(stims.stim2_x) as stim2_xstd,
+                      STD(stims.stim2_y) as stim2_ystd
+                      FROM stims
+                      JOIN headers on stims.file_id = headers.file_id
+                      GROUP BY stims.file_id
+                      HAVING stim1_xstd > 2 OR
+                             stim1_ystd > 2 OR
+                             stim2_xstd > 2 OR
+                             stim2_ystd > 2;"""
 
-        data = [line for line in c]
+    data = []
+    for i, row in enumerate(engine.execute(query)):
+        if not i:
+            keys = row.keys()
+        data.append(row.values())
 
-        times = np.array([line[0] for line in data])
-        ul_x = np.array([line[1] for line in data])
-        ul_y = np.array([line[2] for line in data])
-        lr_x = np.array([line[3] for line in data])
-        lr_y = np.array([line[4] for line in data])
-
-        if np.any(map(coord_deviates, [ul_x, ul_y, lr_x, lr_y])):
-            print obset_name
-
-            fig = plt.figure(figsize=(12, 10))
-            fig.suptitle(obset_name)
-            all_xlabels = ['X, Upper Left',
-                           'Y, Upper Left',
-                           'X, Lower Right',
-                           'Y, Lower Right']
-            for i, coords in enumerate([ul_x, ul_y, lr_x, lr_y]):
-                ax = fig.add_subplot(2, 2, i + 1)
-                index_missing = np.where(coords == -999)
-                index_keep = np.where(coords != -999)
-
-                for t in times[index_missing]:
-                    plt.axvline(x=t, color='r', ls='--')
-
-                ax.plot(times[index_keep], coords[index_keep], 'o')
-                ax.set_xlabel('TIME since EXPSTART')
-                ax.set_ylabel(all_xlabels[i])
-                ax.xaxis.set_major_formatter(FormatStrFormatter('%d'))
-                ax.yaxis.set_major_formatter(FormatStrFormatter('%d'))
-            fig.savefig(plot_name)
+    t = Table(rows=data, names=keys)
+    t.write(os.path.join(MONITOR_DIR, "STIM_problem_rootnames.txt"), delimiter='|', format='ascii.fixed_width')
 
 #-----------------------------------------------------
 
@@ -316,8 +270,6 @@ def stim_monitor():
     5: check over individual observations
 
     """
-
-    populate_db()
 
     missing_obs, missing_dates = find_missing()
     send_email(missing_obs, missing_dates)
@@ -379,29 +331,36 @@ def make_plots():
 
     plt.ioff()
 
+    brf = pyfits.getdata(brf_file, 1)
+
     print '#-------------------------#'
     print '#       Plotting          #'
     print '#-------------------------#'
 
-    db = sqlite3.connect(DB_NAME)
-    c = db.cursor()
-    c.execute(
-    """SELECT obsname,abs_time,start,ul_x,ul_y,lr_x,lr_y FROM measurements WHERE ul_x>'0' AND ul_y>'0' AND lr_x>'0' and lr_y>'0'""")
-    data = [line for line in c]
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
 
-    brf = pyfits.getdata(brf_file, 1)
-
-    # -------------------------------#
-    # Plots of STIM (X,Y) positions #
-    # over all time                 #
-    # -------------------------------#
-    plt.ioff()
+    print('#-------------------------------#')
+    print('Plots of STIM (X,Y) positions')
+    print('over all time ')
+    print('#-------------------------------#')
 
     plt.figure(1, figsize=(18, 12))
     plt.grid(True)
+
+    data = engine.execute("""SELECT stim1_x, stim1_y
+                                    FROM stims
+                                    JOIN headers on stims.file_id = headers.file_id
+                                    WHERE headers.segment = 'FUVA' AND
+                                        stims.stim1_x != -999 AND
+                                        stims.stim1_y != -999 AND
+                                        stims.stim2_x != -999 AND
+                                        stims.stim2_y != -999;""")
+    data = [line for line in data]
+
     plt.subplot(2, 2, 1)
-    x = [line[3] for line in data if '_a.fits' in line[0]]
-    y = [line[4] for line in data if '_a.fits' in line[0]]
+    x = [line.stim1_x for line in data]
+    y = [line.stim1_y for line in data]
     plt.plot(x, y, 'b.', alpha=.7)
     plt.xlabel('x')
     plt.ylabel('y')
@@ -424,10 +383,23 @@ def make_plots():
     plt.legend(shadow=True, numpoints=1)
     plt.xlabel('RAWX')
     plt.ylabel('RAWY')
+    #plt.set_xlims(xcenter - 2*xwidth, xcenter + 2*xwidth)
+    #plt.set_ylims(ycenter - 2*ywidth, ycenter - 2*ywidth)
+
+
+    data = engine.execute("""SELECT stim2_x, stim2_y
+                                    FROM stims
+                                    JOIN headers on stims.file_id = headers.file_id
+                                    WHERE headers.segment = 'FUVA' AND
+                                        stims.stim1_x != -999 AND
+                                        stims.stim1_y != -999 AND
+                                        stims.stim2_x != -999 AND
+                                        stims.stim2_y != -999;""")
+    data = [line for line in data]
 
     plt.subplot(2, 2, 2)
-    x = [line[5] for line in data if '_a.fits' in line[0]]
-    y = [line[6] for line in data if '_a.fits' in line[0]]
+    x = [line.stim2_x for line in data]
+    y = [line.stim2_y for line in data]
     plt.plot(x, y, 'r.', alpha=.7)
     plt.xlabel('x')
     plt.ylabel('y')
@@ -451,9 +423,20 @@ def make_plots():
     plt.xlabel('RAWX')
     plt.ylabel('RAWY')
 
+
+    data = engine.execute("""SELECT stim1_x, stim1_y
+                                    FROM stims
+                                    JOIN headers on stims.file_id = headers.file_id
+                                    WHERE headers.segment = 'FUVB' AND
+                                        stims.stim1_x != -999 AND
+                                        stims.stim1_y != -999 AND
+                                        stims.stim2_x != -999 AND
+                                        stims.stim2_y != -999;""")
+    data = [line for line in data]
+
     plt.subplot(2, 2, 3)
-    x = [line[3] for line in data if '_b.fits' in line[0]]
-    y = [line[4] for line in data if '_b.fits' in line[0]]
+    x = [line.stim1_x for line in data]
+    y = [line.stim1_x for line in data]
     plt.plot(x, y, 'b.', alpha=.7)
     plt.xlabel('x')
     plt.ylabel('y')
@@ -477,9 +460,19 @@ def make_plots():
     plt.xlabel('RAWX')
     plt.ylabel('RAWY')
 
+    data = engine.execute("""SELECT stim2_x, stim2_y
+                                    FROM stims
+                                    JOIN headers on stims.file_id = headers.file_id
+                                    WHERE headers.segment = 'FUVB' AND
+                                        stims.stim1_x != -999 AND
+                                        stims.stim1_y != -999 AND
+                                        stims.stim2_x != -999 AND
+                                        stims.stim2_y != -999;""")
+    data = [line for line in data]
+
     plt.subplot(2, 2, 4)
-    x = [line[5] for line in data if '_b.fits' in line[0]]
-    y = [line[6] for line in data if '_b.fits' in line[0]]
+    x = [line.stim2_x for line in data]
+    y = [line.stim2_y for line in data]
     plt.plot(x, y, 'r.', alpha=.7)
     plt.xlabel('x')
     plt.ylabel('y')
@@ -507,29 +500,43 @@ def make_plots():
     plt.savefig(os.path.join(MONITOR_DIR, 'STIM_locations.png'))
     plt.close(1)
 
-    # -----------------------#
-    # stim location plots  #
-    # versus time          #
-    # -----------------------#
+    print('#-------------------------------#')
+    print('Stime location plots')
+    print('vs time')
+    print('#-------------------------------#')
     for segment in ['FUVA', 'FUVB']:
         fig = plt.figure(2, figsize=(18, 12))
         fig.suptitle('%s coordinate locations with time' % (segment))
-        if segment == 'FUVA':
-            selection = '_a.fits'
-        elif segment == 'FUVB':
-            selection = '_b.fits'
-        for i, title in zip([1, 2, 3, 4], ['Upper Left, X', 'Upper Left, Y', 'Lower Right, X', 'Lower Right, Y']):
+
+        col_names = ['stim1_x', 'stim1_y', 'stim2_x', 'stim2_y']
+        titles = ['Upper Left, X', 'Upper Left, Y', 'Lower Right, X', 'Lower Right, Y']
+
+        for i, (column, title) in enumerate(zip(col_names, titles)):
+            print(column)
             ax = fig.add_subplot(2, 2, i)
             ax.set_title(title)
             ax.set_xlabel('MJD')
             ax.set_ylabel('Coordinate')
-            coords = [line[i + 2] for line in data if selection in line[0]]
-            times = [line[1] for line in data if selection in line[0]]
+
+            query = """SELECT stims.abs_time, stims.{}
+                              FROM stims
+                              JOIN headers ON stims.file_id = headers.file_id
+                              WHERE headers.segment = '{}' AND
+                                  stims.stim1_x != -999 AND
+                                  stims.stim1_y != -999 AND
+                                  stims.stim2_x != -999 AND
+                                  stims.stim2_y != -999;""".format(column, segment)
+            data = [line for line in engine.execute(query)]
+
+
+            times = [line[0] for line in data]
+            coords = [line[1] for line in data]
             ax.plot(times, coords, 'o')
-        fig.savefig(
-            os.path.join(MONITOR_DIR, 'STIM_locations_vs_time_%s.png' %
-                         (segment)))
+
+        fig.savefig(os.path.join(MONITOR_DIR, 'STIM_locations_vs_time_%s.png' %
+                                                                    (segment)))
         plt.close(fig)
+
 
     # ------------------------#
     # strech and midpoint     #
@@ -537,59 +544,96 @@ def make_plots():
     for segment in ['FUVA', 'FUVB']:
         fig = plt.figure(figsize=(18, 12))
         fig.suptitle("Strech and Midpoint vs time")
-        if segment == 'FUVA':
-            selection = '_a.fits'
-        elif segment == 'FUVB':
-            selection = '_b.fits'
 
         ax1 = fig.add_subplot(2, 2, 1)
-        stretch = np.array([line[5 ] for line in data if selection in line[0] ]) - \
-            np.array([line[3]
-                      for line in data if selection in line[0]])
-        times = [line[1] for line in data if selection in line[0]]
+        query = """SELECT stims.abs_time, stims.stim2_x - stims.stim1_x as stretch
+                          FROM stims
+                          JOIN headers ON stims.file_id = headers.file_id
+                          WHERE headers.segment = '{}' AND
+                              stims.stim1_x != -999 AND
+                              stims.stim1_y != -999 AND
+                              stims.stim2_x != -999 AND
+                              stims.stim2_y != -999;""".format(segment)
+        data = [line for line in engine.execute(query)]
+        stretch = [line.stretch for line in data]
+        times = [line.abs_time for line in data]
+
         ax1.plot(times, stretch, 'o')
         ax1.set_xlabel('MJD')
-        ax1.set_ylabel('Stretch')
+        ax1.set_ylabel('Stretch X')
 
         ax2 = fig.add_subplot(2, 2, 2)
-        midpoint = .5 * (np.array([line[5] for line in data if selection in line[0]])
-                         + np.array([line[3] for line in data if selection in line[0]]))
+        query = """SELECT stims.abs_time, .5*(stims.stim2_x + stims.stim1_x) as midpoint
+                          FROM stims
+                          JOIN headers ON stims.file_id = headers.file_id
+                          WHERE headers.segment = '{}' AND
+                              stims.stim1_x != -999 AND
+                              stims.stim1_y != -999 AND
+                              stims.stim2_x != -999 AND
+                              stims.stim2_y != -999;""".format(segment)
+        data = [line for line in engine.execute(query)]
+        midpoint = [line.midpoint for line in data]
+        times = [line.abs_time for line in data]
+
         ax2.plot(times, midpoint, 'o')
         ax2.set_xlabel('MJD')
-        ax2.set_ylabel('Midpoint')
+        ax2.set_ylabel('Midpoint X')
 
         ax3 = fig.add_subplot(2, 2, 3)
-        stretch = np.array([line[6 ] for line in data if selection in line[0] ]) - \
-            np.array([line[4]
-                      for line in data if selection in line[0]])
+        query = """SELECT stims.abs_time, stims.stim2_y - stims.stim1_y as stretch
+                          FROM stims
+                          JOIN headers ON stims.file_id = headers.file_id
+                          WHERE headers.segment = '{}' AND
+                              stims.stim1_x != -999 AND
+                              stims.stim1_y != -999 AND
+                              stims.stim2_x != -999 AND
+                              stims.stim2_y != -999;""".format(segment)
+        data = [line for line in engine.execute(query)]
+        stretch = [line.stretch for line in data]
+        times = [line.abs_time for line in data]
         ax3.plot(times, stretch, 'o')
         ax3.set_xlabel('MJD')
-        ax3.set_ylabel('Stretch')
+        ax3.set_ylabel('Stretch Y')
 
         ax4 = fig.add_subplot(2, 2, 4)
-        midpoint = .5 * (np.array([line[6] for line in data if selection in line[0]])
-                         + np.array([line[4] for line in data if selection in line[0]]))
+        query = """SELECT stims.abs_time, .5*(stims.stim2_y + stims.stim1_y) as midpoint
+                          FROM stims
+                          JOIN headers ON stims.file_id = headers.file_id
+                          WHERE headers.segment = '{}' AND
+                              stims.stim1_x != -999 AND
+                              stims.stim1_y != -999 AND
+                              stims.stim2_x != -999 AND
+                              stims.stim2_y != -999;""".format(segment)
         ax4.plot(times, midpoint, 'o')
         ax4.set_xlabel('MJD')
-        ax4.set_ylabel('Midpoint')
+        ax4.set_ylabel('Midpoint Y')
 
         fig.savefig(
             os.path.join(MONITOR_DIR, 'STIM_stretch_vs_time_%s.png' %
                          (segment)))
         plt.close(fig)
 
-    # ------------------------#
-    # y vs y and x vs x     #
-    # ------------------------#
-    print 1
+
+    print('#------------------------#')
+    print(' y vs y and x vs x     ')
+    print('#------------------------#')
     fig = plt.figure(1, figsize=(18, 12))
     ax = fig.add_subplot(2, 2, 1)
     ax.grid(True)
-    x1 = [line[3] for line in data if '_a.fits' in line[0]]
-    x2 = [line[5] for line in data if '_a.fits' in line[0]]
-    times = [line[1] for line in data if '_a.fits' in line[0]]
-    #ax.plot(x1, x2, 'b.', alpha=.7)
-    #ax.scatter(x1, x2, s=5, c=times, alpha=.5, edgecolors='none')
+
+    data = engine.execute("""SELECT stim1_x, stim2_x
+                                    FROM stims
+                                    JOIN headers on stims.file_id = headers.file_id
+                                    WHERE headers.segment = 'FUVA' AND
+                                        stims.stim1_x != -999 AND
+                                        stims.stim1_y != -999 AND
+                                        stims.stim2_x != -999 AND
+                                        stims.stim2_y != -999;""")
+    data = [line for line in data]
+
+    x1 = [float(line.stim1_x) for line in data]
+    x2 = [float(line.stim2_x) for line in data]
+
     im, nothin1, nothin2 = np.histogram2d(x2, x1, bins=200)  ##reverse coords
     im = np.log(im)
     ax.imshow(im, aspect='auto', interpolation='none')
@@ -597,14 +641,24 @@ def make_plots():
     ax.set_ylabel('x2')
     ax.set_title('Segment A: X vs X')
 
-    print 2
+
+
     ax = fig.add_subplot(2, 2, 2)
     ax.grid(True)
-    y1 = [line[4] for line in data if '_a.fits' in line[0]]
-    y2 = [line[6] for line in data if '_a.fits' in line[0]]
-    times = [line[1] for line in data if '_a.fits' in line[0]]
-    #ax.plot(y1, y2, 'r.', alpha=.7)
-    #ax.scatter(y1, y2, s=5, c=times, alpha=.5, edgecolors='none')
+
+    data = engine.execute("""SELECT stim1_y, stim2_y
+                                    FROM stims
+                                    JOIN headers on stims.file_id = headers.file_id
+                                    WHERE headers.segment = 'FUVA' AND
+                                        stims.stim1_x != -999 AND
+                                        stims.stim1_y != -999 AND
+                                        stims.stim2_x != -999 AND
+                                        stims.stim2_y != -999;""")
+    data = [line for line in data]
+
+    y1 = [float(line.stim1_y) for line in data]
+    y2 = [float(line.stim2_y) for line in data]
+
     im, nothin1, nothin2 = np.histogram2d(y2, y1, bins=200)
     im = np.log(im)
     ax.imshow(im, aspect='auto', interpolation='none')
@@ -612,14 +666,24 @@ def make_plots():
     ax.set_ylabel('y2')
     ax.set_title('Segment A: Y vs Y')
 
-    print 3
+
+
     ax = fig.add_subplot(2, 2, 3)
     ax.grid(True)
-    x1 = [line[3] for line in data if '_b.fits' in line[0]]
-    x2 = [line[5] for line in data if '_b.fits' in line[0]]
-    times = [line[1] for line in data if '_b.fits' in line[0]]
-    #ax.plot(x1, x2, 'b.', alpha=.7)
-    #ax.scatter(x1, x2, s=5, c=times, alpha=.5, edgecolors='none')
+
+    data = engine.execute("""SELECT stim1_x, stim2_x
+                                        FROM stims
+                                        JOIN headers on stims.file_id = headers.file_id
+                                        WHERE headers.segment = 'FUVB' AND
+                                            stims.stim1_x != -999 AND
+                                            stims.stim1_y != -999 AND
+                                            stims.stim2_x != -999 AND
+                                            stims.stim2_y != -999;""")
+    data = [line for line in data]
+
+    x1 = [float(line.stim1_x) for line in data]
+    x2 = [float(line.stim2_x) for line in data]
+
     im, nothin1, nothin2 = np.histogram2d(x2, x1, bins=200)
     im = np.log(im)
     ax.imshow(im, aspect='auto', interpolation='none')
@@ -627,14 +691,24 @@ def make_plots():
     ax.set_ylabel('x2')
     ax.set_title('Segment B: X vs X')
 
-    print 4
+
+
     ax = fig.add_subplot(2, 2, 4)
     ax.grid(True)
-    y1 = [line[4] for line in data if '_b.fits' in line[0]]
-    y2 = [line[6] for line in data if '_b.fits' in line[0]]
-    times = [line[1] for line in data if '_b.fits' in line[0]]
-    #ax.plot(y1, y2, 'r.', alpha=.7)
-    #colors = ax.scatter(y1, y2, s=5, c=times, alpha=.5, edgecolors='none')
+
+    data = engine.execute("""SELECT stim1_y, stim2_y
+                                        FROM stims
+                                        JOIN headers on stims.file_id = headers.file_id
+                                        WHERE headers.segment = 'FUVB' AND
+                                            stims.stim1_x != -999 AND
+                                            stims.stim1_y != -999 AND
+                                            stims.stim2_x != -999 AND
+                                            stims.stim2_y != -999;""")
+    data = [line for line in data]
+
+    y1 = [float(line.stim1_y) for line in data]
+    y2 = [float(line.stim2_y) for line in data]
+
     im, nothin1, nothin2 = np.histogram2d(y2, y1, bins=200)
     im = np.log(im)
     ax.imshow(im, aspect='auto', interpolation='none')
@@ -647,7 +721,7 @@ def make_plots():
     plt.close(fig)
 
 
-
+    """
     print 1
     fig = plt.figure(1, figsize=(18, 12))
     ax = fig.add_subplot(2, 2, 1, projection='3d')
@@ -705,7 +779,7 @@ def make_plots():
     fig.colorbar(colors, cax=cbar_ax)
     fig.savefig(os.path.join(MONITOR_DIR, 'STIM_coord_relations_time.png'))
     plt.close(fig)
-
+    """
 
 #-----------------------------------------------------
 
