@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 from astropy.io import fits
 import numpy as np
 

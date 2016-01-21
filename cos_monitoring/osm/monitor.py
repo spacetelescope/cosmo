@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 """ Script to compile the spectrum shift data for COS FUV and NUV data.
 
 """

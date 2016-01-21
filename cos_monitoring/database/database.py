@@ -2,36 +2,38 @@ from __future__ import print_function, absolute_import, division
 
 from astropy.io import fits
 import os
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, text
 import sys
-import yaml
 import numpy as np
 import multiprocessing as mp
 
-
+from ..dark.monitor import monitor as dark_monitor
+from ..dark.monitor import pull_orbital_info
 from ..filesystem import find_all_datasets
 from ..osm.monitor import pull_flashes
-from .db_tables import load_connection
+from ..stim.monitor import locate_stims
+from ..stim.monitor import stim_monitor
+from .db_tables import load_connection, open_settings
 from .db_tables import Base
-from .db_tables import Files, Headers, Data
-from .db_tables import Lampflash, Variability, Stims, Phd
+from .db_tables import Files, Headers
+from .db_tables import Lampflash, Variability, Stims, Phd, Darks
 
-
-config_file = os.path.join(os.environ['HOME'], "configure.yaml")
-with open(config_file, 'r') as f:
-    SETTINGS = yaml.load(f)
-
+SETTINGS = open_settings()
 Session, engine = load_connection(SETTINGS['connection_string'])
 
 #-------------------------------------------------------------------------------
 
 def mp_insert(args):
-    filename, table, function = args
-    insert_with_yield(filename, table, function)
+    if len(args) == 3:
+        filename, table, function = args
+        insert_with_yield(filename, table, function)
+    elif len(args) == 4:
+        filename, table, function, foreign_key = args
+        insert_with_yield(filename, table, function, foreign_key)
 
 #-------------------------------------------------------------------------------
 
-def insert_with_yield(filename, table, function):
+def insert_with_yield(filename, table, function, foreign_key=None):
     """
     Insert or update the table with information in the record_dict.
 
@@ -50,14 +52,20 @@ def insert_with_yield(filename, table, function):
     Session, engine = load_connection(SETTINGS['connection_string'])
     session = Session()
 
-    for data in function(filename):
-        print(data.values())
-        try:
+    try:
+        for i, data in enumerate(function(filename)):
+            if foreign_key:
+                data['file_id'] = foreign_key
+            if i == 0:
+                print(data.keys())
+            print(data.values())
             session.add(table(**data))
-        except IOError as e:
-            print(e.message)
-            #-- Handle empty or corrupt FITS files
-            session.add(table())
+
+    except IOError as e:
+        print(e.message)
+        #-- Handle empty or corrupt FITS files
+        session.add(table())
+
 
     session.commit()
     session.close()
@@ -103,7 +111,7 @@ def insert_files(**kwargs):
 def populate_lampflash(num_cpu=1):
     print("adding to lampflash")
     session = Session()
-    ### also should have the _rawacqs as well
+
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
                                 filter(Files.name.like('%lampflash%')).\
@@ -112,7 +120,56 @@ def populate_lampflash(num_cpu=1):
     session.close()
 
 
-    args = [(full_filename, Lampflash, pull_flashes) for f_key, full_filename in files_to_add]
+    args = [(full_filename, Lampflash, pull_flashes, f_key) for f_key, full_filename in files_to_add]
+
+    pool = mp.Pool(processes=num_cpu)
+    pool.map(mp_insert, args)
+
+#-------------------------------------------------------------------------------
+
+def populate_stims(num_cpu=1):
+    print("Adding to stims")
+    session = Session()
+
+    files_to_add = [(result.id, os.path.join(result.path, result.name))
+                        for result in session.query(Files).\
+                                filter(Files.name.like('%corrtag\_%')).\
+                                outerjoin(Stims, Files.id == Stims.file_id).\
+                                filter(Stims.file_id == None)]
+    session.close()
+
+
+    args = [(full_filename, Stims, locate_stims, f_key) for f_key, full_filename in files_to_add]
+
+    pool = mp.Pool(processes=num_cpu)
+    pool.map(mp_insert, args)
+
+#-------------------------------------------------------------------------------
+
+def populate_darks(num_cpu=1):
+    """
+    SELECT files.id,files.path,files.name,headers.targname FROM files JOIN headers ON files.id = headers.file_id WHERE headers.targname='DARK';
+    """
+    print("Adding to Darks")
+    session = Session()
+    '''
+    files_to_add = [(result.id, os.path.join(result.path, result.name))
+                        for result in session.query(Files).\
+                                filter(Darks.name.like('%corrtag\_%')).\
+                                outerjoin(Darks, Files.id == Darks.file_id).\
+                                filter(Darks.file_id == None)]
+    '''
+
+    files_to_add = [(result.id, os.path.join(result.path, result.name))
+                        for result in session.query(Files).\
+                            outerjoin(Headers, Files.id == Headers.file_id).\
+                            outerjoin(Darks, Files.id == Darks.file_id).\
+                            filter(Headers.targname == 'DARK').\
+                            filter(Darks.file_id == None)]
+
+    session.close()
+
+    args = [(full_filename, Darks, pull_orbital_info, f_key) for f_key, full_filename in files_to_add]
 
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
@@ -122,21 +179,56 @@ def populate_lampflash(num_cpu=1):
 def populate_primary_headers(num_cpu=1):
     print("adding to primary headers")
 
-    session = Session()
-    #files_to_add = [(result.id, os.path.join(result.path, result.name))
-    #                    for result in session.query(Files).\
-    #                            filter(or_(Files.name.like('%_rawaccum%'),
-    #                                       Files.name.like('%_rawtag%'))).\
-    #                            outerjoin(Headers, Files.id == Headers.file_id).\
-    #                            filter(Headers.file_id == None)]
+    t = """
+        CREATE TEMPORARY TABLE which_file (rootname CHAR(9), has_x1d BOOLEAN,has_corr BOOLEAN, has_raw BOOLEAN, has_acq BOOLEAN);
+        CREATE INDEX info ON which_file (rootname, has_x1d, has_corr, has_raw, has_acq);
 
-    files_to_add = [(result.id, os.path.join(result.path, result.name))
-                        for result in session.query(Files).\
-                                filter(Files.name.like('%_x1d.fits%')).\
-                                outerjoin(Data, Files.id == Data.file_id).\
-                                filter(Data.file_id == None)]
+        INSERT INTO which_file (rootname, has_x1d, has_corr, has_raw, has_acq)
+          SELECT rootname,
+               IF(SUM(name LIKE '%_x1d%'), true, false) as has_x1d,
+               IF(SUM(name LIKE '%_corrtag%'), true, false) as has_corr,
+               IF(SUM(name LIKE '%_rawtag%'), true, false) as has_raw,
+               IF(SUM(name LIKE '%_rawacq%'), true, false) as has_acq
+                   FROM files
+                   WHERE rootname NOT IN (SELECT headers.rootname from headers)
+                   GROUP BY rootname;
+        """
 
-    session.close()
+    q = """
+        SELECT
+         CASE
+                           WHEN which_file.has_x1d = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                files.name LIKE CONCAT(which_file.rootname, '_x1d.fits%') LIMIT 1)
+                           WHEN which_file.has_corr = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
+                           WHEN which_file.has_raw = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                files.name LIKE CONCAT(which_file.rootname, '_rawtag%') LIMIT 1)
+                           WHEN which_file.has_acq = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                files.name LIKE CONCAT(which_file.rootname, '_rawacq%') LIMIT 1)
+                           ELSE NULL
+                         END as file_to_grab,
+         CASE
+                            WHEN which_file.has_x1d = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_x1d.fits%') LIMIT 1)
+                            WHEN which_file.has_corr = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
+                            WHEN which_file.has_raw = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_rawtag%') LIMIT 1)
+                            WHEN which_file.has_acq = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_rawacq%') LIMIT 1)
+                            ELSE NULL
+                          END as file_id
+        FROM which_file
+            WHERE (has_x1d = 1 OR has_corr = 1 OR has_raw = 1 OR has_acq);
+    """
+
+    engine.execute(text(t))
+
+    files_to_add = [(result.file_id, result.file_to_grab) for result in engine.execute(text(q))
+                        if not result.file_id == None]
+
+
+    print("Found {} files to add".format(len(files_to_add)))
 
     args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
 
@@ -181,20 +273,13 @@ def update_header((args)):
                                 exp_num=hdu[0].header['exp_num'],
                                 cenwave=hdu[0].header['cenwave'],
                                 aperture=hdu[0].header['aperture'],
-                                propaper=hdu[0].header['propaper'],
-                                apmos=hdu[0].header['apmos'],
-                                aperxpos=hdu[0].header['aperxpos'],
-                                aperypos=hdu[0].header['aperypos'],
                                 opt_elem=hdu[0].header['opt_elem'],
                                 shutter=hdu[0].header['shutter'],
                                 extended=hdu[0].header['extended'],
-                                obset_id=hdu[0].header['obset_id'],
-                                postarg1=hdu[0].header['postarg1'],
-                                postarg2=hdu[0].header['postarg2'],
-                                proctime=hdu[0].header['proctime'],
-                                propttl1=hdu[0].header['propttl1'],
-                                asn_id=hdu[0].header['asn_id'],
-                                asn_tab=hdu[0].header['asn_tab'],
+                                obset_id=hdu[0].header.get('obset_id', None),
+                                asn_id=hdu[0].header.get('asn_id', 'None'),
+                                asn_tab=hdu[0].header.get('asn_tab', 'None'),
+
                                 hvlevela=hdu[1].header.get('hvlevela', -999),
                                 hvlevelb=hdu[1].header.get('hvlevelb', -999),
                                 date_obs=hdu[1].header['date-obs'],
@@ -204,7 +289,6 @@ def update_header((args)):
                                 expstart=hdu[1].header['expstart'],
                                 expend=hdu[1].header['expend'],
                                 exptime=hdu[1].header['exptime'],
-                                overflow=hdu[1].header['overflow'],
                                 numflash=hdu[1].header.get('numflash', None),
                                 ra_aper=hdu[1].header['ra_aper'],
                                 dec_aper=hdu[1].header['dec_aper'],
@@ -226,15 +310,6 @@ def update_header((args)):
                                 sp_err_a=hdu[1].header.get('sp_err_a', -999),
                                 sp_err_b=hdu[1].header.get('sp_err_b', -999),
                                 sp_err_c=hdu[1].header.get('sp_err_c', -999),
-                                nevents=hdu[1].header.get('nevents', -1),
-                                neventsa=hdu[1].header.get('neventsa', -1),
-                                neventsb=hdu[1].header.get('neventsb', -1),
-                                deventa=hdu[1].header.get('deventa', -1),
-                                deventb=hdu[1].header.get('deventb', -1),
-                                feventa=hdu[1].header.get('feventa', -1),
-                                feventb=hdu[1].header.get('feventb', -1),
-                                dethvla=hdu[1].header.get('dethvla', -1),
-                                dethvlb=hdu[1].header.get('dethvlb', -1),
 
                                 file_id=f_key))
     except IOError as e:
@@ -278,9 +353,9 @@ def update_data((args)):
     try:
         with fits.open(filename) as hdu:
             if len(hdu[1].data):
-                flux_mean=round(hdu[1].data['flux'].ravel().mean(), 5)
-                flux_max=round(hdu[1].data['flux'].ravel().max(), 5)
-                flux_std=round(hdu[1].data['flux'].ravel().std(), 5)
+                flux_mean=hdu[1].data['flux'].ravel().mean()
+                flux_max=hdu[1].data['flux'].ravel().max()
+                flux_std=hdu[1].data['flux'].ravel().std()
             else:
                 flux_mean = None
                 flux_max = None
@@ -349,16 +424,30 @@ def clear_all_databases(SETTINGS):
 
 #-------------------------------------------------------------------------------
 
+def do_all():
+    print(SETTINGS)
+    Base.metadata.create_all(engine)
+    insert_files(**SETTINGS)
+    populate_primary_headers(SETTINGS['num_cpu'])
+    #populate_data(SETTINGS['num_cpu'])
+    populate_lampflash(SETTINGS['num_cpu'])
+    populate_darks(SETTINGS['num_cpu'])
+    populate_stims(SETTINGS['num_cpu'])
+
+#-------------------------------------------------------------------------------
+
+def run_all_monitors():
+    dark_monitor()
+    stim_monitor()
+
+#-------------------------------------------------------------------------------
+
 def clean_slate(config_file=None):
     clear_all_databases(SETTINGS)
     #Base.metadata.drop_all(engine, checkfirst=False)
     Base.metadata.create_all(engine)
 
-    print(SETTINGS)
-    insert_files(**SETTINGS)
-    populate_primary_headers(SETTINGS['num_cpu'])
-    #populate_data(SETTINGS['num_cpu'])
-    #populate_lampflash(SETTINGS['num_cpu'])
+    do_all()
 
 #-------------------------------------------------------------------------------
 

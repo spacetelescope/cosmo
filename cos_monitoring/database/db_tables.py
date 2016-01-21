@@ -1,12 +1,31 @@
+from __future__ import print_function, absolute_import, division
+
+import os
+
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean
+from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean, Numeric
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker, relationship, backref
 
-import yaml
+try:
+    import yaml
+except ImportError:
+    from .yaml import yaml
+
+__all__ = ['open_settings', 'load_connection']
 
 Base = declarative_base()
+
+#-------------------------------------------------------------------------------
+
+def open_settings(config_file=None):
+    config_file = config_file or os.path.join(os.environ['HOME'], "configure.yaml")
+
+    with open(config_file, 'r') as f:
+        settings = yaml.load(f)
+
+    return settings
 
 #-------------------------------------------------------------------------------
 
@@ -39,6 +58,27 @@ def load_connection(connection_string, echo=False):
 
 #-------------------------------------------------------------------------------
 
+class Darks(Base):
+    __tablename__ = "darks"
+
+    id = Column(Integer, primary_key=True)
+
+    obsname = Column(String(30))
+    detector = Column(String(4))
+    date = Column(Numeric(7, 2))
+    dark = Column(Numeric(12, 10))
+    ta_dark = Column(Numeric(12, 10))
+    latitude = Column(Numeric(8, 3))
+    longitude = Column(Numeric(8, 3))
+    sun_lat = Column(Numeric(8, 3))
+    sun_lon = Column(Numeric(8, 3))
+    temp = Column(Numeric(8, 4))
+
+    file_id = Column(Integer, ForeignKey('files.id'))
+    #file = relationship("Files", backref=backref('lampflash', order_by=id))
+
+#-------------------------------------------------------------------------------
+
 class Files(Base):
     __tablename__ = 'files'
 
@@ -48,8 +88,8 @@ class Files(Base):
     name = Column(String(40))
     rootname = Column(String(9))
 
-    Index('idx_fullpath', 'path', 'name', unique=True)
-    Index('idx_rootname', 'rootname')
+    __table_args__ = (Index('idx_fullpath', 'path', 'name', unique=True), )
+    __table_args__ = (Index('idx_rootname', 'rootname'), )
 
 #-------------------------------------------------------------------------------
 
@@ -70,7 +110,7 @@ class Lampflash(Base):
     found = Column(Boolean)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('lampflash', order_by=id))
+    #file = relationship("Files", backref=backref('lampflash', order_by=id))
 
 #-------------------------------------------------------------------------------
 
@@ -104,18 +144,10 @@ class Headers(Base):
     exp_num = Column(Integer)
     cenwave = Column(Integer)
     aperture = Column(String(3))
-    propaper = Column(String(5))
-    apmos = Column(String(10))
-    aperxpos = Column(Float)
-    aperypos = Column(Float)
-    opt_elem = Column(String(5))
+    opt_elem = Column(String(6))
     shutter = Column(String(20))
     extended = Column(String(20))
     obset_id = Column(String(2))
-    postarg1 = Column(Float)
-    postarg2 = Column(Float)
-    proctime = Column(Float)
-    propttl1 = Column(String(67))
     asn_id = Column(String(9))
     asn_tab = Column(String(18))
     ###randseed = Column(Integer) #-- Errors for some reason.
@@ -125,10 +157,9 @@ class Headers(Base):
     dpixel1b = Column(Float)
     date_obs = Column(String(10))
     time_obs = Column(String(8))
-    expstart = Column(Float)
-    expend = Column(Float)
+    expstart = Column(Numeric(8, 3))
+    expend = Column(Numeric(8, 3))
     exptime = Column(Float)
-    overflow = Column(Integer)
     numflash = Column(Integer)
     ra_aper = Column(Float)
     dec_aper = Column(Float)
@@ -138,6 +169,7 @@ class Headers(Base):
     shift2b = Column(Float)
     shift1c = Column(Float)
     shift2c = Column(Float)
+
     sp_loc_a = Column(Float)
     sp_loc_b = Column(Float)
     sp_loc_c = Column(Float)
@@ -150,22 +182,15 @@ class Headers(Base):
     sp_err_a = Column(Float)
     sp_err_b = Column(Float)
     sp_err_c = Column(Float)
-    nevents = Column(Integer)
-    neventsa = Column(Integer)
-    neventsb = Column(Integer)
-    deventa = Column(Float)
-    deventb = Column(Float)
-    feventa = Column(Float)
-    feventb = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('headers', order_by=id))
+    #file = relationship("Files", backref=backref('headers', order_by=id))
 
-    Index('idx_rootname', 'rootname', unique=False)
-    Index('idx_config', 'segment', 'fppox', 'cenwave', 'opt_elem', unique=False)
+    __table_args__ = (Index('idx_rootname', 'rootname', unique=False), )
+    __table_args__ = (Index('idx_config', 'segment', 'fppos', 'cenwave', 'opt_elem', unique=False), )
 
 #-------------------------------------------------------------------------------
-
+"""
 class Data(Base):
     __tablename__ = "data"
 
@@ -176,8 +201,8 @@ class Data(Base):
     flux_std = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Data', order_by=id))
-
+    #file = relationship("Files", backref=backref('Data', order_by=id))
+"""
 #-------------------------------------------------------------------------------
 
 class Stims(Base):
@@ -187,15 +212,17 @@ class Stims(Base):
     id = Column(Integer, primary_key=True)
 
     time = Column(Float)
-    abs_time = Column(Float)
-    stim1_x = Column(Float)
-    stim1_y = Column(Float)
-    stim2_x = Column(Float)
-    stim2_y = Column(Float)
-    counts = Column(Integer)
+    abs_time = Column(Numeric(10, 5))
+    stim1_x = Column(Numeric(8, 3))
+    stim1_y = Column(Numeric(8, 3))
+    stim2_x = Column(Numeric(8, 3))
+    stim2_y = Column(Numeric(8, 3))
+    counts = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Stims', order_by=id))
+
+    #__table_args__ = (Index('idx_dataset', 'rootname', unique=False), )
+    #file = relationship("Files", backref=backref('Stims', order_by=id))
 
 #-------------------------------------------------------------------------------
 
@@ -214,7 +241,7 @@ class Variability(Base):
     temperature = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Variability', order_by=id))
+    #file = relationship("Files", backref=backref('Variability', order_by=id))
 
 #-------------------------------------------------------------------------------
 
@@ -257,7 +284,7 @@ class Phd(Base):
     pha_31 = Column(Integer)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Phd', order_by=id))
+    #file = relationship("Files", backref=backref('Phd', order_by=id))
 
 #-------------------------------------------------------------------------------
 '''
@@ -275,6 +302,6 @@ class Gain(Base):
     sigma = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Gain', order_by=id))
+    #file = relationship("Files", backref=backref('Gain', order_by=id))
 '''
 #-------------------------------------------------------------------------------
