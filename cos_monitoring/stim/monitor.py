@@ -148,6 +148,9 @@ def locate_stims(fits_file, start=0, increment=None):
         except:
             yield {}
 
+        if not len(hdu[1].data):
+            yield {}
+
     # If increment is not supplied, use the rates supplied by the detector
     if not increment:
         if exptime < 10:
