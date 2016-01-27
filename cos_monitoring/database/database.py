@@ -53,20 +53,24 @@ def insert_with_yield(filename, table, function, foreign_key=None):
     session = Session()
 
     try:
-        for i, data in enumerate(function(filename)):
-            if foreign_key:
-                data['file_id'] = foreign_key
+        generator = function(filename)
+        #-- Pull data from generator and commit
+        for i, data in enumerate(generator):
+            data['file_id'] = foreign_key
             if i == 0:
                 print(data.keys())
             print(data.values())
             session.add(table(**data))
-
-    except IOError as e:
+    except (IOError, ValueError) as e:
+        #-- Handle missing files
         print(e.message)
-        #-- Handle empty or corrupt FITS files
-        session.add(table())
+        session.add(table(file_id=foreign_key))
+        
+        session.commit()
+        session.close()
+        engine.dispose()
 
-
+    
     session.commit()
     session.close()
     engine.dispose()
@@ -123,7 +127,7 @@ def populate_lampflash(num_cpu=1):
     args = [(full_filename, Lampflash, pull_flashes, f_key) for f_key, full_filename in files_to_add]
 
     pool = mp.Pool(processes=num_cpu)
-    pool.map(mp_insert, args)
+    pool.map_async(mp_insert, args)
 
 #-------------------------------------------------------------------------------
 
@@ -193,7 +197,6 @@ def populate_primary_headers(num_cpu=1):
                    WHERE rootname NOT IN (SELECT headers.rootname from headers)
                    GROUP BY rootname;
         """
-
     q = """
         SELECT
          CASE
@@ -222,11 +225,21 @@ def populate_primary_headers(num_cpu=1):
             WHERE (has_x1d = 1 OR has_corr = 1 OR has_raw = 1 OR has_acq);
     """
 
-    engine.execute(text(t))
+    #connection = engine.connect()
+    #connection.execute(text(t))
 
-    files_to_add = [(result.file_id, result.file_to_grab) for result in engine.execute(text(q))
-                        if not result.file_id == None]
+    #results = engine.execute(text(t))
+    #results.close()
 
+    #files_to_add = [(result.file_id, result.file_to_grab) for result in connection.execute(text(q))
+    #                    if not result.file_id == None]
+
+    session = Session()
+    files_to_add = [(result.id, os.path.join(result.path, result.name))
+                        for result in session.query(Files).\
+                                filter(or_(Files.name.like('%corrtag%'), Files.name.like('%rawtag%'), Files.name.like('%\_x1d.fits'))).\
+                                outerjoin(Headers, Files.id == Headers.file_id).\
+                                filter(Headers.file_id == None)]
 
     print("Found {} files to add".format(len(files_to_add)))
 
@@ -412,14 +425,15 @@ def clear_all_databases(SETTINGS):
 
     session = Session()
     for table in reversed(Base.metadata.sorted_tables):
-        if table.name == 'files':
-            #continue
-            pass
+        #if table.name == 'files':
+        #    #continue
+        #    pass
         try:
             print("Deleting {}".format(table.name))
             session.execute(table.delete())
             session.commit()
         except:
+            print("Cannot delete {}".format(table.name))
             pass
 
 #-------------------------------------------------------------------------------
@@ -448,6 +462,8 @@ def clean_slate(config_file=None):
     Base.metadata.create_all(engine)
 
     do_all()
+
+    run_all_monitors()
 
 #-------------------------------------------------------------------------------
 

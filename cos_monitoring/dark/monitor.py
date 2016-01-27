@@ -8,6 +8,8 @@ import os
 import sqlite3
 import numpy as np
 import scipy
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import shutil
 import glob
