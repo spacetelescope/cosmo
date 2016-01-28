@@ -440,7 +440,7 @@ def make_plots():
 
     plt.subplot(2, 2, 3)
     x = [line.stim1_x for line in data]
-    y = [line.stim1_x for line in data]
+    y = [line.stim1_y for line in data]
     plt.plot(x, y, 'b.', alpha=.7)
     plt.xlabel('x')
     plt.ylabel('y')
