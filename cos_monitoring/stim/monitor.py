@@ -160,13 +160,14 @@ def locate_stims(fits_file, start=0, increment=None):
         else:
             increment = 30
 
-        increment *= 2
+        increment *= 4
 
     stop = start + increment
 
     stim_info = {}
 
-    for sub_start in np.arange(start, exptime, increment):
+    # Iterate from start to stop, excluding final bin if smaller than increment
+    for sub_start in np.arange(start, exptime-increment, increment):
         im = bin_corrtag(fits_file,
                            xtype='RAWX',
                            ytype='RAWY',
@@ -200,10 +201,10 @@ def find_missing():
     data = engine.execute("""SELECT headers.rootname,stims.abs_time
                                     FROM stims
                                     JOIN headers ON stims.file_id = headers.file_id
-                                    WHERE stims.stim1_x='-999'
-                                        OR stims.stim1_y='-999'
-                                        OR stim2_x='-999'
-                                        OR stim2_y='-999'
+                                    WHERE stims.stim1_x = -999
+                                        OR stims.stim1_y = -999
+                                        OR stims.stim2_x = -999
+                                        OR stims.stim2_y = -999
                                     ORDER BY stims.abs_time""")
 
     missed_data = [(item[0].strip(), float(item[1])) for item in data]

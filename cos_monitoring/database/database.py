@@ -65,12 +65,12 @@ def insert_with_yield(filename, table, function, foreign_key=None):
         #-- Handle missing files
         print(e.message)
         session.add(table(file_id=foreign_key))
-        
+
         session.commit()
         session.close()
         engine.dispose()
 
-    
+
     session.commit()
     session.close()
     engine.dispose()
@@ -113,7 +113,7 @@ def insert_files(**kwargs):
 #-------------------------------------------------------------------------------
 
 def populate_lampflash(num_cpu=1):
-    print("adding to lampflash")
+    print("Adding to lampflash")
     session = Session()
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
@@ -127,7 +127,7 @@ def populate_lampflash(num_cpu=1):
     args = [(full_filename, Lampflash, pull_flashes, f_key) for f_key, full_filename in files_to_add]
 
     pool = mp.Pool(processes=num_cpu)
-    pool.map_async(mp_insert, args)
+    pool.map(mp_insert, args)
 
 #-------------------------------------------------------------------------------
 
@@ -181,7 +181,7 @@ def populate_darks(num_cpu=1):
 #-------------------------------------------------------------------------------
 
 def populate_primary_headers(num_cpu=1):
-    print("adding to primary headers")
+    print("Adding to primary headers")
 
     t = """
         CREATE TEMPORARY TABLE which_file (rootname CHAR(9), has_x1d BOOLEAN,has_corr BOOLEAN, has_raw BOOLEAN, has_acq BOOLEAN);
@@ -293,11 +293,11 @@ def update_header((args)):
                                 asn_id=hdu[0].header.get('asn_id', 'None'),
                                 asn_tab=hdu[0].header.get('asn_tab', 'None'),
 
-                                hvlevela=hdu[1].header.get('hvlevela', -999),
-                                hvlevelb=hdu[1].header.get('hvlevelb', -999),
+                                hvlevela=hdu[1].header.get('hvlevela', None),
+                                hvlevelb=hdu[1].header.get('hvlevelb', None),
                                 date_obs=hdu[1].header['date-obs'],
-                                dpixel1a=hdu[1].header.get('dpixel1a', -999),
-                                dpixel1b=hdu[1].header.get('dpixel1b', -999),
+                                dpixel1a=hdu[1].header.get('dpixel1a', None),
+                                dpixel1b=hdu[1].header.get('dpixel1b', None),
                                 time_obs=hdu[1].header['time-obs'],
                                 expstart=hdu[1].header['expstart'],
                                 expend=hdu[1].header['expend'],
@@ -305,24 +305,24 @@ def update_header((args)):
                                 numflash=hdu[1].header.get('numflash', None),
                                 ra_aper=hdu[1].header['ra_aper'],
                                 dec_aper=hdu[1].header['dec_aper'],
-                                shift1a=hdu[1].header.get('shift1a', -999),
-                                shift1b=hdu[1].header.get('shift1b', -999),
-                                shift1c=hdu[1].header.get('shift1c', -999),
-                                shift2a=hdu[1].header.get('shift2a', -999),
-                                shift2b=hdu[1].header.get('shift2b', -999),
-                                shift2c=hdu[1].header.get('shift2c', -999),
-                                sp_loc_a=hdu[1].header.get('sp_loc_a', -999),
-                                sp_loc_b=hdu[1].header.get('sp_loc_b', -999),
-                                sp_loc_c=hdu[1].header.get('sp_loc_c', -999),
-                                sp_nom_a=hdu[1].header.get('sp_nom_a', -999),
-                                sp_nom_b=hdu[1].header.get('sp_nom_b', -999),
-                                sp_nom_c=hdu[1].header.get('sp_nom_c', -999),
-                                sp_off_a=hdu[1].header.get('sp_off_a', -999),
-                                sp_off_b=hdu[1].header.get('sp_off_b', -999),
-                                sp_off_c=hdu[1].header.get('sp_off_c', -999),
-                                sp_err_a=hdu[1].header.get('sp_err_a', -999),
-                                sp_err_b=hdu[1].header.get('sp_err_b', -999),
-                                sp_err_c=hdu[1].header.get('sp_err_c', -999),
+                                shift1a=hdu[1].header.get('shift1a', None),
+                                shift1b=hdu[1].header.get('shift1b', None),
+                                shift1c=hdu[1].header.get('shift1c', None),
+                                shift2a=hdu[1].header.get('shift2a', None),
+                                shift2b=hdu[1].header.get('shift2b', None),
+                                shift2c=hdu[1].header.get('shift2c', None),
+                                sp_loc_a=hdu[1].header.get('sp_loc_a', None),
+                                sp_loc_b=hdu[1].header.get('sp_loc_b', None),
+                                sp_loc_c=hdu[1].header.get('sp_loc_c', None),
+                                sp_nom_a=hdu[1].header.get('sp_nom_a', None),
+                                sp_nom_b=hdu[1].header.get('sp_nom_b', None),
+                                sp_nom_c=hdu[1].header.get('sp_nom_c', None),
+                                sp_off_a=hdu[1].header.get('sp_off_a', None),
+                                sp_off_b=hdu[1].header.get('sp_off_b', None),
+                                sp_off_c=hdu[1].header.get('sp_off_c', None),
+                                sp_err_a=hdu[1].header.get('sp_err_a', None),
+                                sp_err_b=hdu[1].header.get('sp_err_b', None),
+                                sp_err_c=hdu[1].header.get('sp_err_c', None),
 
                                 file_id=f_key))
     except IOError as e:
