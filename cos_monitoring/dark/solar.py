@@ -68,6 +68,13 @@ def compile_txt(file_dir):
 
     for item in input_list:
         print('Reading {}'.format(item))
+        
+        #-- clean up Q4 files when year-long file exists
+        if ('Q4_' in item) and os.path.exists(item.replace('Q4_', '_')):
+            print("Removing duplicate observations: {}".format(item))
+            os.remove(item)
+            continue
+
         data = ascii.read(item, data_start=1, comment='[#,:]')
 
         for line in data:
