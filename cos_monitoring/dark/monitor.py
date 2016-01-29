@@ -349,6 +349,7 @@ def move_products():
         move_list = glob.glob(base_dir + detector + '/*.p??')
 
         for item in move_list:
+            os.chmod(item, 0o777)
             path, file_to_move = os.path.split(item)
             shutil.copy(item, write_dir + file_to_move)
             print('Moving: %s' % (file_to_move))

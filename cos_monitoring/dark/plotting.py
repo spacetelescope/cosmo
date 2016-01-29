@@ -12,6 +12,7 @@ import scipy
 from scipy.ndimage.filters import convolve
 import numpy as np
 import math
+import os
 
 #-------------------------------------------------------------------------------
 
@@ -104,6 +105,9 @@ def plot_histogram(dark, outname):
                shadow=True,
                numpoints=1,
                bbox_to_anchor=[0.8, 0.8])
+
+    if os.path.exists(outname):
+        os.remove(outname)
 
     fig.savefig(outname, bbox_inches='tight')
     plt.close(fig)
@@ -268,6 +272,9 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
         sub_ax.legend(numpoints=1, shadow=True, loc='best')
         sub_ax.grid(True)
 
+    if os.path.exists(outname):
+        os.remove(outname)
+
     fig.savefig(outname, bbox_inches='tight')
     plt.close(fig)
 
@@ -406,6 +413,9 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
     ax3.set_xlim(0, 360)
     ax3.set_ylabel('Latitude - sub-solar point')
     ax3.set_xlabel('Longitude - sub-solar point')
+
+    if os.path.exists(outname):
+        os.remove(outname)
 
     fig.savefig(outname, bbox_inches='tight')
     plt.close(fig)

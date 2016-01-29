@@ -68,7 +68,7 @@ def compile_txt(file_dir):
 
     for item in input_list:
         print('Reading {}'.format(item))
-        
+
         #-- clean up Q4 files when year-long file exists
         if ('Q4_' in item) and os.path.exists(item.replace('Q4_', '_')):
             print("Removing duplicate observations: {}".format(item))
@@ -115,6 +115,7 @@ def get_solar_data(file_dir):
     date, flux = compile_txt(file_dir)
 
     out_solar_file = os.path.join(file_dir, 'solar_flux.txt')
+    os.remove(out_solar_file)
     with open(out_solar_file, 'w') as outfile:
         for d, f in zip(date, flux):
             outfile.write('%4.5f  %d\n' % (d, f))
