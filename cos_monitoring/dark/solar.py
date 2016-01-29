@@ -29,10 +29,11 @@ def grab_solar_files(file_dir):
                 destination = os.path.join(file_dir, item)
                 ftp.retrbinary('RETR {}'.format(item), open(destination, 'wb').write)
 
+                os.chmod(destination, 0o777)
 
 #-------------------------------------------------------------------------------
 
-def compile_txt( file_dir ):
+def compile_txt(file_dir):
     date = []
     flux = []
     input_list = glob.glob(os.path.join(file_dir, '*DSD.txt'))
@@ -60,7 +61,8 @@ def get_solar_data( file_dir ):
     grab_solar_files(file_dir)
     date, flux = compile_txt(file_dir)
 
-    outfile = open(os.path.join(file_dir, 'solar_flux.txt'), 'w')
-    for d, f in zip(date, flux):
-        outfile.write('%4.5f  %d\n' % (d, f))
-    outfile.close()
+    out_solar_file = os.path.join(file_dir, 'solar_flux.txt')
+    with open(out_solar_file, 'w') as outfile:
+        for d, f in zip(date, flux):
+            outfile.write('%4.5f  %d\n' % (d, f))
+    os.chmod(out_solar_file, 0o777)
