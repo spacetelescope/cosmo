@@ -20,6 +20,23 @@ Base = declarative_base()
 #-------------------------------------------------------------------------------
 
 def open_settings(config_file=None):
+    """ Parse config file and load settings
+
+    If no config file is supplied, the configuration file will assume to be
+    located at '~/configure.yaml'.
+
+    Parameters
+    ----------
+    config_file : str, optional
+        yaml file containing configuration settings.
+
+    Returns
+    -------
+    settings : dict
+        dictionary of all settings
+
+    """
+
     config_file = config_file or os.path.join(os.environ['HOME'], "configure.yaml")
 
     with open(config_file, 'r') as f:
@@ -32,6 +49,7 @@ def open_settings(config_file=None):
 def load_connection(connection_string, echo=False):
     """Create and return a connection to the database given in the
     connection string.
+
     Parameters
     ----------
     connection_string : str
@@ -40,13 +58,12 @@ def load_connection(connection_string, echo=False):
         dialect+driver://username:password@host:port/database
     echo : bool
         Show all SQL produced.
+
     Returns
     -------
     session : sesson object
         Provides a holding zone for all objects loaded or associated
         with the database.
-    base : base object
-        Provides a base class for declarative class definitions.
     engine : engine object
         Provides a source of database connectivity and behavior.
     """
@@ -223,25 +240,6 @@ class Stims(Base):
 
     #__table_args__ = (Index('idx_dataset', 'rootname', unique=False), )
     #file = relationship("Files", backref=backref('Stims', order_by=id))
-
-#-------------------------------------------------------------------------------
-
-class Variability(Base):
-    __tablename__ = 'variability'
-
-    id = Column(Integer, primary_key=True)
-
-    time = Column(Float)
-    counts = Column(Float)
-    counts_ta = Column(Float)
-    latitute = Column(Float)
-    longitude = Column(Float)
-    sun_latitude = Column(Float)
-    sun_longitude = Column(Float)
-    temperature = Column(Float)
-
-    file_id = Column(Integer, ForeignKey('files.id'))
-    #file = relationship("Files", backref=backref('Variability', order_by=id))
 
 #-------------------------------------------------------------------------------
 

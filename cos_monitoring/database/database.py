@@ -16,7 +16,7 @@ from ..stim.monitor import stim_monitor
 from .db_tables import load_connection, open_settings
 from .db_tables import Base
 from .db_tables import Files, Headers
-from .db_tables import Lampflash, Variability, Stims, Phd, Darks
+from .db_tables import Lampflash, Stims, Phd, Darks
 
 SETTINGS = open_settings()
 Session, engine = load_connection(SETTINGS['connection_string'])
@@ -24,6 +24,15 @@ Session, engine = load_connection(SETTINGS['connection_string'])
 #-------------------------------------------------------------------------------
 
 def mp_insert(args):
+    """Wrapper function to parse arguments and pass into insertion function
+
+    Parameters
+    ----------
+    args, tuple
+        filename, table, function, (foreign key, optional)
+
+    """
+
     if len(args) == 3:
         filename, table, function = args
         insert_with_yield(filename, table, function)
@@ -34,19 +43,18 @@ def mp_insert(args):
 #-------------------------------------------------------------------------------
 
 def insert_with_yield(filename, table, function, foreign_key=None):
-    """
-    Insert or update the table with information in the record_dict.
+    """ Call function on filename and insert results into table
 
     Parameters
     ----------
-    table :
+    filename : str
+        name of the file to call the function argument on
+    table : sqlalchemy table object
         The table of the database to update.
-    data : dict
-        A dictionary of the information to update.  Each key of the
-        dictionary must be a column in the Table.
-    id_num : string
-        The row ID to update.  If id_test is blank, then a new row is
-        inserted.
+    function : function
+        The function to call, should be a generator
+    foreign_key : int, optional
+        foreign key to update the table with
     """
 
     Session, engine = load_connection(SETTINGS['connection_string'])
@@ -78,22 +86,36 @@ def insert_with_yield(filename, table, function, foreign_key=None):
 #-------------------------------------------------------------------------------
 
 def insert_files(**kwargs):
-    """Create table of path, filename"""
+    """Populate the main table of all files in the base directory
+
+    Directly populates the Files table with the full path to all existing files
+    located recursively down through the file structure.
+
+    Parameters
+    ----------
+    data_location : str, optional
+        location of the data files to populate the table, defaults to './'
+
+    """
+
+    data_location = kwargs.get('data_location', './')
+    print("Looking for new files in {}".format(data_location))
 
     session = Session()
     print("Querying previously found files")
     previous_files = {os.path.join(path, fname) for path, fname in session.query(Files.path, Files.name)}
 
-    data_location = kwargs.get('data_location', './')
-    print("Looking for new files in {}".format(data_location))
-
     for i, (path, filename) in enumerate(find_all_datasets(data_location)):
         full_filepath = os.path.join(path, filename)
+
         if full_filepath in previous_files:
             print("Already found: {}".format(full_filepath))
             continue
 
         print("NEW: Found {}".format(full_filepath))
+
+        #-- properly formatted HST data should be the first 9 characters
+        #-- if this is not the case, insert NULL for this value
         rootname = filename.split('_')[0]
         if not len(rootname) == 9:
             rootname = None
@@ -113,6 +135,9 @@ def insert_files(**kwargs):
 #-------------------------------------------------------------------------------
 
 def populate_lampflash(num_cpu=1):
+    """ Populate the lampflash table
+
+    """
     print("Adding to lampflash")
     session = Session()
 
@@ -132,6 +157,9 @@ def populate_lampflash(num_cpu=1):
 #-------------------------------------------------------------------------------
 
 def populate_stims(num_cpu=1):
+    """ Populate the stim table
+
+    """
     print("Adding to stims")
     session = Session()
 
@@ -151,18 +179,12 @@ def populate_stims(num_cpu=1):
 #-------------------------------------------------------------------------------
 
 def populate_darks(num_cpu=1):
+    """ Populate the darks table
+
     """
-    SELECT files.id,files.path,files.name,headers.targname FROM files JOIN headers ON files.id = headers.file_id WHERE headers.targname='DARK';
-    """
+
     print("Adding to Darks")
     session = Session()
-    '''
-    files_to_add = [(result.id, os.path.join(result.path, result.name))
-                        for result in session.query(Files).\
-                                filter(Darks.name.like('%corrtag\_%')).\
-                                outerjoin(Darks, Files.id == Darks.file_id).\
-                                filter(Darks.file_id == None)]
-    '''
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
@@ -181,6 +203,9 @@ def populate_darks(num_cpu=1):
 #-------------------------------------------------------------------------------
 
 def populate_primary_headers(num_cpu=1):
+    """ Populate the table of primary header information
+
+    """
     print("Adding to primary headers")
 
     t = """

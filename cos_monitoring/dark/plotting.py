@@ -1,14 +1,15 @@
-from __future__ import absolute_import, division
-
 """ Make darkrate plots
 
 """
 
+from __future__ import absolute_import, division
+
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import scipy
 from scipy.ndimage.filters import convolve
-from scipy.stats import linregress
 import numpy as np
 import math
 
@@ -62,10 +63,10 @@ def plot_histogram(dark, outname):
     std = dark.std()
     mean_obj = ax.axvline(x=mean, lw=2, ls='--', color='r', label='Mean ')
     med_obj = ax.axvline(x=med, lw=2, ls='-', color='r', label='Median')
-    two_sig = ax.axvline(x=med + (2*std), lw=2, ls = '-', color='gold')
-    three_sig = ax.axvline(x=med + (3*std), lw=2, ls = '-', color='DarkOrange')
-    dist_95 = ax.axvline(x=bins[count_95], lw=2, ls = '-', color='LightGreen')
-    dist_99 = ax.axvline(x=bins[count_99], lw=2, ls = '-', color='DarkGreen')
+    two_sig = ax.axvline(x=med + (2*std), lw=2, ls='-', color='gold')
+    three_sig = ax.axvline(x=med + (3*std), lw=2, ls='-', color='DarkOrange')
+    dist_95 = ax.axvline(x=bins[count_95], lw=2, ls='-', color='LightGreen')
+    dist_99 = ax.axvline(x=bins[count_99], lw=2, ls='-', color='DarkGreen')
 
     ax.grid(True, which='both')
     ax.set_title('Histogram of Dark Rates')
@@ -81,10 +82,10 @@ def plot_histogram(dark, outname):
     ax.hist(dark, bins=100, align='mid', log=True, histtype='stepfilled')
     ax.axvline(x=mean, lw=2, ls='--', color='r', label='Mean')
     ax.axvline(x=med, lw=2, ls='-', color='r', label='Median')
-    ax.axvline(x=med+(2*std), lw=2, ls = '-', color='gold')
-    ax.axvline(x=med+(3*std), lw=2, ls = '-', color='DarkOrange')
-    ax.axvline(x=bins[count_95], lw=2, ls = '-', color='LightGreen')
-    ax.axvline(x=bins[count_99], lw=2, ls = '-', color='DarkGreen')
+    ax.axvline(x=med+(2*std), lw=2, ls='-', color='gold')
+    ax.axvline(x=med+(3*std), lw=2, ls='-', color='DarkOrange')
+    ax.axvline(x=bins[count_95], lw=2, ls='-', color='LightGreen')
+    ax.axvline(x=bins[count_99], lw=2, ls='-', color='DarkGreen')
 
     #ax.set_xscale('log')
     ax.grid(True, which='both')
@@ -96,10 +97,10 @@ def plot_histogram(dark, outname):
     fig.legend([med_obj, mean_obj, two_sig, three_sig, dist_95, dist_99],
                ['Median',
                 'Mean',
-                '2$\sigma$: {0:.2e}'.format(med+(2*std)),
-                '3$\sigma$: {0:.2e}'.format(med+(3*std)),
-                '95$\%$: {0:.2e}'.format(bins[count_95]),
-                '99$\%$: {0:.2e}'.format(bins[count_99])],
+                r'2$\sigma$: {0:.2e}'.format(med+(2*std)),
+                r'3$\sigma$: {0:.2e}'.format(med+(3*std)),
+                r'95$\%$: {0:.2e}'.format(bins[count_95]),
+                r'99$\%$: {0:.2e}'.format(bins[count_99])],
                shadow=True,
                numpoints=1,
                bbox_to_anchor=[0.8, 0.8])
@@ -168,28 +169,14 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
     #dark_ax.axvline(x=2013.126, ymin=0, ymax=1, color='b', linestyle=':',
     #                lw=2, label='Feb Safe', zorder=1, alpha=.4)
 
-    if detector == 'NUV':
-        pass
-        '''
-        fit_index = np.where(date > 2013.0)[0]
-        parameters = linregress(date[fit_index], dark[fit_index])
-        fit = scipy.polyval(parameters[:2], date[fit_index])
-        dark_ax.plot(date[fit_index], fit, ls='--', lw=3, color='r')
-
-        date_to_predict = 2016.25
-
-        #-- parameters[0:2] are slope, intercept
-        dark_predicted = scipy.polyval(parameters[:2], date_to_predict)
-        dark_ax.text(2010,
-                     8.1e-4,
-                     'Fit at {:.2f} = {:.2e}'.format(date_to_predict,
-                                                     dark_predicted),
-                     color='red',
-                     fontsize=14)
-        '''
-    else:
-        dark_ax.axhline(y=1.5E-6, color='r', linestyle='--',
-                   lw=3, label='1.5e-6', zorder=1, alpha=.6)
+    if not detector == 'NUV':
+        dark_ax.axhline(y=1.5E-6,
+                        color='r',
+                        linestyle='--',
+                        lw=3,
+                        label='1.5e-6',
+                        zorder=1,
+                        alpha=.6)
 
     dark_ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
     dark_ax.yaxis.set_major_formatter(FormatStrFormatter('%3.2e'))
@@ -331,7 +318,7 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
                         lw=0,
                         vmin=color_min,
                         vmax=color_max,
-                        rasterized=True )
+                        rasterized=True)
     fig.colorbar(colors)
 
     ax.set_xlim(0, 360)

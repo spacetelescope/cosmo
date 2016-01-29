@@ -1,7 +1,13 @@
 from __future__ import print_function, absolute_import, division
 
-class yaml:
+#-------------------------------------------------------------------------------
 
+class yaml:
+    """Simple YAML parser with very limited functionality
+
+    SHOULD BE REMOVED ONCE SSO ISSUES ARE DEALT-WITH
+
+    """
     @staticmethod
     def load(filename):
         out_info = {}
@@ -15,3 +21,5 @@ class yaml:
             out_info[key] = val
 
         return out_info
+
+#-------------------------------------------------------------------------------

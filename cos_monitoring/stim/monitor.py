@@ -1,68 +1,44 @@
-#!/usr/bin/env python
-
-from __future__ import absolute_import
-
 """Script to monitor the COS FUV STIM pulses in TIME-TAG observations.
 
-1: move through /smov/cos/Data/ and populate an sql database of STIM locations.
-2: Make plots of overall trends, move to webpage.
-3: Check through individual datasets, send email of abberant datasets.
-
 """
+
+from __future__ import absolute_import, print_function
 
 __author__ = 'Justin Ely'
 __status__ = 'Active'
 
-import pyfits
-import os
-import sys
-import sqlite3
 import matplotlib as mpl
 mpl.use('agg')
-from matplotlib.ticker import FormatStrFormatter
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import argparse
+#from mpl_toolkits.mplot3d import Axes3D
 import datetime
 import shutil
-import time
-import re
+import os
 import glob
 import numpy as np
 from astropy.table import Table
 from astropy.time import Time
+from astropy.io import fits
 from scipy.stats import linregress
-import multiprocessing as mp
-import time
 
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from ..utils import corrtag_image, bin_corrtag
+from ..utils import bin_corrtag
 from ..database.db_tables import open_settings, load_connection
 
-#------------------------------------------------------
-#--------------------Constants-------------------------
+#-------------------------------------------------------------------------------
+#--------------------Constants--------------------------------------------------
 
 DATA_DIR = '/smov/cos/Data/'
 MONITOR_DIR = '/grp/hst/cos/Monitors/Stim/'
 WEB_DIR = '/grp/webpages/COS/stim/'
 
 brf_file = '/grp/hst/cdbs/lref/s7g1700el_brf.fits'
-DB_NAME = os.path.join(MONITOR_DIR, 'Stim_Locations.db')
 
-#-----------------------------------------------------
 
-def gaussian(height, center_x, center_y, width_x, width_y):
-    """ Returns a gaussian function with the given parameters
-    """
-    width_x = float(width_x)
-    width_y = float(width_y)
-    return lambda x, y: height * exp(
-        -(((center_x - x) / width_x) ** 2 + ((center_y - y) / width_y) ** 2) / 2)
-
-#-----------------------------------------------------
+#-------------------------------------------------------------------------------
 
 def find_center(data):
     """ Returns (height, x, y, width_x, width_y)
@@ -86,13 +62,13 @@ def find_center(data):
 
     return y, x
 
-#-----------------------------------------------------
+#-------------------------------------------------------------------------------
 
 def brf_positions(brftab, segment, position):
     """ Gets the search ranges for a stimpulse from
     the given baseline reference table
     """
-    brf = pyfits.getdata(brftab)
+    brf = fits.getdata(brftab)
 
     if segment == 'FUVA':
         row = 0
@@ -120,7 +96,7 @@ def brf_positions(brftab, segment, position):
 
     return xmin, xmax, ymin, ymax
 
-#-----------------------------------------------------
+#-------------------------------------------------------------------------------
 
 def find_stims(image, segment, stim, brf_file):
     x1, x2, y1, y2 = brf_positions(brf_file, segment, stim)
@@ -130,7 +106,7 @@ def find_stims(image, segment, stim, brf_file):
 
     return found_x + x1, found_y + y1
 
-#-----------------------------------------------------
+#-------------------------------------------------------------------------------
 
 def locate_stims(fits_file, start=0, increment=None):
     print(fits_file)
@@ -138,7 +114,7 @@ def locate_stims(fits_file, start=0, increment=None):
 
     file_path, file_name = os.path.split(fits_file)
 
-    with pyfits.open(fits_file) as hdu:
+    with fits.open(fits_file) as hdu:
         exptime = hdu[1].header['exptime']
         expstart = hdu[1].header['expstart']
         segment = hdu[0].header['segment']
@@ -169,9 +145,9 @@ def locate_stims(fits_file, start=0, increment=None):
     # Iterate from start to stop, excluding final bin if smaller than increment
     for sub_start in np.arange(start, exptime-increment, increment):
         im = bin_corrtag(fits_file,
-                           xtype='RAWX',
-                           ytype='RAWY',
-                           times=(sub_start, sub_start + increment))
+                         xtype='RAWX',
+                         ytype='RAWY',
+                         times=(sub_start, sub_start + increment))
 
         ABS_TIME = expstart + sub_start * DAYS_PER_SECOND
 
@@ -221,7 +197,7 @@ def find_missing():
     date_uniq = Time(date_uniq, format='mjd', scale='utc')
     return obs_uniq, date_uniq
 
-#-----------------------------------------------------
+#-------------------------------------------------------------------------------
 
 def check_individual():
     """Run tests on each individual datasets.
@@ -262,7 +238,7 @@ def check_individual():
     t = Table(rows=data, names=keys)
     t.write(os.path.join(MONITOR_DIR, "STIM_problem_rootnames.txt"), delimiter='|', format='ascii.fixed_width')
 
-#-----------------------------------------------------
+#-------------------------------------------------------------------------------
 
 def stim_monitor():
     """Main function to monitor the stim pulses in COS observations
@@ -278,14 +254,14 @@ def stim_monitor():
     missing_obs, missing_dates = find_missing()
     send_email(missing_obs, missing_dates)
 
-    print 'Making Plots'
+    print('Making Plots')
     make_plots()
 
-    print 'Moving to web'
+    print('Moving to web')
     move_to_web()
     check_individual()
 
-#-----------------------------------------------------
+#-------------------------------------------------------------------------------
 
 def send_email(missing_obs, missing_dates):
     """inform the parties that retrieval and calibration are done
@@ -326,7 +302,7 @@ def send_email(missing_obs, missing_dates):
     s.sendmail(from_addr, recipients, msg.as_string())
     s.quit()
 
-#--------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 def make_plots():
     """Make the overall STIM monitor plots.
@@ -335,11 +311,7 @@ def make_plots():
 
     plt.ioff()
 
-    brf = pyfits.getdata(brf_file, 1)
-
-    print '#-------------------------#'
-    print '#       Plotting          #'
-    print '#-------------------------#'
+    brf = fits.getdata(brf_file, 1)
 
     SETTINGS = open_settings()
     Session, engine = load_connection(SETTINGS['connection_string'])
@@ -785,7 +757,7 @@ def make_plots():
     plt.close(fig)
     """
 
-#-----------------------------------------------------
+#-------------------------------------------------------------------------------
 
 def trend(val1, val2):
     val1 = np.array(val1)
@@ -795,22 +767,20 @@ def trend(val1, val2):
 
     return slope, intercept
 
-#-----------------------------------------------------
+#-------------------------------------------------------------------------------
 
 def move_to_web():
-    """Simple function to move created plots in the MONITOR_DIR
+    """Copy output products to web-facing directories.
+
+    Simple function to move created plots in the MONITOR_DIR
     to the WEB_DIR.  Will move all files that match the string
     STIM*.p* and then change permissions to 777.
     """
 
-    print 'Moving plots to web'
+    print('Moving plots to web')
     for item in glob.glob(os.path.join(MONITOR_DIR, 'STIM*.p*')):
         shutil.copy(item, WEB_DIR)
         orig_path, filename = os.path.split(item)
         os.chmod(os.path.join(WEB_DIR, filename), 0o777)
 
-#-----------------------------------------------------
-
-if __name__ == '__main__':
-    os.system('clear')
-    stim_monitor()
+#-------------------------------------------------------------------------------
