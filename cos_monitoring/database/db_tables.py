@@ -148,7 +148,10 @@ class Headers(Base):
     qualcom3 = Column(String(67))
     quality = Column(String(67))
     opus_ver = Column(String(30))
+    postarg1 = Column(Float)
+    postarg2 = Column(Float)
     cal_ver = Column(String(30))
+    proctime = Column(Float)
 
     obstype = Column(String(20))
     obsmode = Column(String(20))
@@ -160,6 +163,10 @@ class Headers(Base):
     fppos = Column(Integer)
     exp_num = Column(Integer)
     cenwave = Column(Integer)
+    propaper = Column(String)
+    apmpos = Column(String)
+    aperxpos = Column(Float)
+    aperypos = Column(Float)
     aperture = Column(String(3))
     opt_elem = Column(String(6))
     shutter = Column(String(20))
@@ -168,6 +175,17 @@ class Headers(Base):
     asn_id = Column(String(9))
     asn_tab = Column(String(18))
     ###randseed = Column(Integer) #-- Errors for some reason.
+    asn_mtyp = Column(String)
+    overflow = Column(String)
+    nevents = Column(Integer)
+    neventsa = Column(Float)
+    neventsb = Column(Float)
+    dethvla = Column(Integer)
+    dethvlb = Column(Integer)
+    deventa = Column(Float)
+    deventb = Column(Float)
+    feventa = Column(Float)
+    feventb = Column(Float)
     hvlevela = Column(Integer)
     hvlevelb = Column(Integer)
     dpixel1a = Column(Float)
@@ -199,6 +217,19 @@ class Headers(Base):
     sp_err_a = Column(Float)
     sp_err_b = Column(Float)
     sp_err_c = Column(Float)
+
+    #NUV keywords
+    dethvl = Column(Float)
+
+    #spt file keywords
+    proc_type = Column(Sting) # primary extention
+    lomfstp = Column(Float) #2 ext, focus in spreadsheet
+    lapdxvdt = Column(Integer) #2 ext, aper_disp in spreadsheet
+    lapdlvdt = Column(Integer) #2 ext, aper_xdisp in spreadsheet
+    lom1posc = Column(Integer) #2 ext, osm1_coarse in spreadsheet
+    lom2posc = Column(Integer) #2 ext, osm2_coarse in spreadsheet
+    lom1posf = Column(Integer) #2 ext, osm1_fine in spreadsheet
+    lom2posf = Column(Integer) #2 ext, osm2_fine in spreadsheet
 
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('headers', order_by=id))
@@ -273,8 +304,8 @@ class Phd(Base):
     pha_22 = Column(Integer)
     pha_23 = Column(Integer)
     pha_24 = Column(Integer)
-    pha_25 = Column(Integer)
     pha_26 = Column(Integer)
+    pha_25 = Column(Integer)
     pha_27 = Column(Integer)
     pha_28 = Column(Integer)
     pha_29 = Column(Integer)

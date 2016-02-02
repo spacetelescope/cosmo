@@ -298,7 +298,11 @@ def update_header((args)):
                                 qualcom2=hdu[0].header.get('qualcom2', ''),
                                 qualcom3=hdu[0].header.get('qualcom3', ''),
                                 quality=hdu[0].header.get('quality', ''),
+                                postarg1=hdu[0].header['postarg1'],
+                                postarg2=hdu[0].header['postarg2'],
                                 cal_ver=hdu[0].header['cal_ver'],
+                                proctime = hdu[0].header['proctime'],
+
                                 opus_ver=hdu[0].header['opus_ver'],
                                 obstype=hdu[0].header['obstype'],
                                 obsmode=hdu[0].header['obsmode'],
@@ -310,6 +314,10 @@ def update_header((args)):
                                 fppos=hdu[0].header['fppos'],
                                 exp_num=hdu[0].header['exp_num'],
                                 cenwave=hdu[0].header['cenwave'],
+                                propaper=hdu[0].header['propaper'],
+                                apmpos=hdu[0].header['apmpos'],
+                                aperxpos=hdu[0].header['aperxpos'],
+                                aperypos=hdu[0].header['aperypos'],
                                 aperture=hdu[0].header['aperture'],
                                 opt_elem=hdu[0].header['opt_elem'],
                                 shutter=hdu[0].header['shutter'],
@@ -317,7 +325,17 @@ def update_header((args)):
                                 obset_id=hdu[0].header.get('obset_id', None),
                                 asn_id=hdu[0].header.get('asn_id', 'None'),
                                 asn_tab=hdu[0].header.get('asn_tab', 'None'),
-
+                                asn_mtyp = hdu[1].header['asn_mtyp'],
+                                overflow = hdu[1].header['overflow'],
+                                nevents = hdu[1].header['nevents'],
+                                neventsa = hdu[1].header['neventsa'],
+                                neventsb = hdu[1].header['neventsb'],
+                                dethvla = hdu[1].header['dethvla'],
+                                dethvlb = hdu[1].header['dethvlb'],
+                                deventa = hdu[1].header['deventa'],
+                                deventb = hdu[1].header['deventb'],
+                                feventa = hdu[1].header['feventa'],
+                                feventb = hdu[1].header['feventb'],
                                 hvlevela=hdu[1].header.get('hvlevela', None),
                                 hvlevelb=hdu[1].header.get('hvlevelb', None),
                                 date_obs=hdu[1].header['date-obs'],
@@ -336,6 +354,7 @@ def update_header((args)):
                                 shift2a=hdu[1].header.get('shift2a', None),
                                 shift2b=hdu[1].header.get('shift2b', None),
                                 shift2c=hdu[1].header.get('shift2c', None),
+
                                 sp_loc_a=hdu[1].header.get('sp_loc_a', None),
                                 sp_loc_b=hdu[1].header.get('sp_loc_b', None),
                                 sp_loc_c=hdu[1].header.get('sp_loc_c', None),
@@ -348,6 +367,19 @@ def update_header((args)):
                                 sp_err_a=hdu[1].header.get('sp_err_a', None),
                                 sp_err_b=hdu[1].header.get('sp_err_b', None),
                                 sp_err_c=hdu[1].header.get('sp_err_c', None),
+
+                                #NUV keywords
+                                dethvl = ra_aper=hdu[1].header['dethvl'],
+
+                                #spt file keywords
+                                proc_type = hdu[1].header.get('proc_type', None),
+                                lomfstp = hdu[2].header.get('lomfstp', None),
+                                lapdxvdt = hdu[2].header.get('lapdxvdt', None),
+                                lapdlvdt = hdu[2].header.get('lapdlvdt', None),
+                                lom1posc = hdu[2].header.get('lom1posc', None),
+                                lom2posc = hdu[2].header.get('lom2posc', None),
+                                lom1posf = hdu[2].header.get('lom1posf', None),
+                                lom2posf = hdu[2].header.get('lom2posf', None),
 
                                 file_id=f_key))
     except IOError as e:
