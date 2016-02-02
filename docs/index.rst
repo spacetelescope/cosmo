@@ -11,9 +11,11 @@ Here are some other complicated things that can impress the gullible:
    :maxdepth: 2
 
    database_mods
+   osm_mods
+   stim_mods
+   utils_mods
+   dark_mods
 
-
-.. math:: n_{\mathrm{offset}} = \sum_{k=0}^{N-1} s_k n_k
 
 Need Help?
 ==========

@@ -4,5 +4,5 @@ A description of what these modules do...
 
 utils
 -----
-.. automodule:: ..cos_monitoring.utils.utils
+.. automodule:: cos_monitoring.utils.utils
    :members:
