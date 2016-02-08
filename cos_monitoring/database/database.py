@@ -286,102 +286,114 @@ def update_header((args)):
 
     try:
         with fits.open(filename) as hdu:
-            session.add(Headers(filetype=hdu[0].header['filetype'],
-                                instrume=hdu[0].header['instrume'],
-                                rootname=hdu[0].header['rootname'],
-                                imagetyp=hdu[0].header['imagetyp'],
-                                targname=hdu[0].header['targname'],
-                                ra_targ=hdu[0].header['ra_targ'],
-                                dec_targ=hdu[0].header['dec_targ'],
-                                proposid=hdu[0].header['proposid'],
-                                qualcom1=hdu[0].header.get('qualcom1', ''),
-                                qualcom2=hdu[0].header.get('qualcom2', ''),
-                                qualcom3=hdu[0].header.get('qualcom3', ''),
-                                quality=hdu[0].header.get('quality', ''),
-                                postarg1=hdu[0].header['postarg1'],
-                                postarg2=hdu[0].header['postarg2'],
-                                cal_ver=hdu[0].header['cal_ver'],
-                                proctime = hdu[0].header['proctime'],
+            keywords = {  'filetype':hdu[0].header['filetype'],
+                              'instrume':hdu[0].header['instrume'],
+                              'rootname':hdu[0].header['rootname'],
+                              'imagetyp':hdu[0].header['imagetyp'],
+                              'targname':hdu[0].header['targname'],
+                              'ra_targ':hdu[0].header['ra_targ'],
+                              'dec_targ':hdu[0].header['dec_targ'],
+                              'proposid':hdu[0].header['proposid'],
+                              'qualcom1':hdu[0].header.get('qualcom1', ''),
+                              'qualcom2':hdu[0].header.get('qualcom2', ''),
+                              'qualcom3':hdu[0].header.get('qualcom3', ''),
+                              'quality':hdu[0].header.get('quality', ''),
+                              'postarg1':hdu[0].header['postarg1'],
+                              'postarg2':hdu[0].header['postarg2'],
+                              'cal_ver':hdu[0].header['cal_ver'],
+                              'proctime':hdu[0].header['proctime'],
 
-                                opus_ver=hdu[0].header['opus_ver'],
-                                obstype=hdu[0].header['obstype'],
-                                obsmode=hdu[0].header['obsmode'],
-                                exptype=hdu[0].header['exptype'],
-                                detector=hdu[0].header['detector'],
-                                segment=hdu[0].header['segment'],
-                                detecthv=hdu[0].header['detecthv'],
-                                life_adj=hdu[0].header['life_adj'],
-                                fppos=hdu[0].header['fppos'],
-                                exp_num=hdu[0].header['exp_num'],
-                                cenwave=hdu[0].header['cenwave'],
-                                propaper=hdu[0].header['propaper'],
-                                apmpos=hdu[0].header['apmpos'],
-                                aperxpos=hdu[0].header['aperxpos'],
-                                aperypos=hdu[0].header['aperypos'],
-                                aperture=hdu[0].header['aperture'],
-                                opt_elem=hdu[0].header['opt_elem'],
-                                shutter=hdu[0].header['shutter'],
-                                extended=hdu[0].header['extended'],
-                                obset_id=hdu[0].header.get('obset_id', None),
-                                asn_id=hdu[0].header.get('asn_id', 'None'),
-                                asn_tab=hdu[0].header.get('asn_tab', 'None'),
-                                asn_mtyp = hdu[1].header['asn_mtyp'],
-                                overflow = hdu[1].header['overflow'],
-                                nevents = hdu[1].header['nevents'],
-                                neventsa = hdu[1].header['neventsa'],
-                                neventsb = hdu[1].header['neventsb'],
-                                dethvla = hdu[1].header['dethvla'],
-                                dethvlb = hdu[1].header['dethvlb'],
-                                deventa = hdu[1].header['deventa'],
-                                deventb = hdu[1].header['deventb'],
-                                feventa = hdu[1].header['feventa'],
-                                feventb = hdu[1].header['feventb'],
-                                hvlevela=hdu[1].header.get('hvlevela', None),
-                                hvlevelb=hdu[1].header.get('hvlevelb', None),
-                                date_obs=hdu[1].header['date-obs'],
-                                dpixel1a=hdu[1].header.get('dpixel1a', None),
-                                dpixel1b=hdu[1].header.get('dpixel1b', None),
-                                time_obs=hdu[1].header['time-obs'],
-                                expstart=hdu[1].header['expstart'],
-                                expend=hdu[1].header['expend'],
-                                exptime=hdu[1].header['exptime'],
-                                numflash=hdu[1].header.get('numflash', None),
-                                ra_aper=hdu[1].header['ra_aper'],
-                                dec_aper=hdu[1].header['dec_aper'],
-                                shift1a=hdu[1].header.get('shift1a', None),
-                                shift1b=hdu[1].header.get('shift1b', None),
-                                shift1c=hdu[1].header.get('shift1c', None),
-                                shift2a=hdu[1].header.get('shift2a', None),
-                                shift2b=hdu[1].header.get('shift2b', None),
-                                shift2c=hdu[1].header.get('shift2c', None),
+                              'opus_ver':hdu[0].header['opus_ver'],
+                              'obstype':hdu[0].header['obstype'],
+                              'obsmode':hdu[0].header['obsmode'],
+                              'exptype':hdu[0].header['exptype'],
+                              'detector':hdu[0].header['detector'],
+                              'segment':hdu[0].header['segment'],
+                              'detecthv':hdu[0].header['detecthv'],
+                              'life_adj':hdu[0].header['life_adj'],
+                              'fppos':hdu[0].header['fppos'],
+                              'exp_num':hdu[0].header['exp_num'],
+                              'cenwave':hdu[0].header['cenwave'],
+                              'propaper':hdu[0].header['propaper'],
+                              'apmpos':hdu[0].header.get('apmpos', None),
+                              'aperxpos':hdu[0].header.get('aperxpos', None),
+                              'aperypos':hdu[0].header.get('aperypos', None),
+                              'aperture':hdu[0].header['aperture'],
+                              'opt_elem':hdu[0].header['opt_elem'],
+                              'shutter':hdu[0].header['shutter'],
+                              'extended':hdu[0].header['extended'],
+                              'obset_id':hdu[0].header.get('obset_id', None),
+                              'asn_id':hdu[0].header.get('asn_id', None),
+                              'asn_tab':hdu[0].header.get('asn_tab', None),
+                              'asn_mtyp':hdu[1].header['asn_mtyp'],
+                              'overflow':hdu[1].header.get('overflow', None),
+                              'nevents':hdu[1].header.get('nevents', None),
+                              'neventsa':hdu[1].header.get('neventsa', None),
+                              'neventsb':hdu[1].header.get('neventsb', None),
+                              'dethvla':hdu[1].header.get('dethvla', None),
+                              'dethvlb':hdu[1].header.get('dethvlb', None),
+                              'deventa':hdu[1].header.get('deventa', None),
+                              'deventb':hdu[1].header.get('deventb', None),
+                              'feventa':hdu[1].header.get('feventa', None),
+                              'feventb':hdu[1].header.get('feventb', None),
+                              'hvlevela':hdu[1].header.get('hvlevela', None),
+                              'hvlevelb':hdu[1].header.get('hvlevelb', None),
+                              'date_obs':hdu[1].header['date-obs'],
+                              'dpixel1a':hdu[1].header.get('dpixel1a', None),
+                              'dpixel1b':hdu[1].header.get('dpixel1b', None),
+                              'time_obs':hdu[1].header['time-obs'],
+                              'expstart':hdu[1].header['expstart'],
+                              'expend':hdu[1].header['expend'],
+                              'exptime':hdu[1].header['exptime'],
+                              'numflash':hdu[1].header.get('numflash', None),
+                              'ra_aper':hdu[1].header['ra_aper'],
+                              'dec_aper':hdu[1].header['dec_aper'],
+                              'shift1a':hdu[1].header.get('shift1a', None),
+                              'shift1b':hdu[1].header.get('shift1b', None),
+                              'shift1c':hdu[1].header.get('shift1c', None),
+                              'shift2a':hdu[1].header.get('shift2a', None),
+                              'shift2b':hdu[1].header.get('shift2b', None),
+                              'shift2c':hdu[1].header.get('shift2c', None),
 
-                                sp_loc_a=hdu[1].header.get('sp_loc_a', None),
-                                sp_loc_b=hdu[1].header.get('sp_loc_b', None),
-                                sp_loc_c=hdu[1].header.get('sp_loc_c', None),
-                                sp_nom_a=hdu[1].header.get('sp_nom_a', None),
-                                sp_nom_b=hdu[1].header.get('sp_nom_b', None),
-                                sp_nom_c=hdu[1].header.get('sp_nom_c', None),
-                                sp_off_a=hdu[1].header.get('sp_off_a', None),
-                                sp_off_b=hdu[1].header.get('sp_off_b', None),
-                                sp_off_c=hdu[1].header.get('sp_off_c', None),
-                                sp_err_a=hdu[1].header.get('sp_err_a', None),
-                                sp_err_b=hdu[1].header.get('sp_err_b', None),
-                                sp_err_c=hdu[1].header.get('sp_err_c', None),
+                              'sp_loc_a':hdu[1].header.get('sp_loc_a', None),
+                              'sp_loc_b':hdu[1].header.get('sp_loc_b', None),
+                              'sp_loc_c':hdu[1].header.get('sp_loc_c', None),
+                              'sp_nom_a':hdu[1].header.get('sp_nom_a', None),
+                              'sp_nom_b':hdu[1].header.get('sp_nom_b', None),
+                              'sp_nom_c':hdu[1].header.get('sp_nom_c', None),
+                              'sp_off_a':hdu[1].header.get('sp_off_a', None),
+                              'sp_off_b':hdu[1].header.get('sp_off_b', None),
+                              'sp_off_c':hdu[1].header.get('sp_off_c', None),
+                              'sp_err_a':hdu[1].header.get('sp_err_a', None),
+                              'sp_err_b':hdu[1].header.get('sp_err_b', None),
+                              'sp_err_c':hdu[1].header.get('sp_err_c', None),
 
-                                #NUV keywords
-                                dethvl = ra_aper=hdu[1].header['dethvl'],
+                              'dethvl':hdu[1].header.get('dethvl', None),
+                                                                                }
+            path, name = os.path.split(filename)
+            spt_file = os.path.join(path, keywords['rootname'] + '_spt.fits.gz')
+            if os.path.isfile(spt_file):
+                print(spt_file)
+                with fits.open(spt_file) as spt_hdu:
+                    keywords['proc_type']=spt_hdu[1].header.get('proc_type', None)
+                    keywords['lomfstp']=spt_hdu[2].header.get('lomfstp', None)
+                    keywords['lapdxvdt']=spt_hdu[2].header.get('lapdxvdt', None)
+                    keywords['lapdlvdt']=spt_hdu[2].header.get('lapdlvdt', None)
+                    keywords['lom1posc']=spt_hdu[2].header.get('lom1posc', None)
+                    keywords['lom2posc']=spt_hdu[2].header.get('lom2posc', None)
+                    keywords['lom1posf']=spt_hdu[2].header.get('lom1posf', None)
+                    keywords['lom2posf']=spt_hdu[2].header.get('lom2posf', None)
+            else:
+                  keywords['proc_type']=None
+                  keywords['lomfstp']=None
+                  keywords['lapdxvdt']=None
+                  keywords['lapdlvdt']=None
+                  keywords['lom1posc']=None
+                  keywords['lom2posc']=None
+                  keywords['lom1posf']=None
+                  keywords['lom2posf']=None
+            session.add(Headers(**keywords))
 
-                                #spt file keywords
-                                proc_type = hdu[1].header.get('proc_type', None),
-                                lomfstp = hdu[2].header.get('lomfstp', None),
-                                lapdxvdt = hdu[2].header.get('lapdxvdt', None),
-                                lapdlvdt = hdu[2].header.get('lapdlvdt', None),
-                                lom1posc = hdu[2].header.get('lom1posc', None),
-                                lom2posc = hdu[2].header.get('lom2posc', None),
-                                lom1posf = hdu[2].header.get('lom1posf', None),
-                                lom2posf = hdu[2].header.get('lom2posf', None),
-
-                                file_id=f_key))
     except IOError as e:
         print(e.message)
         #-- Handle empty or corrupt FITS files
@@ -498,7 +510,7 @@ def clear_all_databases(SETTINGS):
 def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
-    insert_files(**SETTINGS)
+    ##insert_files(**SETTINGS)
     populate_primary_headers(SETTINGS['num_cpu'])
     #populate_data(SETTINGS['num_cpu'])
     populate_lampflash(SETTINGS['num_cpu'])

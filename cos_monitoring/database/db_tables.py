@@ -148,7 +148,7 @@ class Headers(Base):
     qualcom3 = Column(String(67))
     quality = Column(String(67))
     opus_ver = Column(String(30))
-    postarg1 = Column(Float)
+    postarg1 = Column(Float(32))
     postarg2 = Column(Float)
     cal_ver = Column(String(30))
     proctime = Column(Float)
@@ -163,8 +163,8 @@ class Headers(Base):
     fppos = Column(Integer)
     exp_num = Column(Integer)
     cenwave = Column(Integer)
-    propaper = Column(String)
-    apmpos = Column(String)
+    propaper = Column(String(20))
+    apmpos = Column(String(20))
     aperxpos = Column(Float)
     aperypos = Column(Float)
     aperture = Column(String(3))
@@ -175,8 +175,8 @@ class Headers(Base):
     asn_id = Column(String(9))
     asn_tab = Column(String(18))
     ###randseed = Column(Integer) #-- Errors for some reason.
-    asn_mtyp = Column(String)
-    overflow = Column(String)
+    asn_mtyp = Column(String(20))
+    overflow = Column(Integer)
     nevents = Column(Integer)
     neventsa = Column(Float)
     neventsb = Column(Float)
@@ -222,7 +222,7 @@ class Headers(Base):
     dethvl = Column(Float)
 
     #spt file keywords
-    proc_type = Column(Sting) # primary extention
+    proc_type = Column(String(20)) # primary extention
     lomfstp = Column(Float) #2 ext, focus in spreadsheet
     lapdxvdt = Column(Integer) #2 ext, aper_disp in spreadsheet
     lapdlvdt = Column(Integer) #2 ext, aper_xdisp in spreadsheet

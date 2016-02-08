@@ -40,7 +40,7 @@ def get_temp(filename):
     """
 
     with fits.open(filename) as hdu:
-        detector = hdu[0].hader['DETECTOR']
+        detector = hdu[0].header['DETECTOR']
         segment = hdu[0].header['SEGMENT']
         rootname = hdu[0].header['ROOTNAME']
 
