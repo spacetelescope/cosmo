@@ -114,6 +114,7 @@ class Lampflash(Base):
     __tablename__ = 'lampflash'
 
     id = Column(Integer, primary_key=True)
+
     date = Column(Float)
     proposid = Column(Integer)
     detector = Column(String(4))
@@ -221,16 +222,6 @@ class Headers(Base):
     #NUV keywords
     dethvl = Column(Float)
 
-    #spt file keywords
-    proc_type = Column(String(20)) # primary extention
-    lomfstp = Column(Float) #2 ext, focus in spreadsheet
-    lapdxvdt = Column(Integer) #2 ext, aper_disp in spreadsheet
-    lapdlvdt = Column(Integer) #2 ext, aper_xdisp in spreadsheet
-    lom1posc = Column(Integer) #2 ext, osm1_coarse in spreadsheet
-    lom2posc = Column(Integer) #2 ext, osm2_coarse in spreadsheet
-    lom1posf = Column(Integer) #2 ext, osm1_fine in spreadsheet
-    lom2posf = Column(Integer) #2 ext, osm2_fine in spreadsheet
-
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('headers', order_by=id))
 
@@ -238,7 +229,7 @@ class Headers(Base):
     __table_args__ = (Index('idx_config', 'segment', 'fppos', 'cenwave', 'opt_elem', unique=False), )
 
 #-------------------------------------------------------------------------------
-"""
+
 class Data(Base):
     __tablename__ = "data"
 
@@ -250,7 +241,7 @@ class Data(Base):
 
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('Data', order_by=id))
-"""
+
 #-------------------------------------------------------------------------------
 
 class Stims(Base):
@@ -333,4 +324,22 @@ class Gain(Base):
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('Gain', order_by=id))
 '''
+#-------------------------------------------------------------------------------
+
+class SPT(Base):
+    __tablename__ = 'spt'
+
+    id = Column(Integer, primary_key=True)
+
+    #spt file keywords
+    proc_type = Column(String(20)) # primary extention
+    lomfstp = Column(Float) #2 ext, focus in spreadsheet
+    lapdxvdt = Column(Integer) #2 ext, aper_disp in spreadsheet
+    lapdlvdt = Column(Integer) #2 ext, aper_xdisp in spreadsheet
+    lom1posc = Column(Integer) #2 ext, osm1_coarse in spreadsheet
+    lom2posc = Column(Integer) #2 ext, osm2_coarse in spreadsheet
+    lom1posf = Column(Integer) #2 ext, osm1_fine in spreadsheet
+    lom2posf = Column(Integer) #2 ext, osm2_fine in spreadsheet
+    file_id = Column(Integer, ForeignKey('files.id'))
+
 #-------------------------------------------------------------------------------
