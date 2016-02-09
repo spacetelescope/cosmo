@@ -326,7 +326,7 @@ class Gain(Base):
 '''
 #-------------------------------------------------------------------------------
 
-class SPT(Base):
+class sptkeys(Base):
     __tablename__ = 'spt'
 
     id = Column(Integer, primary_key=True)
@@ -340,6 +340,7 @@ class SPT(Base):
     lom2posc = Column(Integer) #2 ext, osm2_coarse in spreadsheet
     lom1posf = Column(Integer) #2 ext, osm1_fine in spreadsheet
     lom2posf = Column(Integer) #2 ext, osm2_fine in spreadsheet
+
     file_id = Column(Integer, ForeignKey('files.id'))
 
 #-------------------------------------------------------------------------------
