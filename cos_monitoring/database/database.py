@@ -6,6 +6,7 @@ from sqlalchemy import and_, or_, text
 import sys
 import numpy as np
 import multiprocessing as mp
+import types
 
 from ..dark.monitor import monitor as dark_monitor
 from ..dark.monitor import pull_orbital_info
@@ -60,15 +61,26 @@ def insert_with_yield(filename, table, function, foreign_key=None):
     Session, engine = load_connection(SETTINGS['connection_string'])
     session = Session()
 
+
+
     try:
-        generator = function(filename)
+        data = function(filename)
+
+       if isinstance(data, dict):
+           data = [data] 
+       elif isinstance(data, types.GeneratorType)
+           pass
+       else:
+           raise ValueError("Not designed to work with data of type {}".format(type(data)))
+
         #-- Pull data from generator and commit
-        for i, data in enumerate(generator):
-            data['file_id'] = foreign_key
+        for i, row in enumerate(data):
+            row['file_id'] = foreign_key
             if i == 0:
-                print(data.keys())
-            print(data.values())
-            session.add(table(**data))
+                print(row.keys())
+            print(row.values())
+            session.add(table(**row))
+
     except (IOError, ValueError) as e:
         #-- Handle missing files
         print(e.message)
