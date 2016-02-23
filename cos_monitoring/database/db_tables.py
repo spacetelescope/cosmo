@@ -116,9 +116,11 @@ class Lampflash(Base):
     id = Column(Integer, primary_key=True)
 
     date = Column(Float)
+    rootname = Column(String(9))
     proposid = Column(Integer)
     detector = Column(String(4))
-    opt_elem = Column(String(5))
+    segment = Column(String(4))
+    opt_elem = Column(String(7))
     cenwave = Column(Integer)
     fppos = Column(Integer)
     lamptab = Column(String(30))

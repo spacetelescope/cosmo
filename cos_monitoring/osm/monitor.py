@@ -19,6 +19,9 @@ from scipy.stats import linregress
 from datetime import datetime
 
 from astropy.io import fits
+from astropy.table import Table
+
+from ..database.db_tables import open_settings, load_connection
 
 MONITOR_DIR = '/grp/hst/cos/Monitors/Shifts/'
 WEB_DIR = '/grp/webpages/COS/shifts/'
@@ -61,16 +64,17 @@ def pull_flashes(filename):
     with fits.open(filename) as hdu:
 
         out_info = {'date': hdu[1].header['EXPSTART'],
+                    'rootname': hdu[0].header['ROOTNAME'],
                     'proposid': hdu[0].header['PROPOSID'],
                     'detector': hdu[0].header['DETECTOR'],
                     'opt_elem': hdu[0].header['OPT_ELEM'],
                     'cenwave': hdu[0].header['CENWAVE'],
-                    'fppos': hdu[0].header.get('FPPOS', None),
-                    'lamptab': hdu[0].header['LAMPTAB'].split('$')[-1]}
+                    'fppos': hdu[0].header.get('FPPOS', None)}
 
         if '_lampflash.fits' in filename:
-            fpoffset = out_info['fppos'] - 3
+            out_info['lamptab'] = hdu[0].header['LAMPTAB'].split('$')[-1]
 
+            fpoffset = out_info['fppos'] - 3
             for i, line in enumerate(hdu[1].data):
                 out_info['flash'] = (i // 2) + 1
                 out_info['x_shift'] = line['SHIFT_DISP'] - fppos_shift(out_info['lamptab'],
@@ -81,6 +85,7 @@ def pull_flashes(filename):
 
                 out_info['y_shift'] = line['SHIFT_XDISP']
                 out_info['found'] = line['SPEC_FOUND']
+                out_info['segment'] = line['SEGMENT']
 
                 #-- don't need too much precision here
                 out_info['x_shift'] = round(out_info['x_shift'], 5)
@@ -89,11 +94,12 @@ def pull_flashes(filename):
                 yield out_info
 
 
-        elif '_rawacq.fits.gz' in filename:
+        elif '_rawacq.fits' in filename:
             #-- Technically it wasn't found.
             out_info['found'] = False
             out_info['fppos'] = -1
             out_info['flash'] = 1
+            out_info['segment'] = 'N/A'
 
             spt = fits.open(filename.replace('rawacq', 'spt'))
 
@@ -110,108 +116,6 @@ def pull_flashes(filename):
 
 #-------------------------------------------------------------------------------
 
-def check_internal_drift():
-    """Check for magnitude of the shift found by CalCOS in lampflash files
-    """
-
-    checked = []
-    data = []
-    for root, dirs, files in os.walk('/smov/cos/Data/'):
-        if 'Quality' in root:
-            continue
-        if 'Fasttrack' in root:
-            continue
-        if 'targets' in root:
-            continue
-        if 'podfiles' in root:
-            continue
-        if 'gzip' in root:
-            continue
-        if 'experimental' in root:
-            continue
-        if 'Anomalies' in root:
-            continue
-        if root.endswith('otfrdata'):
-            continue
-        if not len(root.split('/')) == 7:
-            continue
-
-        print root
-        for infile in files:
-            if infile in checked:
-                continue
-            if not '_lampflash.fits' in infile:
-                continue
-
-                checked.append(infile)
-
-            hdu = fits.open(os.path.join(root, infile))
-            exptime = hdu[1].header['exptime']
-
-            if hdu[0].header['DETECTOR'] == 'NUV':
-                continue
-
-            if hdu[1].data == None:
-                continue
-
-            if not hdu[1].header['NUMFLASH'] > 1:
-                continue
-
-            print root, '/', infile
-
-            for segment in ['FUVA', 'FUVB']:
-                index = np.where(hdu[1].data['segment'] == segment)[0]
-                if len(index) > 1:
-                    diff = hdu[1].data[index]['SHIFT_XDISP'].max() - hdu[1].data[index]['SHIFT_XDISP'].min()
-
-                    data.append((os.path.join(root, infile),
-                                 segment,
-                                 diff,
-                                 exptime))
-                    #print segment, diff, exptime
-
-            checked.append(infile)
-
-    with open(os.path.join(MONITOR_DIR, 'drift.txt'), 'w') as out:
-        for line in data:
-            out.write('{} {} {} {}\n'.format(line[0],
-                                             line[1],
-                                             line[2],
-                                             line[3]))
-
-
-#----------------------------------------------------------
-
-def plot_drift():
-
-    data = np.genfromtxt(os.path.join(MONITOR_DIR, 'drift.txt'), dtype=None)
-
-    fig = plt.figure(figsize=(10,10))
-    fig.suptitle('Lamp drift in external exposures')
-    ax = fig.add_subplot(2, 1, 1)
-    diffs = [line[2] for line in data if line[1] == 'FUVA']
-    exptime = [line[3] for line in data if line[1] == 'FUVA']
-    ax.plot(exptime, diffs, 'o')
-    ax.set_ylabel('Total drift, FUVA (pixels)')
-    ax.set_xlabel('EXPTIME (seconds)')
-    ax.set_ylim(-2, 2)
-
-    ax = fig.add_subplot(2, 1, 2)
-    diffs = [line[2] for line in data if line[1] == 'FUVB']
-    exptime = [line[3] for line in data if line[1] == 'FUVB']
-    ax.plot(exptime, diffs, 'o')
-    ax.set_ylabel('Total drift, FUVB (pixels)')
-    ax.set_xlabel('EXPTIME (seconds)')
-    ax.set_ylim(-2, 2)
-
-    fig.savefig(os.path.join(MONITOR_DIR, 'shifts_vs_exptime.png'))
-
-    for line in data:
-        if abs(line[2]) > 2:
-            print line
-
-#-------------------------------------------------------------------------------
-
 def fit_data(xdata, ydata):
     stats = linregress(xdata, ydata)
 
@@ -223,102 +127,120 @@ def fit_data(xdata, ydata):
 
 #-------------------------------------------------------------------------------
 
-def make_plots(data_file):
-    print 'Plotting'
+def make_shift_table():
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
+    #-- this is a crude implementation, but it lets me use the rest of the
+    #-- plotting code as-is
+    data = []
+    for i, row in enumerate(engine.execute("""SELECT * FROM lampflash
+                                                       WHERE x_shift IS NOT NULL AND
+                                                             y_shift IS NOT NULL;""")):
+        if not i:
+            keys = row.keys()
+        data.append(row.values())
+
+    data = Table(rows=data, names=keys)
+
+    return data
+
+#-------------------------------------------------------------------------------
+
+def make_plots(data):
+    print('Plotting')
 
     mpl.rcParams['figure.subplot.hspace'] = 0.05
-    plt.ioff()
-    data = fits.getdata(data_file)
 
-    sorted_index = np.argsort(data['MJD'])
+    sorted_index = np.argsort(data['date'])
     data = data[sorted_index]
 
+    G140L = np.where((data['opt_elem'] == 'G140L'))[0]
+    G140L_A = np.where((data['opt_elem'] == 'G140L') &
+                       (data['segment'] == 'FUVA'))[0]
+    G140L_B = np.where((data['opt_elem'] == 'G140L') &
+                       (data['segment'] == 'FUVB'))[0]
 
-    G140L = np.where((data['OPT_ELEM'] == 'G140L'))[0]
-    G140L_A = np.where((data['OPT_ELEM'] == 'G140L') &
-                       (data['SEGMENT'] == 'FUVA'))[0]
-    G140L_B = np.where((data['OPT_ELEM'] == 'G140L') &
-                       (data['SEGMENT'] == 'FUVB'))[0]
+    G130M = np.where((data['opt_elem'] == 'G130M'))[0]
+    G130M_A = np.where((data['opt_elem'] == 'G130M') &
+                       (data['segment'] == 'FUVA'))[0]
+    G130M_B = np.where((data['opt_elem'] == 'G130M') &
+                       (data['segment'] == 'FUVB'))[0]
 
-    G130M = np.where((data['OPT_ELEM'] == 'G130M'))[0]
-    G130M_A = np.where((data['OPT_ELEM'] == 'G130M') &
-                       (data['SEGMENT'] == 'FUVA'))[0]
-    G130M_B = np.where((data['OPT_ELEM'] == 'G130M') &
-                       (data['SEGMENT'] == 'FUVB'))[0]
+    G160M = np.where((data['opt_elem'] == 'G160M'))[0]
+    G160M_A = np.where((data['opt_elem'] == 'G160M') &
+                       (data['segment'] == 'FUVA'))[0]
+    G160M_B = np.where((data['opt_elem'] == 'G160M') &
+                       (data['segment'] == 'FUVB'))[0]
 
-    G160M = np.where((data['OPT_ELEM'] == 'G160M'))[0]
-    G160M_A = np.where((data['OPT_ELEM'] == 'G160M') &
-                       (data['SEGMENT'] == 'FUVA'))[0]
-    G160M_B = np.where((data['OPT_ELEM'] == 'G160M') &
-                       (data['SEGMENT'] == 'FUVB'))[0]
+    G230L = np.where((data['opt_elem'] == 'G230L'))[0]
+    G230L_A = np.where((data['opt_elem'] == 'G230L') &
+                       (data['segment'] == 'NUVA'))[0]
+    G230L_B = np.where((data['opt_elem'] == 'G230L') &
+                       (data['segment'] == 'NUVB'))[0]
+    G230L_C = np.where((data['opt_elem'] == 'G230L') &
+                       (data['segment'] == 'NUVC'))[0]
 
-    G230L = np.where((data['OPT_ELEM'] == 'G230L'))[0]
-    G230L_A = np.where((data['OPT_ELEM'] == 'G230L') &
-                       (data['SEGMENT'] == 'NUVA'))[0]
-    G230L_B = np.where((data['OPT_ELEM'] == 'G230L') &
-                       (data['SEGMENT'] == 'NUVB'))[0]
-    G230L_C = np.where((data['OPT_ELEM'] == 'G230L') &
-                       (data['SEGMENT'] == 'NUVC'))[0]
+    G225M = np.where((data['opt_elem'] == 'G225M'))[0]
+    G225M_A = np.where((data['opt_elem'] == 'G225M') &
+                       (data['segment'] == 'NUVA'))[0]
+    G225M_B = np.where((data['opt_elem'] == 'G225M') &
+                       (data['segment'] == 'NUVB'))[0]
+    G225M_C = np.where((data['opt_elem'] == 'G225M') &
+                       (data['segment'] == 'NUVC'))[0]
 
-    G225M = np.where((data['OPT_ELEM'] == 'G225M'))[0]
-    G225M_A = np.where((data['OPT_ELEM'] == 'G225M') &
-                       (data['SEGMENT'] == 'NUVA'))[0]
-    G225M_B = np.where((data['OPT_ELEM'] == 'G225M') &
-                       (data['SEGMENT'] == 'NUVB'))[0]
-    G225M_C = np.where((data['OPT_ELEM'] == 'G225M') &
-                       (data['SEGMENT'] == 'NUVC'))[0]
+    G285M = np.where((data['opt_elem'] == 'G285M'))[0]
+    G285M_A = np.where((data['opt_elem'] == 'G285M') &
+                       (data['segment'] == 'NUVA'))[0]
+    G285M_B = np.where((data['opt_elem'] == 'G285M') &
+                       (data['segment'] == 'NUVB'))[0]
+    G285M_C = np.where((data['opt_elem'] == 'G285M') &
+                       (data['segment'] == 'NUVC'))[0]
 
-    G285M = np.where((data['OPT_ELEM'] == 'G285M'))[0]
-    G285M_A = np.where((data['OPT_ELEM'] == 'G285M') &
-                       (data['SEGMENT'] == 'NUVA'))[0]
-    G285M_B = np.where((data['OPT_ELEM'] == 'G285M') &
-                       (data['SEGMENT'] == 'NUVB'))[0]
-    G285M_C = np.where((data['OPT_ELEM'] == 'G285M') &
-                       (data['SEGMENT'] == 'NUVC'))[0]
+    G185M = np.where((data['opt_elem'] == 'G185M'))[0]
+    G185M_A = np.where((data['opt_elem'] == 'G185M') &
+                       (data['segment'] == 'NUVA'))[0]
+    G185M_B = np.where((data['opt_elem'] == 'G185M') &
+                       (data['segment'] == 'NUVB'))[0]
+    G185M_C = np.where((data['opt_elem'] == 'G185M') &
+                       (data['segment'] == 'NUVC'))[0]
 
-    G185M = np.where((data['OPT_ELEM'] == 'G185M'))[0]
-    G185M_A = np.where((data['OPT_ELEM'] == 'G185M') &
-                       (data['SEGMENT'] == 'NUVA'))[0]
-    G185M_B = np.where((data['OPT_ELEM'] == 'G185M') &
-                       (data['SEGMENT'] == 'NUVB'))[0]
-    G185M_C = np.where((data['OPT_ELEM'] == 'G185M') &
-                       (data['SEGMENT'] == 'NUVC'))[0]
-
-    NUV = np.where((data['OPT_ELEM'] == 'G230L') |
-                   (data['OPT_ELEM'] == 'G185M') |
-                   (data['OPT_ELEM'] == 'G225M') |
-                   (data['OPT_ELEM'] == 'G285M'))[0]
+    NUV = np.where((data['opt_elem'] == 'G230L') |
+                   (data['opt_elem'] == 'G185M') |
+                   (data['opt_elem'] == 'G225M') |
+                   (data['opt_elem'] == 'G285M'))[0]
 
     #############
 
     fig = plt.figure( figsize=(14,8) )
     ax = fig.add_subplot(3,1,1)
-    ax.plot( data['MJD'][G130M_A], data['X_SHIFT'][G130M_A],'b.',label='G130M')
-    ax.plot( data['MJD'][G130M_B], data['X_SHIFT'][G130M_B],'b.')
+
+    ax.plot( data['date'][G130M_A], data['x_shift'][G130M_A],'b.',label='G130M')
+    ax.plot( data['date'][G130M_B], data['x_shift'][G130M_B],'b.')
     ax.xaxis.set_ticklabels( ['' for item in ax.xaxis.get_ticklabels()] )
 
     ax2 = fig.add_subplot(3,1,2)
-    ax2.plot( data['MJD'][G160M_A], data['X_SHIFT'][G160M_A],'g.',label='G160M')
-    ax2.plot( data['MJD'][G160M_B], data['X_SHIFT'][G160M_B],'g.')
+    ax2.plot( data['date'][G160M_A], data['x_shift'][G160M_A],'g.',label='G160M')
+    ax2.plot( data['date'][G160M_B], data['x_shift'][G160M_B],'g.')
     ax2.xaxis.set_ticklabels( ['' for item in ax2.xaxis.get_ticklabels()] )
 
     ax3 = fig.add_subplot(3,1,3)
-    ax3.plot( data['MJD'][G140L_A], data['X_SHIFT'][G140L_A],'y.',label='G140L')
-    ax3.plot( data['MJD'][G140L_B], data['X_SHIFT'][G140L_B],'y.')
+    ax3.plot( data['date'][G140L_A], data['x_shift'][G140L_A],'y.',label='G140L')
+    ax3.plot( data['date'][G140L_B], data['x_shift'][G140L_B],'y.')
 
-    ax.legend(shadow=True,numpoints=1)
+    ax.legend(shadow=True, numpoints=1)
     fig.suptitle('FUV SHIFT1[A/B]')
     ax.set_xlabel('MJD')
     ax.set_ylabel('SHIFT1[A/B] (pixels)')
 
     for axis,index in zip([ax,ax2,ax3],[G130M,G160M,G140L]):
         axis.set_ylim(-300,300)
-        axis.set_xlim( data['MJD'].min(),data['MJD'].max()+50 )
+        axis.set_xlim( data['date'].min(),data['date'].max()+50 )
         axis.set_ylabel('SHIFT1[A/B/C] (pixels)')
         axis.axhline(y=0,color='r')
         axis.axhline(y=285,color='k',lw=3,ls='--',zorder=1,label='Search Range')
         axis.axhline(y=-285,color='k',lw=3,ls='--',zorder=1)
-        fit,ydata,parameters,err = fit_data( data['MJD'][index],data['X_SHIFT'][index] )
+        fit,ydata,parameters,err = fit_data( data['date'][index],data['x_shift'][index] )
         axis.plot( ydata,fit,'k-',lw=3,label='%3.5fx'%(parameters[0]) )
         axis.legend(numpoints=1,shadow=True,prop={'size':10})
 
@@ -329,16 +251,14 @@ def make_plots(data_file):
 
     fig = plt.figure(figsize=(14, 18))
     ax = fig.add_subplot(7, 1, 1)
-    ax.plot(data['MJD'][G185M_A], data['X_SHIFT'][G185M_A], 'bo', label='G185M')
-    ax.plot(data['MJD'][G185M_B], data['X_SHIFT']
-            [G185M_B], 'bo', markeredgecolor='k')
-    ax.plot(data['MJD'][G185M_C], data['X_SHIFT']
-            [G185M_C], 'bo', markeredgecolor='k')
+    ax.plot(data['date'][G185M_A].data, data['x_shift'][G185M_A].data, 'bo', label='G185M')
+    ax.plot(data['date'][G185M_B].data, data['x_shift'][G185M_B].data, 'bo', markeredgecolor='k')
+    ax.plot(data['date'][G185M_C].data, data['x_shift'][G185M_C].data, 'bo', markeredgecolor='k')
     ax.axhline(y=0, color='red')
 
     #--second timeframe
-    transition_fraction = (56500.0 - data['MJD'].min()) / \
-        (data['MJD'].max() - data['MJD'].min())
+    transition_fraction = (56500.0 - data['date'].min()) / \
+        (data['date'].max() - data['date'].min())
 
     ax.axhline(y=58, xmin=0, xmax=transition_fraction, color='k',
                 lw=3, ls='--', zorder=1, label='Search Range')
@@ -351,26 +271,22 @@ def make_plots(data_file):
                 xmax=1, color='k', lw=3, ls='--', zorder=1)
     #--
 
-    sigma = data['X_SHIFT'][G185M_A].std()
+    sigma = data['x_shift'][G185M_A].std()
 
     ax.xaxis.set_ticklabels(['' for item in ax.xaxis.get_ticklabels()])
 
     ax2 = fig.add_subplot(7, 1, 2)
-    ax2.plot(data['MJD'][G225M_A], data['X_SHIFT'][G225M_A], 'ro', label='G225M')
-    ax2.plot(data['MJD'][G225M_B], data['X_SHIFT']
-             [G225M_B], 'ro', markeredgecolor='k')
-    ax2.plot(data['MJD'][G225M_C], data['X_SHIFT']
-             [G225M_C], 'ro', markeredgecolor='k')
+    ax2.plot(data['date'][G225M_A], data['x_shift'][G225M_A], 'ro', label='G225M')
+    ax2.plot(data['date'][G225M_B], data['x_shift'][G225M_B], 'ro', markeredgecolor='k')
+    ax2.plot(data['date'][G225M_C], data['x_shift'][G225M_C], 'ro', markeredgecolor='k')
     ax2.axhline(y=0, color='red')
 
     #--second timeframe
-    transition_fraction = (56500.0 - data['MJD'].min()) / \
-        (data['MJD'].max() - data['MJD'].min())
+    transition_fraction = (56500.0 - data['date'].min()) / \
+        (data['date'].max() - data['date'].min())
 
-    ax2.axhline(y=58, xmin=0, xmax=transition_fraction, color='k',
-                lw=3, ls='--', zorder=1, label='Search Range')
-    ax2.axhline(y=-58, xmin=0, xmax=transition_fraction,
-                color='k', lw=3, ls='--', zorder=1)
+    ax2.axhline(y=58, xmin=0, xmax=transition_fraction, color='k', lw=3, ls='--', zorder=1, label='Search Range')
+    ax2.axhline(y=-58, xmin=0, xmax=transition_fraction, color='k', lw=3, ls='--', zorder=1)
 
     ax2.axhline(y=58 - 10, xmin=transition_fraction, xmax=1,
                 color='k', lw=3, ls='--', zorder=1)
@@ -378,36 +294,36 @@ def make_plots(data_file):
                 xmax=1, color='k', lw=3, ls='--', zorder=1)
     #--
 
-    sigma = data['X_SHIFT'][G225M_A].std()
+    sigma = data['x_shift'][G225M_A].std()
 
     ax2.xaxis.set_ticklabels(['' for item in ax2.xaxis.get_ticklabels()])
 
     ax3 = fig.add_subplot(7, 1, 3)
-    ax3.plot(data['MJD'][G285M_A], data['X_SHIFT'][G285M_A], 'yo', label='G285M')
-    ax3.plot(data['MJD'][G285M_B], data['X_SHIFT']
+    ax3.plot(data['date'][G285M_A], data['x_shift'][G285M_A], 'yo', label='G285M')
+    ax3.plot(data['date'][G285M_B], data['x_shift']
              [G285M_B], 'yo', markeredgecolor='k')
-    ax3.plot(data['MJD'][G285M_C], data['X_SHIFT']
+    ax3.plot(data['date'][G285M_C], data['x_shift']
              [G285M_C], 'yo', markeredgecolor='k')
     ax3.axhline(y=0, color='red')
     ax3.axhline(y=58, color='k', lw=3, ls='--', zorder=1, label='Search Range')
     ax3.axhline(y=-58, color='k', lw=3, ls='--', zorder=1)
 
-    sigma = data['X_SHIFT'][G285M_A].std()
+    sigma = data['x_shift'][G285M_A].std()
 
     ax3.xaxis.set_ticklabels(['' for item in ax3.xaxis.get_ticklabels()])
 
     ax4 = fig.add_subplot(7, 1, 4)
-    ax4.plot(data['MJD'][G230L_A], data['X_SHIFT'][G230L_A], 'go', label='G230L')
-    ax4.plot(data['MJD'][G230L_B], data['X_SHIFT']
+    ax4.plot(data['date'][G230L_A], data['x_shift'][G230L_A], 'go', label='G230L')
+    ax4.plot(data['date'][G230L_B], data['x_shift']
              [G230L_B], 'go', markeredgecolor='k')
-    ax4.plot(data['MJD'][G230L_C], data['X_SHIFT']
+    ax4.plot(data['date'][G230L_C], data['x_shift']
              [G230L_C], 'go', markeredgecolor='k')
 
     ax4.axhline(y=0, color='red')
 
     #--second timeframe
-    transition_fraction = (55535.0 - data['MJD'].min()) / \
-        (data['MJD'].max() - data['MJD'].min())
+    transition_fraction = (55535.0 - data['date'].min()) / \
+        (data['date'].max() - data['date'].min())
 
     ax4.axhline(y=58, xmin=0, xmax=transition_fraction, color='k',
                 lw=3, ls='--', zorder=1, label='Search Range')
@@ -420,55 +336,55 @@ def make_plots(data_file):
                 xmax=1, color='k', lw=3, ls='--', zorder=1)
     #--
     ax4.xaxis.set_ticklabels(['' for item in ax3.xaxis.get_ticklabels()])
-    sigma = data['X_SHIFT'][G230L_A].std()
+    sigma = data['x_shift'][G230L_A].std()
 
     ax.set_title('NUV SHIFT1[A/B/C]')
     for axis, index in zip([ax, ax2, ax3, ax4], [G185M, G225M, G285M, G230L]):
         axis.set_ylim(-110, 110)
-        axis.set_xlim(data['MJD'].min(), data['MJD'].max() + 50)
+        axis.set_xlim(data['date'].min(), data['date'].max() + 50)
         axis.set_ylabel('SHIFT1[A/B/C] (pixels)')
         fit, ydata, parameters, err = fit_data(
-            data['MJD'][index], data['X_SHIFT'][index])
+            data['date'][index], data['x_shift'][index])
         axis.plot(ydata, fit, 'k-', lw=3, label='%3.5fx' % (parameters[0]))
         axis.legend(numpoints=1, shadow=True, fontsize=12, ncol=3)
 
-    ax4.set_xlabel('MJD')
+    ax4.set_xlabel('date')
 
     ax = fig.add_subplot(7, 1, 5)
-    ax.plot(data['MJD'][NUV], data['x_shift'][NUV], '.')
+    ax.plot(data['date'][NUV], data['x_shift'][NUV], '.')
     fit, ydata, parameters, err = fit_data(
-        data['MJD'][NUV], data['X_SHIFT'][NUV])
+        data['date'][NUV], data['x_shift'][NUV])
     ax.plot(ydata, fit, 'k-', lw=3, label='%3.5fx' % (parameters[0]))
     ax.legend(numpoints=1, shadow=True)
     ax.set_ylabel('All NUV')
     ax.xaxis.set_ticklabels(['' for item in ax.xaxis.get_ticklabels()])
-    ax.set_xlim(data['MJD'].min(), data['MJD'].max() + 50)
+    ax.set_xlim(data['date'].min(), data['date'].max() + 50)
     ax.set_ylim(-110, 110)
 
-    mirrora = np.where((data['OPT_ELEM'] == 'MIRRORA')
-                       & (data['X_SHIFT'] > 0))[0]
+    mirrora = np.where((data['opt_elem'] == 'MIRRORA')
+                       & (data['x_shift'] > 0))[0]
     ax = fig.add_subplot(7, 1, 6)
-    ax.plot(data['MJD'][mirrora], data['x_shift'][mirrora], '.')
+    ax.plot(data['date'][mirrora], data['x_shift'][mirrora], '.')
     fit, ydata, parameters, err = fit_data(
-        data['MJD'][mirrora], data['X_SHIFT'][mirrora])
+        data['date'][mirrora], data['x_shift'][mirrora])
     ax.plot(ydata, fit, 'k-', lw=3, label='%3.5fx' % (parameters[0]))
     ax.legend(numpoints=1, shadow=True)
-    ax.set_xlim(data['MJD'].min(), data['MJD'].max() + 50)
+    ax.set_xlim(data['date'].min(), data['date'].max() + 50)
     ax.set_ylabel('MIRRORA')
-    ax.set_xlabel('MJD')
+    ax.set_xlabel('date')
     ax.set_ylim(460, 630)
 
-    mirrorb = np.where((data['OPT_ELEM'] == 'MIRRORB')
-                       & (data['X_SHIFT'] > 0))[0]
+    mirrorb = np.where((data['opt_elem'] == 'MIRRORB')
+                       & (data['x_shift'] > 0))[0]
     ax = fig.add_subplot(7, 1, 7)
-    ax.plot(data['MJD'][mirrorb], data['x_shift'][mirrorb], '.')
+    ax.plot(data['date'][mirrorb], data['x_shift'][mirrorb], '.')
     fit, ydata, parameters, err = fit_data(
-        data['MJD'][mirrorb], data['X_SHIFT'][mirrorb])
+        data['date'][mirrorb], data['x_shift'][mirrorb])
     ax.plot(ydata, fit, 'k-', lw=3, label='%3.5fx' % (parameters[0]))
     ax.legend(numpoints=1, shadow=True)
-    ax.set_xlim(data['MJD'].min(), data['MJD'].max() + 50)
+    ax.set_xlim(data['date'].min(), data['date'].max() + 50)
     ax.set_ylabel('MIRRORB')
-    ax.set_xlabel('MJD')
+    ax.set_xlabel('date')
     ax.set_ylim(260, 400)
 
 
@@ -480,17 +396,17 @@ def make_plots(data_file):
     ##############
 
     for elem in ['MIRRORA', 'MIRRORB']:
-        mirror = np.where((data['OPT_ELEM'] == elem)
-                          & (data['X_SHIFT'] > 0))[0]
+        mirror = np.where((data['opt_elem'] == elem)
+                          & (data['x_shift'] > 0))[0]
         fig = plt.figure(figsize=(8, 4))
         ax = fig.add_subplot(1, 1, 1)
-        ax.plot(data['MJD'][mirror], data['x_shift'][mirror], '.')
-        fit, ydata, parameters, err = fit_data(data['MJD'][mirror],
-                                               data['X_SHIFT'][mirror])
+        ax.plot(data['date'][mirror], data['x_shift'][mirror], '.')
+        fit, ydata, parameters, err = fit_data(data['date'][mirror],
+                                               data['x_shift'][mirror])
         ax.plot(ydata, fit, 'r-', lw=3, label='%3.5f +/- %3.5f' %
                 (parameters[0], err))
         ax.legend(numpoints=1, shadow=True)
-        ax.set_xlim(data['MJD'].min(), data['MJD'].max() + 50)
+        ax.set_xlim(data['date'].min(), data['date'].max() + 50)
         #ax.set_ylim(460, 630)
         fig.savefig(os.path.join(MONITOR_DIR, '{}_shifts.png'.format(elem.upper())))
         plt.close(fig)
@@ -506,7 +422,7 @@ def make_plots(data_file):
             if not len(index):
                 continue
 
-            xdata = np.array(map(int, data['MJD'][index]))
+            xdata = np.array(map(int, data['date'][index]))
             ydata = data['x_shift'][index]
             new_ydata = []
             new_xdata = []
@@ -529,7 +445,7 @@ def make_plots(data_file):
 
             plt.legend(numpoints=1, shadow=True, bbox_to_anchor=(1.05, 1),
                        loc=2, borderaxespad=0., prop={'size': 8})
-            ax.set_xlim(data['MJD'].min(), data['MJD'].max() + 50)
+            ax.set_xlim(data['date'].min(), data['date'].max() + 50)
             ax.set_ylim(ylim[0], ylim[1])
         fig.savefig(os.path.join(MONITOR_DIR, '%s_shifts_color.pdf' %
                     (grating)))
@@ -537,13 +453,11 @@ def make_plots(data_file):
 
 #----------------------------------------------------------
 
-def make_plots_2(data_file):
+def make_plots_2(data):
     """ Making the plots for the shift2 value
     """
 
-    data = fits.getdata(data_file)
-
-    sorted_index = np.argsort(data['MJD'])
+    sorted_index = np.argsort(data['date'])
     data = data[sorted_index]
     '''
     for cenwave in set(data['cenwave']):
@@ -560,8 +474,8 @@ def make_plots_2(data_file):
                               (data['cenwave'] == cenwave) )
 
             ax = fig.add_subplot(n_seg, 1, i+1)
-            ax.plot(data[index]['mjd'], data[index]['y_shift'], 'o')
-            ax.set_xlabel('MJD')
+            ax.plot(data[index]['date'], data[index]['y_shift'], 'o')
+            ax.set_xlabel('date')
             ax.set_ylabel('SHIFT2 {}'.format(segment))
 
         fig.savefig(os.path.join(MONITOR_DIR, 'shift2_{}.png'.format(cenwave)))
@@ -578,7 +492,6 @@ def make_plots_2(data_file):
         fig.suptitle('Shift2 vs Shift1 {}'.format(cenwave))
 
         for i, segment in enumerate(all_segments):
-            print cenwave, segment
             index = np.where( (data['segment'] == segment) &
                               (data['cenwave'] == cenwave) )
 
@@ -595,11 +508,8 @@ def make_plots_2(data_file):
 
 #----------------------------------------------------------
 
-def fp_diff():
+def fp_diff(data):
     print "Checking the SHIFT2 difference"
-
-    fits = fits.open(os.path.join(MONITOR_DIR, 'all_shifts.fits'))
-    data = fits[1].data
 
     index = np.where((data['detector'] == 'FUV'))[0]
     data = data[index]
@@ -630,7 +540,7 @@ def fp_diff():
                                              (data['segment'] == 'FUVA'))[0]][0]
         fppos = data['fppos'][np.where((data['dataset'] == name) &
                                        (data['segment'] == 'FUVA'))[0]][0]
-        mjd = data['mjd'][np.where((data['dataset'] == name) &
+        mjd = data['date'][np.where((data['dataset'] == name) &
                                    (data['segment'] == 'FUVA'))[0]][0]
         diff = a_shift - b_shift
 
@@ -675,18 +585,12 @@ def monitor():
     """Run the entire suite of monitoring
     """
 
-    make_plots(data_file)
-    make_plots_2(data_file)
-    fp_diff()
-
-    check_internal_drift()
-    plot_drift()
+    flash_data = make_shift_table()
+    make_plots(flash_data)
+    make_plots_2(flash_data)
+    #fp_diff(flash_data)
 
     for item in glob.glob(os.path.join(MONITOR_DIR, '*.p??')):
         shutil.copy(item, WEB_DIR)
 
 #----------------------------------------------------------
-
-if __name__ == "__main__":
-
-    monitor()
