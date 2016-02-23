@@ -237,7 +237,7 @@ class Data(Base):
 
     id = Column(Integer, primary_key=True)
 
-    flux_mean = Column(Numeric(10,10))
+    flux_mean = Column(Numeric(40,asdecimal=False))
     #flux_max = Column(Float)
     #flux_std = Column(Float)
     #wl_max = Column(Float)

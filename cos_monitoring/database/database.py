@@ -248,11 +248,8 @@ def populate_primary_headers(num_cpu=1):
 
     print("Found {} files to add".format(len(files_to_add)))
 
-<<<<<<< HEAD
     args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
-=======
     args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
->>>>>>> 6857bd48deb50d17df520cd2cdc8b1a7a3bdae74
     pool = mp.Pool(processes=num_cpu)
     pool.map(update_header, args)
 
@@ -427,6 +424,7 @@ def update_data((args)):
         with fits.open(filename) as hdu:
             if len(hdu[1].data):
                 flux_mean=hdu[1].data['flux'].ravel().mean()
+                print(flux_mean)
                 #flux_max=hdu[1].data['flux'].ravel().max()
                 #flux_std=hdu[1].data['flux'].ravel().std()
                 #wl_max = hdu[1].data['wavelength'].ravel().max()
