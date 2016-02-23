@@ -3,7 +3,7 @@ from __future__ import print_function, absolute_import, division
 import os
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean, Numeric
+from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean, Numeric, BigInteger
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker, relationship, backref
@@ -81,6 +81,7 @@ class Darks(Base):
     id = Column(Integer, primary_key=True)
 
     obsname = Column(String(30))
+    rootname = Column(String(9))
     detector = Column(String(4))
     date = Column(Numeric(7, 2))
     dark = Column(Numeric(12, 10))
@@ -130,6 +131,7 @@ class Lampflash(Base):
     found = Column(Boolean)
 
     file_id = Column(Integer, ForeignKey('files.id'))
+    __table_args__ = (Index('idx_rootname', 'rootname', unique=False), )
     #file = relationship("Files", backref=backref('lampflash', order_by=id))
 
 #-------------------------------------------------------------------------------
@@ -170,14 +172,14 @@ class Headers(Base):
     apmpos = Column(String(20))
     aperxpos = Column(Float)
     aperypos = Column(Float)
-    aperture = Column(String(3))
-    opt_elem = Column(String(6))
+    aperture = Column(String(4))
+    opt_elem = Column(String(7))
     shutter = Column(String(20))
     extended = Column(String(20))
     obset_id = Column(String(2))
     asn_id = Column(String(9))
     asn_tab = Column(String(18))
-    ###randseed = Column(Integer) #-- Errors for some reason.
+    randseed = Column(BigInteger)
     asn_mtyp = Column(String(20))
     overflow = Column(Integer)
     nevents = Column(Integer)
@@ -253,6 +255,7 @@ class Stims(Base):
     id = Column(Integer, primary_key=True)
 
     time = Column(Float)
+    rootname = Column(String(9))
     abs_time = Column(Numeric(10, 5))
     stim1_x = Column(Numeric(8, 3))
     stim1_y = Column(Numeric(8, 3))
@@ -262,7 +265,7 @@ class Stims(Base):
 
     file_id = Column(Integer, ForeignKey('files.id'))
 
-    #__table_args__ = (Index('idx_dataset', 'rootname', unique=False), )
+    __table_args__ = (Index('idx_rootname', 'rootname', unique=False), )
     #file = relationship("Files", backref=backref('Stims', order_by=id))
 
 #-------------------------------------------------------------------------------
@@ -345,5 +348,7 @@ class sptkeys(Base):
     lom2posf = Column(Integer) #2 ext, osm2_fine in spreadsheet
 
     file_id = Column(Integer, ForeignKey('files.id'))
+
+    __table_args__ = (Index('idx_rootname', 'rootname', unique=False), )
 
 #-------------------------------------------------------------------------------

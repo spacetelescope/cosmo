@@ -119,6 +119,7 @@ def pull_orbital_info(dataset, step=25):
     else:
         raise ValueError('What segment is this? {}'.format(segment))
 
+    info['rootname'] = hdu[0].header['rootname']
     info['detector'] = segment
     info['temp'] = get_temp(dataset)
 

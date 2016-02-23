@@ -119,13 +119,15 @@ def locate_stims(fits_file, start=0, increment=None):
         expstart = hdu[1].header['expstart']
         segment = hdu[0].header['segment']
 
+        stim_info = {'rootname': hdu[0].header['rootname']}
+
         try:
             hdu[1].data
         except:
-            yield {}
+            yield stim_info
 
         if not len(hdu[1].data):
-            yield {}
+            yield stim_info
 
     # If increment is not supplied, use the rates supplied by the detector
     if not increment:
@@ -139,8 +141,6 @@ def locate_stims(fits_file, start=0, increment=None):
         increment *= 4
 
     stop = start + increment
-
-    stim_info = {}
 
     # Iterate from start to stop, excluding final bin if smaller than increment
     for sub_start in np.arange(start, exptime-increment, increment):
@@ -176,7 +176,7 @@ def find_missing():
 
     data = engine.execute("""SELECT headers.rootname,stims.abs_time
                                     FROM stims
-                                    JOIN headers ON stims.file_id = headers.file_id
+                                    JOIN headers ON stims.rootname = headers.rootname
                                     WHERE stims.stim1_x = -999
                                         OR stims.stim1_y = -999
                                         OR stims.stim2_x = -999
@@ -222,7 +222,7 @@ def check_individual():
                       STD(stims.stim2_x) as stim2_xstd,
                       STD(stims.stim2_y) as stim2_ystd
                       FROM stims
-                      JOIN headers on stims.file_id = headers.file_id
+                      JOIN headers on stims.rootname = headers.rootname
                       GROUP BY stims.file_id
                       HAVING stim1_xstd > 2 OR
                              stim1_ystd > 2 OR
@@ -326,7 +326,7 @@ def make_plots():
 
     data = engine.execute("""SELECT stim1_x, stim1_y
                                     FROM stims
-                                    JOIN headers on stims.file_id = headers.file_id
+                                    JOIN headers on stims.rootname = headers.rootname
                                     WHERE headers.segment = 'FUVA' AND
                                         stims.stim1_x != -999 AND
                                         stims.stim1_y != -999 AND
@@ -365,7 +365,7 @@ def make_plots():
 
     data = engine.execute("""SELECT stim2_x, stim2_y
                                     FROM stims
-                                    JOIN headers on stims.file_id = headers.file_id
+                                    JOIN headers on stims.rootname = headers.rootname
                                     WHERE headers.segment = 'FUVA' AND
                                         stims.stim1_x != -999 AND
                                         stims.stim1_y != -999 AND
@@ -402,7 +402,7 @@ def make_plots():
 
     data = engine.execute("""SELECT stim1_x, stim1_y
                                     FROM stims
-                                    JOIN headers on stims.file_id = headers.file_id
+                                    JOIN headers on stims.rootname = headers.rootname
                                     WHERE headers.segment = 'FUVB' AND
                                         stims.stim1_x != -999 AND
                                         stims.stim1_y != -999 AND
@@ -438,7 +438,7 @@ def make_plots():
 
     data = engine.execute("""SELECT stim2_x, stim2_y
                                     FROM stims
-                                    JOIN headers on stims.file_id = headers.file_id
+                                    JOIN headers on stims.rootname = headers.rootname
                                     WHERE headers.segment = 'FUVB' AND
                                         stims.stim1_x != -999 AND
                                         stims.stim1_y != -999 AND
@@ -477,7 +477,7 @@ def make_plots():
     plt.close(1)
 
     print('#-------------------------------#')
-    print('Stime location plots')
+    print('Stim location plots')
     print('vs time')
     print('#-------------------------------#')
     for segment in ['FUVA', 'FUVB']:
@@ -496,7 +496,7 @@ def make_plots():
 
             query = """SELECT stims.abs_time, stims.{}
                               FROM stims
-                              JOIN headers ON stims.file_id = headers.file_id
+                              JOIN headers ON stims.rootname = headers.rootname
                               WHERE headers.segment = '{}' AND
                                   stims.stim1_x != -999 AND
                                   stims.stim1_y != -999 AND
@@ -524,7 +524,7 @@ def make_plots():
         ax1 = fig.add_subplot(2, 2, 1)
         query = """SELECT stims.abs_time, stims.stim2_x - stims.stim1_x as stretch
                           FROM stims
-                          JOIN headers ON stims.file_id = headers.file_id
+                          JOIN headers ON stims.rootname = headers.rootname
                           WHERE headers.segment = '{}' AND
                               stims.stim1_x != -999 AND
                               stims.stim1_y != -999 AND
@@ -541,7 +541,7 @@ def make_plots():
         ax2 = fig.add_subplot(2, 2, 2)
         query = """SELECT stims.abs_time, .5*(stims.stim2_x + stims.stim1_x) as midpoint
                           FROM stims
-                          JOIN headers ON stims.file_id = headers.file_id
+                          JOIN headers ON stims.rootname = headers.rootname
                           WHERE headers.segment = '{}' AND
                               stims.stim1_x != -999 AND
                               stims.stim1_y != -999 AND
@@ -558,7 +558,7 @@ def make_plots():
         ax3 = fig.add_subplot(2, 2, 3)
         query = """SELECT stims.abs_time, stims.stim2_y - stims.stim1_y as stretch
                           FROM stims
-                          JOIN headers ON stims.file_id = headers.file_id
+                          JOIN headers ON stims.rootname = headers.rootname
                           WHERE headers.segment = '{}' AND
                               stims.stim1_x != -999 AND
                               stims.stim1_y != -999 AND
@@ -574,7 +574,7 @@ def make_plots():
         ax4 = fig.add_subplot(2, 2, 4)
         query = """SELECT stims.abs_time, .5*(stims.stim2_y + stims.stim1_y) as midpoint
                           FROM stims
-                          JOIN headers ON stims.file_id = headers.file_id
+                          JOIN headers ON stims.rootname = headers.rootname
                           WHERE headers.segment = '{}' AND
                               stims.stim1_x != -999 AND
                               stims.stim1_y != -999 AND
@@ -599,7 +599,7 @@ def make_plots():
 
     data = engine.execute("""SELECT stim1_x, stim2_x
                                     FROM stims
-                                    JOIN headers on stims.file_id = headers.file_id
+                                    JOIN headers on stims.rootname = headers.rootname
                                     WHERE headers.segment = 'FUVA' AND
                                         stims.stim1_x != -999 AND
                                         stims.stim1_y != -999 AND
@@ -624,7 +624,7 @@ def make_plots():
 
     data = engine.execute("""SELECT stim1_y, stim2_y
                                     FROM stims
-                                    JOIN headers on stims.file_id = headers.file_id
+                                    JOIN headers on stims.rootname = headers.rootname
                                     WHERE headers.segment = 'FUVA' AND
                                         stims.stim1_x != -999 AND
                                         stims.stim1_y != -999 AND
@@ -649,7 +649,7 @@ def make_plots():
 
     data = engine.execute("""SELECT stim1_x, stim2_x
                                         FROM stims
-                                        JOIN headers on stims.file_id = headers.file_id
+                                        JOIN headers on stims.rootname = headers.rootname
                                         WHERE headers.segment = 'FUVB' AND
                                             stims.stim1_x != -999 AND
                                             stims.stim1_y != -999 AND
@@ -674,7 +674,7 @@ def make_plots():
 
     data = engine.execute("""SELECT stim1_y, stim2_y
                                         FROM stims
-                                        JOIN headers on stims.file_id = headers.file_id
+                                        JOIN headers on stims.rootname = headers.rootname
                                         WHERE headers.segment = 'FUVB' AND
                                             stims.stim1_x != -999 AND
                                             stims.stim1_y != -999 AND
