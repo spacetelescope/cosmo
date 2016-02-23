@@ -221,26 +221,6 @@ def populate_darks(num_cpu=1):
 
 def populate_spt(num_cpu=1):
     """ Populate the table of primary header information
-
-    """
-    print("Adding SPT headers")
-    session = Session()
-
-    files_to_add = [(result.id, os.path.join(result.path, result.name))
-                        for result in session.query(Files).\
-                                filter(Files.name.like('%\_spt.fits%')).\
-                                outerjoin(sptkeys, Files.id == sptkeys.file_id)]
-
-    args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
-
-    print("Found {} files to add".format(len(args)))
-    pool = mp.Pool(processes=num_cpu)
-    pool.map(update_header,args)
-
-#-------------------------------------------------------------------------------
-
-def populate_spt(num_cpu=1):
-    """ Populate the table of primary header information
     """
     print("Adding SPT headers")
     session = Session()
@@ -311,7 +291,6 @@ def populate_primary_headers(num_cpu=1):
 
     files_to_add = [(result.file_id, result.file_to_grab) for result in engine.execute(text(q))
                         if not result.file_id == None]
-<<<<<<< HEAD
     """
     session = Session()
     files_to_add = [(result.id, os.path.join(result.path, result.name))
@@ -323,8 +302,6 @@ def populate_primary_headers(num_cpu=1):
 
     args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
     args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
-=======
->>>>>>> 676c929b3491413807b222d41c0724b81f1fe13c
 
     args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
     print("Found {} files to add".format(len(args)))
@@ -551,7 +528,6 @@ def clear_all_databases(SETTINGS):
 def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
-<<<<<<< HEAD
     #insert_files(**SETTINGS)
     #populate_primary_headers(SETTINGS['num_cpu'])
     #populate_spt(SETTINGS['num_cpu'])
@@ -559,9 +535,8 @@ def do_all():
     #populate_lampflash(SETTINGS['num_cpu'])
     #populate_darks(SETTINGS['num_cpu'])
     #populate_stims(SETTINGS['num_cpu'])
-=======
     insert_files(**SETTINGS)
->>>>>>> 676c929b3491413807b222d41c0724b81f1fe13c
+
     populate_primary_headers(SETTINGS['num_cpu'])
     populate_spt(SETTINGS['num_cpu'])
     #populate_data(SETTINGS['num_cpu'])
