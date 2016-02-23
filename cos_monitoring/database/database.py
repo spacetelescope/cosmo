@@ -12,6 +12,7 @@ from ..dark.monitor import monitor as dark_monitor
 from ..dark.monitor import pull_orbital_info
 from ..filesystem import find_all_datasets
 from ..osm.monitor import pull_flashes
+from ..osm.monitor import monitor as osm_monitor
 from ..stim.monitor import locate_stims
 from ..stim.monitor import stim_monitor
 from .db_tables import load_connection, open_settings
@@ -65,12 +66,13 @@ def insert_with_yield(filename, table, function, foreign_key=None):
 
     try:
         data = function(filename)
+
         if isinstance(data, dict):
-           data = [data]
+            data = [data]
         elif isinstance(data, types.GeneratorType):
-           pass
+            pass
         else:
-           raise ValueError("Not designed to work with data of type {}".format(type(data)))
+            raise ValueError("Not designed to work with data of type {}".format(type(data)))
 
         #-- Pull data from generator and commit
         for i, row in enumerate(data):
@@ -94,109 +96,6 @@ def insert_with_yield(filename, table, function, foreign_key=None):
     session.close()
     engine.dispose()
 
-#-------------------------------------------------------------------------------
-def get_spt_keys(filename):
-    with fits.open(filename) as hdu:
-        keywords = {'rootname':hdu[0].header.get('rootname', None),
-                    'proc_typ':hdu[0].header.get('proc_typ', None),
-                    'lomfstp':hdu[2].header.get('lomfstp', None),
-                    'lapxlvdt':hdu[2].header.get('lapxlvdt', None),
-                    'lapdlvdt':hdu[2].header.get('lapdlvdt', None),
-                    'lom1posc':hdu[2].header.get('lom1posc', None),
-                    'lom2posc':hdu[2].header.get('lom2posc', None),
-                    'lom1posf':hdu[2].header.get('lom1posf', None),
-                    'lom2posf':hdu[2].header.get('lom2posf', None),
-                                                                  }
-        return keywords
-
-#-------------------------------------------------------------------------------
-def get_primary_keys(filename):
-    with fits.open(filename) as hdu:
-        keywords = {  'filetype':hdu[0].header['filetype'],
-                          'instrume':hdu[0].header['instrume'],
-                          'rootname':hdu[0].header['rootname'],
-                          'imagetyp':hdu[0].header['imagetyp'],
-                          'targname':hdu[0].header['targname'],
-                          'ra_targ':hdu[0].header['ra_targ'],
-                          'dec_targ':hdu[0].header['dec_targ'],
-                          'proposid':hdu[0].header['proposid'],
-                          'qualcom1':hdu[0].header.get('qualcom1', ''),
-                          'qualcom2':hdu[0].header.get('qualcom2', ''),
-                          'qualcom3':hdu[0].header.get('qualcom3', ''),
-                          'quality':hdu[0].header.get('quality', ''),
-                          'postarg1':hdu[0].header['postarg1'],
-                          'postarg2':hdu[0].header['postarg2'],
-                          'cal_ver':hdu[0].header['cal_ver'],
-                          'proctime':hdu[0].header['proctime'],
-
-                          'opus_ver':hdu[0].header['opus_ver'],
-                          'obstype':hdu[0].header['obstype'],
-                          'obsmode':hdu[0].header['obsmode'],
-                          'exptype':hdu[0].header['exptype'],
-                          'detector':hdu[0].header['detector'],
-                          'segment':hdu[0].header['segment'],
-                          'detecthv':hdu[0].header['detecthv'],
-                          'life_adj':hdu[0].header['life_adj'],
-                          'fppos':hdu[0].header['fppos'],
-                          'exp_num':hdu[0].header['exp_num'],
-                          'cenwave':hdu[0].header['cenwave'],
-                          'propaper':hdu[0].header['propaper'],
-                          'apmpos':hdu[0].header.get('apmpos', None),
-                          'aperxpos':hdu[0].header.get('aperxpos', None),
-                          'aperypos':hdu[0].header.get('aperypos', None),
-                          'aperture':hdu[0].header['aperture'],
-                          'opt_elem':hdu[0].header['opt_elem'],
-                          'shutter':hdu[0].header['shutter'],
-                          'extended':hdu[0].header['extended'],
-                          'obset_id':hdu[0].header.get('obset_id', None),
-                          'asn_id':hdu[0].header.get('asn_id', None),
-                          'asn_tab':hdu[0].header.get('asn_tab', None),
-                          'asn_mtyp':hdu[1].header['asn_mtyp'],
-                          'overflow':hdu[1].header.get('overflow', None),
-                          'nevents':hdu[1].header.get('nevents', None),
-                          'neventsa':hdu[1].header.get('neventsa', None),
-                          'neventsb':hdu[1].header.get('neventsb', None),
-                          'dethvla':hdu[1].header.get('dethvla', None),
-                          'dethvlb':hdu[1].header.get('dethvlb', None),
-                          'deventa':hdu[1].header.get('deventa', None),
-                          'deventb':hdu[1].header.get('deventb', None),
-                          'feventa':hdu[1].header.get('feventa', None),
-                          'feventb':hdu[1].header.get('feventb', None),
-                          'hvlevela':hdu[1].header.get('hvlevela', None),
-                          'hvlevelb':hdu[1].header.get('hvlevelb', None),
-                          'date_obs':hdu[1].header['date-obs'],
-                          'dpixel1a':hdu[1].header.get('dpixel1a', None),
-                          'dpixel1b':hdu[1].header.get('dpixel1b', None),
-                          'time_obs':hdu[1].header['time-obs'],
-                          'expstart':hdu[1].header['expstart'],
-                          'expend':hdu[1].header['expend'],
-                          'exptime':hdu[1].header['exptime'],
-                          'numflash':hdu[1].header.get('numflash', None),
-                          'ra_aper':hdu[1].header['ra_aper'],
-                          'dec_aper':hdu[1].header['dec_aper'],
-                          'shift1a':hdu[1].header.get('shift1a', None),
-                          'shift1b':hdu[1].header.get('shift1b', None),
-                          'shift1c':hdu[1].header.get('shift1c', None),
-                          'shift2a':hdu[1].header.get('shift2a', None),
-                          'shift2b':hdu[1].header.get('shift2b', None),
-                          'shift2c':hdu[1].header.get('shift2c', None),
-
-                          'sp_loc_a':hdu[1].header.get('sp_loc_a', None),
-                          'sp_loc_b':hdu[1].header.get('sp_loc_b', None),
-                          'sp_loc_c':hdu[1].header.get('sp_loc_c', None),
-                          'sp_nom_a':hdu[1].header.get('sp_nom_a', None),
-                          'sp_nom_b':hdu[1].header.get('sp_nom_b', None),
-                          'sp_nom_c':hdu[1].header.get('sp_nom_c', None),
-                          'sp_off_a':hdu[1].header.get('sp_off_a', None),
-                          'sp_off_b':hdu[1].header.get('sp_off_b', None),
-                          'sp_off_c':hdu[1].header.get('sp_off_c', None),
-                          'sp_err_a':hdu[1].header.get('sp_err_a', None),
-                          'sp_err_b':hdu[1].header.get('sp_err_b', None),
-                          'sp_err_c':hdu[1].header.get('sp_err_c', None),
-
-                          'dethvl':hdu[1].header.get('dethvl', None),
-                                                                        }
-        return keywords
 #-------------------------------------------------------------------------------
 
 def insert_files(**kwargs):
@@ -257,7 +156,7 @@ def populate_lampflash(num_cpu=1):
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
-                                filter(Files.name.like('%lampflash%')).\
+                                filter(or_(Files.name.like('%lampflash%'), (Files.name.like('%_rawacq%')))).\
                                 outerjoin(Lampflash, Files.id == Lampflash.file_id).\
                                 filter(Lampflash.file_id == None)]
     session.close()
@@ -326,15 +225,12 @@ def populate_spt(num_cpu=1):
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
                                 filter(Files.name.like('%\_spt.fits%')).\
-                                outerjoin(sptkeys, Files.id == sptkeys.file_id).\
-                                filter(sptkeys.file_id == None)]
+                                outerjoin(sptkeys, Files.id == sptkeys.file_id)]
 
-
-    args = [(full_filename, sptkeys, get_spt_keys, f_key) for f_key, full_filename in files_to_add]
+    args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
 
     pool = mp.Pool(processes=num_cpu)
-    pool.map(mp_insert,args)
-
+    pool.map(update_header,args)
 #-------------------------------------------------------------------------------
 
 def populate_primary_headers(num_cpu=1):
@@ -352,10 +248,152 @@ def populate_primary_headers(num_cpu=1):
 
     print("Found {} files to add".format(len(files_to_add)))
 
+<<<<<<< HEAD
     args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
+=======
+    args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
+>>>>>>> 6857bd48deb50d17df520cd2cdc8b1a7a3bdae74
     pool = mp.Pool(processes=num_cpu)
-    pool.map(mp_insert,args)
+    pool.map(update_header, args)
 
+#-------------------------------------------------------------------------------
+
+def update_header((args)):
+    """update DB header table in parallel"""
+
+    filename, f_key = args
+
+    Session, engine = load_connection(SETTINGS['connection_string'])
+    session = Session()
+
+    if filename.endswith('spt.fits') or filename.endswith('spt.fits.gz'):
+            try:
+                with fits.open(filename) as hdu:
+                    keywords = {'proc_type':hdu[1].header.get('proc_type', None),
+                                'lomfstp':hdu[2].header.get('lomfstp', None),
+                                'lapdxvdt':hdu[2].header.get('lapdxvdt', None),
+                                'lapdlvdt':hdu[2].header.get('lapdlvdt', None),
+                                'lom1posc':hdu[2].header.get('lom1posc', None),
+                                'lom2posc':hdu[2].header.get('lom2posc', None),
+                                'lom1posf':hdu[2].header.get('lom1posf', None),
+                                'lom2posf':hdu[2].header.get('lom2posf', None)
+                                                                                }
+                    session.add(sptkeys(**keywords))
+            except IOError as e:
+                print(e.message)
+                #-- Handle empty or corrupt FITS files
+                session.add(sptkeys(file_id=f_key))
+    else:
+        try:
+            with fits.open(filename) as hdu:
+                keywords = {  'filetype':hdu[0].header['filetype'],
+                                  'instrume':hdu[0].header['instrume'],
+                                  'rootname':hdu[0].header['rootname'],
+                                  'imagetyp':hdu[0].header['imagetyp'],
+                                  'targname':hdu[0].header['targname'],
+                                  'ra_targ':hdu[0].header['ra_targ'],
+                                  'dec_targ':hdu[0].header['dec_targ'],
+                                  'proposid':hdu[0].header['proposid'],
+                                  'qualcom1':hdu[0].header.get('qualcom1', ''),
+                                  'qualcom2':hdu[0].header.get('qualcom2', ''),
+                                  'qualcom3':hdu[0].header.get('qualcom3', ''),
+                                  'quality':hdu[0].header.get('quality', ''),
+                                  'postarg1':hdu[0].header['postarg1'],
+                                  'postarg2':hdu[0].header['postarg2'],
+                                  'cal_ver':hdu[0].header['cal_ver'],
+                                  'proctime':hdu[0].header['proctime'],
+
+                                  'opus_ver':hdu[0].header['opus_ver'],
+                                  'obstype':hdu[0].header['obstype'],
+                                  'obsmode':hdu[0].header['obsmode'],
+                                  'exptype':hdu[0].header['exptype'],
+                                  'detector':hdu[0].header['detector'],
+                                  'segment':hdu[0].header['segment'],
+                                  'detecthv':hdu[0].header['detecthv'],
+                                  'life_adj':hdu[0].header['life_adj'],
+                                  'fppos':hdu[0].header['fppos'],
+                                  'exp_num':hdu[0].header['exp_num'],
+                                  'cenwave':hdu[0].header['cenwave'],
+                                  'propaper':hdu[0].header['propaper'],
+                                  'apmpos':hdu[0].header.get('apmpos', None),
+                                  'aperxpos':hdu[0].header.get('aperxpos', None),
+                                  'aperypos':hdu[0].header.get('aperypos', None),
+                                  'aperture':hdu[0].header['aperture'],
+                                  'opt_elem':hdu[0].header['opt_elem'],
+                                  'shutter':hdu[0].header['shutter'],
+                                  'extended':hdu[0].header['extended'],
+                                  'obset_id':hdu[0].header.get('obset_id', None),
+                                  'asn_id':hdu[0].header.get('asn_id', None),
+                                  'asn_tab':hdu[0].header.get('asn_tab', None),
+                                  'asn_mtyp':hdu[1].header['asn_mtyp'],
+                                  'overflow':hdu[1].header.get('overflow', None),
+                                  'nevents':hdu[1].header.get('nevents', None),
+                                  'neventsa':hdu[1].header.get('neventsa', None),
+                                  'neventsb':hdu[1].header.get('neventsb', None),
+                                  'dethvla':hdu[1].header.get('dethvla', None),
+                                  'dethvlb':hdu[1].header.get('dethvlb', None),
+                                  'deventa':hdu[1].header.get('deventa', None),
+                                  'deventb':hdu[1].header.get('deventb', None),
+                                  'feventa':hdu[1].header.get('feventa', None),
+                                  'feventb':hdu[1].header.get('feventb', None),
+                                  'hvlevela':hdu[1].header.get('hvlevela', None),
+                                  'hvlevelb':hdu[1].header.get('hvlevelb', None),
+                                  'date_obs':hdu[1].header['date-obs'],
+                                  'dpixel1a':hdu[1].header.get('dpixel1a', None),
+                                  'dpixel1b':hdu[1].header.get('dpixel1b', None),
+                                  'time_obs':hdu[1].header['time-obs'],
+                                  'expstart':hdu[1].header['expstart'],
+                                  'expend':hdu[1].header['expend'],
+                                  'exptime':hdu[1].header['exptime'],
+                                  'numflash':hdu[1].header.get('numflash', None),
+                                  'ra_aper':hdu[1].header['ra_aper'],
+                                  'dec_aper':hdu[1].header['dec_aper'],
+                                  'shift1a':hdu[1].header.get('shift1a', None),
+                                  'shift1b':hdu[1].header.get('shift1b', None),
+                                  'shift1c':hdu[1].header.get('shift1c', None),
+                                  'shift2a':hdu[1].header.get('shift2a', None),
+                                  'shift2b':hdu[1].header.get('shift2b', None),
+                                  'shift2c':hdu[1].header.get('shift2c', None),
+
+                                  'sp_loc_a':hdu[1].header.get('sp_loc_a', None),
+                                  'sp_loc_b':hdu[1].header.get('sp_loc_b', None),
+                                  'sp_loc_c':hdu[1].header.get('sp_loc_c', None),
+                                  'sp_nom_a':hdu[1].header.get('sp_nom_a', None),
+                                  'sp_nom_b':hdu[1].header.get('sp_nom_b', None),
+                                  'sp_nom_c':hdu[1].header.get('sp_nom_c', None),
+                                  'sp_off_a':hdu[1].header.get('sp_off_a', None),
+                                  'sp_off_b':hdu[1].header.get('sp_off_b', None),
+                                  'sp_off_c':hdu[1].header.get('sp_off_c', None),
+                                  'sp_err_a':hdu[1].header.get('sp_err_a', None),
+                                  'sp_err_b':hdu[1].header.get('sp_err_b', None),
+                                  'sp_err_c':hdu[1].header.get('sp_err_c', None),
+
+                                  'dethvl':hdu[1].header.get('dethvl', None)
+                                                                                }
+                session.add(Headers(**keywords))
+        except IOError as e:
+            print(e.message)
+            #-- Handle empty or corrupt FITS files
+            session.add(Headers(file_id=f_key))
+
+    session.commit()
+    session.close()
+    engine.dispose()
+    '''
+    path, name = os.path.split(filename)
+    spt_file = os.path.join(path, keywords['rootname'] + '_spt.fits.gz')
+    if os.path.isfile(spt_file):
+        print(spt_file)
+        with fits.open(spt_file) as spt_hdu:
+            keywords['proc_type']=spt_hdu[1].header.get('proc_type', None)
+            keywords['lomfstp']=spt_hdu[2].header.get('lomfstp', None)
+            keywords['lapdxvdt']=spt_hdu[2].header.get('lapdxvdt', None)
+            keywords['lapdlvdt']=spt_hdu[2].header.get('lapdlvdt', None)
+            keywords['lom1posc']=spt_hdu[2].header.get('lom1posc', None)
+            keywords['lom2posc']=spt_hdu[2].header.get('lom2posc', None)
+            keywords['lom1posf']=spt_hdu[2].header.get('lom1posf', None)
+            keywords['lom2posf']=spt_hdu[2].header.get('lom2posf', None)
+    '''
 #-------------------------------------------------------------------------------
 
 def populate_data(num_cpu=1):
@@ -482,6 +520,7 @@ def do_all():
 def run_all_monitors():
     dark_monitor()
     stim_monitor()
+    osm_monitor()
 
 #-------------------------------------------------------------------------------
 
