@@ -164,6 +164,7 @@ def populate_lampflash(num_cpu=1):
 
     args = [(full_filename, Lampflash, pull_flashes, f_key) for f_key, full_filename in files_to_add]
 
+    print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
 
@@ -186,6 +187,7 @@ def populate_stims(num_cpu=1):
 
     args = [(full_filename, Stims, locate_stims, f_key) for f_key, full_filename in files_to_add]
 
+    print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
 
@@ -201,15 +203,17 @@ def populate_darks(num_cpu=1):
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
-                            outerjoin(Headers, Files.id == Headers.file_id).\
+                            outerjoin(Headers, Files.rootname == Headers.rootname).\
                             outerjoin(Darks, Files.id == Darks.file_id).\
                             filter(Headers.targname == 'DARK').\
-                            filter(Darks.file_id == None)]
+                            filter(Darks.file_id == None).\
+                            filter(Files.name.like('%\_corrtag%'))]
 
     session.close()
 
     args = [(full_filename, Darks, pull_orbital_info, f_key) for f_key, full_filename in files_to_add]
 
+    print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
 
@@ -229,8 +233,10 @@ def populate_spt(num_cpu=1):
 
     args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
 
+    print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(update_header,args)
+
 #-------------------------------------------------------------------------------
 
 def populate_primary_headers(num_cpu=1):
@@ -239,17 +245,65 @@ def populate_primary_headers(num_cpu=1):
     """
     print("Adding to primary headers")
 
+    t = """
+        CREATE TEMPORARY TABLE which_file (rootname CHAR(9), has_x1d BOOLEAN,has_corr BOOLEAN, has_raw BOOLEAN, has_acq BOOLEAN);
+        CREATE INDEX info ON which_file (rootname, has_x1d, has_corr, has_raw, has_acq);
+        INSERT INTO which_file (rootname, has_x1d, has_corr, has_raw, has_acq)
+          SELECT rootname,
+               IF(SUM(name LIKE '%_x1d%'), true, false) as has_x1d,
+               IF(SUM(name LIKE '%_corrtag%'), true, false) as has_corr,
+               IF(SUM(name LIKE '%_rawtag%'), true, false) as has_raw,
+               IF(SUM(name LIKE '%_rawacq%'), true, false) as has_acq
+                   FROM files
+                   WHERE rootname NOT IN (SELECT headers.rootname from headers)
+                   GROUP BY rootname;
+        """
+
+    q = """
+        SELECT
+         CASE
+                           WHEN which_file.has_x1d = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                files.name LIKE CONCAT(which_file.rootname, '_x1d.fits%') LIMIT 1)
+                           WHEN which_file.has_corr = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
+                           WHEN which_file.has_raw = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                files.name LIKE CONCAT(which_file.rootname, '_rawtag%') LIMIT 1)
+                           WHEN which_file.has_acq = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                files.name LIKE CONCAT(which_file.rootname, '_rawacq%') LIMIT 1)
+                           ELSE NULL
+                         END as file_to_grab,
+         CASE
+                            WHEN which_file.has_x1d = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_x1d.fits%') LIMIT 1)
+                            WHEN which_file.has_corr = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
+                            WHEN which_file.has_raw = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_rawtag%') LIMIT 1)
+                            WHEN which_file.has_acq = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_rawacq%') LIMIT 1)
+                            ELSE NULL
+                          END as file_id
+        FROM which_file
+            WHERE (has_x1d = 1 OR has_corr = 1 OR has_raw = 1 OR has_acq);
+    """
+
+    engine.execute(text(t))
+
+    files_to_add = [(result.file_id, result.file_to_grab) for result in engine.execute(text(q))
+                        if not result.file_id == None]
+    """
     session = Session()
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
                                 filter(or_(Files.name.like('%corrtag%'), Files.name.like('%rawtag%'), Files.name.like('%\_x1d.fits'))).\
                                 outerjoin(Headers, Files.id == Headers.file_id).\
                                 filter(Headers.file_id == None)]
-
-    print("Found {} files to add".format(len(files_to_add)))
+    """
 
     args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
     args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
+
+    print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(update_header, args)
 
@@ -266,9 +320,9 @@ def update_header((args)):
     if filename.endswith('spt.fits') or filename.endswith('spt.fits.gz'):
             try:
                 with fits.open(filename) as hdu:
-                    keywords = {'proc_type':hdu[1].header.get('proc_type', None),
+                    keywords = {'proc_typ':hdu[1].header.get('proc_type', None),
                                 'lomfstp':hdu[2].header.get('lomfstp', None),
-                                'lapdxvdt':hdu[2].header.get('lapdxvdt', None),
+                                'lapxlvdt':hdu[2].header.get('lapdxvdt', None),
                                 'lapdlvdt':hdu[2].header.get('lapdlvdt', None),
                                 'lom1posc':hdu[2].header.get('lom1posc', None),
                                 'lom2posc':hdu[2].header.get('lom2posc', None),
@@ -322,7 +376,8 @@ def update_header((args)):
                                   'obset_id':hdu[0].header.get('obset_id', None),
                                   'asn_id':hdu[0].header.get('asn_id', None),
                                   'asn_tab':hdu[0].header.get('asn_tab', None),
-                                  'asn_mtyp':hdu[1].header['asn_mtyp'],
+                                  'randseed':hdu[0].header.get('randseed', None),
+                                  'asn_mtyp':hdu[1].header.get('asn_mtyp', None),
                                   'overflow':hdu[1].header.get('overflow', None),
                                   'nevents':hdu[1].header.get('nevents', None),
                                   'neventsa':hdu[1].header.get('neventsa', None),
@@ -506,12 +561,21 @@ def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
     #insert_files(**SETTINGS)
+<<<<<<< HEAD
     #populate_primary_headers(SETTINGS['num_cpu'])
     #populate_spt(SETTINGS['num_cpu'])
     populate_data(SETTINGS['num_cpu'])
     #populate_lampflash(SETTINGS['num_cpu'])
     #populate_darks(SETTINGS['num_cpu'])
     #populate_stims(SETTINGS['num_cpu'])
+=======
+    populate_primary_headers(SETTINGS['num_cpu'])
+    #populate_spt(SETTINGS['num_cpu'])
+    #populate_data(SETTINGS['num_cpu'])
+    populate_lampflash(SETTINGS['num_cpu'])
+    populate_darks(SETTINGS['num_cpu'])
+    populate_stims(SETTINGS['num_cpu'])
+>>>>>>> dd6b1c32305f5c6634c9a35b3aad5beaa61d855a
 
 #-------------------------------------------------------------------------------
 
@@ -535,56 +599,3 @@ def clean_slate(config_file=None):
 
 if __name__ == "__main__":
     clean_slate('~/configure.yaml')
-'''
-
-    t = """
-        CREATE TEMPORARY TABLE which_file (rootname CHAR(9), has_x1d BOOLEAN,has_corr BOOLEAN, has_raw BOOLEAN, has_acq BOOLEAN);
-        CREATE INDEX info ON which_file (rootname, has_x1d, has_corr, has_raw, has_acq);
-
-        INSERT INTO which_file (rootname, has_x1d, has_corr, has_raw, has_acq)
-          SELECT rootname,
-               IF(SUM(name LIKE '%_x1d%'), true, false) as has_x1d,
-               IF(SUM(name LIKE '%_corrtag%'), true, false) as has_corr,
-               IF(SUM(name LIKE '%_rawtag%'), true, false) as has_raw,
-               IF(SUM(name LIKE '%_rawacq%'), true, false) as has_acq
-                   FROM files
-                   WHERE rootname NOT IN (SELECT headers.rootname from headers)
-                   GROUP BY rootname;
-        """
-    q = """
-        SELECT
-         CASE
-                           WHEN which_file.has_x1d = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                files.name LIKE CONCAT(which_file.rootname, '_x1d.fits%') LIMIT 1)
-                           WHEN which_file.has_corr = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
-                           WHEN which_file.has_raw = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                files.name LIKE CONCAT(which_file.rootname, '_rawtag%') LIMIT 1)
-                           WHEN which_file.has_acq = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                files.name LIKE CONCAT(which_file.rootname, '_rawacq%') LIMIT 1)
-                           ELSE NULL
-                         END as file_to_grab,
-         CASE
-                            WHEN which_file.has_x1d = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_x1d.fits%') LIMIT 1)
-                            WHEN which_file.has_corr = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
-                            WHEN which_file.has_raw = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_rawtag%') LIMIT 1)
-                            WHEN which_file.has_acq = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_rawacq%') LIMIT 1)
-                            ELSE NULL
-                          END as file_id
-        FROM which_file
-            WHERE (has_x1d = 1 OR has_corr = 1 OR has_raw = 1 OR has_acq);
-    """
-
-    #connection = engine.connect()
-    #connection.execute(text(t))
-
-    #results = engine.execute(text(t))
-    #results.close()
-
-    #files_to_add = [(result.file_id, result.file_to_grab) for result in connection.execute(text(q))
-    #                    if not result.file_id == None]
-'''
