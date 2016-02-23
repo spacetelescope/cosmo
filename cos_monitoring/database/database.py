@@ -352,7 +352,7 @@ def populate_primary_headers(num_cpu=1):
 
     print("Found {} files to add".format(len(files_to_add)))
 
-    args = [(full_filename, headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
+    args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert,args)
 
@@ -389,16 +389,22 @@ def update_data((args)):
         with fits.open(filename) as hdu:
             if len(hdu[1].data):
                 flux_mean=hdu[1].data['flux'].ravel().mean()
-                flux_max=hdu[1].data['flux'].ravel().max()
-                flux_std=hdu[1].data['flux'].ravel().std()
+                #flux_max=hdu[1].data['flux'].ravel().max()
+                #flux_std=hdu[1].data['flux'].ravel().std()
+                #wl_max = hdu[1].data['wavelength'].ravel().max()
+                #wl_min = hdu[1].data['wavelength'].ravel().min()
             else:
                 flux_mean = None
-                flux_max = None
-                flux_std = None
+                #flux_max = None
+                #flux_std = None
+                #wl_max = None
+                #wl_min = None
 
             session.add(Data(flux_mean=flux_mean,
-                             flux_max=flux_max,
-                             flux_std=flux_std,
+                             #flux_max=flux_max,
+                             #flux_std=flux_std,
+                             #wl_max = wl_max,
+                             #wl_min = wl_min,
                              file_id=f_key))
 
     except IOError as e:
@@ -463,13 +469,13 @@ def clear_all_databases(SETTINGS):
 def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
-    insert_files(**SETTINGS)
-    populate_primary_headers(SETTINGS['num_cpu'])
-    populate_spt(SETTINGS['num_cpu'])
-    #populate_data(SETTINGS['num_cpu'])
-    populate_lampflash(SETTINGS['num_cpu'])
-    populate_darks(SETTINGS['num_cpu'])
-    populate_stims(SETTINGS['num_cpu'])
+    #insert_files(**SETTINGS)
+    #populate_primary_headers(SETTINGS['num_cpu'])
+    #populate_spt(SETTINGS['num_cpu'])
+    populate_data(SETTINGS['num_cpu'])
+    #populate_lampflash(SETTINGS['num_cpu'])
+    #populate_darks(SETTINGS['num_cpu'])
+    #populate_stims(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 

@@ -235,9 +235,11 @@ class Data(Base):
 
     id = Column(Integer, primary_key=True)
 
-    flux_mean = Column(Float)
-    flux_max = Column(Float)
-    flux_std = Column(Float)
+    flux_mean = Column(Numeric(10,10))
+    #flux_max = Column(Float)
+    #flux_std = Column(Float)
+    #wl_max = Column(Float)
+    #wl_min = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('Data', order_by=id))
