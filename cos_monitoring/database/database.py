@@ -12,6 +12,7 @@ from ..dark.monitor import monitor as dark_monitor
 from ..dark.monitor import pull_orbital_info
 from ..filesystem import find_all_datasets
 from ..osm.monitor import pull_flashes
+from ..osm.monitor import monitor as osm_monitor
 from ..stim.monitor import locate_stims
 from ..stim.monitor import stim_monitor
 from .db_tables import load_connection, open_settings
@@ -66,12 +67,12 @@ def insert_with_yield(filename, table, function, foreign_key=None):
     try:
         data = function(filename)
 
-       if isinstance(data, dict):
-           data = [data] 
-       elif isinstance(data, types.GeneratorType)
-           pass
-       else:
-           raise ValueError("Not designed to work with data of type {}".format(type(data)))
+        if isinstance(data, dict):
+            data = [data]
+        elif isinstance(data, types.GeneratorType):
+            pass
+        else:
+            raise ValueError("Not designed to work with data of type {}".format(type(data)))
 
         #-- Pull data from generator and commit
         for i, row in enumerate(data):
@@ -155,7 +156,7 @@ def populate_lampflash(num_cpu=1):
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
-                                filter(Files.name.like('%lampflash%')).\
+                                filter(or_(Files.name.like('%lampflash%'), (Files.name.like('%_rawacq%')))).\
                                 outerjoin(Lampflash, Files.id == Lampflash.file_id).\
                                 filter(Lampflash.file_id == None)]
     session.close()
@@ -496,19 +497,20 @@ def clear_all_databases(SETTINGS):
 def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
-    #insert_files(**SETTINGS)
-    #populate_primary_headers(SETTINGS['num_cpu'])
+    insert_files(**SETTINGS)
+    populate_primary_headers(SETTINGS['num_cpu'])
     populate_spt(SETTINGS['num_cpu'])
     #populate_data(SETTINGS['num_cpu'])
-    #populate_lampflash(SETTINGS['num_cpu'])
-    #populate_darks(SETTINGS['num_cpu'])
-    #populate_stims(SETTINGS['num_cpu'])
+    populate_lampflash(SETTINGS['num_cpu'])
+    populate_darks(SETTINGS['num_cpu'])
+    populate_stims(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
 def run_all_monitors():
     dark_monitor()
     stim_monitor()
+    osm_monitor()
 
 #-------------------------------------------------------------------------------
 
