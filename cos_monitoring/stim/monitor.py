@@ -20,12 +20,12 @@ from astropy.table import Table
 from astropy.time import Time
 from astropy.io import fits
 from scipy.stats import linregress
+from calcos import ccos
 
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from ..utils import bin_corrtag
 from ..database.db_tables import open_settings, load_connection
 
 #-------------------------------------------------------------------------------
@@ -129,40 +129,53 @@ def locate_stims(fits_file, start=0, increment=None):
         if not len(hdu[1].data):
             yield stim_info
 
-    # If increment is not supplied, use the rates supplied by the detector
-    if not increment:
-        if exptime < 10:
-            increment = .03
-        elif exptime < 100:
-            increment = 1
-        else:
-            increment = 30
+        # If increment is not supplied, use the rates supplied by the detector
+        if not increment:
+            if exptime < 10:
+                increment = .03
+            elif exptime < 100:
+                increment = 1
+            else:
+                increment = 30
 
-        increment *= 4
+            increment *= 4
 
-    stop = start + increment
+        stop = start + increment
 
-    # Iterate from start to stop, excluding final bin if smaller than increment
-    for sub_start in np.arange(start, exptime-increment, increment):
-        im = bin_corrtag(fits_file,
-                         xtype='RAWX',
-                         ytype='RAWY',
-                         times=(sub_start, sub_start + increment))
+        # Iterate from start to stop, excluding final bin if smaller than increment
+        for sub_start in np.arange(start, exptime-increment, increment):
+            events = hdu['events'].data
 
-        ABS_TIME = expstart + sub_start * DAYS_PER_SECOND
+            #-- No COS observation has data below ~923
+            data_index = np.where((hdu[1].data['time'] >= sub_start) &
+                                  (hdu[1].data['time'] <= sub_start+increment))[0]
 
-        found_ul_x, found_ul_y = find_stims(im, segment, 'ul', brf_file)
-        found_lr_x, found_lr_y = find_stims(im, segment, 'lr', brf_file)
+            events = events[data_index]
 
-        stim_info['time'] = round(sub_start, 5)
-        stim_info['abs_time'] = round(ABS_TIME, 5)
-        stim_info['stim1_x'] = round(found_ul_x, 3)
-        stim_info['stim1_y'] = round(found_ul_y, 3)
-        stim_info['stim2_x'] = round(found_lr_x, 3)
-        stim_info['stim2_y'] = round(found_lr_y, 3)
-        stim_info['counts'] = round(im.sum(), 7)
+            # Call for this is x_values, y_values, image to bin to, offset in x
+            # ccos.binevents(x, y, array, x_offset, dq, sdqflags, epsilon)
+            im = np.zeros((1024, 16384)).astype(np.float32)
+            ccos.binevents(events['RAWX'].astype(np.float32),
+                           events['RAWY'].astype(np.float32),
+                           im,
+                           0,
+                           events['dq'],
+                           0)
 
-        yield stim_info
+            ABS_TIME = expstart + sub_start * DAYS_PER_SECOND
+
+            found_ul_x, found_ul_y = find_stims(im, segment, 'ul', brf_file)
+            found_lr_x, found_lr_y = find_stims(im, segment, 'lr', brf_file)
+
+            stim_info['time'] = round(sub_start, 5)
+            stim_info['abs_time'] = round(ABS_TIME, 5)
+            stim_info['stim1_x'] = round(found_ul_x, 3)
+            stim_info['stim1_y'] = round(found_ul_y, 3)
+            stim_info['stim2_x'] = round(found_lr_x, 3)
+            stim_info['stim2_y'] = round(found_lr_y, 3)
+            stim_info['counts'] = round(im.sum(), 7)
+
+            yield stim_info
 
 #-----------------------------------------------------
 
