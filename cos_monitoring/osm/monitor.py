@@ -21,9 +21,9 @@ from datetime import datetime
 from astropy.io import fits
 from astropy.table import Table
 
-from ..database.db_tables import open_settings, load_connection
-
-MONITOR_DIR = '/grp/hst/cos/Monitors/Shifts/'
+#from ..database.db_tables import open_settings, load_connection
+MONITOR_DIR = '.'
+#MONITOR_DIR = '/grp/hst/cos/Monitors/Shifts/'
 WEB_DIR = '/grp/webpages/COS/shifts/'
 lref = '/grp/hst/cdbs/lref/'
 
@@ -67,6 +67,7 @@ def pull_flashes(filename):
                     'rootname': hdu[0].header['ROOTNAME'],
                     'proposid': hdu[0].header['PROPOSID'],
                     'detector': hdu[0].header['DETECTOR'],
+                    'segment': hdu[0].header['SEGMENT'],
                     'opt_elem': hdu[0].header['OPT_ELEM'],
                     'cenwave': hdu[0].header['CENWAVE'],
                     'fppos': hdu[0].header.get('FPPOS', None)}
@@ -128,6 +129,7 @@ def fit_data(xdata, ydata):
 #-------------------------------------------------------------------------------
 
 def make_shift_table():
+
     SETTINGS = open_settings()
     Session, engine = load_connection(SETTINGS['connection_string'])
 
@@ -136,8 +138,8 @@ def make_shift_table():
     data = []
     for i, row in enumerate(engine.execute("""SELECT * FROM lampflash
                                                        WHERE x_shift IS NOT NULL AND
-                                                             y_shift IS NOT NULL;""")):
-        if not i:
+                                                            y_shift IS NOT NULL;""")):
+        if not []:
             keys = row.keys()
         data.append(row.values())
 
