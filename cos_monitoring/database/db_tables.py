@@ -1,18 +1,55 @@
+from __future__ import print_function, absolute_import, division
+
+import os
+
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean
+from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean, Numeric, BigInteger
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker, relationship, backref
 
-import yaml
+try:
+    import yaml
+except ImportError:
+    from .yaml import yaml
+
+__all__ = ['open_settings', 'load_connection']
 
 Base = declarative_base()
+
+#-------------------------------------------------------------------------------
+
+def open_settings(config_file=None):
+    """ Parse config file and load settings
+
+    If no config file is supplied, the configuration file will assume to be
+    located at '~/configure.yaml'.
+
+    Parameters
+    ----------
+    config_file : str, optional
+        yaml file containing configuration settings.
+
+    Returns
+    -------
+    settings : dict
+        dictionary of all settings
+
+    """
+
+    config_file = config_file or os.path.join(os.environ['HOME'], "configure.yaml")
+
+    with open(config_file, 'r') as f:
+        settings = yaml.load(f)
+
+    return settings
 
 #-------------------------------------------------------------------------------
 
 def load_connection(connection_string, echo=False):
     """Create and return a connection to the database given in the
     connection string.
+
     Parameters
     ----------
     connection_string : str
@@ -21,13 +58,12 @@ def load_connection(connection_string, echo=False):
         dialect+driver://username:password@host:port/database
     echo : bool
         Show all SQL produced.
+
     Returns
     -------
     session : sesson object
         Provides a holding zone for all objects loaded or associated
         with the database.
-    base : base object
-        Provides a base class for declarative class definitions.
     engine : engine object
         Provides a source of database connectivity and behavior.
     """
@@ -36,6 +72,28 @@ def load_connection(connection_string, echo=False):
     Session = sessionmaker(bind=engine)
 
     return Session, engine
+
+#-------------------------------------------------------------------------------
+
+class Darks(Base):
+    __tablename__ = "darks"
+
+    id = Column(Integer, primary_key=True)
+
+    obsname = Column(String(30))
+    rootname = Column(String(9))
+    detector = Column(String(4))
+    date = Column(Numeric(7, 2))
+    dark = Column(Numeric(12, 10))
+    ta_dark = Column(Numeric(12, 10))
+    latitude = Column(Numeric(8, 3))
+    longitude = Column(Numeric(8, 3))
+    sun_lat = Column(Numeric(8, 3))
+    sun_lon = Column(Numeric(8, 3))
+    temp = Column(Numeric(8, 4))
+
+    file_id = Column(Integer, ForeignKey('files.id'))
+    #file = relationship("Files", backref=backref('lampflash', order_by=id))
 
 #-------------------------------------------------------------------------------
 
@@ -48,8 +106,8 @@ class Files(Base):
     name = Column(String(40))
     rootname = Column(String(9))
 
-    Index('idx_fullpath', 'path', 'name', unique=True)
-    Index('idx_rootname', 'rootname')
+    __table_args__ = (Index('idx_fullpath', 'path', 'name', unique=True), )
+    __table_args__ = (Index('idx_rootname', 'rootname'), )
 
 #-------------------------------------------------------------------------------
 
@@ -57,10 +115,13 @@ class Lampflash(Base):
     __tablename__ = 'lampflash'
 
     id = Column(Integer, primary_key=True)
+
     date = Column(Float)
+    rootname = Column(String(9))
     proposid = Column(Integer)
     detector = Column(String(4))
-    opt_elem = Column(String(5))
+    segment = Column(String(4))
+    opt_elem = Column(String(7))
     cenwave = Column(Integer)
     fppos = Column(Integer)
     lamptab = Column(String(30))
@@ -70,7 +131,8 @@ class Lampflash(Base):
     found = Column(Boolean)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('lampflash', order_by=id))
+    __table_args__ = (Index('idx_rootname', 'rootname', unique=False), )
+    #file = relationship("Files", backref=backref('lampflash', order_by=id))
 
 #-------------------------------------------------------------------------------
 
@@ -91,7 +153,10 @@ class Headers(Base):
     qualcom3 = Column(String(67))
     quality = Column(String(67))
     opus_ver = Column(String(30))
+    postarg1 = Column(Float(32))
+    postarg2 = Column(Float)
     cal_ver = Column(String(30))
+    proctime = Column(Float)
 
     obstype = Column(String(20))
     obsmode = Column(String(20))
@@ -103,22 +168,37 @@ class Headers(Base):
     fppos = Column(Integer)
     exp_num = Column(Integer)
     cenwave = Column(Integer)
-    aperture = Column(String(3))
-    opt_elem = Column(String(5))
+    propaper = Column(String(20))
+    apmpos = Column(String(20))
+    aperxpos = Column(Float)
+    aperypos = Column(Float)
+    aperture = Column(String(4))
+    opt_elem = Column(String(7))
     shutter = Column(String(20))
     extended = Column(String(20))
     obset_id = Column(String(2))
     asn_id = Column(String(9))
     asn_tab = Column(String(18))
-    ###randseed = Column(Integer) #-- Errors for some reason.
+    randseed = Column(BigInteger)
+    asn_mtyp = Column(String(20))
+    overflow = Column(Integer)
+    nevents = Column(Integer)
+    neventsa = Column(Float)
+    neventsb = Column(Float)
+    dethvla = Column(Integer)
+    dethvlb = Column(Integer)
+    deventa = Column(Float)
+    deventb = Column(Float)
+    feventa = Column(Float)
+    feventb = Column(Float)
     hvlevela = Column(Integer)
     hvlevelb = Column(Integer)
     dpixel1a = Column(Float)
     dpixel1b = Column(Float)
     date_obs = Column(String(10))
     time_obs = Column(String(8))
-    expstart = Column(Float)
-    expend = Column(Float)
+    expstart = Column(Numeric(8, 3))
+    expend = Column(Numeric(8, 3))
     exptime = Column(Float)
     numflash = Column(Integer)
     ra_aper = Column(Float)
@@ -143,11 +223,14 @@ class Headers(Base):
     sp_err_b = Column(Float)
     sp_err_c = Column(Float)
 
-    file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('headers', order_by=id))
+    #NUV keywords
+    dethvl = Column(Float)
 
-    Index('idx_rootname', 'rootname', unique=False)
-    Index('idx_config', 'segment', 'fppox', 'cenwave', 'opt_elem', unique=False)
+    file_id = Column(Integer, ForeignKey('files.id'))
+    #file = relationship("Files", backref=backref('headers', order_by=id))
+
+    __table_args__ = (Index('idx_rootname', 'rootname', unique=False), )
+    __table_args__ = (Index('idx_config', 'segment', 'fppos', 'cenwave', 'opt_elem', unique=False), )
 
 #-------------------------------------------------------------------------------
 
@@ -156,12 +239,14 @@ class Data(Base):
 
     id = Column(Integer, primary_key=True)
 
-    flux_mean = Column(Float)
-    flux_max = Column(Float)
-    flux_std = Column(Float)
+    flux_mean = Column(Numeric(40,asdecimal=False))
+    #flux_max = Column(Float)
+    #flux_std = Column(Float)
+    #wl_max = Column(Float)
+    #wl_min = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Data', order_by=id))
+    #file = relationship("Files", backref=backref('Data', order_by=id))
 
 #-------------------------------------------------------------------------------
 
@@ -172,34 +257,18 @@ class Stims(Base):
     id = Column(Integer, primary_key=True)
 
     time = Column(Float)
-    abs_time = Column(Float)
-    stim1_x = Column(Float)
-    stim1_y = Column(Float)
-    stim2_x = Column(Float)
-    stim2_y = Column(Float)
-    counts = Column(Integer)
-
-    file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Stims', order_by=id))
-
-#-------------------------------------------------------------------------------
-
-class Variability(Base):
-    __tablename__ = 'variability'
-
-    id = Column(Integer, primary_key=True)
-
-    time = Column(Float)
+    rootname = Column(String(9))
+    abs_time = Column(Numeric(10, 5))
+    stim1_x = Column(Numeric(8, 3))
+    stim1_y = Column(Numeric(8, 3))
+    stim2_x = Column(Numeric(8, 3))
+    stim2_y = Column(Numeric(8, 3))
     counts = Column(Float)
-    counts_ta = Column(Float)
-    latitute = Column(Float)
-    longitude = Column(Float)
-    sun_latitude = Column(Float)
-    sun_longitude = Column(Float)
-    temperature = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Variability', order_by=id))
+
+    __table_args__ = (Index('idx_rootname', 'rootname', unique=False), )
+    #file = relationship("Files", backref=backref('Stims', order_by=id))
 
 #-------------------------------------------------------------------------------
 
@@ -233,8 +302,8 @@ class Phd(Base):
     pha_22 = Column(Integer)
     pha_23 = Column(Integer)
     pha_24 = Column(Integer)
-    pha_25 = Column(Integer)
     pha_26 = Column(Integer)
+    pha_25 = Column(Integer)
     pha_27 = Column(Integer)
     pha_28 = Column(Integer)
     pha_29 = Column(Integer)
@@ -242,7 +311,7 @@ class Phd(Base):
     pha_31 = Column(Integer)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Phd', order_by=id))
+    #file = relationship("Files", backref=backref('Phd', order_by=id))
 
 #-------------------------------------------------------------------------------
 '''
@@ -260,6 +329,28 @@ class Gain(Base):
     sigma = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
-    file = relationship("Files", backref=backref('Gain', order_by=id))
+    #file = relationship("Files", backref=backref('Gain', order_by=id))
 '''
+#-------------------------------------------------------------------------------
+
+class sptkeys(Base):
+    __tablename__ = 'spt'
+
+    id = Column(Integer, primary_key=True)
+
+    #spt file keywords
+    rootname = Column(String(9))
+    proc_typ = Column(String(20)) # primary extention
+    lomfstp = Column(Float) #2 ext, focus in spreadsheet
+    lapxlvdt = Column(Integer) #2 ext, aper_disp in spreadsheet
+    lapdlvdt = Column(Integer) #2 ext, aper_xdisp in spreadsheet
+    lom1posc = Column(Integer) #2 ext, osm1_coarse in spreadsheet
+    lom2posc = Column(Integer) #2 ext, osm2_coarse in spreadsheet
+    lom1posf = Column(Integer) #2 ext, osm1_fine in spreadsheet
+    lom2posf = Column(Integer) #2 ext, osm2_fine in spreadsheet
+
+    file_id = Column(Integer, ForeignKey('files.id'))
+
+    __table_args__ = (Index('idx_rootname', 'rootname', unique=False), )
+
 #-------------------------------------------------------------------------------

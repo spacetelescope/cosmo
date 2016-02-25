@@ -3,12 +3,19 @@ import os
 #-------------------------------------------------------------------------------
 
 def find_all_datasets(data_dir):
-    """Iterator to yield all datasets
+    """Iterator to yield all datasets recursively from the base.
+
+    Only files that include the .fits extension will be returned.
 
     Parameters
     ----------
     data_dir : str
         directory to search over for files
+
+    Yields
+    ----------
+    root, filename : tuple
+        root path and filename of each found .fits file
 
     """
 

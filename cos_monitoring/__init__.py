@@ -1,2 +1,4 @@
-import database
-import filesystem
+from __future__ import absolute_import
+
+from .database import *
+from .filesystem import *
