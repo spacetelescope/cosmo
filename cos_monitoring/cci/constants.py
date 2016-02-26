@@ -25,7 +25,8 @@ __all__ = ['X_UNBINNED',
            'HVTAB',
            'MODAL_GAIN_LIMIT',
            'TIMESTAMP',
-           'DB_NAME']
+           'DB_NAME',
+           'CONNECTION_STRING']
 
 import os
 import time
@@ -33,6 +34,7 @@ from datetime import datetime
 import glob
 import pyfits
 import numpy as np
+import yaml
 
 X_UNBINNED = 16384
 Y_UNBINNED = 1024
@@ -68,3 +70,7 @@ MODAL_GAIN_LIMIT = 3
 
 date_time = str(datetime.now())
 TIMESTAMP = (date_time.split()[0]+'T'+date_time.split()[1] ).replace(':','-')
+
+config = os.path.join(os.environ['HOME'], 'cci_config.yaml')
+settings = yaml.load(open(config, 'r'))
+CONNECTION_STRING = settings['CONNECTION_STRING']

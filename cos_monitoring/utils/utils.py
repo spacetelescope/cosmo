@@ -4,6 +4,67 @@ from calcos import ccos
 
 #-------------------------------------------------------------------------------
 
+def enlarge(a, x=2, y=None):
+    """Enlarges 2D image array a using simple pixel repetition in both dimensions.
+    Enlarges by factor x horizontally and factor y vertically.
+    If y is left as None, uses factor x for both dimensions."""
+    import numpy as np
+    a = np.asarray(a)
+    assert a.ndim == 2
+    if y == None:
+        y = x
+    for factor in (x, y):
+        assert factor.__class__ == int
+        assert factor > 0
+    return a.repeat(y, axis=0).repeat(x, axis=1)
+
+#-------------------------------------------------------------------------------
+
+def rebin(a, bins=(2,2), mode='weird'):
+    '''
+    Rebins input array using array slices
+    '''
+    assert mode in ('slice','direct','weird','avg')
+    y,x=a.shape
+    ybin=bins[0]
+    xbin=bins[1]
+    assert (x%bins[1]==0),'X binning factor not factor of x.'
+    assert (y%bins[0]==0),'Y binning factor not factor of y.'
+
+    if mode=='slice':
+        #From Phil
+        a=a[0:y-1:ybin]+a[1:y:ybin]
+        a=a[:,0:x-1:xbin]+a[:,1:x:xbin]
+
+    elif mode=='direct':
+        #Not tested, from me
+        out_array=numpy.zeros((y,x))
+        for i in range(y):
+            for j in range(x):
+                for k in range(bins[0]):
+                    for l in range(bins[1]):
+                        out_array[i,j]+=a[bins[0]*i+k,bins[1]*j+l]
+        a=out_array
+
+    elif mode=='avg':
+        #Not tested, from online
+        try: sometrue
+        except: from numpy import sometrue,mod
+        assert len(a.shape) == len(newshape)
+        assert not sometrue(mod( a.shape, newshape ))
+        slices = [ slice(None,None, old/new) for old,new in zip(a.shape,newshape) ]
+        a=a[slices]
+
+    elif mode=='weird':
+        #not tested, from internet
+        shape=(y/bins[0],x/bins[1])
+        sh = shape[0],a.shape[0]//shape[0],shape[1],a.shape[1]//shape[1]
+        a= a.reshape(sh).sum(-1).sum(1)
+
+    return a
+
+#-------------------------------------------------------------------------------
+
 def corrtag_image(in_data,xtype='XCORR',ytype='YCORR',pha=(2,30),bins=(1024,16384),times=None,ranges=((0,1023),(0,16384)),binning=(1,1),NUV=False):
     try: histogram2d
     except NameError: from numpy import histogram2d,where,zeros
@@ -91,3 +152,38 @@ def bin_corrtag(corrtag_list, xtype='XCORR', ytype='YCORR', times=None):
         final_image += image
 
     return final_image
+
+#-------------------------------------------------------------------------------
+
+def send_email(subject=None, message=None, from_addr=None, to_addr=None):
+    '''
+    Send am email via SMTP server.
+    This will not prompt for login if you are alread on the internal network.
+    '''
+    import os
+    import getpass
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    users_email=getpass.getuser()+'@stsci.edu'
+
+    if not subject:
+	subject='Message from %s'%(__file__)
+    if not message:
+	message='You forgot to put a message into me'
+    if not from_addr:
+        from_addr=users_email
+    if not to_addr:
+        to_addr=users_email
+
+    svr_addr='smtp.stsci.edu'
+    msg = MIMEMultipart()
+    msg['Subject']=subject
+    msg['From']=from_addr
+    msg['To']=to_addr
+    msg.attach(MIMEText(message))
+    s = smtplib.SMTP(svr_addr)
+    s.sendmail(from_addr, to_addr, msg.as_string())
+    s.quit()
+    print '\nEmail sent to %s \n' %(from_addr)
