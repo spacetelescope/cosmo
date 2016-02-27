@@ -82,7 +82,7 @@ class CCI:
 
         if not self.numfiles:
             print 'CCI contines no data.  Skipping modal gain measurements'
-            self.write()
+            return
 
         gainmap, counts, std = measure_gainimage(self.big_array)
         self.gain_image = gainmap
@@ -633,14 +633,17 @@ def write_and_pull_gainmap(cci_name):
             'dethv': int(current.dethv),
             'expstart': current.expstart}
 
-    for y, x in itertools.izip(*index):
-        info['gain'] = round(float(current.gain_image[y, x]), 5)
-        info['counts'] = round(float(current.counts_image[y, x]), 5)
-        info['std'] = round(float(current.std_image[y, x]), 5)
-        info['x'] = x
-        info['y'] = y
-
+    if not len(index[0]):
         yield info
+    else:
+        for y, x in itertools.izip(*index):
+            info['gain'] = round(float(current.gain_image[y, x]), 5)
+            info['counts'] = round(float(current.counts_image[y, x]), 5)
+            info['std'] = round(float(current.std_image[y, x]), 5)
+            info['x'] = x
+            info['y'] = y
+
+            yield info
 
 
     """

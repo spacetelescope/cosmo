@@ -109,7 +109,6 @@ def find_stims(image, segment, stim, brf_file):
 #-------------------------------------------------------------------------------
 
 def locate_stims(fits_file, start=0, increment=None):
-    print(fits_file)
     DAYS_PER_SECOND = 1. / 60. / 60. / 24.
 
     file_path, file_name = os.path.split(fits_file)
@@ -125,9 +124,11 @@ def locate_stims(fits_file, start=0, increment=None):
             hdu[1].data
         except:
             yield stim_info
+            raise StopIteration
 
         if not len(hdu[1].data):
             yield stim_info
+            raise StopIteration
 
         # If increment is not supplied, use the rates supplied by the detector
         if not increment:
@@ -143,7 +144,11 @@ def locate_stims(fits_file, start=0, increment=None):
         stop = start + increment
 
         # Iterate from start to stop, excluding final bin if smaller than increment
-        for sub_start in np.arange(start, exptime-increment, increment):
+        start_times = np.arange(start, exptime-increment, increment)
+        if not len(start_times):
+            yield stim_info
+
+        for sub_start in start_times:
             events = hdu['events'].data
 
             #-- No COS observation has data below ~923

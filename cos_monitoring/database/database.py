@@ -66,8 +66,6 @@ def insert_with_yield(filename, table, function, foreign_key=None):
     Session, engine = load_connection(SETTINGS['connection_string'])
     session = Session()
 
-
-
     try:
         data = function(filename)
 
