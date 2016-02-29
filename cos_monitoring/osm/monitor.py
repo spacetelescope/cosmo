@@ -230,13 +230,13 @@ def make_plots(data):
     ax3.plot( data['date'][G140L_A], data['x_shift'][G140L_A],'y.',label='G140L')
     ax3.plot( data['date'][G140L_B], data['x_shift'][G140L_B],'y.')
 
-    ax.legend(shadow=True, numpoints=1)
+    ax.legend(shadow=True, numpoints=1, loc='upper left')
     fig.suptitle('FUV SHIFT1[A/B]')
     ax.set_xlabel('MJD')
     ax.set_ylabel('SHIFT1[A/B] (pixels)')
 
     for axis,index in zip([ax,ax2,ax3],[G130M,G160M,G140L]):
-        axis.set_ylim(-300,300)
+        #axis.set_ylim(-300,300)
         axis.set_xlim( data['date'].min(),data['date'].max()+50 )
         axis.set_ylabel('SHIFT1[A/B/C] (pixels)')
         axis.axhline(y=0,color='r')
@@ -342,13 +342,13 @@ def make_plots(data):
 
     ax.set_title('NUV SHIFT1[A/B/C]')
     for axis, index in zip([ax, ax2, ax3, ax4], [G185M, G225M, G285M, G230L]):
-        axis.set_ylim(-110, 110)
+        #axis.set_ylim(-110, 110)
         axis.set_xlim(data['date'].min(), data['date'].max() + 50)
         axis.set_ylabel('SHIFT1[A/B/C] (pixels)')
         fit, ydata, parameters, err = fit_data(
             data['date'][index], data['x_shift'][index])
         axis.plot(ydata, fit, 'k-', lw=3, label='%3.5fx' % (parameters[0]))
-        axis.legend(numpoints=1, shadow=True, fontsize=12, ncol=3)
+        axis.legend(numpoints=1, shadow=True, loc='upper left', fontsize=12, ncol=3)
 
     ax4.set_xlabel('date')
 
@@ -357,11 +357,11 @@ def make_plots(data):
     fit, ydata, parameters, err = fit_data(
         data['date'][NUV], data['x_shift'][NUV])
     ax.plot(ydata, fit, 'k-', lw=3, label='%3.5fx' % (parameters[0]))
-    ax.legend(numpoints=1, shadow=True)
+    ax.legend(numpoints=1, shadow=True, loc='upper left')
     ax.set_ylabel('All NUV')
     ax.xaxis.set_ticklabels(['' for item in ax.xaxis.get_ticklabels()])
     ax.set_xlim(data['date'].min(), data['date'].max() + 50)
-    ax.set_ylim(-110, 110)
+    #ax.set_ylim(-110, 110)
 
     mirrora = np.where((data['opt_elem'] == 'MIRRORA')
                        & (data['x_shift'] > 0))[0]
@@ -370,11 +370,11 @@ def make_plots(data):
     fit, ydata, parameters, err = fit_data(
         data['date'][mirrora], data['x_shift'][mirrora])
     ax.plot(ydata, fit, 'k-', lw=3, label='%3.5fx' % (parameters[0]))
-    ax.legend(numpoints=1, shadow=True)
+    ax.legend(numpoints=1, shadow=True, loc='upper left')
     ax.set_xlim(data['date'].min(), data['date'].max() + 50)
     ax.set_ylabel('MIRRORA')
     ax.set_xlabel('date')
-    ax.set_ylim(460, 630)
+    #ax.set_ylim(460, 630)
 
     mirrorb = np.where((data['opt_elem'] == 'MIRRORB')
                        & (data['x_shift'] > 0))[0]
@@ -383,11 +383,11 @@ def make_plots(data):
     fit, ydata, parameters, err = fit_data(
         data['date'][mirrorb], data['x_shift'][mirrorb])
     ax.plot(ydata, fit, 'k-', lw=3, label='%3.5fx' % (parameters[0]))
-    ax.legend(numpoints=1, shadow=True)
+    ax.legend(numpoints=1, shadow=True, loc='upper left')
     ax.set_xlim(data['date'].min(), data['date'].max() + 50)
     ax.set_ylabel('MIRRORB')
     ax.set_xlabel('date')
-    ax.set_ylim(260, 400)
+    #ax.set_ylim(260, 400)
 
 
     fig.savefig(os.path.join(MONITOR_DIR, 'NUV_shifts.png'),
@@ -407,7 +407,7 @@ def make_plots(data):
                                                data['x_shift'][mirror])
         ax.plot(ydata, fit, 'r-', lw=3, label='%3.5f +/- %3.5f' %
                 (parameters[0], err))
-        ax.legend(numpoints=1, shadow=True)
+        ax.legend(numpoints=1, shadow=True, loc='upper left')
         ax.set_xlim(data['date'].min(), data['date'].max() + 50)
         #ax.set_ylim(460, 630)
         fig.savefig(os.path.join(MONITOR_DIR, '{}_shifts.png'.format(elem.upper())))
@@ -446,9 +446,9 @@ def make_plots(data):
                     (cenwave))
 
             plt.legend(numpoints=1, shadow=True, bbox_to_anchor=(1.05, 1),
-                       loc=2, borderaxespad=0., prop={'size': 8})
+                       loc='upper left', borderaxespad=0., prop={'size': 8})
             ax.set_xlim(data['date'].min(), data['date'].max() + 50)
-            ax.set_ylim(ylim[0], ylim[1])
+            #ax.set_ylim(ylim[0], ylim[1])
         fig.savefig(os.path.join(MONITOR_DIR, '%s_shifts_color.pdf' %
                     (grating)))
         plt.close(fig)
@@ -564,7 +564,7 @@ def fp_diff(data):
         plt.xlabel('MJD')
         plt.ylabel('SHIFT1 difference (pixels)')
         plt.title(cenwave)
-        plt.legend(shadow=True, numpoints=1, loc='best')
+        plt.legend(shadow=True, numpoints=1, loc='upper left')
         plt.savefig(os.path.join(MONITOR_DIR, 'difference_%s.pdf' % (cenwave)))
         plt.close()
 
@@ -596,3 +596,17 @@ def monitor():
         shutil.copy(item, WEB_DIR)
 
 #----------------------------------------------------------
+'''
+def make_shift_table(files):
+    data = []
+    for filename in files:
+        for flash in pull_flashes(filename):
+            if not []:
+                keys = flash.keys()
+            data.append(flash)
+            print(flash)
+
+    data = Table(rows=data, names=keys)
+
+    return data
+'''
