@@ -48,7 +48,7 @@ class Phaimage:
 
         gainmap_path, gainmap_name = os.path.split(gainmap)
         segment = pyfits.getval(gainmap, 'SEGMENT')
-	dethv = int(pyfits.getval(gainmap, 'DETHV'))
+        dethv = int(pyfits.getval(gainmap, 'DETHV'))
 
         if segment == 'FUVA':
             seg_string = FUVA_string
