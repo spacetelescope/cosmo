@@ -24,13 +24,14 @@ __status__ = 'Active'
 import os
 import glob
 from sqlalchemy.engine import create_engine
+from ..database.db_tables import open_settings, load_connection
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import multiprocessing as mp
 
-from constants import Y_BINNING, X_BINNING, MONITOR_DIR, CONNECTION_STRING
+from constants import Y_BINNING, X_BINNING, MONITOR_DIR
 
 #-------------------------------------------------------------------------------
 
@@ -44,7 +45,9 @@ def time_trends():
         os.remove(item)
 
     print "Connecting to the DB"
-    engine = create_engine(CONNECTION_STRING, echo=False)
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     connection = engine.connect()
 
     try:
@@ -77,7 +80,9 @@ def time_trends():
 def find_flagged(args):
     segment, hvlevel = args
 
-    engine = create_engine(CONNECTION_STRING, echo=False)
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     connection = engine.connect()
 
     print "{}, {}: Searching for pixels below 3.".format(segment, hvlevel)

@@ -29,7 +29,7 @@ import glob
 import sys
 from sqlalchemy.engine import create_engine
 
-import pyfits
+from astropy.io import fits
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -92,9 +92,9 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
     print 'Old GSAGTAB %s'%( old )
 
     if type(new) == str:
-        new = pyfits.open(new)
+        new = fits.open(new)
     if type(old) == str:
-        old = pyfits.open(old)
+        old = fits.open(old)
 
     report_file = open( os.path.join( MONITOR_DIR,'gsag_report.txt'), 'w')
 
@@ -215,8 +215,8 @@ def test_gsag_calibration(gsagtab):
         os.system('rm '+TEST_DIR+'/'+ext)
 
     for item in test_datasets:
-        pyfits.setval( item,'RANDSEED',value=8675309,ext=0 )
-        pyfits.setval( item,'GSAGTAB',value='testdir$new_gsag.fits',ext=0 )
+        fits.setval( item,'RANDSEED',value=8675309,ext=0 )
+        fits.setval( item,'GSAGTAB',value='testdir$new_gsag.fits',ext=0 )
 
     failed_runs = []
     for item in test_datasets:
@@ -359,7 +359,7 @@ def populate_down(gsag_file):
     print '#---------------------------------------------#'
     print 'Populating flagged regions to lower HV settings'
     print '#---------------------------------------------#'
-    gsagtab = pyfits.open(gsag_file)
+    gsagtab = fits.open(gsag_file)
     for segment,hv_keyword in zip( ['FUVA','FUVB'], ['HVLEVELA','HVLEVELB'] ):
         all_hv = [ (ext.header[hv_keyword],i+1) for i,ext in enumerate(gsagtab[1:]) if ext.header['segment'] == segment ]
         all_hv.sort()
@@ -420,13 +420,13 @@ def gsagtab_extension(date, lx, dx, ly, dy, dq, dethv, hv_string, segment):
     dx = np.array(dx)
     dy = np.array(dy)
     dq = np.array(dq)
-    date_col = pyfits.Column('DATE','D','MJD',array=date)
-    lx_col = pyfits.Column('LX','J','pixel',array=lx)
-    dx_col = pyfits.Column('DX','J','pixel',array=dx)
-    ly_col = pyfits.Column('LY','J','pixel',array=ly)
-    dy_col = pyfits.Column('DY','J','pixel',array=dy)
-    dq_col = pyfits.Column('DQ','J','',array=dq)
-    tab = pyfits.new_table([date_col,lx_col,ly_col,dx_col,dy_col,dq_col])
+    date_col = fits.Column('DATE','D','MJD',array=date)
+    lx_col = fits.Column('LX','J','pixel',array=lx)
+    dx_col = fits.Column('DX','J','pixel',array=dx)
+    ly_col = fits.Column('LY','J','pixel',array=ly)
+    dy_col = fits.Column('DY','J','pixel',array=dy)
+    dq_col = fits.Column('DQ','J','',array=dq)
+    tab = fits.new_table([date_col,lx_col,ly_col,dx_col,dy_col,dq_col])
 
     tab.header.add_comment(' ',after='TFIELDS')
     tab.header.add_comment('  *** Column formats ***',after='TFIELDS')
@@ -486,7 +486,7 @@ def make_gsagtab():
     #Populates regions found in HV == X, Segment Y, to any
     #extensions of lower HV for same segment.
 
-    hdu_out=pyfits.HDUList(pyfits.PrimaryHDU())
+    hdu_out=fits.HDUList(fits.PrimaryHDU())
     date_time = str(datetime.now())
     date_time = date_time.split()[0]+'T'+date_time.split()[1]
     hdu_out[0].header.update('DATE',date_time,'Creation UTC (CCCC-MM-DD) date')
@@ -620,7 +620,7 @@ def make_gsagtab_db(blue=False):
     #Populates regions found in HV == X, Segment Y, to any
     #extensions of lower HV for same segment.
 
-    hdu_out=pyfits.HDUList(pyfits.PrimaryHDU())
+    hdu_out=fits.HDUList(fits.PrimaryHDU())
     date_time = str(datetime.now())
     date_time = date_time.split()[0]+'T'+date_time.split()[1]
     hdu_out[0].header.update('DATE',date_time,'Creation UTC (CCCC-MM-DD) date')
@@ -654,7 +654,9 @@ def make_gsagtab_db(blue=False):
     #--working on it
     print "Connecting"
 
-    engine = create_engine(CONNECTION_STRING, echo=True)
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     connection = engine.connect()
 
     results = connection.execute("""SELECT DISTINCT segment FROM gain""")
@@ -733,7 +735,7 @@ def get_cdbs_gsagtab():
     for comparison with the one just made.
     """
     gsag_tables = glob.glob( '/grp/hst/cdbs/lref/*gsag.fits' )
-    creation_dates = np.array( [ pyfits.getval(item,'DATE') for item in gsag_tables ] )
+    creation_dates = np.array( [ fits.getval(item,'DATE') for item in gsag_tables ] )
     current_gsagtab = gsag_tables[ creation_dates.argmax() ]
 
     return current_gsagtab

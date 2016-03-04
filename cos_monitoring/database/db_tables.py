@@ -318,7 +318,7 @@ class Phd(Base):
 class Gain(Base):
     __tablename__ = 'gain'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
 
     x = Column(Integer)
     y = Column(Integer)
@@ -327,7 +327,7 @@ class Gain(Base):
     std = Column(Float)
     segment = Column(String(4))
     dethv = Column(Integer)
-    expstart = Column(Numeric(8, 3, asdecimal=False))
+    expstart = Column(Numeric(8, 5, asdecimal=False))
 
     file_id = Column(Integer, ForeignKey('files.id'))
     __table_args__ = (Index('coord', 'x', 'y', unique=False), )
