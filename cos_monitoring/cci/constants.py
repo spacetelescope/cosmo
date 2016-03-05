@@ -63,7 +63,7 @@ FUVA_string = '_00_'
 FUVB_string = '_01_'
 
 #----Finds to most recently created HVTAB
-hvtable_list = glob.glob('/grp/hst/cdbs/lref/*hv.fits')
+hvtable_list = glob.glob(os.path.join(os.environ['lref'], '*hv.fits'))
 HVTAB = hvtable_list[ np.array( [ pyfits.getval(item,'DATE') for item in hvtable_list ] ).argmax() ]
 
 MODAL_GAIN_LIMIT = 3
