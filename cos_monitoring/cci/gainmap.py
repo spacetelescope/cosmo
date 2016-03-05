@@ -29,8 +29,6 @@ from datetime import datetime
 import gzip
 import glob
 import itertools
-import sqlite3
-from sqlalchemy.engine import create_engine
 
 from astropy.io import fits as pyfits
 from astropy.modeling import models, fitting
@@ -631,17 +629,17 @@ def write_and_pull_gainmap(cci_name):
 
     info = {'segment': current.segment,
             'dethv': int(current.dethv),
-            'expstart': current.expstart}
+            'expstart': round(current.expstart, 5)}
 
     if not len(index[0]):
         yield info
     else:
         for y, x in itertools.izip(*index):
-            info['gain'] = round(float(current.gain_image[y, x]), 5)
-            info['counts'] = round(float(current.counts_image[y, x]), 5)
-            info['std'] = round(float(current.std_image[y, x]), 5)
-            info['x'] = x
-            info['y'] = y
+            info['gain'] = round(float(current.gain_image[y, x]), 3)
+            info['counts'] = round(float(current.counts_image[y, x]), 3)
+            info['std'] = round(float(current.std_image[y, x]), 3)
+            info['x'] = int(x)
+            info['y'] = int(y)
 
             yield info
 

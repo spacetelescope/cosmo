@@ -24,15 +24,13 @@ __all__ = ['X_UNBINNED',
            'FUVB_string',
            'HVTAB',
            'MODAL_GAIN_LIMIT',
-           'TIMESTAMP',
-           'DB_NAME',
-           'CONNECTION_STRING']
+           'TIMESTAMP']
 
 import os
 import time
 from datetime import datetime
 import glob
-import pyfits
+from astropy.io import fits
 import numpy as np
 import yaml
 
@@ -57,7 +55,6 @@ MONITOR_DIR = '/grp/hst/cos/Monitors/CCI/'
 #MONITOR_DIR = '/grp/hst/cos/Monitors/CCI_DAVE/'
 TEST_DIR = os.path.join( MONITOR_DIR, 'test_suite')
 WEBPAGE_DIR = '/grp/webpages/COS/cci/'
-DB_NAME = '/grp/hst/cos/Monitors/DB/cci.db'
 
 FUVA_string = '_00_'
 FUVB_string = '_01_'
@@ -70,7 +67,3 @@ MODAL_GAIN_LIMIT = 3
 
 date_time = str(datetime.now())
 TIMESTAMP = (date_time.split()[0]+'T'+date_time.split()[1] ).replace(':','-')
-
-config = os.path.join(os.environ['HOME'], 'cci_config.yaml')
-settings = yaml.load(open(config, 'r'))
-CONNECTION_STRING = settings['CONNECTION_STRING']
