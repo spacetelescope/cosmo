@@ -62,7 +62,6 @@ def pull_flashes(filename):
     """
 
     with fits.open(filename) as hdu:
-
         out_info = {'date': hdu[1].header['EXPSTART'],
                     'rootname': hdu[0].header['ROOTNAME'],
                     'proposid': hdu[0].header['PROPOSID'],
@@ -76,6 +75,10 @@ def pull_flashes(filename):
             out_info['lamptab'] = hdu[0].header['LAMPTAB'].split('$')[-1]
 
             fpoffset = out_info['fppos'] - 3
+            
+            if not len(hdu[1].data):
+                yield out_info
+
             for i, line in enumerate(hdu[1].data):
                 out_info['flash'] = (i // 2) + 1
                 out_info['x_shift'] = line['SHIFT_DISP'] - fppos_shift(out_info['lamptab'],
@@ -113,6 +116,9 @@ def pull_flashes(filename):
                 out_info['x_shift'] = 1023 - spt[1].header['LQTAYCOR']
                 out_info['y_shift'] = 1023 - spt[1].header['LQTAXCOR']
 
+            yield out_info
+
+        else:
             yield out_info
 
 #-------------------------------------------------------------------------------

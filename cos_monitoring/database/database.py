@@ -4,10 +4,14 @@ from astropy.io import fits
 import os
 from sqlalchemy import and_, or_, text
 import sys
+import matplotlib as mpl
+mpl.use('Agg')
 import numpy as np
 import multiprocessing as mp
 import types
 
+from ..cci.gainmap import write_and_pull_gainmap
+from ..cci.monitor import monitor as cci_monitor
 from ..dark.monitor import monitor as dark_monitor
 from ..dark.monitor import pull_orbital_info
 from ..filesystem import find_all_datasets
@@ -18,7 +22,7 @@ from ..stim.monitor import stim_monitor
 from .db_tables import load_connection, open_settings
 from .db_tables import Base
 from .db_tables import Files, Headers
-from .db_tables import Lampflash, Stims, Phd, Darks, sptkeys, Data
+from .db_tables import Lampflash, Stims, Phd, Darks, sptkeys, Data, Gain
 
 SETTINGS = open_settings()
 Session, engine = load_connection(SETTINGS['connection_string'])
@@ -61,8 +65,6 @@ def insert_with_yield(filename, table, function, foreign_key=None):
 
     Session, engine = load_connection(SETTINGS['connection_string'])
     session = Session()
-
-
 
     try:
         data = function(filename)
@@ -219,6 +221,50 @@ def populate_darks(num_cpu=1):
 
 #-------------------------------------------------------------------------------
 
+def populate_gain(num_cpu=1):
+    """ Populate the cci gain table
+
+    """
+
+    print("Adding to gain")
+    session = Session()
+
+    files_to_add = [(result.id, os.path.join(result.path, result.name))
+                        for result in session.query(Files).\
+                            outerjoin(Gain, Files.id == Gain.file_id).\
+                            filter(or_(Files.name.like('l\_%\_00\____\_cci%'),
+                                       Files.name.like('l\_%\_01\____\_cci%'))).\
+                            filter(Gain.file_id == None)]
+    session.close()
+
+    args = [(full_filename, Gain, write_and_pull_gainmap, f_key) for f_key, full_filename in files_to_add]
+
+    print("Found {} files to add".format(len(args)))
+    pool = mp.Pool(processes=num_cpu)
+    pool.map(mp_insert, args)
+
+#-------------------------------------------------------------------------------
+
+def populate_spt(num_cpu=1):
+    """ Populate the table of primary header information
+
+    """
+    print("Adding SPT headers")
+    session = Session()
+
+    files_to_add = [(result.id, os.path.join(result.path, result.name))
+                        for result in session.query(Files).\
+                                filter(Files.name.like('%\_spt.fits%')).\
+                                outerjoin(sptkeys, Files.id == sptkeys.file_id)]
+
+    args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
+
+    print("Found {} files to add".format(len(args)))
+    pool = mp.Pool(processes=num_cpu)
+    pool.map(update_header,args)
+
+#-------------------------------------------------------------------------------
+
 def populate_spt(num_cpu=1):
     """ Populate the table of primary header information
     """
@@ -291,17 +337,6 @@ def populate_primary_headers(num_cpu=1):
 
     files_to_add = [(result.file_id, result.file_to_grab) for result in engine.execute(text(q))
                         if not result.file_id == None]
-    """
-    session = Session()
-    files_to_add = [(result.id, os.path.join(result.path, result.name))
-                        for result in session.query(Files).\
-                                filter(or_(Files.name.like('%corrtag%'), Files.name.like('%rawtag%'), Files.name.like('%\_x1d.fits'))).\
-                                outerjoin(Headers, Files.id == Headers.file_id).\
-                                filter(Headers.file_id == None)]
-    """
-
-    args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
-    args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
 
     args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
     print("Found {} files to add".format(len(args)))
@@ -447,23 +482,16 @@ def update_data((args)):
         with fits.open(filename) as hdu:
             if len(hdu[1].data):
                 flux_mean=hdu[1].data['flux'].ravel().mean()
-                print(flux_mean)
-                #flux_max=hdu[1].data['flux'].ravel().max()
-                #flux_std=hdu[1].data['flux'].ravel().std()
-                #wl_max = hdu[1].data['wavelength'].ravel().max()
-                #wl_min = hdu[1].data['wavelength'].ravel().min()
+                flux_max=hdu[1].data['flux'].ravel().max()
+                flux_std=hdu[1].data['flux'].ravel().std()
             else:
                 flux_mean = None
-                #flux_max = None
-                #flux_std = None
-                #wl_max = None
-                #wl_min = None
+                flux_max = None
+                flux_std = None
 
             session.add(Data(flux_mean=flux_mean,
-                             #flux_max=flux_max,
-                             #flux_std=flux_std,
-                             #wl_max = wl_max,
-                             #wl_min = wl_min,
+                             flux_max=flux_max,
+                             flux_std=flux_std,
                              file_id=f_key))
 
     except IOError as e:
@@ -534,15 +562,8 @@ def do_all():
     populate_data(SETTINGS['num_cpu'])
     #populate_lampflash(SETTINGS['num_cpu'])
     #populate_darks(SETTINGS['num_cpu'])
+    #populate_gain(SETTINGS['num_cpu'])
     #populate_stims(SETTINGS['num_cpu'])
-    insert_files(**SETTINGS)
-
-    populate_primary_headers(SETTINGS['num_cpu'])
-    populate_spt(SETTINGS['num_cpu'])
-    #populate_data(SETTINGS['num_cpu'])
-    populate_lampflash(SETTINGS['num_cpu'])
-    populate_darks(SETTINGS['num_cpu'])
-    populate_stims(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
@@ -550,6 +571,7 @@ def run_all_monitors():
     dark_monitor()
     stim_monitor()
     osm_monitor()
+    cci_monitor()
 
 #-------------------------------------------------------------------------------
 

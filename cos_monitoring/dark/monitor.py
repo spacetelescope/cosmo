@@ -101,7 +101,8 @@ def pull_orbital_info(dataset, step=25):
         timeline = hdu['timeline'].data
         segment = hdu[0].header['segment']
     except KeyError:
-        return
+        yield info
+        raise StopIteration
 
     if segment == 'N/A':
         segment = 'NUV'
@@ -142,8 +143,8 @@ def pull_orbital_info(dataset, step=25):
 
     if not len(times):
         blank = np.array([0])
-        return
-
+        yield info
+        raise StopIteration
 
     events = hdu['events'].data
     filtered_index = np.where((events['PHA'] > pha[0]) &
@@ -166,7 +167,7 @@ def pull_orbital_info(dataset, step=25):
     counts = counts / npix / step
     ta_counts = ta_counts / npix / step
 
-    if not len( lat ) == len(counts):
+    if not len(lat) == len(counts):
         lat = lat[:-1]
         lon = lon[:-1]
         sun_lat = sun_lat[:-1]
@@ -175,18 +176,20 @@ def pull_orbital_info(dataset, step=25):
     assert len(lat) == len(counts), \
         'Arrays are not equal in length {}:{}'.format(len(lat), len(counts))
 
-
-    for i in range(len(counts)):
-        ### - better solution than round?
-        info['date'] = round(decyear[i], 3)
-        info['dark'] = round(counts[i], 7)
-        info['ta_dark'] = round(ta_counts[i], 7)
-        info['latitude'] = round(lat[i], 7)
-        info['longitude'] = round(lon[i], 7)
-        info['sun_lat'] = round(sun_lat[i], 7)
-        info['sun_lon'] = round(sun_lon[i], 7)
-
+    if not len(counts):
         yield info
+    else:
+        for i in range(len(counts)):
+            ### - better solution than round?
+            info['date'] = round(decyear[i], 3)
+            info['dark'] = round(counts[i], 7)
+            info['ta_dark'] = round(ta_counts[i], 7)
+            info['latitude'] = round(lat[i], 7)
+            info['longitude'] = round(lon[i], 7)
+            info['sun_lat'] = round(sun_lat[i], 7)
+            info['sun_lon'] = round(sun_lon[i], 7)
+
+            yield info
 
 #-------------------------------------------------------------------------------
 

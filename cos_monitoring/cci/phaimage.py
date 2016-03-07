@@ -16,9 +16,8 @@ import glob
 import pyfits
 import numpy as np
 
-from ..support import enlarge, rebin
+from ..utils import enlarge, rebin
 from constants import * #It's already been said
-from gainmap import make_total_gain
 
 #------------------------------------------------------------
 
@@ -35,8 +34,8 @@ class Phaimage:
 
         self.open_fits()
 
-        self.a_image = self.fill_gaps( self.a_image, 'FUVA', self.DETHVA )
-        self.b_image = self.fill_gaps( self.b_image, 'FUVB', self.DETHVB )
+        ###self.a_image = self.fill_gaps( self.a_image, 'FUVA', self.DETHVA )
+        ###self.b_image = self.fill_gaps( self.b_image, 'FUVB', self.DETHVB )
 
         self.make_phaimages()
 
@@ -82,7 +81,7 @@ class Phaimage:
         if len(other_gainmap) != 1:
             raise IOError("too many gainmaps found {}".format(other_gainmap))
         else:
-            other_gainmap = other_gainmap[0] 
+            other_gainmap = other_gainmap[0]
 
         both_inputs.append(other_gainmap)
         both_inputs.sort()
@@ -254,7 +253,7 @@ def make_phaimages(clobber=False):
         if os.path.exists( Phaimage.outfile(gainmap) ) and not clobber:
             print Phaimage.outfile(gainmap), 'Already exists. Skipping'
         else:
-            try: 
+            try:
                 inputs = Phaimage.inputs(gainmap)
             except:
                 continue

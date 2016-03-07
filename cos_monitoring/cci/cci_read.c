@@ -3,7 +3,7 @@
 
 # include <Python.h>
 # include <numpy/arrayobject.h>
-# include "fitsio.h"
+# include <fitsio.h>
 # include <stdlib.h>
 
 # define NZ 32
@@ -17,7 +17,7 @@ static PyObject *cci_read(PyObject *self, PyObject *args) {
   long fpixel[2]= {1,1};
   long numPixels = 1024 * 16384;
   int axis_lengths[3] = {NZ,NY,NX};
-  fitsfile *fitsFilePtr;         
+  fitsfile *fitsFilePtr;
   int status = 0; /* Must initialize status before use */
   float *image = (float*)malloc((NY * NX) * sizeof(float));
 
@@ -34,28 +34,28 @@ static PyObject *cci_read(PyObject *self, PyObject *args) {
   /* open the fits file */
   printf("Reading file: %s in c++\n",filename);
   fits_open_file(&fitsFilePtr, filename, READONLY, &status);
-  fits_report_error(stdout, status);  
+  fits_report_error(stdout, status);
 
   for (k=3;k<=34;k++){
     /* Move through each extension and read the image array */
     fits_movabs_hdu(fitsFilePtr, k, NULL, &status);
-    fits_report_error(stdout, status);  
+    fits_report_error(stdout, status);
     fits_read_pix(fitsFilePtr, TFLOAT, fpixel, numPixels, NULL, image, NULL, &status);
-    fits_report_error(stdout, status);  
- 
+    fits_report_error(stdout, status);
+
     for (j=0;j<NY; j++){
       for (i=0;i<NX; i++){
 	/* Assign each pixel value directly to the output python array object */
 	*(npy_float32 *) PyArray_GETPTR1(out_array, ( (k-3)*NY*NX) + (j*NX) + i) = (npy_float32) image[j * NX + i];
       }
     }
-    
+
   }
-  
+
   fits_close_file(fitsFilePtr, &status);
   free(image);
 
-  
+
   return Py_BuildValue("N", out_array);
 }
 
