@@ -75,27 +75,27 @@ def pull_flashes(filename):
             out_info['lamptab'] = hdu[0].header['LAMPTAB'].split('$')[-1]
 
             fpoffset = out_info['fppos'] - 3
-            
+
             if not len(hdu[1].data):
                 yield out_info
+            else:
+                for i, line in enumerate(hdu[1].data):
+                    out_info['flash'] = (i // 2) + 1
+                    out_info['x_shift'] = line['SHIFT_DISP'] - fppos_shift(out_info['lamptab'],
+                                                                           line['segment'],
+                                                                           out_info['opt_elem'],
+                                                                           out_info['cenwave'],
+                                                                           fpoffset)
 
-            for i, line in enumerate(hdu[1].data):
-                out_info['flash'] = (i // 2) + 1
-                out_info['x_shift'] = line['SHIFT_DISP'] - fppos_shift(out_info['lamptab'],
-                                                                       line['segment'],
-                                                                       out_info['opt_elem'],
-                                                                       out_info['cenwave'],
-                                                                       fpoffset)
+                    out_info['y_shift'] = line['SHIFT_XDISP']
+                    out_info['found'] = line['SPEC_FOUND']
+                    out_info['segment'] = line['SEGMENT']
 
-                out_info['y_shift'] = line['SHIFT_XDISP']
-                out_info['found'] = line['SPEC_FOUND']
-                out_info['segment'] = line['SEGMENT']
+                    #-- don't need too much precision here
+                    out_info['x_shift'] = round(out_info['x_shift'], 5)
+                    out_info['y_shift'] = round(out_info['y_shift'], 5)
 
-                #-- don't need too much precision here
-                out_info['x_shift'] = round(out_info['x_shift'], 5)
-                out_info['y_shift'] = round(out_info['y_shift'], 5)
-
-                yield out_info
+                    yield out_info
 
 
         elif '_rawacq.fits' in filename:

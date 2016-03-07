@@ -83,14 +83,14 @@ class Darks(Base):
     obsname = Column(String(30))
     rootname = Column(String(9))
     detector = Column(String(4))
-    date = Column(Numeric(7, 2))
-    dark = Column(Numeric(12, 10))
-    ta_dark = Column(Numeric(12, 10))
-    latitude = Column(Numeric(8, 3))
-    longitude = Column(Numeric(8, 3))
-    sun_lat = Column(Numeric(8, 3))
-    sun_lon = Column(Numeric(8, 3))
-    temp = Column(Numeric(8, 4))
+    date = Column(Numeric(7, 2, asdecimal=False))
+    dark = Column(Numeric(12, 10, asdecimal=False))
+    ta_dark = Column(Numeric(12, 10, asdecimal=False))
+    latitude = Column(Numeric(8, 3, asdecimal=False))
+    longitude = Column(Numeric(8, 3, asdecimal=False))
+    sun_lat = Column(Numeric(8, 3, asdecimal=False))
+    sun_lon = Column(Numeric(8, 3, asdecimal=False))
+    temp = Column(Numeric(8, 4, asdecimal=False))
 
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('lampflash', order_by=id))
@@ -318,7 +318,7 @@ class Phd(Base):
 class Gain(Base):
     __tablename__ = 'gain'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
 
     x = Column(Integer)
     y = Column(Integer)
@@ -327,7 +327,7 @@ class Gain(Base):
     std = Column(Float)
     segment = Column(String(4))
     dethv = Column(Integer)
-    expstart = Column(Numeric(8, 3, asdecimal=False))
+    expstart = Column(Numeric(8, 5, asdecimal=False))
 
     file_id = Column(Integer, ForeignKey('files.id'))
     __table_args__ = (Index('coord', 'x', 'y', unique=False), )
