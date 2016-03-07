@@ -314,23 +314,25 @@ class Phd(Base):
     #file = relationship("Files", backref=backref('Phd', order_by=id))
 
 #-------------------------------------------------------------------------------
-'''
+
 class Gain(Base):
     __tablename__ = 'gain'
 
     id = Column(Integer, primary_key=True)
 
-    x = Column(Float)
-    y = Column(Float)
-    xbin = Column(Float)
-    ybin = Column(Float)
+    x = Column(Integer)
+    y = Column(Integer)
     gain = Column(Float)
     counts = Column(Float)
-    sigma = Column(Float)
+    std = Column(Float)
+    segment = Column(String(4))
+    dethv = Column(Integer)
+    expstart = Column(Numeric(8, 3, asdecimal=False))
 
     file_id = Column(Integer, ForeignKey('files.id'))
+    __table_args__ = (Index('coord', 'x', 'y', unique=False), )
     #file = relationship("Files", backref=backref('Gain', order_by=id))
-'''
+
 #-------------------------------------------------------------------------------
 
 class sptkeys(Base):

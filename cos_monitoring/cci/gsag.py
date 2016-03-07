@@ -27,15 +27,14 @@ import time
 from datetime import datetime
 import glob
 import sys
-import sqlite3
+from sqlalchemy.engine import create_engine
 
 import pyfits
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import calcos
 
-from ..support import rebin,init_plots,Logger,enlarge,progress_bar,send_email
+from ..utils import send_email
 from constants import *  #Shut yo face
 
 #------------------------------------------------------------
@@ -43,9 +42,9 @@ from constants import *  #Shut yo face
 def main(run_regress=False):
     """ Main driver for monitoring program.
     """
-    new_gsagtab = make_gsagtab_db()
-    #new_gsagtab = make_gsagtab()
-    #populate_down( new_gsagtab )
+    new_gsagtab = make_gsagtab_db(blue=False)
+    blue_gsagtab = make_gsagtab_db(blue=True)
+
     old_gsagtab = get_cdbs_gsagtab()
 
     compare_gsag(new_gsagtab,old_gsagtab)
@@ -421,11 +420,11 @@ def gsagtab_extension(date, lx, dx, ly, dy, dq, dethv, hv_string, segment):
     dx = np.array(dx)
     dy = np.array(dy)
     dq = np.array(dq)
-    date_col = pyfits.Column('Date','D','MJD',array=date)
-    lx_col = pyfits.Column('lx','J','pixel',array=lx)
-    dx_col = pyfits.Column('dx','J','pixel',array=dx)
-    ly_col = pyfits.Column('ly','J','pixel',array=ly)
-    dy_col = pyfits.Column('dy','J','pixel',array=dy)
+    date_col = pyfits.Column('DATE','D','MJD',array=date)
+    lx_col = pyfits.Column('LX','J','pixel',array=lx)
+    dx_col = pyfits.Column('DX','J','pixel',array=dx)
+    ly_col = pyfits.Column('LY','J','pixel',array=ly)
+    dy_col = pyfits.Column('DY','J','pixel',array=dy)
     dq_col = pyfits.Column('DQ','J','',array=dq)
     tab = pyfits.new_table([date_col,lx_col,ly_col,dx_col,dy_col,dq_col])
 
@@ -582,7 +581,23 @@ def make_gsagtab():
 
 #------------------------------------------------------------
 
-def make_gsagtab_db():
+def in_boundary(segment, ly, dy):
+    boundary = {'FUVA': 493, 'FUVB': 557}
+    padding = 4
+
+    boundary_pix = set(np.arange(boundary[segment]-padding,
+                                 boundary[segment]+padding+1))
+
+    affected_pix = set(np.arange(ly, ly+dy+1))
+
+    if affected_pix.intersection(boundary_pix):
+        return True
+
+    return False
+
+#------------------------------------------------------------
+
+def make_gsagtab_db(blue=False):
     """Create GSAGTAB from flagged locations.
 
     Grabs txt files of flagged bad regions from MONITOR_DIR
@@ -615,6 +630,7 @@ def make_gsagtab_db():
     hdu_out[0].header.update('COSCOORD','USER')
     hdu_out[0].header.update('VCALCOS','2.0')
     hdu_out[0].header.update('USEAFTER','May 11 2009 00:00:00')
+    hdu_out[0].header['CENWAVE'] = 'N/A'
 
     today_string = date_string(datetime.now())
     hdu_out[0].header.update('PEDIGREE','INFLIGHT 25/05/2009 %s'%( today_string  ))
@@ -633,63 +649,78 @@ def make_gsagtab_db():
     hdu_out[0].header.add_history('the measured modal gain of a region falls to ')
     hdu_out[0].header.add_history('%d given current lower pulse height filtering.'%(MODAL_GAIN_LIMIT) )
 
-    possible_hv_strings = ['000', '100'] + map(str, range(142,179))
+    possible_hv_strings = ['000', '100'] + map(str, range(142, 179))
 
     #--working on it
     print "Connecting"
-    with sqlite3.connect(DB_NAME) as db:
-        c = db.cursor()
-        c.execute("""SELECT DISTINCT seg FROM gain""")
 
-        segments = [item[0] for item in c]
+    engine = create_engine(CONNECTION_STRING, echo=True)
+    connection = engine.connect()
 
-        print "looping over segments"
-        for seg in segments:
-            hvlevel_string = 'HVLEVEL' + seg[-1].upper()
+    results = connection.execute("""SELECT DISTINCT segment FROM gain""")
 
-            for hv_level in possible_hv_strings:
-                date = []
-                lx = [] 
-                dx = []
-                ly = []
-                dy = []
-                dq = [] 
+    segments = [item[0] for item in results]
 
-                hv_level = int(hv_level)
-                print seg, hv_level
-                c.execute("""SELECT DISTINCT x,y FROM flagged WHERE seg='%s' and hv>='%s'""" %(seg, hv_level))
-                coords = [(item[0], item[1]) for item in c]
+    print "looping over segments, {}".format(segments)
+    for seg in segments:
+        hvlevel_string = 'HVLEVEL' + seg[-1].upper()
 
-                for x,y in coords:
-                    c.execute("""SELECT MJD FROM flagged WHERE seg='%s' AND x='%s' and y='%s' and hv>='%s'""" % (seg, x, y, hv_level))
-                    flagged_dates = [item[0] for item in c]
-                    if len(flagged_dates):
-                        bad_date = min(flagged_dates)
-                    else:
-                        continue
+        for hv_level in possible_hv_strings:
+            date = []
+            lx = []
+            dx = []
+            ly = []
+            dy = []
+            dq = []
+
+            hv_level = int(hv_level)
+            print seg, hv_level
+            results = connection.execute("""SELECT DISTINCT x,y FROM flagged WHERE segment='%s' and dethv>='%s'""" %(seg, hv_level))
+            coords = [(item[0], item[1]) for item in results]
+
+            for x, y in coords:
+                results = connection.execute("""SELECT MJD FROM flagged WHERE segment='%s' AND x='%s' and y='%s' and dethv>='%s'""" % (seg, x, y, hv_level))
+                flagged_dates = [item[0] for item in results]
+                if len(flagged_dates):
+                    bad_date = min(flagged_dates)
+                else:
+                    continue
+
+                if blue and in_boundary(seg, y*Y_BINNING, Y_BINNING):
+                    print "Excluding for blue modes: {} {} {}".format(seg, y*Y_BINNING, Y_BINNING)
+                    continue
 
 
-                    lx.append(x*X_BINNING)
-                    dx.append(X_BINNING)
-                    ly.append(y*Y_BINNING)
-                    dy.append(Y_BINNING)
-                    date.append(bad_date)
-                    dq.append(8192)
+                lx.append(x*X_BINNING)
+                dx.append(X_BINNING)
+                ly.append(y*Y_BINNING)
+                dy.append(Y_BINNING)
+                date.append(bad_date)
+                dq.append(8192)
 
-                if not len(lx):
-                    #Extension tables cannot have 0 entries, a
-                    #region of 0 extent centered on (0,0) is
-                    #sufficient to prevent CalCOS crash.
-                    date.append(0)
-                    lx.append(0)
-                    ly.append(0)
-                    dx.append(0)
-                    dy.append(0)
-                    dq.append(8192)
+            if not len(lx):
+                #Extension tables cannot have 0 entries, a
+                #region of 0 extent centered on (0,0) is
+                #sufficient to prevent CalCOS crash.
+                lx.append(0)
+                ly.append(0)
+                dx.append(0)
+                dy.append(0)
+                date.append(0)
+                dq.append(8192)
 
-                print len(date), ' found bad regions'
-                tab = gsagtab_extension(date, lx, dx, ly, dy, dq, hv_level, hvlevel_string, seg)
-                hdu_out.append(tab)
+            print len(date), ' found bad regions'
+            tab = gsagtab_extension(date, lx, dx, ly, dy, dq, hv_level, hvlevel_string, seg)
+            hdu_out.append(tab)
+
+    if blue:
+        out_fits = out_fits.replace('.fits', '_blue.fits')
+        hdu_out[0].header['CENWAVE'] = 'BETWEEN 1055 1097'
+
+        descrip_string = 'Blue-mode gain-sag regions as of %s'%(str(datetime.now().date()))
+        while len(descrip_string) < 67:
+            descrip_string += '-'
+        hdu_out[0].header['DESCRIP'] = descrip_string
 
     hdu_out.writeto(out_fits, clobber=True)
     print 'WROTE: GSAGTAB to %s'%(out_fits)
