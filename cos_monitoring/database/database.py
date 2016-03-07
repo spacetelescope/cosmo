@@ -45,6 +45,8 @@ def mp_insert(args):
     elif len(args) == 4:
         filename, table, function, foreign_key = args
         insert_with_yield(filename, table, function, foreign_key)
+    else:
+        raise ValueError("Not provided the right number of args")
 
 #-------------------------------------------------------------------------------
 
@@ -83,7 +85,6 @@ def insert_with_yield(filename, table, function, foreign_key=None):
                 print(row.keys())
             print(row.values())
             session.add(table(**row))
-
     except (IOError, ValueError) as e:
         #-- Handle missing files
         print(e.message)
@@ -92,7 +93,6 @@ def insert_with_yield(filename, table, function, foreign_key=None):
         session.commit()
         session.close()
         engine.dispose()
-
 
     session.commit()
     session.close()
@@ -124,7 +124,6 @@ def insert_files(**kwargs):
         full_filepath = os.path.join(path, filename)
 
         if full_filepath in previous_files:
-            print("Already found: {}".format(full_filepath))
             continue
 
         print("NEW: Found {}".format(full_filepath))
