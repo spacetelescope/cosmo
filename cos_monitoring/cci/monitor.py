@@ -33,11 +33,15 @@ import glob
 import numpy as np
 import multiprocessing as mp
 
+#from bokeh import charts
+#from bokeh.plotting import figure
+
 from ..utils import enlarge, send_email
 from .findbad import time_trends
 from .gsag import main as gsag_main
 from .phaimage import make_phaimages
 from .constants import *
+from ..database.db_tables import open_settings, load_connection
 
 #------------------------------------------------------------
 
@@ -222,24 +226,41 @@ def plot_flagged(ax, segment, hv, mjd=50000, color='r'):
         y_values = [ly, ly, ly+dy, ly+dy, ly]
         ax.plot(x_values, y_values, color)
 
-#------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-def check_new_files():
-    """Compares the number of made gainmaps to the number of
-    available CCI files and returns the number.
-    """
+def plotting():
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
 
-    n_cci = 0
-    n_gainmaps = 0
-    for search_str in [FUVA_string, FUVB_string]:
-        n_cci += len(glob.glob(os.path.join(CCI_DIR, '*{}*.fits.gz'.format(search_str))))
-        n_gainmaps += len(glob.glob(os.path.join(MONITOR_DIR, '*{}*gainmap.fits'.format(FUVA_string))))
+    connection = engine.connect()
 
-    n_new = n_cci - n_gainmaps
+    results = connection.execute("""SELECT counts,gain FROM gain;""")
+    counts = []
+    gain = []
+    for item in results:
+        counts.append(item.counts)
+        gain.append(item.gain)
 
-    return n_new
+    #-- counts vs gain
+    TOOLS = "pan,wheel_zoom,box_zoom,box_select,lasso_select,reset,resize,save"
 
-#------------------------------------------------------------
+    p = figure(tools=TOOLS, toolbar_location="above", logo="grey", plot_width=700)
+    #p.title = "{} LightCurve".format(name)
+    p.background_fill= "#cccccc"
+
+    p.circle(gain,
+             counts,
+             size=12,
+             line_color="black",
+             fill_alpha=0.8)
+
+    p.xaxis.axis_label="Gain"
+    p.yaxis.axis_label="Counts"
+    p.grid.grid_line_color="white"
+
+    charts.save(obj=p, filename='cci_gain_vs_counts.html')
+
+#-------------------------------------------------------------------------------
 
 def monitor():
     """ Main driver for monitoring program.
@@ -269,4 +290,4 @@ def monitor():
     message += 'Sincerely,\n %s'% (__file__)
     send_email(subject='CCI Monitor complete', message=message)
 
-#------------------------------------------------------------
+#-------------------------------------------------------------------------------

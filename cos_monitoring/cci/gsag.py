@@ -35,6 +35,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+from ..database.db_tables import open_settings, load_connection
 from ..utils import send_email
 from .constants import *  #Shut yo face
 
