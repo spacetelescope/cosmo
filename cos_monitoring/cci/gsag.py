@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 """Routine to monitor the modal gain in each pixel as a
 function of time.  Uses COS Cumulative Image (CCI) files
 to produce a modal gain map for each time period.  Modal gain
@@ -36,7 +37,7 @@ import matplotlib.pyplot as plt
 
 from ..database.db_tables import open_settings, load_connection
 from ..utils import send_email
-from constants import *  #Shut yo face
+from .constants import *  #Shut yo face
 
 #------------------------------------------------------------
 
