@@ -255,35 +255,14 @@ def populate_spt(num_cpu=1):
                         for result in session.query(Files).\
                                 filter(Files.name.like('%\_spt.fits%')).\
                                 outerjoin(sptkeys, Files.id == sptkeys.file_id)]
-
-    args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
+    session.close()
+    args = [(full_filename, sptkeys, get_spt_keys, f_key) for f_key, full_filename in files_to_add]
 
     print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
-    pool.map(update_header,args)
+    pool.map(mp_insert,args)
 
 #-------------------------------------------------------------------------------
-
-def populate_spt(num_cpu=1):
-    """ Populate the table of primary header information
-    """
-    print("Adding SPT headers")
-    session = Session()
-
-    files_to_add = [(result.id, os.path.join(result.path, result.name))
-                        for result in session.query(Files).\
-                                filter(Files.name.like('%\_spt.fits%')).\
-                                outerjoin(sptkeys, Files.id == sptkeys.file_id).\
-                                filter(sptkeys.file_id == None)]
-
-
-    args = [(full_filename, sptkeys, get_spt_keys, f_key) for f_key, full_filename in files_to_add]
-
-    pool = mp.Pool(processes=num_cpu)
-    pool.map(mp_insert, args)
-
-#-------------------------------------------------------------------------------
-
 def populate_primary_headers(num_cpu=1):
     """ Populate the table of primary header information
 
@@ -354,7 +333,10 @@ def get_spt_keys(filename):
                     'lom1posc':hdu[2].header.get('lom1posc', None),
                     'lom2posc':hdu[2].header.get('lom2posc', None),
                     'lom1posf':hdu[2].header.get('lom1posf', None),
-                    'lom2posf':hdu[2].header.get('lom2posf', None)}
+                    'lom2posf':hdu[2].header.get('lom2posf', None),
+                    'ldcampat':hdu[2].header.get('ldcampat', None),
+                    'ldcampbt':hdu[2].header.get('ldcampbt', None),
+                    'lmmcetmp':hdu[2].header.get('lmmcetmp', None)}
         return keywords
 
 #-------------------------------------------------------------------------------
@@ -555,22 +537,22 @@ def clear_all_databases(SETTINGS):
 def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
-    #insert_files(**SETTINGS)
-    #populate_primary_headers(SETTINGS['num_cpu'])
-    #populate_spt(SETTINGS['num_cpu'])
+    insert_files(**SETTINGS)
+    populate_primary_headers(SETTINGS['num_cpu'])
+    populate_spt(SETTINGS['num_cpu'])
     populate_data(SETTINGS['num_cpu'])
-    #populate_lampflash(SETTINGS['num_cpu'])
-    #populate_darks(SETTINGS['num_cpu'])
-    #populate_gain(SETTINGS['num_cpu'])
-    #populate_stims(SETTINGS['num_cpu'])
+    populate_lampflash(SETTINGS['num_cpu'])
+    populate_darks(SETTINGS['num_cpu'])
+    populate_gain(SETTINGS['num_cpu'])
+    populate_stims(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
 def run_all_monitors():
     dark_monitor()
-    stim_monitor()
-    osm_monitor()
-    cci_monitor()
+    #stim_monitor()
+    #osm_monitor()
+    #cci_monitor()
 
 #-------------------------------------------------------------------------------
 

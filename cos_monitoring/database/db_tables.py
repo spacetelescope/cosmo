@@ -264,7 +264,7 @@ class Stims(Base):
     stim2_x = Column(Numeric(8, 3))
     stim2_y = Column(Numeric(8, 3))
     counts = Column(Float)
-
+    segment = Column(String(4))
     file_id = Column(Integer, ForeignKey('files.id'))
 
     __table_args__ = (Index('idx_rootname', 'rootname', unique=False), )
@@ -350,6 +350,9 @@ class sptkeys(Base):
     lom2posc = Column(Integer) #2 ext, osm2_coarse in spreadsheet
     lom1posf = Column(Integer) #2 ext, osm1_fine in spreadsheet
     lom2posf = Column(Integer) #2 ext, osm2_fine in spreadsheet
+    ldcampat = Column(Float)
+    ldcampbt = Column(Float)
+    lmmcetmp = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
 

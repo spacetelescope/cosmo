@@ -118,7 +118,8 @@ def locate_stims(fits_file, start=0, increment=None):
         expstart = hdu[1].header['expstart']
         segment = hdu[0].header['segment']
 
-        stim_info = {'rootname': hdu[0].header['rootname']}
+        stim_info = {'rootname': hdu[0].header['rootname'],
+                     'segment': segment}
 
         try:
             hdu[1].data
