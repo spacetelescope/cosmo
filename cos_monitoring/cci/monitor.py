@@ -1,4 +1,4 @@
-#!/usr/bin/env/python
+from __future__ import absolute_import
 
 """Routine to monitor the modal gain in each pixel as a
 function of time.  Uses COS Cumulative Image (CCI) files
@@ -34,11 +34,10 @@ import numpy as np
 import multiprocessing as mp
 
 from ..utils import enlarge, send_email
-import gainmap
-import findbad
-import gsag
-import phaimage
-from constants import *
+from .findbad import time_trends
+from .gsag import main as gsag_main
+from .phaimage import make_phaimages
+from .constants import *
 
 #------------------------------------------------------------
 
@@ -246,15 +245,12 @@ def monitor():
     """ Main driver for monitoring program.
     """
 
-    print 'gainmaps'
-    #gainmap.make_all_gainmaps(args.n_processors)
-
     print 'phaimages'
-    phaimage.make_phaimages(False)
+    make_phaimages(False)
 
-    findbad.time_trends()
+    time_trends()
 
-    gsag.main(False)
+    gsag_main(False)
 
     #-- quicklooks
     all_gainmaps = glob.glob(os.path.join(MONITOR_DIR, '*gainmap*.fits'))

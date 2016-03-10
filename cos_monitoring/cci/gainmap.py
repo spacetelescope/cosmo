@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 """Routine to monitor the modal gain in each pixel as a
 function of time.  Uses COS Cumulative Image (CCI) files
 to produce a modal gain map for each time period.  Modal gain
@@ -38,13 +40,9 @@ import matplotlib.pyplot as plt
 import scipy
 from scipy.optimize import leastsq, newton, curve_fit
 
-import cci_read
-
-import multiprocessing as mp
-import subprocess as sp
-
+from .cci_read import read as read_cci
 from ..utils import rebin, enlarge
-from constants import *  ## I know this is bad, but shut up.
+from .constants import *  ## I know this is bad, but shut up.
 #from db_interface import session, engine, Gain
 
 #------------------------------------------------------------
@@ -76,10 +74,10 @@ class CCI:
         self.cci_name = cci_name
         self.open_fits()
 
-        print 'Measuring Modal Gain Map'
+        print('Measuring Modal Gain Map')
 
         if not self.numfiles:
-            print 'CCI contines no data.  Skipping modal gain measurements'
+            print('CCI contines no data.  Skipping modal gain measurements')
             return
 
         gainmap, counts, std = measure_gainimage(self.big_array)
@@ -95,12 +93,6 @@ class CCI:
 
             top //= self.ybinning
             bottom //= self.ybinning
-
-            print "BRFTAB"
-            print 'LEFT: {}'.format(left)
-            print 'RIGHT: {}'.format(right)
-            print 'TOP: {}'.format(top)
-            print 'BOTTOM: {}'.format(bottom)
 
             self.gain_image[:bottom] = 0
             self.gain_image[top:] = 0
@@ -139,7 +131,7 @@ class CCI:
         """Open CCI file and populated attributes with
         header keywords and data arrays.
         """
-        print '\nOpening %s'%(self.cci_name)
+        print('\nOpening %s'%(self.cci_name))
 
         if self.input_file.endswith('.gz'):
             fits = pyfits.open(gzip.open(self.input_file), memmap=False)
@@ -187,8 +179,8 @@ class CCI:
         del fits
 
     def make_c_array(self):
-        print 'Making 3D array from pha extensions:'
-        c_array = cci_read.read(self.input_file).reshape((32,1024,16384))
+        print('Making 3D array from pha extensions:')
+        c_array = read_cci(self.input_file).reshape((32,1024,16384))
         self.big_array = np.array([rebin(c_array[i],bins = (self.ybinning, self.xbinning)) for i in xrange(32)])
 
     def make_big_array(self,fits):
@@ -198,7 +190,7 @@ class CCI:
         Takes a very long time.
         """
 
-        print 'Making 3D array from pha extensions:'
+        print('Making 3D array from pha extensions:')
         big_array = np.array([rebin(extension.data,bins = (self.ybinning, self.xbinning))
                                for i,extension in enumerate(fits[2:]) if os.write(1,'-')])
         os.write(1,'\n')
@@ -211,7 +203,7 @@ class CCI:
         Will also search for and add in accum data if any exists.
         """
 
-        print 'Making array of cumulative counts'
+        print('Making array of cumulative counts')
         out_array = np.sum(in_array, axis=0)
 
         ###Test before implementation
@@ -223,10 +215,10 @@ class CCI:
             accum_name = self.cci_name.replace('01_','03_')  ##change when using OPUS data
         else:
             accum_name = None
-            print 'ERROR: name not standard'
+            print('ERROR: name not standard')
 
         if os.path.exists(accum_name):
-            print 'Adding in Accum data'
+            print('Adding in Accum data')
             accum_data = rebin(pyfits.getdata(CCI_DIR+accum_name, 0),bins=(Y_BINNING,self.xbinning))
             out_array += accum_data
             self.accum_data = accum_data
@@ -241,7 +233,7 @@ class CCI:
         Equation comes from D. Sahnow.
         """
 
-        print 'Making array of extracted charge'
+        print('Making array of extracted charge')
 
         coulomb_value = 1.0e-12*10**((np.array(range(0,32))-11.75)/20.5)
         zlen, ylen, xlen = in_array.shape
@@ -261,7 +253,7 @@ class CCI:
 
         out_fits = MONITOR_DIR + self.cci_name+'_gainmap.fits'
         if os.path.exists(out_fits):
-            print "not clobbering existing file"
+            print("not clobbering existing file")
             return
 
         #-------Ext=0
@@ -329,7 +321,7 @@ class CCI:
         hdu_out.writeto(out_fits)
         hdu_out.close()
 
-        print 'WROTE: %s'%(out_fits)
+        print('WROTE: %s'%(out_fits))
 
 #------------------------------------------------------------
 
@@ -371,9 +363,9 @@ def rename(input_file, mode='move'):
             hdu.writeto(out_name)
 
     if mode == 'print':
-        print out_name
+        print(out_name)
     elif mode == 'move':
-        print "{} --> {}".format(input_file, out_name)
+        print("{} --> {}".format(input_file, out_name))
         shutil.move(input_file, out_name)
 
     return out_name
@@ -482,7 +474,7 @@ def add_cumulative_data(ending):
     """
     data_list = glob.glob(os.path.join(MONITOR_DIR,'*%s*gainmap.fits'%ending))
     data_list.sort()
-    print 'Adding cumulative data to gainmaps for %s'%(ending)
+    print('Adding cumulative data to gainmaps for %s'%(ending))
     shape = pyfits.getdata(data_list[0], ext=('MOD_GAIN', 1)).shape
     total_counts = np.zeros(shape)
     total_charge = np.zeros(shape)
@@ -493,7 +485,7 @@ def add_cumulative_data(ending):
         try:
             fits['counts'].data
             fits['charge'].data
-            print "Skipping"
+            print("Skipping")
         except AttributeError:
             continue
 
@@ -713,8 +705,8 @@ def get_previous(current_cci):
 
     out_list=[]
 
-    print 'Retrieving data from previous CCIs:'
-    print '-----------------------------------'
+    print('Retrieving data from previous CCIs:')
+    print('-----------------------------------')
 
     dethv = current_cci.KW_DETHV
     expstart = current_cci.KW_EXPSTART
@@ -722,7 +714,7 @@ def get_previous(current_cci):
     cci_name = current_cci.input_file
 
     if ((not NUM_DAYS_PREVIOUS) or (not expstart)):
-        print 'None to find'
+        print('None to find')
         return out_list
 
     path,file_name = os.path.split(cci_name)
@@ -731,8 +723,8 @@ def get_previous(current_cci):
     elif segment == 'FUVB':
         ending = '*' + FUVB_string + '*'
     else:
-        print 'Error, segment error in %s'%(file_name)
-        print 'Returning blank list'
+        print('Error, segment error in %s'%(file_name))
+        print('Returning blank list')
         return []
 
     cci_list = glob.glob(CCI_DIR + ending)
@@ -750,12 +742,12 @@ def get_previous(current_cci):
             out_list.append(CCI(cci_file, xbinning=X_BINNING, ybinning=Y_BINNING))
 
         if len(out_list) >= 2*NUM_DAYS_PREVIOUS:
-            print 'Breaking off list.  %d files retrieved'%(2 * NUM_DAYS_PREVIOUS)
+            print('Breaking off list.  %d files retrieved'%(2 * NUM_DAYS_PREVIOUS))
             break
 
-    print 'Found: %d files'%( len(out_list) )
-    print [item.cci_name for item in out_list]
-    print '-----------------------------------'
+    print('Found: %d files' % (len(out_list)))
+    print([item.cci_name for item in out_list])
+    print('-----------------------------------')
 
     return out_list
 

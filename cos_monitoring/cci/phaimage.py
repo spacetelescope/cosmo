@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 """
 Classes and functions to create PH filtering images for COS FUV observations
 ( PHAIMAGE )
@@ -17,7 +18,7 @@ from astropy.io import fits
 import numpy as np
 
 from ..utils import enlarge, rebin
-from constants import * #It's already been said
+from .constants import * #It's already been said
 
 #------------------------------------------------------------
 
