@@ -3,10 +3,10 @@ import os
 import glob
 import numpy as np
 
-cci_read_module = Extension('cos_monitoring/cci/cci_read', 
+cci_read_module = Extension('cos_monitoring/cci/cci_read',
                             sources = ['cos_monitoring/cci/cci_read.c'],
                             libraries=['cfitsio'],
-                            include_dirs=[np.get_include()]          
+                            include_dirs=[np.get_include()]
                              )
 
 setup(
