@@ -1,4 +1,4 @@
-#!/usr/bin/env/python
+from __future__ import absolute_import
 
 """Routine to monitor the modal gain in each pixel as a
 function of time.  Uses COS Cumulative Image (CCI) files
@@ -33,16 +33,15 @@ import glob
 import numpy as np
 import multiprocessing as mp
 
-from bokeh import charts
-from bokeh.plotting import figure
+#from bokeh import charts
+#from bokeh.plotting import figure
 
 from ..utils import enlarge, send_email
+from .findbad import time_trends
+from .gsag import main as gsag_main
+from .phaimage import make_phaimages
+from .constants import *
 from ..database.db_tables import open_settings, load_connection
-import gainmap
-import findbad
-import gsag
-import phaimage
-from constants import *
 
 #------------------------------------------------------------
 
@@ -268,11 +267,11 @@ def monitor():
     """
 
     print 'phaimages'
-    phaimage.make_phaimages(False)
+    make_phaimages(False)
 
-    findbad.time_trends()
+    time_trends()
 
-    gsag.main(False)
+    gsag_main(False)
 
     #-- quicklooks
     all_gainmaps = glob.glob(os.path.join(MONITOR_DIR, '*gainmap*.fits'))
