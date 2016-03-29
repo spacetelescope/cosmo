@@ -3,7 +3,7 @@ from __future__ import print_function, absolute_import, division
 import os
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean, Numeric, BigInteger
+from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean, Numeric, BigInteger, Text
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker, relationship, backref
@@ -83,14 +83,14 @@ class Darks(Base):
     obsname = Column(String(30))
     rootname = Column(String(9))
     detector = Column(String(4))
-    date = Column(Numeric(7, 2, asdecimal=False))
-    dark = Column(Numeric(12, 10, asdecimal=False))
-    ta_dark = Column(Numeric(12, 10, asdecimal=False))
-    latitude = Column(Numeric(8, 3, asdecimal=False))
-    longitude = Column(Numeric(8, 3, asdecimal=False))
-    sun_lat = Column(Numeric(8, 3, asdecimal=False))
-    sun_lon = Column(Numeric(8, 3, asdecimal=False))
-    temp = Column(Numeric(8, 4, asdecimal=False))
+    date = Column(Float)
+    dark = Column(Float)
+    ta_dark = Column(Float)
+    latitude = Column(Float)
+    longitude = Column(Float)
+    sun_lat = Column(Float)
+    sun_lon = Column(Float)
+    temp = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('lampflash', order_by=id))
@@ -239,11 +239,12 @@ class Data(Base):
 
     id = Column(Integer, primary_key=True)
 
-    flux_mean = Column(Numeric(40,asdecimal=False))
-    #flux_max = Column(Float)
-    #flux_std = Column(Float)
-    #wl_max = Column(Float)
-    #wl_min = Column(Float)
+    flux_mean = Column(Float)
+    flux_max = Column(Float)
+    flux_std = Column(Float)
+    wl_min = Column(Float)
+    wl_max = Column(Float)
+
 
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('Data', order_by=id))
@@ -258,11 +259,11 @@ class Stims(Base):
 
     time = Column(Float)
     rootname = Column(String(9))
-    abs_time = Column(Numeric(10, 5))
-    stim1_x = Column(Numeric(8, 3))
-    stim1_y = Column(Numeric(8, 3))
-    stim2_x = Column(Numeric(8, 3))
-    stim2_y = Column(Numeric(8, 3))
+    abs_time = Column(Float)
+    stim1_x = Column(Float)
+    stim1_y = Column(Float)
+    stim2_x = Column(Float)
+    stim2_y = Column(Float)
     counts = Column(Float)
     segment = Column(String(4))
     file_id = Column(Integer, ForeignKey('files.id'))
@@ -327,7 +328,7 @@ class Gain(Base):
     std = Column(Float)
     segment = Column(String(4))
     dethv = Column(Integer)
-    expstart = Column(Numeric(8, 5, asdecimal=False))
+    expstart = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
     __table_args__ = (Index('coord', 'x', 'y', unique=False), )

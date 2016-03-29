@@ -72,7 +72,9 @@ def insert_with_yield(filename, table, function, foreign_key=None):
         data = function(filename)
 
         if isinstance(data, dict):
+            #print('===================== MADE IT DICT =====================')
             data = [data]
+            #print(data)
         elif isinstance(data, types.GeneratorType):
             pass
         else:
@@ -84,6 +86,13 @@ def insert_with_yield(filename, table, function, foreign_key=None):
             if i == 0:
                 print(row.keys())
             print(row.values())
+        #--
+            for key in row:
+                if type(row[key]).__module__ == np.__name__:
+                    row[key] = np.asscalar(row[key])
+                else:
+                    continue
+
             session.add(table(**row))
     except (IOError, ValueError) as e:
         #-- Handle missing files
@@ -261,8 +270,24 @@ def populate_spt(num_cpu=1):
     print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert,args)
+#-------------------------------------------------------------------------------
+def populate_data(num_cpu=1):
+    print("adding to data")
+
+    session = Session()
+    files_to_add = [(result.id, os.path.join(result.path, result.name))
+                        for result in session.query(Files).\
+                                filter(Files.name.like('%_x1d.fits%')).\
+                                outerjoin(Data, Files.id == Data.file_id).\
+                                filter(Data.file_id == None)]
+    session.close()
+    args = [(full_filename, Data, update_data, f_key) for f_key, full_filename in files_to_add]
+    print("Found {} files to add".format(len(args)))
+    pool = mp.Pool(processes=num_cpu)
+    pool.map(mp_insert, args)
 
 #-------------------------------------------------------------------------------
+
 def populate_primary_headers(num_cpu=1):
     """ Populate the table of primary header information
 
@@ -431,58 +456,29 @@ def get_primary_keys(filename):
         return keywords
 
 #-------------------------------------------------------------------------------
-
-def populate_data(num_cpu=1):
-    print("adding to data")
-
-    session = Session()
-    files_to_add = [(result.id, os.path.join(result.path, result.name))
-                        for result in session.query(Files).\
-                                filter(Files.name.like('%_x1d.fits%')).\
-                                outerjoin(Data, Files.id == Data.file_id).\
-                                filter(Data.file_id == None)]
-    session.close()
-
-    args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
-
-    pool = mp.Pool(processes=num_cpu)
-    pool.map(update_data, args)
-
-#-------------------------------------------------------------------------------
-
 def update_data((args)):
     """Update DB data table in parallel"""
 
-    filename, f_key = args
-    print(filename)
-
-    Session, engine = load_connection(SETTINGS['connection_string'])
-    session = Session()
-
+    #args is the filename!!! (might want to design this like other functions)
     try:
-        with fits.open(filename) as hdu:
+        with fits.open(args) as hdu:
             if len(hdu[1].data):
-                flux_mean=hdu[1].data['flux'].ravel().mean()
-                flux_max=hdu[1].data['flux'].ravel().max()
-                flux_std=hdu[1].data['flux'].ravel().std()
+                data ={'flux_mean':hdu[1].data['flux'].ravel().mean(),
+                       'flux_max':hdu[1].data['flux'].ravel().max(),
+                       'flux_std':hdu[1].data['flux'].ravel().std(),
+                       'wl_min':hdu[1].data['wavelength'].ravel().min(),
+                       'wl_max':hdu[1].data['wavelength'].ravel().max()
+                                                                              }
             else:
-                flux_mean = None
-                flux_max = None
-                flux_std = None
-
-            session.add(Data(flux_mean=flux_mean,
-                             flux_max=flux_max,
-                             flux_std=flux_std,
-                             file_id=f_key))
-
-    except IOError as e:
-        print(e.message)
-        #-- Handle empty or corrupt FITS files
-        session.add(Data(file_id=f_key))
-
-    session.commit()
-    session.close()
-    engine.dispose()
+                data = {'flux_mean':None,
+                        'flux_max':None,
+                        'flux_std':None,
+                        'wl_min':None,
+                        'wl_max':None
+                                        }
+            return data
+    except IOError:
+        print('IOERROR')
 
 #-------------------------------------------------------------------------------
 
