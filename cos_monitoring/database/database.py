@@ -72,9 +72,7 @@ def insert_with_yield(filename, table, function, foreign_key=None):
         data = function(filename)
 
         if isinstance(data, dict):
-            #print('===================== MADE IT DICT =====================')
             data = [data]
-            #print(data)
         elif isinstance(data, types.GeneratorType):
             pass
         else:
@@ -86,9 +84,12 @@ def insert_with_yield(filename, table, function, foreign_key=None):
             if i == 0:
                 print(row.keys())
             print(row.values())
-        #--
+
+        #-- Converts np arrays to native python type...
+        #-- This is to allow the database to injest values as type float
+        #-- instead of Decimal Class types in sqlalchemy....
             for key in row:
-                if type(row[key]).__module__ == np.__name__:
+                if isinstance(row[key], np.generic):
                     row[key] = np.asscalar(row[key])
                 else:
                     continue
@@ -534,21 +535,21 @@ def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
     insert_files(**SETTINGS)
-    populate_primary_headers(SETTINGS['num_cpu'])
-    populate_spt(SETTINGS['num_cpu'])
-    populate_data(SETTINGS['num_cpu'])
-    populate_lampflash(SETTINGS['num_cpu'])
-    populate_darks(SETTINGS['num_cpu'])
-    populate_gain(SETTINGS['num_cpu'])
-    populate_stims(SETTINGS['num_cpu'])
+    #populate_primary_headers(SETTINGS['num_cpu'])
+    #populate_spt(SETTINGS['num_cpu'])
+    #populate_data(SETTINGS['num_cpu'])
+    #populate_lampflash(SETTINGS['num_cpu'])
+    #populate_darks(SETTINGS['num_cpu'])
+    #populate_gain(SETTINGS['num_cpu'])
+    #populate_stims(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
 def run_all_monitors():
-    dark_monitor()
+    #dark_monitor()
     #stim_monitor()
     #osm_monitor()
-    #cci_monitor()
+    cci_monitor()
 
 #-------------------------------------------------------------------------------
 

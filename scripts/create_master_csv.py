@@ -33,9 +33,8 @@ def csv_generator(headers, keywords, filename):
     datarows = []
     for item in headers:
         datarows.append(item)
-    print(type(item))
     t = Table(rows = datarows, names = keywords, meta = {'Name':'COS HEADER TABLE'})
-    ascii.write(t, filename + '.csv', format='csv')
+    ascii.write(t, os.join(filename, '.csv'), format='csv')
 
 
 
@@ -50,9 +49,10 @@ def main():
 
     #-- setup a connection to the databse
     Session, engine = load_connection(SETTINGS['connection_string'])
-    results = engine.execute("SELECT * FROM headers ORDER BY expstart;")
+    #results = engine.execute("SELECT * FROM headers ORDER BY expstart;")
+    results = engine.execute("SELECT * FROM gain;")
     keys = results.keys()
-    file_name = 'all_file'
+    file_name = 'gain'
     csv_generator(results,keys,file_name)
 
     #-- close connections

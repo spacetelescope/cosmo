@@ -661,7 +661,7 @@ def make_gsagtab_db(blue=False):
 
     connection = engine.connect()
 
-    results = connection.execute("""SELECT DISTINCT segment FROM gain""")
+    results = connection.execute("""SELECT DISTINCT segment FROM gain WHERE segment!='None' and x!='None' or y!='None'""")
 
     segments = [item[0] for item in results]
 
@@ -679,11 +679,30 @@ def make_gsagtab_db(blue=False):
 
             hv_level = int(hv_level)
             print seg, hv_level
-            results = connection.execute("""SELECT DISTINCT x,y FROM flagged WHERE segment='%s' and dethv>='%s'""" %(seg, hv_level))
+            results = connection.execute("""SELECT DISTINCT x,y
+                                            FROM flagged WHERE segment='%s'
+                                            and dethv>='%s'
+                                            and x!='%s'
+                                            and y!='%s'
+                                            """
+                                            %(seg, hv_level, None, None)
+                                            )
+
             coords = [(item[0], item[1]) for item in results]
 
             for x, y in coords:
-                results = connection.execute("""SELECT MJD FROM flagged WHERE segment='%s' AND x='%s' and y='%s' and dethv>='%s'""" % (seg, x, y, hv_level))
+                results = connection.execute("""SELECT MJD
+                                                FROM flagged
+                                                WHERE segment='%s'
+                                                AND x='%s'
+                                                and y='%s'
+                                                and dethv>='%s'
+                                                and x!='%s'
+                                                and y!='%s'
+                                                """
+                                                %(seg, x, y, hv_level,None,None)
+                                                )
+
                 flagged_dates = [item[0] for item in results]
                 if len(flagged_dates):
                     bad_date = min(flagged_dates)
