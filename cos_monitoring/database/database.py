@@ -548,8 +548,8 @@ def do_all():
 def run_all_monitors():
     #dark_monitor()
     #stim_monitor()
-    #osm_monitor()
-    cci_monitor()
+    osm_monitor()
+    #cci_monitor()
 
 #-------------------------------------------------------------------------------
 
