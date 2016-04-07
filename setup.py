@@ -24,7 +24,7 @@ setup(
                    'Topic :: Scientific/Engineering :: Physics',
                    'Topic :: Software Development :: Libraries :: Python Modules'],
     packages = find_packages(),
-    requires = ['numpy', 'scipy', 'astropy'],
+    requires = ['numpy', 'scipy', 'astropy', 'matplotlib'],
     entry_points = {'console_scripts': ['clean_slate=cos_monitoring.database:clean_slate',
                                         'do_all=cos_monitoring.database:do_all',
                                         'run_all_monitors=cos_monitoring.database:run_all_monitors',
@@ -35,6 +35,7 @@ setup(
                         'numpy',
                         'astropy>=1.0.1',
                         'sqlalchemy',
-                        'pymysql'],
+                        'pymysql',
+                        'matplotlib'],
     ext_modules = [cci_read_module ]
     )
