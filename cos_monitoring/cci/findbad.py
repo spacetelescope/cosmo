@@ -67,7 +67,7 @@ def time_trends():
                                                     y int);""")
         connection.execute("""CREATE INDEX position ON flagged (x,y);""")
 
-    result = connection.execute("""SELECT DISTINCT segment,dethv FROM gain;""")
+    result = connection.execute("""SELECT DISTINCT segment,dethv FROM gain WHERE segment!= 'None' and dethv!= 'None'""")
 
     connection.close()
 
@@ -115,7 +115,7 @@ def find_flagged(args):
             #-- Nothing bad before 2010,
             #-- and there are some weird gainmaps back there
             #-- filtering out for now.
-            results = connection.execute("""SELECT gain,counts,sigma,expstart
+            results = connection.execute("""SELECT gain,counts,std,expstart
                                                 FROM gain
                                                     WHERE segment='%s'
                                                         AND dethv='%s'

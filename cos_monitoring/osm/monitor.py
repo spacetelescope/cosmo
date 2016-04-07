@@ -21,9 +21,9 @@ from datetime import datetime
 from astropy.io import fits
 from astropy.table import Table
 
-#from ..database.db_tables import open_settings, load_connection
-MONITOR_DIR = '.'
-#MONITOR_DIR = '/grp/hst/cos/Monitors/Shifts/'
+from ..database.db_tables import open_settings, load_connection
+
+MONITOR_DIR = '/grp/hst/cos/Monitors/Shifts/'
 WEB_DIR = '/grp/webpages/COS/shifts/'
 lref = '/grp/hst/cdbs/lref/'
 
@@ -145,7 +145,7 @@ def make_shift_table():
     for i, row in enumerate(engine.execute("""SELECT * FROM lampflash
                                                        WHERE x_shift IS NOT NULL AND
                                                             y_shift IS NOT NULL;""")):
-        if not []:
+        if not i:
             keys = row.keys()
         data.append(row.values())
 

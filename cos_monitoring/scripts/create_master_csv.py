@@ -30,19 +30,22 @@ def csv_generator(headers,keywords,path,filename):
     t : CSV file
         A CSV files that contains all of the queried header information.
     """
-    #try:
-    if filename.endswith('.txt'):
-        form = 'ascii'
-    else:
-        form = 'csv'
+    try:
+        if filename.endswith('.txt'):
+            form = 'fixed_width'
+        else:
+            print('MADE IT')
+            form = 'csv'
 
-    datarows = []
-    for item in headers:
-        datarows.append(item)
-    t = Table(rows = datarows, names = keywords, meta = {'Name':'COS HEADER TABLE'})
-    ascii.write(t,os.path.join(path,filename),format=form)
-    #except:
-    print('Cannot handle files that end with {}'.format(filename.split('.')[1]))
+        keywords[-4:]='file_ids','file_path','files_name','files_rootname'
+
+        datarows = []
+        for item in headers:
+            datarows.append(item)
+        t = Table(rows = datarows,names=keywords, meta = {'Name':'COS HEADER TABLE'})
+        ascii.write(t, os.path.join(path,filename), format=form)
+    except:
+        print('Cannot handle files that end with {}'.format(filename.split('.')[1]))
 
 
 def main():
