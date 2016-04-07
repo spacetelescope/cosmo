@@ -269,7 +269,7 @@ def make_plots(detector, TA=False):
         data = engine.execute("""SELECT date,{},temp,latitude,longitude
                                  FROM darks
                                  WHERE detector = '{}'
-                                 AND concat(temp, latitude, longitude)!='None'""".format(dark_key, segment)
+                                 AND concat(temp, latitude, longitude)IS NOT NULL""".format(dark_key, segment)
                                  )
         data = [row for row in data]
 
@@ -299,7 +299,7 @@ def make_plots(detector, TA=False):
         data = engine.execute("""SELECT {},latitude,longitude,sun_lat,sun_lon,date
                                  FROM darks
                                  WHERE detector = '{}'
-                                 AND concat(latitude,longitude,sun_lat,sun_lon)!='None'""".format(dark_key, segment)
+                                 AND concat(latitude,longitude,sun_lat,sun_lon)IS NOT NULL""".format(dark_key, segment)
                                  )
         data = [row for row in data]
 
@@ -325,7 +325,7 @@ def make_plots(detector, TA=False):
         data = engine.execute("""SELECT {},date
                                  FROM darks
                                  WHERE detector = '{}'
-                                 AND concat(date, detector)!='None'""".format(dark_key, segment)
+                                 AND concat(date, detector)IS NOT NULL""".format(dark_key, segment)
                                  )
         data = [item for item in data]
 

@@ -145,7 +145,7 @@ def make_shift_table():
     for i, row in enumerate(engine.execute("""SELECT * FROM lampflash
                                                        WHERE x_shift IS NOT NULL AND
                                                             y_shift IS NOT NULL;""")):
-        if not []:
+        if not i:
             keys = row.keys()
         data.append(row.values())
 

@@ -286,7 +286,6 @@ def send_email(missing_obs, missing_dates):
     """inform the parties that retrieval and calibration are done
 
     """
-
     sorted_index = np.argsort(missing_dates)
     missing_obs = np.array(missing_obs)[sorted_index]
     missing_dates = missing_dates[sorted_index]

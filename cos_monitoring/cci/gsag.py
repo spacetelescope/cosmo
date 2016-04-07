@@ -34,6 +34,7 @@ from astropy.io import fits
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from sqlalchemy.sql.functions import concat
 
 from ..database.db_tables import open_settings, load_connection
 from ..utils import send_email
@@ -661,7 +662,7 @@ def make_gsagtab_db(blue=False):
 
     connection = engine.connect()
 
-    results = connection.execute("""SELECT DISTINCT segment FROM gain WHERE segment!='None' and x!='None' or y!='None'""")
+    results = connection.execute("""SELECT DISTINCT segment FROM gain WHERE concat(segment,x,y) IS NOT NULL""")
 
     segments = [item[0] for item in results]
 
@@ -682,10 +683,9 @@ def make_gsagtab_db(blue=False):
             results = connection.execute("""SELECT DISTINCT x,y
                                             FROM flagged WHERE segment='%s'
                                             and dethv>='%s'
-                                            and x!='%s'
-                                            and y!='%s'
+                                            and concat(x,y) IS NOT NULL
                                             """
-                                            %(seg, hv_level, None, None)
+                                            %(seg, hv_level)
                                             )
 
             coords = [(item[0], item[1]) for item in results]
@@ -695,12 +695,11 @@ def make_gsagtab_db(blue=False):
                                                 FROM flagged
                                                 WHERE segment='%s'
                                                 AND x='%s'
-                                                and y='%s'
-                                                and dethv>='%s'
-                                                and x!='%s'
-                                                and y!='%s'
+                                                AND y='%s'
+                                                AND dethv>='%s'
+                                                AND concat(x,y) IS NOT NULL
                                                 """
-                                                %(seg, x, y, hv_level,None,None)
+                                                %(seg, x, y, hv_level)
                                                 )
 
                 flagged_dates = [item[0] for item in results]

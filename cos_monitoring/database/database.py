@@ -24,6 +24,7 @@ from .db_tables import Base
 from .db_tables import Files, Headers
 from .db_tables import Lampflash, Stims, Phd, Darks, sptkeys, Data, Gain
 
+
 SETTINGS = open_settings()
 Session, engine = load_connection(SETTINGS['connection_string'])
 
@@ -540,7 +541,7 @@ def do_all():
     #populate_data(SETTINGS['num_cpu'])
     #populate_lampflash(SETTINGS['num_cpu'])
     #populate_darks(SETTINGS['num_cpu'])
-    #populate_gain(SETTINGS['num_cpu'])
+    populate_gain(SETTINGS['num_cpu'])
     #populate_stims(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
@@ -548,8 +549,8 @@ def do_all():
 def run_all_monitors():
     #dark_monitor()
     #stim_monitor()
-    osm_monitor()
-    #cci_monitor()
+    #osm_monitor()
+    cci_monitor()
 
 #-------------------------------------------------------------------------------
 
