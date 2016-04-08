@@ -536,20 +536,20 @@ def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
     insert_files(**SETTINGS)
-    #populate_primary_headers(SETTINGS['num_cpu'])
-    #populate_spt(SETTINGS['num_cpu'])
-    #populate_data(SETTINGS['num_cpu'])
-    #populate_lampflash(SETTINGS['num_cpu'])
-    #populate_darks(SETTINGS['num_cpu'])
+    populate_primary_headers(SETTINGS['num_cpu'])
+    populate_spt(SETTINGS['num_cpu'])
+    populate_data(SETTINGS['num_cpu'])
+    populate_lampflash(SETTINGS['num_cpu'])
+    populate_darks(SETTINGS['num_cpu'])
     populate_gain(SETTINGS['num_cpu'])
-    #populate_stims(SETTINGS['num_cpu'])
+    populate_stims(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
 def run_all_monitors():
-    #dark_monitor()
-    #stim_monitor()
-    #osm_monitor()
+    dark_monitor()
+    stim_monitor()
+    osm_monitor()
     cci_monitor()
 
 #-------------------------------------------------------------------------------
