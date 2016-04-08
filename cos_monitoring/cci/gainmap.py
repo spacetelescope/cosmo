@@ -102,26 +102,27 @@ class CCI:
         if kwargs.get('ignore_spots', True):
             ### Dynamic when delivered to CRDS
             spottab = os.path.join(MONITOR_DIR, '2015-10-20_spot.fits')
-            regions = read_spottab(spottab,
-                                   self.segment,
-                                   self.expstart,
-                                   self.expend)
+            if os.path.exists(spottab):
+                regions = read_spottab(spottab,
+                                       self.segment,
+                                       self.expstart,
+                                       self.expend)
 
-            for lx, ly, dx, dy in regions:
-                lx //= self.xbinning
-                dx //= self.xbinning
+                for lx, ly, dx, dy in regions:
+                    lx //= self.xbinning
+                    dx //= self.xbinning
 
-                ly //= self.ybinning
-                dy //= self.ybinning
+                    ly //= self.ybinning
+                    dy //= self.ybinning
 
-                #-- pad the regions by 1 bin in either direction
-                lx -= 1
-                dx += 2
-                ly -= 1
-                dy += 2
-                #--
+                    #-- pad the regions by 1 bin in either direction
+                    lx -= 1
+                    dx += 2
+                    ly -= 1
+                    dy += 2
+                    #--
 
-                self.gain_image[ly:ly+dy, lx:lx+dx] = 0
+                    self.gain_image[ly:ly+dy, lx:lx+dx] = 0
 
         self.gain_index = np.where(self.gain_image > 0)
         self.bad_index = np.where((self.gain_image <= 3) &
