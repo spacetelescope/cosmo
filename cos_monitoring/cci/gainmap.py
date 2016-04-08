@@ -39,8 +39,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy
 from scipy.optimize import leastsq, newton, curve_fit
+import fitsio
 
-from .cci_read import read as read_cci
 from ..utils import rebin, enlarge
 from .constants import *  ## I know this is bad, but shut up.
 #from db_interface import session, engine, Gain
@@ -133,24 +133,22 @@ class CCI:
         """
         print('\nOpening %s'%(self.cci_name))
 
-        if self.input_file.endswith('.gz'):
-            fits = pyfits.open(gzip.open(self.input_file), memmap=False)
-        else:
-            fits = pyfits.open(self.input_file)
+        hdu = fitsio.FITS(self.input_file)
+        primary = hdu[0].read_header()
 
-        assert (fits['SCI', 1].data.shape == (Y_UNBINNED, X_UNBINNED)), 'ERROR: Input CCI not standard dimensions'
+        assert (hdu[2].read().shape == (Y_UNBINNED, X_UNBINNED)), 'ERROR: Input CCI not standard dimensions'
 
-        self.detector = fits[0].header['DETECTOR']
-        self.segment = fits[0].header['SEGMENT']
-        self.obsmode = fits[0].header['OBSMODE']
-        self.expstart = fits[0].header['EXPSTART']
-        self.expend = fits[0].header['EXPEND']
-        self.exptime = fits[0].header['EXPTIME']
-        self.numfiles = fits[0].header['NUMFILES']
-        self.counts = fits[0].header['COUNTS']
-        self.dethv = fits[0].header.get('DETHV', -999)
+        self.detector = primary['DETECTOR']
+        self.segment = primary['SEGMENT']
+        self.obsmode = primary['OBSMODE']
+        self.expstart = primary['EXPSTART']
+        self.expend = primary['EXPEND']
+        self.exptime = primary['EXPTIME']
+        self.numfiles = primary['NUMFILES']
+        self.counts = primary['COUNTS']
+        self.dethv = primary.get('DETHV', -999)
         try:
-            self.brftab = fits[0].header['brftab'].split('$')[1]
+            self.brftab = primary['brftab'].split('$')[1]
         except:
             self.brftab = 'x1u1459il_brf.fits'
 
@@ -161,9 +159,9 @@ class CCI:
             elif self.segment == 'FUVB':
                 hv_string = 'HVLEVELB'
 
-        self.file_list = [line['rootname'] for line in fits[1].data]
+        self.file_list = [line[0].decode("utf-8") for line in hdu[1].read()]
 
-        self.make_c_array()
+        self.big_array = np.array([rebin(hdu[i+2].read(), bins=(self.ybinning, self.xbinning)) for i in range(32)])
         self.get_counts(self.big_array)
         self.extracted_charge = self.pha_to_coulombs(self.big_array)
 
@@ -174,27 +172,6 @@ class CCI:
         self.cnt01_01 = len(self.big_array[1].nonzero()[0])
         self.cnt02_30 = len(self.big_array[2:31].nonzero()[0])
         self.cnt31_31 = len(self.big_array[31:].nonzero()[0])
-
-        fits.close()
-        del fits
-
-    def make_c_array(self):
-        print('Making 3D array from pha extensions:')
-        c_array = read_cci(self.input_file).reshape((32,1024,16384))
-        self.big_array = np.array([rebin(c_array[i],bins = (self.ybinning, self.xbinning)) for i in xrange(32)])
-
-    def make_big_array(self,fits):
-        """Takes an input COS cci fits file and returns a 3D array
-        of x pixel, y pixel, and pulse height amplitude (PHA) counts.
-
-        Takes a very long time.
-        """
-
-        print('Making 3D array from pha extensions:')
-        big_array = np.array([rebin(extension.data,bins = (self.ybinning, self.xbinning))
-                               for i,extension in enumerate(fits[2:]) if os.write(1,'-')])
-        os.write(1,'\n')
-        self.big_array = big_array
 
     def get_counts(self, in_array):
         """collapse pha arrays to get total counts accross all
@@ -615,7 +592,7 @@ def write_and_pull_gainmap(cci_name):
     """
 
     current = CCI(cci_name, xbinning=X_BINNING, ybinning=Y_BINNING)
-    current.write()
+    #current.write()
 
     index = np.where(current.gain_image > 0)
 

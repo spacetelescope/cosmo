@@ -1,13 +1,4 @@
-from setuptools import setup, find_packages, Extension
-import os
-import glob
-import numpy as np
-
-cci_read_module = Extension('cos_monitoring.cci.cci_read',
-                            sources = ['cos_monitoring/cci/cci_read.c'],
-                            libraries=['cfitsio'],
-                            include_dirs=[np.get_include()]
-                             )
+from setuptools import setup, find_packages
 
 setup(
     name = 'cos_monitoring',
@@ -36,6 +27,7 @@ setup(
                         'astropy>=1.0.1',
                         'sqlalchemy',
                         'pymysql',
-                        'matplotlib'],
-    ext_modules = [cci_read_module ]
+                        'matplotlib',
+                        'scipy',
+                        'fitsio']
     )

@@ -458,7 +458,7 @@ def get_primary_keys(filename):
         return keywords
 
 #-------------------------------------------------------------------------------
-def update_data((args)):
+def update_data(args):
     """Update DB data table in parallel"""
 
     #args is the filename!!! (might want to design this like other functions)
