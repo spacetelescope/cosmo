@@ -252,8 +252,10 @@ def make_plots(data):
         axis.plot( ydata,fit,'k-',lw=3,label='%3.5fx'%(parameters[0]) )
         axis.legend(numpoints=1,shadow=True,prop={'size':10})
 
-    fig.savefig( os.path.join(MONITOR_DIR,'FUV_shifts.png') )
+    os.remove(os.path.join(MONITOR_DIR,'FUV_shifts.png'))
+    fig.savefig(os.path.join(MONITOR_DIR,'FUV_shifts.png'))
     plt.close(fig)
+    os.chmod(os.path.join(MONITOR_DIR,'FUV_shifts.png'),0766)
 
     ##########
 
@@ -395,11 +397,12 @@ def make_plots(data):
     ax.set_xlabel('date')
     #ax.set_ylim(260, 400)
 
-
+    os.remove(os.path.join(MONITOR_DIR, 'NUV_shifts.png'))
     fig.savefig(os.path.join(MONITOR_DIR, 'NUV_shifts.png'),
                 bbox_inches='tight',
                 pad_inches=.5)
     plt.close(fig)
+    os.chmod(os.path.join(MONITOR_DIR, 'NUV_shifts.png'),0766)
 
     ##############
 
@@ -416,10 +419,12 @@ def make_plots(data):
         ax.legend(numpoints=1, shadow=True, loc='upper left')
         ax.set_xlim(data['date'].min(), data['date'].max() + 50)
         #ax.set_ylim(460, 630)
+        os.remove(os.path.join(MONITOR_DIR, '{}_shifts.png'.format(elem.upper())))
         fig.savefig(os.path.join(MONITOR_DIR, '{}_shifts.png'.format(elem.upper())))
         plt.close(fig)
+        os.chmod((os.path.join(MONITOR_DIR, '{}_shifts.png'.format(elem.upper()))),0766)
 
-    print 'Plotting cenwaves'
+    print('Plotting cenwaves')
     for grating in list(set(data['opt_elem'])):
         fig = plt.figure()
         ax = fig.add_axes([.1, .1, .75, .8])
@@ -455,9 +460,13 @@ def make_plots(data):
                        loc='upper left', borderaxespad=0., prop={'size': 8})
             ax.set_xlim(data['date'].min(), data['date'].max() + 50)
             #ax.set_ylim(ylim[0], ylim[1])
+        os.remove(os.path.join(MONITOR_DIR, '%s_shifts_color.pdf' %
+                    (grating)))
         fig.savefig(os.path.join(MONITOR_DIR, '%s_shifts_color.pdf' %
                     (grating)))
         plt.close(fig)
+        os.chmod(os.path.join(MONITOR_DIR, '%s_shifts_color.pdf' %
+                    (grating)), 0766)
 
 #----------------------------------------------------------
 
@@ -509,9 +518,10 @@ def make_plots_2(data):
             ax.set_ylabel('y_shift')
             #ax.set_ylabel('SHIFT2 vs SHIFT1 {}'.format(segment))
             #ax.set_ylim(-20, 20)
-
+        os.remove(os.path.join(MONITOR_DIR, 'shift_relation_{}.png'.format(cenwave)))
         fig.savefig(os.path.join(MONITOR_DIR, 'shift_relation_{}.png'.format(cenwave)))
         plt.close(fig)
+        os.chmod(os.path.join(MONITOR_DIR, 'shift_relation_{}.png'.format(cenwave)),0766)
 
 
 #----------------------------------------------------------
@@ -571,9 +581,10 @@ def fp_diff(data):
         plt.ylabel('SHIFT1 difference (pixels)')
         plt.title(cenwave)
         plt.legend(shadow=True, numpoints=1, loc='upper left')
+        os.remove(os.path.join(MONITOR_DIR, 'difference_%s.pdf' % (cenwave)))
         plt.savefig(os.path.join(MONITOR_DIR, 'difference_%s.pdf' % (cenwave)))
         plt.close()
-
+        os.chmod(os.path.join(MONITOR_DIR, 'difference_%s.pdf' % (cenwave)),0766)
 
     # for cenwave in diff_dict:
     #    all_diff = diff_dict[cenwave]
@@ -595,12 +606,14 @@ def monitor():
 
     flash_data = make_shift_table()
     make_plots(flash_data)
+    print('MAKE_PLOTS DONE')
     make_plots_2(flash_data)
+    print('MAKE_PLOTS_2 DONE')
     #fp_diff(flash_data)
 
     for item in glob.glob(os.path.join(MONITOR_DIR, '*.p??')):
+        os.remove(os.path.join(WEB_DIR,os.path.basename(item)))
         shutil.copy(item, WEB_DIR)
-
 #----------------------------------------------------------
 '''
 def make_shift_table(files):

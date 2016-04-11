@@ -514,7 +514,7 @@ def delete_file_from_all(filename):
 def clear_all_databases(SETTINGS):
     """Dump all databases of all contents...seriously"""
 
-    if not raw_input("Are you sure you want to delete everything? Y/n") == 'Y':
+    if not raw_input("Are you sure you want to delete everything? Y/N: ") == 'Y':
         sys.exit("Not deleting, getting out of here.")
 
     session = Session()
@@ -547,10 +547,11 @@ def do_all():
 #-------------------------------------------------------------------------------
 
 def run_all_monitors():
-    dark_monitor()
+    #dark_monitor()
+    #cci_monitor()
     stim_monitor()
-    osm_monitor()
-    cci_monitor()
+    #osm_monitor()
+
 
 #-------------------------------------------------------------------------------
 

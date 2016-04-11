@@ -286,7 +286,7 @@ def send_email(missing_obs, missing_dates):
     """inform the parties that retrieval and calibration are done
 
     """
-    sorted_index = np.argsort(missing_dates)
+    sorted_index = np.argsort(np.array(missing_dates))
     missing_obs = np.array(missing_obs)[sorted_index]
     missing_dates = missing_dates[sorted_index]
 
@@ -307,13 +307,15 @@ def send_email(missing_obs, missing_dates):
 
     svr_addr = 'smtp.stsci.edu'
     from_addr = 'ely@stsci.edu'
-    recipients = ['ely@stsci.edu', 'sahnow@stsci.edu', 'penton@stsci.edu', 'sonnentr@stsci.edu']
-    to_addr = ', '.join(recipients)
+    #recipients = ['ely@stsci.edu', 'sahnow@stsci.edu', 'penton@stsci.edu', 'sonnentr@stsci.edu']
+    recipients = 'mfix@stsci.edu'
+    #to_addr = ', '.join(recipients)
 
     msg = MIMEMultipart()
     msg['Subject'] = 'Stim Monitor Report'
     msg['From'] = from_addr
-    msg['To'] = to_addr
+    #msg['To'] = to_addr
+    msg['To'] = recipients
 
     msg.attach(MIMEText(message))
     s = smtplib.SMTP(svr_addr)
@@ -351,7 +353,6 @@ def make_plots():
                                         stims.stim2_x != -999 AND
                                         stims.stim2_y != -999;""")
     data = [line for line in data]
-
     plt.subplot(2, 2, 1)
     x = [line.stim1_x for line in data]
     y = [line.stim1_y for line in data]
@@ -380,7 +381,6 @@ def make_plots():
     #plt.set_xlims(xcenter - 2*xwidth, xcenter + 2*xwidth)
     #plt.set_ylims(ycenter - 2*ywidth, ycenter - 2*ywidth)
 
-
     data = engine.execute("""SELECT stim2_x, stim2_y
                                     FROM stims
                                     JOIN headers on stims.rootname = headers.rootname
@@ -390,7 +390,6 @@ def make_plots():
                                         stims.stim2_x != -999 AND
                                         stims.stim2_y != -999;""")
     data = [line for line in data]
-
     plt.subplot(2, 2, 2)
     x = [line.stim2_x for line in data]
     y = [line.stim2_y for line in data]
@@ -417,7 +416,6 @@ def make_plots():
     plt.xlabel('RAWX')
     plt.ylabel('RAWY')
 
-
     data = engine.execute("""SELECT stim1_x, stim1_y
                                     FROM stims
                                     JOIN headers on stims.rootname = headers.rootname
@@ -427,7 +425,6 @@ def make_plots():
                                         stims.stim2_x != -999 AND
                                         stims.stim2_y != -999;""")
     data = [line for line in data]
-
     plt.subplot(2, 2, 3)
     x = [line.stim1_x for line in data]
     y = [line.stim1_y for line in data]
@@ -491,8 +488,10 @@ def make_plots():
     plt.ylabel('RAWY')
 
     plt.draw()
+    os.remove(os.path.join(MONITOR_DIR, 'STIM_locations.png'))
     plt.savefig(os.path.join(MONITOR_DIR, 'STIM_locations.png'))
     plt.close(1)
+    os.chmod(os.path.join(MONITOR_DIR, 'STIM_locations.png'),0766)
 
     print('#-------------------------------#')
     print('Stim location plots')
@@ -506,8 +505,7 @@ def make_plots():
         titles = ['Upper Left, X', 'Upper Left, Y', 'Lower Right, X', 'Lower Right, Y']
 
         for i, (column, title) in enumerate(zip(col_names, titles)):
-            print(column)
-            ax = fig.add_subplot(2, 2, i)
+            ax = fig.add_subplot(2, 2, i + 1)
             ax.set_title(title)
             ax.set_xlabel('MJD')
             ax.set_ylabel('Coordinate')
@@ -527,9 +525,13 @@ def make_plots():
             coords = [line[1] for line in data]
             ax.plot(times, coords, 'o')
 
+        os.remove(os.path.join(MONITOR_DIR, 'STIM_locations_vs_time_%s.png' %
+                                                                    (segment)))
         fig.savefig(os.path.join(MONITOR_DIR, 'STIM_locations_vs_time_%s.png' %
                                                                     (segment)))
         plt.close(fig)
+        os.chmod(os.path.join(MONITOR_DIR, 'STIM_locations_vs_time_%s.png' %
+                                                                    (segment)),0766)
 
 
     # ------------------------#
@@ -601,12 +603,14 @@ def make_plots():
         ax4.plot(times, midpoint, 'o')
         ax4.set_xlabel('MJD')
         ax4.set_ylabel('Midpoint Y')
-
+        os.remove(os.path.join(MONITOR_DIR, 'STIM_stretch_vs_time_%s.png' %
+                     (segment)))
         fig.savefig(
             os.path.join(MONITOR_DIR, 'STIM_stretch_vs_time_%s.png' %
                          (segment)))
         plt.close(fig)
-
+        os.chmod(os.path.join(MONITOR_DIR, 'STIM_stretch_vs_time_%s.png' %
+                     (segment)),0766)
 
     print('#------------------------#')
     print(' y vs y and x vs x     ')
@@ -797,8 +801,8 @@ def move_to_web():
 
     print('Moving plots to web')
     for item in glob.glob(os.path.join(MONITOR_DIR, 'STIM*.p*')):
+        os.remove(os.path.join(WEB_DIR,os.path.basename(item)))
         shutil.copy(item, WEB_DIR)
-        orig_path, filename = os.path.split(item)
-        os.chmod(os.path.join(WEB_DIR, filename), 0o777)
+        os.chmod(os.path.join(WEB_DIR, os.path.basename(item)), 0o777)
 
 #-------------------------------------------------------------------------------
