@@ -28,12 +28,21 @@
 # DAMAGE.
 #
 # $Log: SignStsciRequest.py,v $
+# Revision 1.6  2015/06/29 19:32:17  fred
+# PR 80802 remove requirement that xml work in python
+#
 # Revision 1.5  2014/08/14 19:11:59  fred
 # PR 75462 change class name, add rcs log header
 #
 
-import xmlsec
-import libxml2
+usexml=True
+try:
+  import xmlsec
+  import libxml2
+except ImportError:
+  usexml=False
+import urllib2
+import urllib  # urllib2 does not define urlencode, you have to get it here.
 import warnings
 import re
 
@@ -44,21 +53,29 @@ class SignStsciRequest:
 
     @staticmethod
     def init():
-        # Init libxml library
-        libxml2.initParser()
-        libxml2.substituteEntitiesDefault(1)
-        # Init xmlsec library
-        assert xmlsec.init() >= 0, "Error: xmlsec initialization failed."
-        # Check loaded library version
-        assert xmlsec.checkVersion() == 1, "Error: loaded xmlsec library version is not compatible."
-        # Init crypto library
-        assert xmlsec.cryptoAppInit(None) >= 0, "Error: crypto initialization failed."
-        # Init xmlsec-crypto library
-        assert xmlsec.cryptoInit() >= 0, "Error: xmlsec-crypto initialization failed."
-
+        global usexml
+        if not usexml:
+            return
+        try:
+          # Init libxml library
+          libxml2.initParser()
+          libxml2.substituteEntitiesDefault(1)
+          # Init xmlsec library
+          assert xmlsec.init() >= 0, "Error: xmlsec initialization failed."
+          # Check loaded library version
+          assert xmlsec.checkVersion() == 1, "Error: loaded xmlsec library version is not compatible."
+          # Init crypto library
+          assert xmlsec.cryptoAppInit(None) >= 0, "Error: crypto initialization failed."
+          # Init xmlsec-crypto library
+          assert xmlsec.cryptoInit() >= 0, "Error: xmlsec-crypto initialization failed."
+        except:
+          usexml=False
 
     @staticmethod
-    def signRequest(file, request):
+    def signRequest(file, request, dtd="http://dmswww.stsci.edu/dtd/sso/distribution.dtd", cgi="https://archive.stsci.edu/cgi-bin/dads.cgi", mission='HST'):
+     global usexml
+     if usexml:
+      try:
         keysmngr = xmlsec.KeysMngr()
         if keysmngr is None:
             raise RuntimeError, "Error: failed to create keys manager."
@@ -80,7 +97,7 @@ class SignStsciRequest:
         pat = re.compile("(^.*<!DOCTYPE.*distributionRequest[^>]*SYSTEM[ \t]*\")([^\"]*)(\"[^>]*>.*$)", re.DOTALL)
         m = pat.match(request)
 
-        request = m.group(1)+"http://dmswww.stsci.edu/dtd/sso/distribution.dtd"+m.group(3)
+        request = m.group(1)+dtd+m.group(3)
 
         ctxt = libxml2.createMemoryParserCtxt(request, len(request))
         ctxt.validate(1)
@@ -128,7 +145,7 @@ class SignStsciRequest:
                     child.setProp('Id', 'distributionRequest')
             node = xmlsec.findNode(doc.getRootElement(), xmlsec.NodeSignature,
                        xmlsec.DSigNs)
-        
+	    
 
         # Remove passwords
 
@@ -151,12 +168,22 @@ class SignStsciRequest:
         if status < 0:
             raise RuntimeError, "Error: signature failed"
         return output
+      except:
+        usexml=False
+        return signRequest(file, request, dtd, cgi)
+     else:
+        values = {'request' : request, 'privatekey' : open(file).read(), 'mission' : mission }
+	data = urllib.urlencode(values)
+        req = urllib2.Request(url=cgi, data=data)
+	f = urllib2.urlopen(req)
+        return f.read()
 
     def __del__(self):
         self.cleanup()
 
     @staticmethod
     def cleanup():
+      if usexml:
         # Shutdown xmlsec-crypto library
         xmlsec.cryptoShutdown()
         # Shutdown crypto library
@@ -165,4 +192,3 @@ class SignStsciRequest:
         xmlsec.shutdown()
         # Shutdown LibXML2
         libxml2.cleanupParser()
-
