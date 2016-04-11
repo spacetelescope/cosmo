@@ -18,6 +18,7 @@ from .plotting import plot_histogram, plot_time, plot_orbital_rate
 
 from ..utils import corrtag_image
 from ..database.db_tables import open_settings, load_connection
+from sqlalchemy.sql.functions import concat
 
 base_dir = '/grp/hst/cos/Monitors/Darks/'
 web_directory = '/grp/webpages/COS/'
@@ -100,8 +101,10 @@ def pull_orbital_info(dataset, step=25):
     try:
         timeline = hdu['timeline'].data
         segment = hdu[0].header['segment']
+        print(timeline)
     except KeyError:
-        return
+        yield info
+        raise StopIteration
 
     if segment == 'N/A':
         segment = 'NUV'
@@ -142,8 +145,8 @@ def pull_orbital_info(dataset, step=25):
 
     if not len(times):
         blank = np.array([0])
-        return
-
+        yield info
+        raise StopIteration
 
     events = hdu['events'].data
     filtered_index = np.where((events['PHA'] > pha[0]) &
@@ -166,7 +169,7 @@ def pull_orbital_info(dataset, step=25):
     counts = counts / npix / step
     ta_counts = ta_counts / npix / step
 
-    if not len( lat ) == len(counts):
+    if not len(lat) == len(counts):
         lat = lat[:-1]
         lon = lon[:-1]
         sun_lat = sun_lat[:-1]
@@ -175,18 +178,20 @@ def pull_orbital_info(dataset, step=25):
     assert len(lat) == len(counts), \
         'Arrays are not equal in length {}:{}'.format(len(lat), len(counts))
 
-
-    for i in range(len(counts)):
-        ### - better solution than round?
-        info['date'] = round(decyear[i], 3)
-        info['dark'] = round(counts[i], 7)
-        info['ta_dark'] = round(ta_counts[i], 7)
-        info['latitude'] = round(lat[i], 7)
-        info['longitude'] = round(lon[i], 7)
-        info['sun_lat'] = round(sun_lat[i], 7)
-        info['sun_lon'] = round(sun_lon[i], 7)
-
+    if not len(counts):
         yield info
+    else:
+        for i in range(len(counts)):
+            ### - better solution than round?
+            info['date'] = round(decyear[i], 3)
+            info['dark'] = round(counts[i], 7)
+            info['ta_dark'] = round(ta_counts[i], 7)
+            info['latitude'] = round(lat[i], 7)
+            info['longitude'] = round(lon[i], 7)
+            info['sun_lat'] = round(sun_lat[i], 7)
+            info['sun_lon'] = round(sun_lon[i], 7)
+
+            yield info
 
 #-------------------------------------------------------------------------------
 
@@ -261,14 +266,18 @@ def make_plots(detector, TA=False):
     for key, segment in zip(search_strings, segments):
         #-- Plot vs time
         print('Plotting Time')
-        data = engine.execute("""SELECT date,{},temp,latitude,longitude FROM darks WHERE detector = '{}' """.format(dark_key, segment))
+        data = engine.execute("""SELECT date,{},temp,latitude,longitude
+                                 FROM darks
+                                 WHERE detector = '{}'
+                                 AND concat(temp, latitude, longitude)IS NOT NULL""".format(dark_key, segment)
+                                 )
         data = [row for row in data]
 
-        mjd = np.array([float(item.date) for item in data])
-        dark = np.array([float(item[1]) for item in data])
-        temp = np.array([float(item.temp) for item in data])
-        latitude = np.array([float(item.latitude) for item in data])
-        longitude = np.array([float(item.longitude) for item in data])
+        mjd = np.array([item.date for item in data])
+        dark = np.array([item[1] for item in data])
+        temp = np.array([item.temp for item in data])
+        latitude = np.array([item.latitude for item in data])
+        longitude = np.array([item.longitude for item in data])
 
         index = np.argsort(mjd)
         mjd = mjd[index]
@@ -287,15 +296,19 @@ def make_plots(detector, TA=False):
 
         #-- Plot vs orbit
         print('Plotting Orbit')
-        data = engine.execute("""SELECT {},latitude,longitude,sun_lat,sun_lon,date FROM darks WHERE detector = '{}' """.format(dark_key, segment))
+        data = engine.execute("""SELECT {},latitude,longitude,sun_lat,sun_lon,date
+                                 FROM darks
+                                 WHERE detector = '{}'
+                                 AND concat(latitude,longitude,sun_lat,sun_lon)IS NOT NULL""".format(dark_key, segment)
+                                 )
         data = [row for row in data]
 
-        dark = np.array([float(item[0]) for item in data])
-        latitude = np.array([float(item[1]) for item in data])
-        longitude = np.array([float(item[2]) for item in data])
-        sun_lat = np.array([float(item[3]) for item in data])
-        sun_lon = np.array([float(item[4]) for item in data])
-        date = np.array([float(item[5]) for item in data])
+        dark = np.array([item[0] for item in data])
+        latitude = np.array([item[1] for item in data])
+        longitude = np.array([item[2] for item in data])
+        sun_lat = np.array([item[3] for item in data])
+        sun_lon = np.array([item[4] for item in data])
+        date = np.array([item[5] for item in data])
 
         index = np.argsort(date)
         dark = dark[index]
@@ -309,11 +322,15 @@ def make_plots(detector, TA=False):
 
         #-- Plot histogram of darkrates
         print('Plotting Hist')
-        data = engine.execute("""SELECT {},date FROM darks WHERE detector = '{}' """.format(dark_key, segment))
+        data = engine.execute("""SELECT {},date
+                                 FROM darks
+                                 WHERE detector = '{}'
+                                 AND concat(date, detector)IS NOT NULL""".format(dark_key, segment)
+                                 )
         data = [item for item in data]
 
-        dark = np.array([float(item[0]) for item in data])
-        date = np.array([float(item[1]) for item in data])
+        dark = np.array([item[0] for item in data])
+        date = np.array([item[1] for item in data])
 
         index = np.argsort(date)
         date = date[index]

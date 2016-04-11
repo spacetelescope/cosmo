@@ -4,10 +4,14 @@ from astropy.io import fits
 import os
 from sqlalchemy import and_, or_, text
 import sys
+import matplotlib as mpl
+mpl.use('Agg')
 import numpy as np
 import multiprocessing as mp
 import types
 
+from ..cci.gainmap import write_and_pull_gainmap
+from ..cci.monitor import monitor as cci_monitor
 from ..dark.monitor import monitor as dark_monitor
 from ..dark.monitor import pull_orbital_info
 from ..filesystem import find_all_datasets
@@ -18,7 +22,8 @@ from ..stim.monitor import stim_monitor
 from .db_tables import load_connection, open_settings
 from .db_tables import Base
 from .db_tables import Files, Headers
-from .db_tables import Lampflash, Stims, Phd, Darks, sptkeys, Data
+from .db_tables import Lampflash, Stims, Phd, Darks, sptkeys, Data, Gain
+
 
 SETTINGS = open_settings()
 Session, engine = load_connection(SETTINGS['connection_string'])
@@ -41,6 +46,8 @@ def mp_insert(args):
     elif len(args) == 4:
         filename, table, function, foreign_key = args
         insert_with_yield(filename, table, function, foreign_key)
+    else:
+        raise ValueError("Not provided the right number of args")
 
 #-------------------------------------------------------------------------------
 
@@ -62,8 +69,6 @@ def insert_with_yield(filename, table, function, foreign_key=None):
     Session, engine = load_connection(SETTINGS['connection_string'])
     session = Session()
 
-
-
     try:
         data = function(filename)
 
@@ -80,8 +85,17 @@ def insert_with_yield(filename, table, function, foreign_key=None):
             if i == 0:
                 print(row.keys())
             print(row.values())
-            session.add(table(**row))
 
+        #-- Converts np arrays to native python type...
+        #-- This is to allow the database to injest values as type float
+        #-- instead of Decimal Class types in sqlalchemy....
+            for key in row:
+                if isinstance(row[key], np.generic):
+                    row[key] = np.asscalar(row[key])
+                else:
+                    continue
+
+            session.add(table(**row))
     except (IOError, ValueError) as e:
         #-- Handle missing files
         print(e.message)
@@ -90,7 +104,6 @@ def insert_with_yield(filename, table, function, foreign_key=None):
         session.commit()
         session.close()
         engine.dispose()
-
 
     session.commit()
     session.close()
@@ -122,7 +135,6 @@ def insert_files(**kwargs):
         full_filepath = os.path.join(path, filename)
 
         if full_filepath in previous_files:
-            print("Already found: {}".format(full_filepath))
             continue
 
         print("NEW: Found {}".format(full_filepath))
@@ -219,8 +231,33 @@ def populate_darks(num_cpu=1):
 
 #-------------------------------------------------------------------------------
 
+def populate_gain(num_cpu=1):
+    """ Populate the cci gain table
+
+    """
+
+    print("Adding to gain")
+    session = Session()
+
+    files_to_add = [(result.id, os.path.join(result.path, result.name))
+                        for result in session.query(Files).\
+                            outerjoin(Gain, Files.id == Gain.file_id).\
+                            filter(or_(Files.name.like('l\_%\_00\____\_cci%'),
+                                       Files.name.like('l\_%\_01\____\_cci%'))).\
+                            filter(Gain.file_id == None)]
+    session.close()
+
+    args = [(full_filename, Gain, write_and_pull_gainmap, f_key) for f_key, full_filename in files_to_add]
+
+    print("Found {} files to add".format(len(args)))
+    pool = mp.Pool(processes=num_cpu)
+    pool.map(mp_insert, args)
+
+#-------------------------------------------------------------------------------
+
 def populate_spt(num_cpu=1):
     """ Populate the table of primary header information
+
     """
     print("Adding SPT headers")
     session = Session()
@@ -228,12 +265,26 @@ def populate_spt(num_cpu=1):
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
                                 filter(Files.name.like('%\_spt.fits%')).\
-                                outerjoin(sptkeys, Files.id == sptkeys.file_id).\
-                                filter(sptkeys.file_id == None)]
-
-
+                                outerjoin(sptkeys, Files.id == sptkeys.file_id)]
+    session.close()
     args = [(full_filename, sptkeys, get_spt_keys, f_key) for f_key, full_filename in files_to_add]
 
+    print("Found {} files to add".format(len(args)))
+    pool = mp.Pool(processes=num_cpu)
+    pool.map(mp_insert,args)
+#-------------------------------------------------------------------------------
+def populate_data(num_cpu=1):
+    print("adding to data")
+
+    session = Session()
+    files_to_add = [(result.id, os.path.join(result.path, result.name))
+                        for result in session.query(Files).\
+                                filter(Files.name.like('%_x1d.fits%')).\
+                                outerjoin(Data, Files.id == Data.file_id).\
+                                filter(Data.file_id == None)]
+    session.close()
+    args = [(full_filename, Data, update_data, f_key) for f_key, full_filename in files_to_add]
+    print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
 
@@ -291,17 +342,6 @@ def populate_primary_headers(num_cpu=1):
 
     files_to_add = [(result.file_id, result.file_to_grab) for result in engine.execute(text(q))
                         if not result.file_id == None]
-    """
-    session = Session()
-    files_to_add = [(result.id, os.path.join(result.path, result.name))
-                        for result in session.query(Files).\
-                                filter(or_(Files.name.like('%corrtag%'), Files.name.like('%rawtag%'), Files.name.like('%\_x1d.fits'))).\
-                                outerjoin(Headers, Files.id == Headers.file_id).\
-                                filter(Headers.file_id == None)]
-    """
-
-    args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
-    args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
 
     args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
     print("Found {} files to add".format(len(args)))
@@ -320,7 +360,10 @@ def get_spt_keys(filename):
                     'lom1posc':hdu[2].header.get('lom1posc', None),
                     'lom2posc':hdu[2].header.get('lom2posc', None),
                     'lom1posf':hdu[2].header.get('lom1posf', None),
-                    'lom2posf':hdu[2].header.get('lom2posf', None)}
+                    'lom2posf':hdu[2].header.get('lom2posf', None),
+                    'ldcampat':hdu[2].header.get('ldcampat', None),
+                    'ldcampbt':hdu[2].header.get('ldcampbt', None),
+                    'lmmcetmp':hdu[2].header.get('lmmcetmp', None)}
         return keywords
 
 #-------------------------------------------------------------------------------
@@ -415,65 +458,29 @@ def get_primary_keys(filename):
         return keywords
 
 #-------------------------------------------------------------------------------
-
-def populate_data(num_cpu=1):
-    print("adding to data")
-
-    session = Session()
-    files_to_add = [(result.id, os.path.join(result.path, result.name))
-                        for result in session.query(Files).\
-                                filter(Files.name.like('%_x1d.fits%')).\
-                                outerjoin(Data, Files.id == Data.file_id).\
-                                filter(Data.file_id == None)]
-    session.close()
-
-    args = [(full_filename, f_key) for f_key, full_filename in files_to_add]
-
-    pool = mp.Pool(processes=num_cpu)
-    pool.map(update_data, args)
-
-#-------------------------------------------------------------------------------
-
-def update_data((args)):
+def update_data(args):
     """Update DB data table in parallel"""
 
-    filename, f_key = args
-    print(filename)
-
-    Session, engine = load_connection(SETTINGS['connection_string'])
-    session = Session()
-
+    #args is the filename!!! (might want to design this like other functions)
     try:
-        with fits.open(filename) as hdu:
+        with fits.open(args) as hdu:
             if len(hdu[1].data):
-                flux_mean=hdu[1].data['flux'].ravel().mean()
-                print(flux_mean)
-                #flux_max=hdu[1].data['flux'].ravel().max()
-                #flux_std=hdu[1].data['flux'].ravel().std()
-                #wl_max = hdu[1].data['wavelength'].ravel().max()
-                #wl_min = hdu[1].data['wavelength'].ravel().min()
+                data ={'flux_mean':hdu[1].data['flux'].ravel().mean(),
+                       'flux_max':hdu[1].data['flux'].ravel().max(),
+                       'flux_std':hdu[1].data['flux'].ravel().std(),
+                       'wl_min':hdu[1].data['wavelength'].ravel().min(),
+                       'wl_max':hdu[1].data['wavelength'].ravel().max()
+                                                                              }
             else:
-                flux_mean = None
-                #flux_max = None
-                #flux_std = None
-                #wl_max = None
-                #wl_min = None
-
-            session.add(Data(flux_mean=flux_mean,
-                             #flux_max=flux_max,
-                             #flux_std=flux_std,
-                             #wl_max = wl_max,
-                             #wl_min = wl_min,
-                             file_id=f_key))
-
-    except IOError as e:
-        print(e.message)
-        #-- Handle empty or corrupt FITS files
-        session.add(Data(file_id=f_key))
-
-    session.commit()
-    session.close()
-    engine.dispose()
+                data = {'flux_mean':None,
+                        'flux_max':None,
+                        'flux_std':None,
+                        'wl_min':None,
+                        'wl_max':None
+                                        }
+            return data
+    except IOError:
+        print('IOERROR')
 
 #-------------------------------------------------------------------------------
 
@@ -507,7 +514,7 @@ def delete_file_from_all(filename):
 def clear_all_databases(SETTINGS):
     """Dump all databases of all contents...seriously"""
 
-    if not raw_input("Are you sure you want to delete everything? Y/n") == 'Y':
+    if not raw_input("Are you sure you want to delete everything? Y/N: ") == 'Y':
         sys.exit("Not deleting, getting out of here.")
 
     session = Session()
@@ -528,28 +535,23 @@ def clear_all_databases(SETTINGS):
 def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
-    #insert_files(**SETTINGS)
-    #populate_primary_headers(SETTINGS['num_cpu'])
-    #populate_spt(SETTINGS['num_cpu'])
-    populate_data(SETTINGS['num_cpu'])
-    #populate_lampflash(SETTINGS['num_cpu'])
-    #populate_darks(SETTINGS['num_cpu'])
-    #populate_stims(SETTINGS['num_cpu'])
     insert_files(**SETTINGS)
-
     populate_primary_headers(SETTINGS['num_cpu'])
     populate_spt(SETTINGS['num_cpu'])
-    #populate_data(SETTINGS['num_cpu'])
+    populate_data(SETTINGS['num_cpu'])
     populate_lampflash(SETTINGS['num_cpu'])
     populate_darks(SETTINGS['num_cpu'])
+    populate_gain(SETTINGS['num_cpu'])
     populate_stims(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
 def run_all_monitors():
-    dark_monitor()
+    #dark_monitor()
+    #cci_monitor()
     stim_monitor()
-    osm_monitor()
+    #osm_monitor()
+
 
 #-------------------------------------------------------------------------------
 

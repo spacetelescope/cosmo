@@ -1,8 +1,4 @@
 from setuptools import setup, find_packages
-import os
-import glob
-import numpy as np
-
 
 setup(
     name = 'cos_monitoring',
@@ -19,16 +15,20 @@ setup(
                    'Topic :: Scientific/Engineering :: Physics',
                    'Topic :: Software Development :: Libraries :: Python Modules'],
     packages = find_packages(),
-    requires = ['numpy', 'scipy', 'astropy'],
+    requires = ['numpy', 'scipy', 'astropy', 'matplotlib'],
     entry_points = {'console_scripts': ['clean_slate=cos_monitoring.database:clean_slate',
                                         'do_all=cos_monitoring.database:do_all',
                                         'run_all_monitors=cos_monitoring.database:run_all_monitors',
                                         'create_master_csv=scripts.create_master_csv:main',
-                                        'find_new_cos_data=cos_monitoring.retrieval.find_new_cos_data:compare_tables'],
+                                        'find_new_cos_data=cos_monitoring.retrieval.find_new_cos_data:compare_tables',
+					                    'create_reports=cos_monitoring.database.report:query_all'],
     },
     install_requires = ['setuptools',
                         'numpy',
                         'astropy>=1.0.1',
                         'sqlalchemy',
-                        'pymysql']
+                        'pymysql',
+                        'matplotlib',
+                        'scipy',
+                        'fitsio']
     )

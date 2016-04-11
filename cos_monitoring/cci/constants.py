@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+from __future__ import absolute_import
 """Constants for monitor.py
 """
 
@@ -24,15 +23,15 @@ __all__ = ['X_UNBINNED',
            'FUVB_string',
            'HVTAB',
            'MODAL_GAIN_LIMIT',
-           'TIMESTAMP',
-           'DB_NAME']
+           'TIMESTAMP']
 
 import os
 import time
 from datetime import datetime
 import glob
-import pyfits
+from astropy.io import fits
 import numpy as np
+import yaml
 
 X_UNBINNED = 16384
 Y_UNBINNED = 1024
@@ -55,14 +54,13 @@ MONITOR_DIR = '/grp/hst/cos/Monitors/CCI/'
 #MONITOR_DIR = '/grp/hst/cos/Monitors/CCI_DAVE/'
 TEST_DIR = os.path.join( MONITOR_DIR, 'test_suite')
 WEBPAGE_DIR = '/grp/webpages/COS/cci/'
-DB_NAME = '/grp/hst/cos/Monitors/DB/cci.db'
 
 FUVA_string = '_00_'
 FUVB_string = '_01_'
 
 #----Finds to most recently created HVTAB
-hvtable_list = glob.glob('/grp/hst/cdbs/lref/*hv.fits')
-HVTAB = hvtable_list[ np.array( [ pyfits.getval(item,'DATE') for item in hvtable_list ] ).argmax() ]
+hvtable_list = glob.glob(os.path.join(os.environ['lref'], '*hv.fits'))
+HVTAB = hvtable_list[np.array([fits.getval(item,'DATE') for item in hvtable_list]).argmax()]
 
 MODAL_GAIN_LIMIT = 3
 

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 """
 Classes and functions to create PH filtering images for COS FUV observations
 ( PHAIMAGE )
@@ -13,12 +14,11 @@ from datetime import datetime
 import os
 import sys
 import glob
-import pyfits
+from astropy.io import fits
 import numpy as np
 
-from ..support import enlarge, rebin
-from constants import * #It's already been said
-from gainmap import make_total_gain
+from ..utils import enlarge, rebin
+from .constants import * #It's already been said
 
 #------------------------------------------------------------
 
@@ -35,8 +35,8 @@ class Phaimage:
 
         self.open_fits()
 
-        self.a_image = self.fill_gaps( self.a_image, 'FUVA', self.DETHVA )
-        self.b_image = self.fill_gaps( self.b_image, 'FUVB', self.DETHVB )
+        ###self.a_image = self.fill_gaps( self.a_image, 'FUVA', self.DETHVA )
+        ###self.b_image = self.fill_gaps( self.b_image, 'FUVB', self.DETHVB )
 
         self.make_phaimages()
 
@@ -48,8 +48,8 @@ class Phaimage:
         """
 
         gainmap_path, gainmap_name = os.path.split(gainmap)
-        segment = pyfits.getval(gainmap, 'SEGMENT')
-	dethv = int(pyfits.getval(gainmap, 'DETHV'))
+        segment = fits.getval(gainmap, 'SEGMENT')
+        dethv = int(fits.getval(gainmap, 'DETHV'))
 
         if segment == 'FUVA':
             seg_string = FUVA_string
@@ -68,8 +68,8 @@ class Phaimage:
         """
 
         gainmap_path, gainmap_name = os.path.split(gainmap)
-        segment = pyfits.getval(gainmap, 'SEGMENT')
-        dethv = int(pyfits.getval(gainmap, 'DETHV'))
+        segment = fits.getval(gainmap, 'SEGMENT')
+        dethv = int(fits.getval(gainmap, 'DETHV'))
 
         both_inputs = [gainmap]
 
@@ -82,7 +82,7 @@ class Phaimage:
         if len(other_gainmap) != 1:
             raise IOError("too many gainmaps found {}".format(other_gainmap))
         else:
-            other_gainmap = other_gainmap[0] 
+            other_gainmap = other_gainmap[0]
 
         both_inputs.append(other_gainmap)
         both_inputs.sort()
@@ -95,8 +95,8 @@ class Phaimage:
         header keywords and data arrays.
         """
 
-        a_hdu = pyfits.open( self.a_file )
-        b_hdu = pyfits.open( self.b_file )
+        a_hdu = fits.open( self.a_file )
+        b_hdu = fits.open( self.b_file )
 
         self.DETECTOR = a_hdu[0].header['DETECTOR']
         ###Maybe I need individual ones for A and B?
@@ -117,7 +117,7 @@ class Phaimage:
         dethv = int( dethv )
 
         extname = '{}INIT'.format( segment )
-        fill_data = pyfits.getdata( os.path.join( MONITOR_DIR, 'total_gain.fits' ),
+        fill_data = fits.getdata( os.path.join( MONITOR_DIR, 'total_gain.fits' ),
                                     ext=(extname, 1 ) )
 
         fill_data = rebin( fill_data, bins=(Y_BINNING, X_BINNING) ) / float((Y_BINNING * X_BINNING))
@@ -190,7 +190,7 @@ class Phaimage:
         pha_high_b = enlarge( self.b_high.astype( np.dtype('u1') ), y=Y_BINNING, x=X_BINNING )
 
         #-------Ext=0
-        hdu_out=pyfits.HDUList(pyfits.PrimaryHDU())
+        hdu_out=fits.HDUList(fits.PrimaryHDU())
 
         date_time = str(datetime.now())
         date_time = date_time.split()[0]+'T'+date_time.split()[1]
@@ -213,22 +213,22 @@ class Phaimage:
         hdu_out[0].header.add_history('The history can be found here.')
 
         #-------EXT=1
-        hdu_out.append(pyfits.ImageHDU( data = pha_low_a) )
+        hdu_out.append(fits.ImageHDU( data = pha_low_a) )
         hdu_out[1].header.update('EXTNAME', 'FUVA')
         hdu_out[1].header.update('EXTVER', 1)
 
         #-------EXT=2
-        hdu_out.append(pyfits.ImageHDU( data = pha_high_a) )
+        hdu_out.append(fits.ImageHDU( data = pha_high_a) )
         hdu_out[2].header.update('EXTNAME', 'FUVA')
         hdu_out[2].header.update('EXTVER', 2)
 
         #-------EXT=3
-        hdu_out.append(pyfits.ImageHDU( data = pha_low_b) )
+        hdu_out.append(fits.ImageHDU( data = pha_low_b) )
         hdu_out[3].header.update('EXTNAME', 'FUVB')
         hdu_out[3].header.update('EXTVER', 1)
 
         #-------EXT=4
-        hdu_out.append(pyfits.ImageHDU( data = pha_high_b) )
+        hdu_out.append(fits.ImageHDU( data = pha_high_b) )
         hdu_out[4].header.update('EXTNAME', 'FUVB')
         hdu_out[4].header.update('EXTVER', 2)
 
@@ -254,7 +254,7 @@ def make_phaimages(clobber=False):
         if os.path.exists( Phaimage.outfile(gainmap) ) and not clobber:
             print Phaimage.outfile(gainmap), 'Already exists. Skipping'
         else:
-            try: 
+            try:
                 inputs = Phaimage.inputs(gainmap)
             except:
                 continue

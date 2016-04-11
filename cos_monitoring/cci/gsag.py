@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 """Routine to monitor the modal gain in each pixel as a
 function of time.  Uses COS Cumulative Image (CCI) files
 to produce a modal gain map for each time period.  Modal gain
@@ -27,25 +28,26 @@ import time
 from datetime import datetime
 import glob
 import sys
-import sqlite3
+from sqlalchemy.engine import create_engine
 
-import pyfits
+from astropy.io import fits
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import calcos
+from sqlalchemy.sql.functions import concat
 
-from ..support import rebin,init_plots,Logger,enlarge,progress_bar,send_email
-from constants import *  #Shut yo face
+from ..database.db_tables import open_settings, load_connection
+from ..utils import send_email
+from .constants import *  #Shut yo face
 
 #------------------------------------------------------------
 
 def main(run_regress=False):
     """ Main driver for monitoring program.
     """
-    new_gsagtab = make_gsagtab_db()
-    #new_gsagtab = make_gsagtab()
-    #populate_down( new_gsagtab )
+    new_gsagtab = make_gsagtab_db(blue=False)
+    blue_gsagtab = make_gsagtab_db(blue=True)
+
     old_gsagtab = get_cdbs_gsagtab()
 
     compare_gsag(new_gsagtab,old_gsagtab)
@@ -93,9 +95,9 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
     print 'Old GSAGTAB %s'%( old )
 
     if type(new) == str:
-        new = pyfits.open(new)
+        new = fits.open(new)
     if type(old) == str:
-        old = pyfits.open(old)
+        old = fits.open(old)
 
     report_file = open( os.path.join( MONITOR_DIR,'gsag_report.txt'), 'w')
 
@@ -216,8 +218,8 @@ def test_gsag_calibration(gsagtab):
         os.system('rm '+TEST_DIR+'/'+ext)
 
     for item in test_datasets:
-        pyfits.setval( item,'RANDSEED',value=8675309,ext=0 )
-        pyfits.setval( item,'GSAGTAB',value='testdir$new_gsag.fits',ext=0 )
+        fits.setval( item,'RANDSEED',value=8675309,ext=0 )
+        fits.setval( item,'GSAGTAB',value='testdir$new_gsag.fits',ext=0 )
 
     failed_runs = []
     for item in test_datasets:
@@ -360,7 +362,7 @@ def populate_down(gsag_file):
     print '#---------------------------------------------#'
     print 'Populating flagged regions to lower HV settings'
     print '#---------------------------------------------#'
-    gsagtab = pyfits.open(gsag_file)
+    gsagtab = fits.open(gsag_file)
     for segment,hv_keyword in zip( ['FUVA','FUVB'], ['HVLEVELA','HVLEVELB'] ):
         all_hv = [ (ext.header[hv_keyword],i+1) for i,ext in enumerate(gsagtab[1:]) if ext.header['segment'] == segment ]
         all_hv.sort()
@@ -421,13 +423,13 @@ def gsagtab_extension(date, lx, dx, ly, dy, dq, dethv, hv_string, segment):
     dx = np.array(dx)
     dy = np.array(dy)
     dq = np.array(dq)
-    date_col = pyfits.Column('Date','D','MJD',array=date)
-    lx_col = pyfits.Column('lx','J','pixel',array=lx)
-    dx_col = pyfits.Column('dx','J','pixel',array=dx)
-    ly_col = pyfits.Column('ly','J','pixel',array=ly)
-    dy_col = pyfits.Column('dy','J','pixel',array=dy)
-    dq_col = pyfits.Column('DQ','J','',array=dq)
-    tab = pyfits.new_table([date_col,lx_col,ly_col,dx_col,dy_col,dq_col])
+    date_col = fits.Column('DATE','D','MJD',array=date)
+    lx_col = fits.Column('LX','J','pixel',array=lx)
+    dx_col = fits.Column('DX','J','pixel',array=dx)
+    ly_col = fits.Column('LY','J','pixel',array=ly)
+    dy_col = fits.Column('DY','J','pixel',array=dy)
+    dq_col = fits.Column('DQ','J','',array=dq)
+    tab = fits.new_table([date_col,lx_col,ly_col,dx_col,dy_col,dq_col])
 
     tab.header.add_comment(' ',after='TFIELDS')
     tab.header.add_comment('  *** Column formats ***',after='TFIELDS')
@@ -487,7 +489,7 @@ def make_gsagtab():
     #Populates regions found in HV == X, Segment Y, to any
     #extensions of lower HV for same segment.
 
-    hdu_out=pyfits.HDUList(pyfits.PrimaryHDU())
+    hdu_out=fits.HDUList(fits.PrimaryHDU())
     date_time = str(datetime.now())
     date_time = date_time.split()[0]+'T'+date_time.split()[1]
     hdu_out[0].header.update('DATE',date_time,'Creation UTC (CCCC-MM-DD) date')
@@ -582,7 +584,23 @@ def make_gsagtab():
 
 #------------------------------------------------------------
 
-def make_gsagtab_db():
+def in_boundary(segment, ly, dy):
+    boundary = {'FUVA': 493, 'FUVB': 557}
+    padding = 4
+
+    boundary_pix = set(np.arange(boundary[segment]-padding,
+                                 boundary[segment]+padding+1))
+
+    affected_pix = set(np.arange(ly, ly+dy+1))
+
+    if affected_pix.intersection(boundary_pix):
+        return True
+
+    return False
+
+#------------------------------------------------------------
+
+def make_gsagtab_db(blue=False):
     """Create GSAGTAB from flagged locations.
 
     Grabs txt files of flagged bad regions from MONITOR_DIR
@@ -605,7 +623,7 @@ def make_gsagtab_db():
     #Populates regions found in HV == X, Segment Y, to any
     #extensions of lower HV for same segment.
 
-    hdu_out=pyfits.HDUList(pyfits.PrimaryHDU())
+    hdu_out=fits.HDUList(fits.PrimaryHDU())
     date_time = str(datetime.now())
     date_time = date_time.split()[0]+'T'+date_time.split()[1]
     hdu_out[0].header.update('DATE',date_time,'Creation UTC (CCCC-MM-DD) date')
@@ -615,6 +633,7 @@ def make_gsagtab_db():
     hdu_out[0].header.update('COSCOORD','USER')
     hdu_out[0].header.update('VCALCOS','2.0')
     hdu_out[0].header.update('USEAFTER','May 11 2009 00:00:00')
+    hdu_out[0].header['CENWAVE'] = 'N/A'
 
     today_string = date_string(datetime.now())
     hdu_out[0].header.update('PEDIGREE','INFLIGHT 25/05/2009 %s'%( today_string  ))
@@ -633,63 +652,97 @@ def make_gsagtab_db():
     hdu_out[0].header.add_history('the measured modal gain of a region falls to ')
     hdu_out[0].header.add_history('%d given current lower pulse height filtering.'%(MODAL_GAIN_LIMIT) )
 
-    possible_hv_strings = ['000', '100'] + map(str, range(142,179))
+    possible_hv_strings = ['000', '100'] + map(str, range(142, 179))
 
     #--working on it
     print "Connecting"
-    with sqlite3.connect(DB_NAME) as db:
-        c = db.cursor()
-        c.execute("""SELECT DISTINCT seg FROM gain""")
 
-        segments = [item[0] for item in c]
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
 
-        print "looping over segments"
-        for seg in segments:
-            hvlevel_string = 'HVLEVEL' + seg[-1].upper()
+    connection = engine.connect()
 
-            for hv_level in possible_hv_strings:
-                date = []
-                lx = [] 
-                dx = []
-                ly = []
-                dy = []
-                dq = [] 
+    results = connection.execute("""SELECT DISTINCT segment FROM gain WHERE concat(segment,x,y) IS NOT NULL""")
 
-                hv_level = int(hv_level)
-                print seg, hv_level
-                c.execute("""SELECT DISTINCT x,y FROM flagged WHERE seg='%s' and hv>='%s'""" %(seg, hv_level))
-                coords = [(item[0], item[1]) for item in c]
+    segments = [item[0] for item in results]
 
-                for x,y in coords:
-                    c.execute("""SELECT MJD FROM flagged WHERE seg='%s' AND x='%s' and y='%s' and hv>='%s'""" % (seg, x, y, hv_level))
-                    flagged_dates = [item[0] for item in c]
-                    if len(flagged_dates):
-                        bad_date = min(flagged_dates)
-                    else:
-                        continue
+    print "looping over segments, {}".format(segments)
+    for seg in segments:
+        hvlevel_string = 'HVLEVEL' + seg[-1].upper()
+
+        for hv_level in possible_hv_strings:
+            date = []
+            lx = []
+            dx = []
+            ly = []
+            dy = []
+            dq = []
+
+            hv_level = int(hv_level)
+            print seg, hv_level
+            results = connection.execute("""SELECT DISTINCT x,y
+                                            FROM flagged WHERE segment='%s'
+                                            and dethv>='%s'
+                                            and concat(x,y) IS NOT NULL
+                                            """
+                                            %(seg, hv_level)
+                                            )
+
+            coords = [(item[0], item[1]) for item in results]
+
+            for x, y in coords:
+                results = connection.execute("""SELECT MJD
+                                                FROM flagged
+                                                WHERE segment='%s'
+                                                AND x='%s'
+                                                AND y='%s'
+                                                AND dethv>='%s'
+                                                AND concat(x,y) IS NOT NULL
+                                                """
+                                                %(seg, x, y, hv_level)
+                                                )
+
+                flagged_dates = [item[0] for item in results]
+                if len(flagged_dates):
+                    bad_date = min(flagged_dates)
+                else:
+                    continue
+
+                if blue and in_boundary(seg, y*Y_BINNING, Y_BINNING):
+                    print "Excluding for blue modes: {} {} {}".format(seg, y*Y_BINNING, Y_BINNING)
+                    continue
 
 
-                    lx.append(x*X_BINNING)
-                    dx.append(X_BINNING)
-                    ly.append(y*Y_BINNING)
-                    dy.append(Y_BINNING)
-                    date.append(bad_date)
-                    dq.append(8192)
+                lx.append(x*X_BINNING)
+                dx.append(X_BINNING)
+                ly.append(y*Y_BINNING)
+                dy.append(Y_BINNING)
+                date.append(bad_date)
+                dq.append(8192)
 
-                if not len(lx):
-                    #Extension tables cannot have 0 entries, a
-                    #region of 0 extent centered on (0,0) is
-                    #sufficient to prevent CalCOS crash.
-                    date.append(0)
-                    lx.append(0)
-                    ly.append(0)
-                    dx.append(0)
-                    dy.append(0)
-                    dq.append(8192)
+            if not len(lx):
+                #Extension tables cannot have 0 entries, a
+                #region of 0 extent centered on (0,0) is
+                #sufficient to prevent CalCOS crash.
+                lx.append(0)
+                ly.append(0)
+                dx.append(0)
+                dy.append(0)
+                date.append(0)
+                dq.append(8192)
 
-                print len(date), ' found bad regions'
-                tab = gsagtab_extension(date, lx, dx, ly, dy, dq, hv_level, hvlevel_string, seg)
-                hdu_out.append(tab)
+            print len(date), ' found bad regions'
+            tab = gsagtab_extension(date, lx, dx, ly, dy, dq, hv_level, hvlevel_string, seg)
+            hdu_out.append(tab)
+
+    if blue:
+        out_fits = out_fits.replace('.fits', '_blue.fits')
+        hdu_out[0].header['CENWAVE'] = 'BETWEEN 1055 1097'
+
+        descrip_string = 'Blue-mode gain-sag regions as of %s'%(str(datetime.now().date()))
+        while len(descrip_string) < 67:
+            descrip_string += '-'
+        hdu_out[0].header['DESCRIP'] = descrip_string
 
     hdu_out.writeto(out_fits, clobber=True)
     print 'WROTE: GSAGTAB to %s'%(out_fits)
@@ -702,7 +755,7 @@ def get_cdbs_gsagtab():
     for comparison with the one just made.
     """
     gsag_tables = glob.glob( '/grp/hst/cdbs/lref/*gsag.fits' )
-    creation_dates = np.array( [ pyfits.getval(item,'DATE') for item in gsag_tables ] )
+    creation_dates = np.array( [ fits.getval(item,'DATE') for item in gsag_tables ] )
     current_gsagtab = gsag_tables[ creation_dates.argmax() ]
 
     return current_gsagtab

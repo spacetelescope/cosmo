@@ -3,7 +3,7 @@ from __future__ import print_function, absolute_import, division
 import os
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean, Numeric, BigInteger
+from sqlalchemy import ForeignKey, Column, Index, Integer, String, Float, Boolean, Numeric, BigInteger, Text
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker, relationship, backref
@@ -83,14 +83,14 @@ class Darks(Base):
     obsname = Column(String(30))
     rootname = Column(String(9))
     detector = Column(String(4))
-    date = Column(Numeric(7, 2))
-    dark = Column(Numeric(12, 10))
-    ta_dark = Column(Numeric(12, 10))
-    latitude = Column(Numeric(8, 3))
-    longitude = Column(Numeric(8, 3))
-    sun_lat = Column(Numeric(8, 3))
-    sun_lon = Column(Numeric(8, 3))
-    temp = Column(Numeric(8, 4))
+    date = Column(Float)
+    dark = Column(Float)
+    ta_dark = Column(Float)
+    latitude = Column(Float)
+    longitude = Column(Float)
+    sun_lat = Column(Float)
+    sun_lon = Column(Float)
+    temp = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('lampflash', order_by=id))
@@ -197,8 +197,8 @@ class Headers(Base):
     dpixel1b = Column(Float)
     date_obs = Column(String(10))
     time_obs = Column(String(8))
-    expstart = Column(Numeric(8, 3))
-    expend = Column(Numeric(8, 3))
+    expstart = Column(Float)
+    expend = Column(Float)
     exptime = Column(Float)
     numflash = Column(Integer)
     ra_aper = Column(Float)
@@ -239,11 +239,12 @@ class Data(Base):
 
     id = Column(Integer, primary_key=True)
 
-    flux_mean = Column(Numeric(40,asdecimal=False))
-    #flux_max = Column(Float)
-    #flux_std = Column(Float)
-    #wl_max = Column(Float)
-    #wl_min = Column(Float)
+    flux_mean = Column(Float)
+    flux_max = Column(Float)
+    flux_std = Column(Float)
+    wl_min = Column(Float)
+    wl_max = Column(Float)
+
 
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('Data', order_by=id))
@@ -258,13 +259,13 @@ class Stims(Base):
 
     time = Column(Float)
     rootname = Column(String(9))
-    abs_time = Column(Numeric(10, 5))
-    stim1_x = Column(Numeric(8, 3))
-    stim1_y = Column(Numeric(8, 3))
-    stim2_x = Column(Numeric(8, 3))
-    stim2_y = Column(Numeric(8, 3))
+    abs_time = Column(Float)
+    stim1_x = Column(Float)
+    stim1_y = Column(Float)
+    stim2_x = Column(Float)
+    stim2_y = Column(Float)
     counts = Column(Float)
-
+    segment = Column(String(4))
     file_id = Column(Integer, ForeignKey('files.id'))
 
     __table_args__ = (Index('idx_rootname', 'rootname', unique=False), )
@@ -314,23 +315,25 @@ class Phd(Base):
     #file = relationship("Files", backref=backref('Phd', order_by=id))
 
 #-------------------------------------------------------------------------------
-'''
+
 class Gain(Base):
     __tablename__ = 'gain'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
 
-    x = Column(Float)
-    y = Column(Float)
-    xbin = Column(Float)
-    ybin = Column(Float)
+    x = Column(Integer)
+    y = Column(Integer)
     gain = Column(Float)
     counts = Column(Float)
-    sigma = Column(Float)
+    std = Column(Float)
+    segment = Column(String(4))
+    dethv = Column(Integer)
+    expstart = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
+    __table_args__ = (Index('coord', 'x', 'y', unique=False), )
     #file = relationship("Files", backref=backref('Gain', order_by=id))
-'''
+
 #-------------------------------------------------------------------------------
 
 class sptkeys(Base):
@@ -348,6 +351,9 @@ class sptkeys(Base):
     lom2posc = Column(Integer) #2 ext, osm2_coarse in spreadsheet
     lom1posf = Column(Integer) #2 ext, osm1_fine in spreadsheet
     lom2posf = Column(Integer) #2 ext, osm2_fine in spreadsheet
+    ldcampat = Column(Float)
+    ldcampbt = Column(Float)
+    lmmcetmp = Column(Float)
 
     file_id = Column(Integer, ForeignKey('files.id'))
 

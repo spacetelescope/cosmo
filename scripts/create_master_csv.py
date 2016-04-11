@@ -8,7 +8,7 @@ from astropy.table import Table
 # add documentation to the csv_generator function
 
 #-- genrate astropy table and output csv file.
-def csv_generator(headers, keywords, filename):
+def csv_generator(headers,keywords,path,filename):
     """
     Pulls headers and keywords from SQL query to make a csv table.
 
@@ -30,13 +30,19 @@ def csv_generator(headers, keywords, filename):
     t : CSV file
         A CSV files that contains all of the queried header information.
     """
+    #try:
+    if filename.endswith('.txt'):
+        form = 'ascii'
+    else:
+        form = 'csv'
+
     datarows = []
     for item in headers:
         datarows.append(item)
-    print(type(item))
     t = Table(rows = datarows, names = keywords, meta = {'Name':'COS HEADER TABLE'})
-    ascii.write(t, filename + '.csv', format='csv')
-
+    ascii.write(t,os.path.join(path,filename),format=form)
+    #except:
+    print('Cannot handle files that end with {}'.format(filename.split('.')[1]))
 
 
 def main():
@@ -50,10 +56,12 @@ def main():
 
     #-- setup a connection to the databse
     Session, engine = load_connection(SETTINGS['connection_string'])
-    results = engine.execute("SELECT * FROM headers ORDER BY expstart;")
+    #results = engine.execute("SELECT * FROM headers ORDER BY expstart;")
+    results = engine.execute("SELECT * FROM gain;")
     keys = results.keys()
-    file_name = 'all_file'
-    csv_generator(results,keys,file_name)
+    file_name = 'gain.csv'
+    path = os.getcwd()
+    csv_generator(results,keys,path,file_name)
 
     #-- close connections
     engine.dispose()

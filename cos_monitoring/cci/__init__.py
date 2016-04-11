@@ -1,6 +1,4 @@
-import monitor
-import gainmap
-import phaimage
-import gsag
-import findbad
-import constants
+from __future__ import absolute_import
+
+from .gainmap import *
+from .constants import *
