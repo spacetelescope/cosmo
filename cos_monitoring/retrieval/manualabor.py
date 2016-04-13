@@ -33,7 +33,6 @@ from email.mime.multipart import MIMEMultipart
 
 from .ProgramGroups import * 
 from .dec_calcos import clobber_calcos
-from .logging_dec import log_function
 
 LINEOUT = "#"*75+"\n"
 STAROUT = "*"*75+"\n"
@@ -41,7 +40,7 @@ STAROUT = "*"*75+"\n"
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def unzip_mistakes(zipped):
     '''
     Occasionally, files will get zipped without having csums made.
@@ -71,7 +70,7 @@ def unzip_mistakes(zipped):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def make_csum(unzipped_raws):
     '''
     Calibrate raw files to produce csum files.
@@ -85,7 +84,7 @@ def make_csum(unzipped_raws):
     '''
     
     run_calcos = clobber_calcos(calcos.calcos)
-    logger.info("Creating CSUM files")
+    #logger.info("Creating CSUM files")
     for item in unzipped_raws:
         existence = csum_existence(item)
         if not existence:
@@ -99,7 +98,8 @@ def make_csum(unzipped_raws):
                            compress_csum=False)        
                 
             except Exception, e:
-                logger.exception("There was an error processing {}:".format(item))
+                print(e)
+                #logger.exception("There was an error processing {}:".format(item))
                 pass
             if os.path.exists(csum_dir):
                 csums = glob.glob(os.path.join(csum_dir, "*csum*"))
@@ -107,13 +107,14 @@ def make_csum(unzipped_raws):
                     for csum in csums:
                         shutil.copy(csum, dirname)
                 else:
-                    logger.error("A csum dir was created but there are no csums: {}".format(csum_dir))
+                    print("A csum dir was created but there were no csums: {0}".format(csum_dir))
+                    #logger.error("A csum dir was created but there are no csums: {}".format(csum_dir))
                 shutil.rmtree(csum_dir)
                 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def fix_perm(base_dir):
     '''
     Walk through all directories in base directory and change the group ids
@@ -147,7 +148,7 @@ def fix_perm(base_dir):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def chmod_recurs(dirname, perm):
     '''
     Edit permissions on a directory and all files in that directory.
@@ -174,7 +175,7 @@ def chmod_recurs(dirname, perm):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def csum_existence(filename):
     '''
     Check for the existence of a CSUM for a given input dataset.
@@ -205,7 +206,7 @@ def csum_existence(filename):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def compress_files(uz_files):
     '''
     Compress unzipped files and delete original unzipped files.
@@ -231,7 +232,7 @@ def compress_files(uz_files):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def uncompress_files(z_files):
     '''
     Uncompress zipped files and delete original zipped files.
@@ -257,7 +258,7 @@ def uncompress_files(z_files):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def send_email():
     ''' 
     Send a confirmation email. Currently not used.
@@ -282,7 +283,7 @@ def send_email():
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def parallelize(myfunc, mylist):
     '''
     Parallelize a function. Be a good samaritan and CHECK the current usage
