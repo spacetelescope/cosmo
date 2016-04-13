@@ -12,7 +12,7 @@ Use:
 '''
 
 __author__ = "Jo Taylor"
-__date__ = "12-15-2015"
+__date__ = "04-13-2016"
 __maintainer__ = "Jo Taylor"
 __email__ = "jotaylor@stsci.edu"
 
