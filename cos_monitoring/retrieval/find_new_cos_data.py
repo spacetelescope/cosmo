@@ -1,4 +1,6 @@
 #! /usr/bin/env python
+from __future__ import print_function, absolute_import, division
+
 '''
 This module compares what datasets are currently in
 /smov/cos/Data (by accessing the COS database) versus all datasets currently
@@ -14,24 +16,22 @@ __date__ = "12-15-2015"
 __maintainer__ = "Jo Taylor"
 __email__ = "jotaylor@stsci.edu"
 
-from __future__ import print_function, absolute_import, division
 
 import pickle
 import os
 import yaml
-#try:
-#    import yaml
-#except:
-#    import cos_monitoring.database.yaml as yaml
 from collections import OrderedDict
 import pdb
+from sqlalchemy import text
 
-from cos_monitoring.database.db_tables import load_connection
-#from request_data import retrieve_data
+from ..database.db_tables import load_connection
+from .request_data import run_all_retrievals
+from .logging_dec import log_function
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
+@log_function
 def connect_cosdb():
     '''
     Connect to the COS database on greendev and store lists of all files.
@@ -52,17 +52,17 @@ def connect_cosdb():
     config_file = os.path.join(os.environ['HOME'], "configure.yaml")
     with open(config_file, 'r') as f:
         SETTINGS = yaml.load(f)
-    
+        
+        print("Querying COS greendev database....")
         # Connect to the database.
         Session, engine = load_connection(SETTINGS['connection_string'])
         # All entries that ASN_ID = NULL (should be individual jits, acqs)
-        null = engine.execute("SELECT rootname FROM headers WHERE asn_id='NONE';")
-#        null2 = engine.execute("SELECT rootname FROM headers WHERE asn_id IS NULL;")
+        null = list(engine.execute("SELECT rootname FROM headers WHERE asn_id='NONE';"))
         # All entries that have ASN_ID defined (will pull science, jit, acq)
-#        jitters = engine.execute("SELECT rootname FROM headers WHERE rootname LIKE '%j';")
-        jitters = engine.execute("SELECT rootname FROM files WHERE RIGHT(rootname,1) = 'j';")
-        asn = engine.execute("SELECT asn_id FROM headers " 
-                             "WHERE asn_id!='NONE';")
+        jitters = list(engine.execute("SELECT rootname FROM files " 
+                                      "WHERE RIGHT(rootname,1) = 'j';"))
+        asn = list(engine.execute("SELECT asn_id FROM headers " 
+                                  "WHERE asn_id!='NONE';"))
 
         # Store SQLAlchemy results as lists
         nullrows = []
@@ -82,6 +82,7 @@ def connect_cosdb():
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
+@log_function
 def connect_dadsops():
     '''
     Connect to the MAST database on HARPO and store lists of all files.
@@ -106,36 +107,32 @@ def connect_dadsops():
     with open(config_file, 'r') as f:
         SETTINGS = yaml.load(f)
     
+        print("Querying MAST dadsops_rep database....")
         # Connect to the database.
         Session, engine = load_connection(SETTINGS['connection_string'])
         engine.execute("use dadsops_rep;")
         # Get all jitter, science (ASN), and CCI datasets.
-        jitters = engine.execute("SELECT ads_data_set_name,ads_pep_id "
-                                 "FROM archive_data_set_all "
-                                 "WHERE ads_instrument='cos' " 
-                                 "AND ads_data_set_name LIKE '%J';")
-        science = engine.execute("SELECT sci_data_set_name,sci_pep_id "
-                                 "FROM science WHERE sci_instrume='cos';")
-        cci = engine.execute("SELECT ads_data_set_name,ads_pep_id "
-                             "FROM archive_data_set_all "
-                             "WHERE ads_archive_class='csi';")
-       
+        jitters = list(engine.execute("SELECT ads_data_set_name,ads_pep_id "
+                                      "FROM archive_data_set_all WHERE " 
+                                      "ads_instrument='cos' AND " 
+                                      "ads_data_set_name LIKE '%J';"))
+        science = list(engine.execute("SELECT sci_data_set_name,sci_pep_id "
+                                      "FROM science WHERE sci_instrume='cos';"))
+        cci = list(engine.execute("SELECT ads_data_set_name,ads_pep_id " 
+                                  "FROM archive_data_set_all WHERE " 
+                                  "ads_archive_class='csi';"))
+
         # Store SQLAlchemy results as dictionaries (we need dataset name 
         # and proposal ID).
         jitdict = OrderedDict()
         sciencedict = OrderedDict()
         ccidict = OrderedDict()
         for row in jitters:
-# WHY DID THIS HAPPEN, I have to use indices
-#            jitdict[row["ads_data_set_name"]] = row["ads_pep_id"]
             jitdict[row[0]] = row[1]
         for row in science:
-#            sciencedict[row["sci_data_set_name"]] = row["sci_pep_id"]
             sciencedict[row[0]] = row[1]
         for row in cci:
-#            ccidict[row["ads_data_set_name"]] = row["ads_pep_id"]
             ccidict[row[0]] = row[1]
-
         # Close connection
         engine.dispose()
         return jitdict, sciencedict, ccidict
@@ -143,6 +140,7 @@ def connect_dadsops():
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
+@log_function
 def compare_tables():
     '''
     Compare the set of all files currently in the COS repository to the list 
@@ -155,11 +153,10 @@ def compare_tables():
         Nothing    
     '''
     
+    print("Finding missing COS data...")
     nullrows, asnrows, smovjitrows = connect_cosdb()
     jitdict, sciencedict, ccidict = connect_dadsops()
     
-    #existing = set(nullrows + asnrows)
-    #existing_jit = set(smovjitrows)
     existing = set()
     existing_jit = set()
 
@@ -186,30 +183,15 @@ def compare_tables():
     for i in xrange(len(missing_data_names)):
         prop_dict[missing_data_props[i]].append(missing_data_names[i])
 
-    # This is for testing, to just retrieve one proposal
-#    test_prop = prop_dict.keys()[0]
-#    test_dir = "/grp/hst/cos3/smov_testing/retrieval"
-#    test_data = prop_dict[prop_dict.keys()[0]]
-#    pickle.dump({test_prop:test_data}, open("test.p","wb"))
-    pickle.dump(prop_dict, open("filestoretrieve.p","wb"))
-
-    # Retrieve data for each proposal.
-#    for prop in prop_dict.keys():
-#        prop_dir = "/smov/cos/Data/{0}".format(prop)
-#        os.chmod(prop_dir, 0755)
-#        print("I am retrieving %s datasets for %s" % (len(prop_dict[prop]),prop))
-         # uncomment to actually retrieve. Don't want to be accidentally
-         # sending requests for 1000s of files for now though.
-#        retrieve_data(prop_dir, prop_dict[prop])
-
+    pkl_file = "filestoretrieve.p"
+    pickle.dump(prop_dict, open(pkl_file, "wb"))
+    cwd = os.getcwd()
+    print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
+#    run_all_retrievals(pkl_file)
+    
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 if __name__ == "__main__":
-    # bad to use same names?
     compare_tables()
 
-# There are two types of data that will show up in my query of all MAST data_set_names:
-# 1) association data (ending in 0 generally), which will also pick up jitter, 
-#   lampflash, and acq data
-# 2) single exposure data ending in Q (e.g. dark) 
