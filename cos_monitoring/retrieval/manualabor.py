@@ -1,5 +1,7 @@
 #! /usr/bin/env python
 
+from __future__ import print_function, absolute_import, division
+
 '''
 This ia a program designed to calibrate COS rawfiles to create CSUMs.
 
@@ -8,7 +10,7 @@ as zipping up any unzipped files to save space.
 '''
 
 __author__ = "Jo Taylor"
-__date__ = "02-23-2016"
+__date__ = "04-13-2016"
 __maintainer__ = "Jo Taylor"
 
 # Import necessary packages.
@@ -19,12 +21,18 @@ import gzip
 from astropy.io import fits as pf
 import calcos
 import smtplib
+import multiprocessing as mp
+import psutil
+import argparse
+import math
+import time
+import pdb
+import numpy as np
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from ProgramGroups import * 
-from dec_calcos import clobber_calcos
-from logging_dec import log_function
+from .ProgramGroups import * 
+from .dec_calcos import clobber_calcos
 
 LINEOUT = "#"*75+"\n"
 STAROUT = "*"*75+"\n"
@@ -32,7 +40,7 @@ STAROUT = "*"*75+"\n"
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def unzip_mistakes(zipped):
     '''
     Occasionally, files will get zipped without having csums made.
@@ -48,8 +56,6 @@ def unzip_mistakes(zipped):
         Nothing
     '''
     
-# how to include function name in logger output???
-#    print LINEOUT,LINEOUT,"\n"
     for zfile in zipped:
         rootname = os.path.basename(zfile)[:9]
         dirname = os.path.dirname(zfile)
@@ -64,7 +70,7 @@ def unzip_mistakes(zipped):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def make_csum(unzipped_raws):
     '''
     Calibrate raw files to produce csum files.
@@ -78,7 +84,7 @@ def make_csum(unzipped_raws):
     '''
     
     run_calcos = clobber_calcos(calcos.calcos)
-    logger.info("Creating CSUM files")
+    #logger.info("Creating CSUM files")
     for item in unzipped_raws:
         existence = csum_existence(item)
         if not existence:
@@ -92,8 +98,8 @@ def make_csum(unzipped_raws):
                            compress_csum=False)        
                 
             except Exception, e:
-                logger.exception("There was an error processing {}:".format(item))
-                #print("There was an error processing {}:\n{}".format(item,e))
+                print(e)
+                #logger.exception("There was an error processing {}:".format(item))
                 pass
             if os.path.exists(csum_dir):
                 csums = glob.glob(os.path.join(csum_dir, "*csum*"))
@@ -101,13 +107,14 @@ def make_csum(unzipped_raws):
                     for csum in csums:
                         shutil.copy(csum, dirname)
                 else:
-                    logger.error("A csum dir was created but there are no csums: {}".format(csum_dir))
+                    print("A csum dir was created but there were no csums: {0}".format(csum_dir))
+                    #logger.error("A csum dir was created but there are no csums: {}".format(csum_dir))
                 shutil.rmtree(csum_dir)
                 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def fix_perm(base_dir):
     '''
     Walk through all directories in base directory and change the group ids
@@ -141,7 +148,7 @@ def fix_perm(base_dir):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def chmod_recurs(dirname, perm):
     '''
     Edit permissions on a directory and all files in that directory.
@@ -165,16 +172,10 @@ def chmod_recurs(dirname, perm):
             for item in files:
                 os.chmod(os.path.join(root, item), perm)
     
-    
-#    allfiles = glob.glob(os.path.join(dirname, "*fits"))
-#    os.chmod(dirname, perm)
-#    for item in allfiles:
-#        os.chmod(item, perm)
-
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def csum_existence(filename):
     '''
     Check for the existence of a CSUM for a given input dataset.
@@ -205,7 +206,7 @@ def csum_existence(filename):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def compress_files(uz_files):
     '''
     Compress unzipped files and delete original unzipped files.
@@ -231,7 +232,7 @@ def compress_files(uz_files):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def uncompress_files(z_files):
     '''
     Uncompress zipped files and delete original zipped files.
@@ -257,7 +258,7 @@ def uncompress_files(z_files):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def send_email():
     ''' 
     Send a confirmation email. Currently not used.
@@ -268,6 +269,7 @@ def send_email():
     Returns:
         Nothing
     '''
+    
     msg = MIMEMultipart()
     msg["Subject"] = "Testing"
     msg["From"] = "jotaylor@stsci.edu"
@@ -280,25 +282,102 @@ def send_email():
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
+
+#@log_function
+def parallelize(myfunc, mylist):
+    '''
+    Parallelize a function. Be a good samaritan and CHECK the current usage
+    of resources before determining number of processes to use. If usage
+    is too high, wait 10 minutes before checking again. Currently only 
+    supports usage with functions that act on a list. Will modify for
+    future to support nargs.
+
+    Parameters:
+        myfunc : function
+            The function to be parallelized.
+        mylist : list
+            List to be used with function.
+
+    Returns: 
+        Nothing
+    '''
+
+    # Percentage of cores to eat up.
+    playnice = 0.25
+    playmean = 0.40
+
+    # Split list into multiple lists if it's large.
+    maxnum = 50
+    if len(mylist) > maxnum:
+        metalist = [mylist[i:i+maxnum] for i in xrange(0, len(mylist), maxnum)]
+    else:
+        metalist = [mylist]
+    for onelist in metalist:
+        # Get load average of system and no. of hyper-threaded CPUs on current system.
+        loadavg = os.getloadavg()[0]
+        ncores = psutil.cpu_count()
+        # If too many cores are being used, wait 10 mins, and reasses.
+        while loadavg >= ncores:
+            time.sleep(600)
+        else: 
+            avail = ncores - math.ceil(loadavg)
+            nprocs = int(np.floor(avail * playnice))
+        pool = mp.Pool(processes=nprocs)
+        pool.map(myfunc, onelist)
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
     
-if __name__ == "__main__":
+def run_all_labor(prl):
+    '''
+    Run all the functions in the correct order. 
+
+    Parameters:
+        prl : Boolean
+            Should functions be parallelized?
+
+    Returns:
+        Nothing
+    '''
+
     base_dir = "/grp/hst/cos2/smov_testing/"
     chmod_recurs(base_dir, 0755) 
-
+    
     # using glob is faster than using os.walk
     zipped = glob.glob(os.path.join(base_dir, "?????", "*raw*gz"))
     if zipped:
-        unzip_mistakes(zipped)
+        if prl:
+            parallelize(unzip_mistakes, zipped)
+        else:
+            unzip_mistakes(zipped)
     
     unzipped_raws = glob.glob(os.path.join(base_dir, "?????", "*rawtag*fits")) + \
                    glob.glob(os.path.join(base_dir, "?????", "*rawacq.fits"))
     if unzipped_raws:
-        make_csum(unzipped_raws)
+        if prl:
+            parallelize(make_csum, unzipped_raws)
+        else:
+            make_csum(unzipped_raws)
     
     all_unzipped = glob.glob(os.path.join(base_dir, "?????", "*fits"))
     if all_unzipped:
-        compress_files(all_unzipped)
+        if prl:
+            parallelize(compress_files, all_unzipped)
+        else:
+            compress_files(all_unzipped)
     
     fix_perm(base_dir)
     # permission determined by stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
     chmod_recurs(base_dir, 872)
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParse()
+    parser.add_argument("-p", dest="prl", action="store_true",
+                        default=False, help="Parallellize functions") 
+    args = parser.parse_args()
+    prl = args.prl
+    run_all_labor(prl)
+

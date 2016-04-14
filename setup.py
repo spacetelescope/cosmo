@@ -20,13 +20,18 @@ setup(
                                         'do_all=cos_monitoring.database:do_all',
                                         'run_all_monitors=cos_monitoring.database:run_all_monitors',
                                         'create_master_csv=scripts.create_master_csv:main',
+<<<<<<< HEAD
 					                    'create_reports=cos_monitoring.database.report:query_all',
                                         'use_glue=cos_monitoring.database.glue_query:main'],
+=======
+                                        'find_new_cos_data=cos_monitoring.retrieval.find_new_cos_data:compare_tables',
+					                    'create_reports=cos_monitoring.database.report:query_all'],
+>>>>>>> 539a47ae715397385961a119bdea03edc00af774
     },
     install_requires = ['setuptools',
                         'numpy',
                         'astropy>=1.0.1',
-                        'sqlalchemy',
+                        'sqlalchemy>=1.0.12',
                         'pymysql',
                         'matplotlib',
                         'scipy',

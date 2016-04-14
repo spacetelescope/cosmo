@@ -1,4 +1,7 @@
 #! /usr/bin/env python
+
+from __future__ import print_function, absolute_import, division
+
 '''
 Contains functions that facilitate the downloading of COS data
 via XML requests to MAST. 
@@ -9,7 +12,7 @@ Use:
 '''
 
 __author__ = "Jo Taylor"
-__date__ = "02-25-2016"
+__date__ = "04-13-2016"
 __maintainer__ = "Jo Taylor"
 __email__ = "jotaylor@stsci.edu"
 
@@ -23,9 +26,13 @@ from datetime import datetime
 import time
 import pdb
 
-from SignStsciRequest import SignStsciRequest
+from .manualabor import run_all_labor
+from .SignStsciRequest import SignStsciRequest
+from .logging_dec import log_function
 
 MAX_RETRIEVAL = 20
+BASE_DIR = "/grp/hst/cos2/smov_testing"
+MYUSER = "jotaylor"
 
 REQUEST_TEMPLATE = string.Template('\
 <?xml version=\"1.0\"?> \n \
@@ -51,6 +58,7 @@ REQUEST_TEMPLATE = string.Template('\
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
+#@log_function
 def build_xml_request(dest_dir, datasets):
     '''
     Build the xml request string.
@@ -65,10 +73,10 @@ def build_xml_request(dest_dir, datasets):
         xml_request : string
             The xml request string.
     '''
-    archive_user = "jotaylor"
-    email = "jotaylor@stsci.edu"
+    archive_user = MYUSER
+    email = MYUSER + "@stsci.edu"
     host = "plhstins1.stsci.edu"
-    ftp_user = "jotaylor"
+    ftp_user = MYUSER
     ftp_dir = dest_dir
     # Not currently using suffix dependence.
     suffix = "<suffix name=\"*\" />"
@@ -86,12 +94,13 @@ def build_xml_request(dest_dir, datasets):
         datasets = dataset_str)
     xml_request = string.Template(request_str)
     xml_request = xml_request.template
-         
+    
     return xml_request
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
+#@log_function
 def submit_xml_request(xml_file):
     '''
     Submit the xml request to MAST.
@@ -126,6 +135,7 @@ def submit_xml_request(xml_file):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
+#@log_function
 def retrieve_data(dest_dir, datasets):
     '''
     For a given list of datasets, submit an xml request to MAST
@@ -147,8 +157,7 @@ def retrieve_data(dest_dir, datasets):
     for item in dataset_lists:
         xml_file = build_xml_request(dest_dir, item)
         result = submit_xml_request(xml_file)
-        tmp_id = re.search('(jotaylor[0-9]{5})', result).group()
-        print tmp_id
+        tmp_id = re.search("("+MYUSER+"[0-9]{5})", result).group()
         tracking_ids.append(tmp_id)
    
     return tracking_ids
@@ -156,6 +165,7 @@ def retrieve_data(dest_dir, datasets):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
+#@log_function
 def everything_retrieved(tracking_id):
     '''
     Check every 15 minutes to see if all submitted datasets have been 
@@ -187,30 +197,96 @@ def everything_retrieved(tracking_id):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-if __name__ == "__main__":
-    # This is to test retrieval. It will be removed later.
-    
-    pstart = 0
-    pend = 10
-    prop_dict = pickle.load(open("filestoretrieve.p", "rb"))
-#    prop_dict_keys = [12419, 12467,12510,12545,12607]
-    prop_dict_keys = prop_dict.keys()
-    all_tracking_ids = []
+#@log_function
+def cycle_thru(prop_dict, prop):
+    '''
+    For a given proposal, determine path to put data. 
+    Retrieve data for a proposal and keep track of the tracking IDs
+    for each submission (each proposal may have multiple submissions 
+    depending on number of datasets in proposal).
 
+    Parameters: 
+        prop_dict : dictionary
+            A dictionary whose keys are proposal IDs and keys are
+            dataset names for each ID.
+        prop : int
+            The proposal ID for which to retrieve data.
+
+    Returns:
+        all_tracking_ids : list
+            Running tally of all tracking IDs for all propsals retrieved
+            to date. 
+    '''
+
+    prop_dir = os.path.join(BASE_DIR, str(prop))
+    if not os.path.exists(prop_dir):
+        os.mkdir(prop_dir)
+    os.chmod(prop_dir, 0755)
+    print("I am retrieving %s datasets for %s" % (len(prop_dict[prop]),prop))
+    ind_id = retrieve_data(prop_dir, prop_dict[prop])
+    for item in ind_id:
+        all_tracking_ids.append(item)
+
+    return all_tracking_ids
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+#@log_function
+def run_all_retrievals(pkl_file):
+    '''
+    Open the pickle file containing a dictionary of all missing COS data
+    to be retrieved. It is set up to handle all situations (if run daily=few 
+    programs, if re-retrieving all data=hundreds of programs). If there
+    are more than 100 programs to be retrieved, stop every 100 programs and
+    run manualabor to calibrate and zip files. If this is not done, you will
+    QUICKLY run out of storage when running manualabor later. 
+    Split the total number of programs into groups, once a defined number 
+    of programs have been retrieved (int_num), add more to the queue. 
+    Using this method, there are always pending programs (as opposed to 
+    retrieving X, waiting until finished, then starting another X).
+    For each proposal in a group, use cycle_thru to request all datasets. 
+    If there are too many datasets, it will split it up for manageability.
+
+    Paramaters:
+        pkl_file : string
+            Name of pickle file with data to be retrieved.
+
+    Returns:
+        Nothing
+    '''
+
+    pstart = 0
+    pend = 1
+    prop_dict = pickle.load(open(pkl_file, "rb"))
+    prop_dict_keys = prop_dict.keys()
+    prop_dict_keys = [13128,12952,12919,12775,12545]
+    all_tracking_ids = []
+    int_num = 3
+    century = 1
+
+    # While the number of processed programs is less than total programs
     while pend < len(prop_dict_keys): 
+        # If there are more than N*100 programs to be retrieved, stop 
+        # and calibrate and zip.
+        # NOTE: I have the value set to two right now for testing purposes!
+        if pend > century*2:
+            century += 1
+            print("Pausing retrieval to calibrate and zip current data")
+            run_all_labor(prl=True)
+        # For each proposal (prop) in the current grouping (total number
+        # of programs split up for manageability), retrieve data for it.
         for prop in prop_dict_keys[pstart:pend]:
-            prop_dir = "/grp/hst/cos2/smov_testing/{0}".format(prop)
-            if not os.path.exists(prop_dir):
-                os.mkdir(prop_dir)
-            os.chmod(prop_dir, 0755)
-            print("I am retrieving %s datasets for %s" % (len(prop_dict[prop]),prop))
-            ind_id = retrieve_data(prop_dir, prop_dict[prop])
-            for item in ind_id:
-                all_tracking_ids.append(item)
-    
+            cycle_thru(prop_dict, prop)
+        # This while loop keeps track of how many submitted programs in the 
+        # current group (defined as from pstart:pend) have been entirely
+        # retrieved, stored in counter. Once the number of finished 
+        # programs reaches (total# - int_num), another int_num of programs
+        # are added to the queue. While data not retrieved, wait 15 minutes
+        # before checking again.
         counter = []
         num_ids = len(all_tracking_ids)
-        while sum(counter) < (num_ids - 5):
+        while sum(counter) < (num_ids - int_num):
             counter = []
             for tracking_id in all_tracking_ids:
                 status,badness = everything_retrieved(tracking_id)
@@ -219,25 +295,29 @@ if __name__ == "__main__":
                     print("!!!RUH ROH!!! Request {0} was KILLED!".format(tracking_id))
                     counter.append(badness)
             current_retrieved = [all_tracking_ids[i] for i in xrange(len(counter)) if not counter[i]]
-            print datetime.now()
+            print(datetime.now())
             print("Data not yet delivered for {0}. Checking again in 15 minutes".format(current_retrieved))
             time.sleep(900)
+        # When total# - int_num programs have been retrieved, add int_num more
+        # to queue.
         else:
-            print("\nData delivered, adding another program to queue")
+            print("\nData delivered, adding {0} program(s) to queue".format(int_num))
             pstart = pend
-            pend += 5
+            pend += int_num
+    # When pend > total # of programs, it does not mean all have been 
+    # retrieved. Check, and retrieve if so. 
+    else:
+        if (len(prop_dict_keys) - (pend-int_num)) > 0:
+            for prop in prop_dict_keys[pend-int_num:]:
+                cycle_thru(prop_dict, prop)
+            print("\nAll data delivered! Data from {0} programs were successfully retrieved").format(len(prop_dict_keys))
+        else:
+            print("\nAll data delivered! Data from {0} programs were successfully retrieved").format(len(prop_dict_keys))
 
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
 
-#    prop_dict = pickle.load(open("filestoretrieve.p", "rb"))
-#    for prop in prop_dict.keys()[pstart:pend]:
-#        prop_dir = "/grp/hst/cos2/smov_testing/{0}".format(prop)
-#        if not os.path.exists(prop_dir):
-#            os.mkdir(prop_dir)
-#        os.chmod(prop_dir, 0755)
-#        print("I am retrieving %s datasets for %s" % (len(prop_dict[prop]),prop))
-#        retrieve_data(prop_dir, prop_dict[prop])
-#
-
-
-#    retrieve_data("/grp/hst/cos3/smov_testing/retrieval",data.values())
+if __name__ == "__main__":
+    pkl_file = "filestoretrieve.p"
+    run_all_retrievals(pkl_file)
 
