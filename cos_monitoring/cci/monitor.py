@@ -43,6 +43,10 @@ from .phaimage import make_phaimages
 from .constants import *
 from ..database.db_tables import open_settings, load_connection
 
+
+MONITOR_DIR = '/grp/hst/cos/Monitors/CCI/'
+WEB_DIR = '/grp/webpages/COS/cci/'
+
 #------------------------------------------------------------
 
 def make_quicklooks(gainmap, clobber=True):
@@ -152,7 +156,7 @@ def make_cumulative_plots():
 
     """
 
-    print 'Making cumulative gainmaps'
+    print('Making cumulative gainmaps')
     for filename in glob.glob(os.path.join(MONITOR_DIR, '*proj_bad*.fits')):
         hdu = fits.open(filename)
 
@@ -162,8 +166,8 @@ def make_cumulative_plots():
         fig = plt.figure(figsize=(25, 14))
         ax = fig.add_subplot(1, 1, 1)
         gain_image = enlarge(hdu['PROJGAIN'].data,
-                             y=1024/hdu['PROJGAIN'].header['NAXIS2'],
-                             x=16384/hdu['PROJGAIN'].header['NAXIS1'])
+                             y=1024//hdu['PROJGAIN'].header['NAXIS2'],
+                             x=16384//hdu['PROJGAIN'].header['NAXIS1'])
         cax = ax.imshow(gain_image, aspect='auto')
         plot_flagged(ax, segment, dethv, color='white')
         ax.set_xlim(0, 16384)
@@ -171,11 +175,11 @@ def make_cumulative_plots():
         ax.grid(False)
         cax.set_clim(0, 16)
         fig.colorbar(cax)
-        print segment, dethv
+        print(segment, dethv)
         fig.savefig(os.path.join(MONITOR_DIR, 'cumulative_gainmap_'+segment+'_'+str(dethv)+'.png'))
         plt.close(fig)
 
-        fits.close()
+        hdu.close()
 
 #------------------------------------------------------------
 
@@ -191,12 +195,13 @@ def plot_flagged(ax, segment, hv, mjd=50000, color='r'):
     gsagtab_filename = '/grp/hst/cos/Monitors/CCI/gsag_%s.fits'% (TIMESTAMP)
     if os.path.exists(gsagtab_filename):
         gsagtab = fits.open(gsagtab_filename)
-        print "Using {}".format(gsagtab_filename)
+        print("Using {}".format(gsagtab_filename))
     else:
         all_gsagtables = glob.glob(os.path.join(MONITOR_DIR, 'gsag_????-??-*.fits'))
         all_gsagtables.sort()
-        gsagtab = hdu.open(all_gsagtables[-1])
-        print "Using {}".format(all_gsagtables[-1])
+        print(all_gsagtables[-1])
+        gsagtab = fits.open(all_gsagtables[-1])
+        print("Using {}".format(all_gsagtables[-1]))
 
     if segment == 'FUVA':
         hv_keyword = 'HVLEVELA'
@@ -288,6 +293,23 @@ def monitor():
     message += 'Calibration with CalCOS has finished \n '
     message += 'Check over the gsagtab comparison log and see if we need to deliver this file.\n\n\n'
     message += 'Sincerely,\n %s'% (__file__)
+
+    move_to_web()
     send_email(subject='CCI Monitor complete', message=message)
 
+#-------------------------------------------------------------------------------
+def move_to_web():
+    """Copy output products to web-facing directories.
+
+    Simple function to move created plots in the MONITOR_DIR
+    to the WEB_DIR.  Will move all files that match the string
+    STIM*.p* and then change permissions to 777.
+    """
+
+    print('Moving plots to web')
+    for item in glob.glob(os.path.join(MONITOR_DIR, 'cumulative_gainmap_'+'?'+'_'+'?'+'.png')):
+        print(item)
+        os.remove(os.path.join(WEB_DIR,os.path.basename(item)))
+        shutil.copy(item, WEB_DIR)
+        os.chmod(os.path.join(WEB_DIR, os.path.basename(item)),0o766)
 #-------------------------------------------------------------------------------

@@ -491,7 +491,7 @@ def make_plots():
     os.remove(os.path.join(MONITOR_DIR, 'STIM_locations.png'))
     plt.savefig(os.path.join(MONITOR_DIR, 'STIM_locations.png'))
     plt.close(1)
-    os.chmod(os.path.join(MONITOR_DIR, 'STIM_locations.png'),0766)
+    os.chmod(os.path.join(MONITOR_DIR, 'STIM_locations.png'),0o766)
 
     print('#-------------------------------#')
     print('Stim location plots')
@@ -531,7 +531,7 @@ def make_plots():
                                                                     (segment)))
         plt.close(fig)
         os.chmod(os.path.join(MONITOR_DIR, 'STIM_locations_vs_time_%s.png' %
-                                                                    (segment)),0766)
+                                                                    (segment)),0o766)
 
 
     # ------------------------#
@@ -610,7 +610,7 @@ def make_plots():
                          (segment)))
         plt.close(fig)
         os.chmod(os.path.join(MONITOR_DIR, 'STIM_stretch_vs_time_%s.png' %
-                     (segment)),0766)
+                     (segment)),0o766)
 
     print('#------------------------#')
     print(' y vs y and x vs x     ')

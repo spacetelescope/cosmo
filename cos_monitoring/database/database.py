@@ -265,7 +265,8 @@ def populate_spt(num_cpu=1):
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
                                 filter(Files.name.like('%\_spt.fits%')).\
-                                outerjoin(sptkeys, Files.id == sptkeys.file_id)]
+                                outerjoin(sptkeys, Files.id == sptkeys.file_id).\
+                                filter(Files.file_id == None)]
     session.close()
     args = [(full_filename, sptkeys, get_spt_keys, f_key) for f_key, full_filename in files_to_add]
 
@@ -547,10 +548,10 @@ def do_all():
 #-------------------------------------------------------------------------------
 
 def run_all_monitors():
-    #dark_monitor()
-    #cci_monitor()
+    dark_monitor()
+    cci_monitor()
     stim_monitor()
-    #osm_monitor()
+    osm_monitor()
 
 
 #-------------------------------------------------------------------------------

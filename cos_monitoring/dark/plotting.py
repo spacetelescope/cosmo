@@ -49,7 +49,7 @@ def plot_histogram(dark, outname):
         name of the output plot
 
     """
-
+    os.remove(outname)
     fig = plt.figure(figsize=(12, 9))
 
     ax = fig.add_subplot(2, 1, 1)
@@ -112,6 +112,9 @@ def plot_histogram(dark, outname):
     fig.savefig(outname, bbox_inches='tight')
     plt.close(fig)
 
+
+
+
 #-------------------------------------------------------------------------------
 
 def plot_time(detector, dark, date, temp, solar, solar_date, outname):
@@ -135,7 +138,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
         name of output plot
 
     """
-
+    os.remove(outname)
     fig = plt.figure(figsize=(20, 12))
 
     sorted_index = np.argsort(solar_date)
@@ -303,6 +306,7 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
     color_min = darkrate.min()
     color_max = darkrate.min() + 3 * darkrate.std()
 
+    os.remove(outname)
     fig = plt.figure(figsize=(20, 15))
 
     if 'FUVA' in outname:

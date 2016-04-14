@@ -367,10 +367,20 @@ def move_products():
         move_list = glob.glob(base_dir + detector + '/*.p??')
 
         for item in move_list:
-            os.chmod(item, 0o777)
-            path, file_to_move = os.path.split(item)
-            shutil.copy(item, write_dir + file_to_move)
-            print('Moving: %s' % (file_to_move))
+            try:
+                if item.endswith('.py~'):
+                    move_list.remove(item)
+                    continue
+                else:
+                    print('MOVING {}'.format(item))
+
+                path, file_to_move = os.path.split(item)
+                os.chmod(item, 0o766)
+                os.remove(write_dir + file_to_move)
+                shutil.copy(item, write_dir + file_to_move)
+
+            except OSError:
+                move_list.remove(item)
 
         os.system('chmod 777 ' + write_dir + '*.pdf')
 
@@ -386,7 +396,7 @@ def monitor():
 
         if detector == 'FUV':
             make_plots(detector, TA=True)
-
+    
     move_products()
 
 #-------------------------------------------------------------------------------
