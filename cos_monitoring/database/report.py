@@ -36,7 +36,8 @@ def query_to_text(query,path,filename):
 
         if len(new_file)!=len(current_file):
             print('WARNING! {} NEW ROWS THAT CONTAIN NULLS IN {}'.format(len(new_file)-len(current_file),filename))
-            print(set(new_file) - set(current_file))
+            for row in (set(new_file) - set(current_file)):
+                print(row)
         else:
             print('NO NEW NULL SECTIONS IN {}'.format(filename))
 

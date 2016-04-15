@@ -266,7 +266,7 @@ def populate_spt(num_cpu=1):
                         for result in session.query(Files).\
                                 filter(Files.name.like('%\_spt.fits%')).\
                                 outerjoin(sptkeys, Files.id == sptkeys.file_id).\
-                                filter(Files.file_id == None)]
+                                filter(sptkeys.file_id == None)]
     session.close()
     args = [(full_filename, sptkeys, get_spt_keys, f_key) for f_key, full_filename in files_to_add]
 
