@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 import glob
 import numpy as np
 import multiprocessing as mp
-
+import shutil
 #from bokeh import charts
 #from bokeh.plotting import figure
 
@@ -270,7 +270,7 @@ def plotting():
 def monitor():
     """ Main driver for monitoring program.
     """
-
+    
     print 'phaimages'
     make_phaimages(False)
 
@@ -295,7 +295,7 @@ def monitor():
     message += 'Sincerely,\n %s'% (__file__)
 
     move_to_web()
-    send_email(subject='CCI Monitor complete', message=message)
+    #send_email(subject='CCI Monitor complete', message=message)
 
 #-------------------------------------------------------------------------------
 def move_to_web():
@@ -307,9 +307,10 @@ def move_to_web():
     """
 
     print('Moving plots to web')
-    for item in glob.glob(os.path.join(MONITOR_DIR, 'cumulative_gainmap_'+'?'+'_'+'?'+'.png')):
-        print(item)
-        os.remove(os.path.join(WEB_DIR,os.path.basename(item)))
+    for item in glob.glob(os.path.join(MONITOR_DIR, 'cumulative_gainmap_'+'*'+'_'+'*'+'.png')):
+        print('COPYING {} TO {}'.format(item,WEB_DIR))
+        if os.path.isfile(os.path.join(WEB_DIR,os.path.basename(item))):
+            os.remove(os.path.join(WEB_DIR,os.path.basename(item)))
         shutil.copy(item, WEB_DIR)
         os.chmod(os.path.join(WEB_DIR, os.path.basename(item)),0o766)
 #-------------------------------------------------------------------------------
