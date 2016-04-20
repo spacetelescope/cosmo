@@ -9,6 +9,7 @@ mpl.use('Agg')
 import numpy as np
 import multiprocessing as mp
 import types
+import argparse
 
 from ..cci.gainmap import write_and_pull_gainmap
 from ..cci.monitor import monitor as cci_monitor
@@ -131,7 +132,7 @@ def insert_files(**kwargs):
     print("Querying previously found files")
     previous_files = {os.path.join(path, fname) for path, fname in session.query(Files.path, Files.name)}
 
-    for i, (path, filename) in enumerate(find_all_datasets(data_location)):
+    for i, (path, filename) in enumerate(find_all_datasets(data_location, SETTINGS['num_cpu'])):
         full_filepath = os.path.join(path, filename)
 
         if full_filepath in previous_files:
@@ -273,6 +274,7 @@ def populate_spt(num_cpu=1):
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert,args)
 #-------------------------------------------------------------------------------
+
 def populate_data(num_cpu=1):
     print("adding to data")
 
@@ -364,7 +366,8 @@ def get_spt_keys(filename):
                     'ldcampat':hdu[2].header.get('ldcampat', None),
                     'ldcampbt':hdu[2].header.get('ldcampbt', None),
                     'lmmcetmp':hdu[2].header.get('lmmcetmp', None)}
-        return keywords
+
+    return keywords
 
 #-------------------------------------------------------------------------------
 
@@ -455,7 +458,7 @@ def get_primary_keys(filename):
 
                           'dethvl':hdu[1].header.get('dethvl', None),
                                                                         }
-        return keywords
+    return keywords
 
 #-------------------------------------------------------------------------------
 def update_data(args):
@@ -484,6 +487,17 @@ def update_data(args):
 
 #-------------------------------------------------------------------------------
 
+def cm_delete():
+    parser = argparse.ArgumentParser(description='Delete file from all databases.')
+    parser.add_argument('filename',
+                        type=str,
+                        help='search string to delete')
+    args = parser.parse_args()
+
+    delete_file_from_all(args.filename)
+
+#-------------------------------------------------------------------------------
+
 def delete_file_from_all(filename):
     """Delete a filename from all databases and directory structure
 
@@ -496,18 +510,25 @@ def delete_file_from_all(filename):
 
     session = Session()
 
+    print(filename)
     files_to_remove = [(result.id, os.path.join(result.path, result.name))
                             for result in session.query(Files).\
-                                    filter(Files.name.like('%{}%'.format(filename)))]
+                                    filter(Files.name.like("""%{}%""".format(filename)))]
+    session.close()
 
 
+    print("Found: ")
+    print(files_to_remove)
     for (file_id, file_path) in files_to_remove:
         for table in reversed(Base.metadata.sorted_tables):
-            session.query(table).filter(table.file_id==file_id).delete()
-        print("Removing file {}".format(file_path))
-        os.remove(file_path)
+            print("Removing {}, {} from {}".format(file_path, file_id, table.name))
+            if table.name == 'files':
+                q = """DELETE FROM {} WHERE id={}""".format(table.name, file_id)
+            else:
+                q = """DELETE FROM {} WHERE file_id={}""".format(table.name, file_id)
 
-    session.close()
+            engine.execute(text(q))
+
 
 #-------------------------------------------------------------------------------
 
@@ -547,11 +568,10 @@ def do_all():
 #-------------------------------------------------------------------------------
 
 def run_all_monitors():
-    #dark_monitor()
-    #cci_monitor()
+    dark_monitor()
+    cci_monitor()
     stim_monitor()
-    #osm_monitor()
-
+    osm_monitor()
 
 #-------------------------------------------------------------------------------
 
