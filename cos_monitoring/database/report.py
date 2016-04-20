@@ -2,6 +2,8 @@ from __future__ import print_function, absolute_import, division
 
 import os
 
+import numpy as np
+
 from sqlalchemy.engine import create_engine
 
 from .db_tables import load_connection, open_settings
@@ -11,6 +13,9 @@ from .db_tables import Lampflash, Stims, Phd, Darks, sptkeys, Data, Gain
 
 from ..scripts.create_master_csv import csv_generator
 
+MONITOR_DIR = '/grp/hst/cos/COS_MONITORING_REPORTS/'
+
+#===============================================================================
 def query_to_text(query,path,filename):
 
     SETTINGS = open_settings()
@@ -19,15 +24,26 @@ def query_to_text(query,path,filename):
     connection = engine.connect()
 
     results = connection.execute(query)
-    print('                                                          '+ filename +'                                                                ')
-    print('========================================================================================================================================')
-    for row in results:
-        print(row)
-    print('========================================================================================================================================')
-    print('WRITING {} REPORT TO DIR {}'.format(filename,path))
-    csv_generator(results,results.keys(),path,filename)
 
+    if 'null' in filename:
 
+        current_file = np.genfromtxt(os.path.join(MONITOR_DIR,filename), delimiter=',',dtype=str)
+
+        print('WRITING {} REPORT TO DIR {}'.format(filename,path))
+        csv_generator(results,results.keys(),path,filename)
+
+        new_file = np.genfromtxt(os.path.join(MONITOR_DIR,filename), delimiter=',',dtype=str)
+
+        if len(new_file)!=len(current_file):
+            print('WARNING! {} NEW ROWS THAT CONTAIN NULLS IN {}'.format(len(new_file)-len(current_file),filename))
+            for row in (set(new_file) - set(current_file)):
+                print(row)
+        else:
+            print('NO NEW NULL SECTIONS IN {}'.format(filename))
+
+    else:
+        print('WRITING {} REPORT TO DIR {}'.format(filename,path))
+        csv_generator(results,results.keys(),path,filename)
 
 #===============================================================================
 def query_darks_null():
@@ -46,7 +62,7 @@ def query_darks_null():
                    darks.temp)
             IS NULL ORDER BY files.name;"""
 
-    query_to_text(q,os.getcwd(),'null_darks_tab.txt')
+    query_to_text(q,MONITOR_DIR,'null_darks_tab.txt')
 #===============================================================================
 
 def query_data_null():
@@ -60,7 +76,7 @@ def query_data_null():
                    )
             IS NULL ORDER BY files.name;"""
 
-    query_to_text(q,os.getcwd(),'null_data_tab.txt')
+    query_to_text(q,MONITOR_DIR,'null_data_tab.txt')
 
 #===============================================================================
 
@@ -74,7 +90,7 @@ def query_files_null():
                    )
             IS NULL ORDER BY files.id;"""
 
-    query_to_text(q,os.getcwd(),'null_files_tab.txt')
+    query_to_text(q,MONITOR_DIR,'null_files_tab.txt')
 
 #===============================================================================
 
@@ -91,7 +107,7 @@ def query_gain_null():
                    gain.expstart,
                    gain.file_id)
             IS NULL ORDER BY files.name;"""
-    query_to_text(q,os.getcwd(),'null_gain_tab.txt')
+    query_to_text(q,MONITOR_DIR,'null_gain_tab.txt')
 
 #===============================================================================
 
@@ -112,7 +128,7 @@ def query_lamp_null():
                    lampflash.found
                    )
             IS NULL ORDER BY files.id;"""
-    query_to_text(q,os.getcwd(),'null_lamp_tab.txt')
+    query_to_text(q,MONITOR_DIR,'null_lamp_tab.txt')
 
 #===============================================================================
 
@@ -130,12 +146,12 @@ def query_stims_null():
                    stims.segment
                    )
             IS NULL ORDER BY files.id;"""
-    query_to_text(q,os.getcwd(),'null_stims_tab.txt')
+    query_to_text(q,MONITOR_DIR,'null_stims_tab.txt')
 #===============================================================================
 
 
 def query_all():
-    query_gain_null()
+    #query_gain_null()
     query_darks_null()
     query_files_null()
     query_data_null()

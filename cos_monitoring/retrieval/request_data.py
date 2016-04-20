@@ -32,6 +32,7 @@ from .logging_dec import log_function
 
 MAX_RETRIEVAL = 20
 BASE_DIR = "/grp/hst/cos2/smov_testing"
+MYUSER = "jotaylor"
 
 REQUEST_TEMPLATE = string.Template('\
 <?xml version=\"1.0\"?> \n \
@@ -57,7 +58,7 @@ REQUEST_TEMPLATE = string.Template('\
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def build_xml_request(dest_dir, datasets):
     '''
     Build the xml request string.
@@ -72,10 +73,10 @@ def build_xml_request(dest_dir, datasets):
         xml_request : string
             The xml request string.
     '''
-    archive_user = "jotaylor"
-    email = "jotaylor@stsci.edu"
+    archive_user = MYUSER
+    email = MYUSER + "@stsci.edu"
     host = "plhstins1.stsci.edu"
-    ftp_user = "jotaylor"
+    ftp_user = MYUSER
     ftp_dir = dest_dir
     # Not currently using suffix dependence.
     suffix = "<suffix name=\"*\" />"
@@ -93,13 +94,13 @@ def build_xml_request(dest_dir, datasets):
         datasets = dataset_str)
     xml_request = string.Template(request_str)
     xml_request = xml_request.template
-         
+    
     return xml_request
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def submit_xml_request(xml_file):
     '''
     Submit the xml request to MAST.
@@ -134,7 +135,7 @@ def submit_xml_request(xml_file):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def retrieve_data(dest_dir, datasets):
     '''
     For a given list of datasets, submit an xml request to MAST
@@ -156,7 +157,7 @@ def retrieve_data(dest_dir, datasets):
     for item in dataset_lists:
         xml_file = build_xml_request(dest_dir, item)
         result = submit_xml_request(xml_file)
-        tmp_id = re.search('(jotaylor[0-9]{5})', result).group()
+        tmp_id = re.search("("+MYUSER+"[0-9]{5})", result).group()
         tracking_ids.append(tmp_id)
    
     return tracking_ids
@@ -164,7 +165,7 @@ def retrieve_data(dest_dir, datasets):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def everything_retrieved(tracking_id):
     '''
     Check every 15 minutes to see if all submitted datasets have been 
@@ -196,7 +197,7 @@ def everything_retrieved(tracking_id):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def cycle_thru(prop_dict, prop):
     '''
     For a given proposal, determine path to put data. 
@@ -231,7 +232,7 @@ def cycle_thru(prop_dict, prop):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-@log_function
+#@log_function
 def run_all_retrievals(pkl_file):
     '''
     Open the pickle file containing a dictionary of all missing COS data

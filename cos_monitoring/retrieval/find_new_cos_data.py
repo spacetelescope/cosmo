@@ -16,7 +16,7 @@ __date__ = "04-13-2016"
 __maintainer__ = "Jo Taylor"
 __email__ = "jotaylor@stsci.edu"
 
-
+import time
 import pickle
 import os
 import yaml
@@ -26,12 +26,10 @@ from sqlalchemy import text
 
 from ..database.db_tables import load_connection
 from .request_data import run_all_retrievals
-from .logging_dec import log_function
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-@log_function
 def connect_cosdb():
     '''
     Connect to the COS database on greendev and store lists of all files.
@@ -82,7 +80,6 @@ def connect_cosdb():
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-@log_function
 def connect_dadsops():
     '''
     Connect to the MAST database on HARPO and store lists of all files.
@@ -121,7 +118,7 @@ def connect_dadsops():
         cci = list(engine.execute("SELECT ads_data_set_name,ads_pep_id " 
                                   "FROM archive_data_set_all WHERE " 
                                   "ads_archive_class='csi';"))
-
+    
         # Store SQLAlchemy results as dictionaries (we need dataset name 
         # and proposal ID).
         jitdict = OrderedDict()
@@ -140,7 +137,6 @@ def connect_dadsops():
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-@log_function
 def compare_tables():
     '''
     Compare the set of all files currently in the COS repository to the list 
@@ -153,9 +149,9 @@ def compare_tables():
         Nothing    
     '''
     
-    print("Finding missing COS data...")
     nullrows, asnrows, smovjitrows = connect_cosdb()
     jitdict, sciencedict, ccidict = connect_dadsops()
+    print("Finding missing COS data...")
     
     existing = set()
     existing_jit = set()
