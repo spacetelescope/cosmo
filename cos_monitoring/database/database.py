@@ -10,6 +10,7 @@ import numpy as np
 import multiprocessing as mp
 import types
 import argparse
+import pprint
 
 from ..cci.gainmap import write_and_pull_gainmap
 from ..cci.monitor import monitor as cci_monitor
@@ -23,7 +24,7 @@ from ..stim.monitor import stim_monitor
 from .db_tables import load_connection, open_settings
 from .db_tables import Base
 from .db_tables import Files, Headers
-from .db_tables import Lampflash, Stims, Phd, Darks, sptkeys, Data, Gain
+from .db_tables import Lampflash, Stims, Darks, sptkeys, Data, Gain
 
 
 SETTINGS = open_settings()
@@ -274,6 +275,7 @@ def populate_spt(num_cpu=1):
     print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert,args)
+
 #-------------------------------------------------------------------------------
 
 def populate_data(num_cpu=1):
@@ -530,6 +532,51 @@ def delete_file_from_all(filename):
 
             engine.execute(text(q))
 
+
+#-------------------------------------------------------------------------------
+
+def cm_describe():
+    parser = argparse.ArgumentParser(description='Show file from all databases.')
+    parser.add_argument('filename',
+                        type=str,
+                        help='search string to show')
+    args = parser.parse_args()
+
+    show_file_from_all(args.filename)
+
+#-------------------------------------------------------------------------------
+
+def show_file_from_all(filename):
+    """
+    """
+
+    session = Session()
+
+    print(filename)
+    files_to_show = [result.rootname
+                            for result in session.query(Files).\
+                                    filter(Files.name.like("""%{}%""".format(filename)))]
+    session.close()
+
+
+    print("Found: ")
+    print(files_to_show)
+    for table in reversed(Base.metadata.sorted_tables):
+        if not 'rootname' in table.columns:
+            continue
+
+        print("**************************")
+        print("Searching {}".format(table.name))
+        print("**************************")
+
+        for rootname in set(files_to_show):
+            q = """SELECT * FROM {} WHERE rootname LIKE '%{}%'""".format(table.name, rootname)
+
+            results = engine.execute(text(q))
+            
+            for i, row in enumerate(results):
+                for k in row.keys():
+                    print(table.name, rootname, k, row[k])
 
 #-------------------------------------------------------------------------------
 

@@ -23,6 +23,7 @@ setup(
                                         'find_new_cos_data=cos_monitoring.retrieval.find_new_cos_data:compare_tables',
 					                    'cm_reports=cos_monitoring.database.report:query_all',
                                         'cm_delete=cos_monitoring.database.database:cm_delete',
+                                        'cm_describe=cos_monitoring.database.database:cm_describe',
                                         'use_glue=cos_monitoring.database.glue_query:main',
                                         ],
     },

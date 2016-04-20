@@ -272,7 +272,7 @@ class Stims(Base):
     #file = relationship("Files", backref=backref('Stims', order_by=id))
 
 #-------------------------------------------------------------------------------
-
+'''
 class Phd(Base):
     __tablename__ = 'phd'
 
@@ -313,7 +313,7 @@ class Phd(Base):
 
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('Phd', order_by=id))
-
+'''
 #-------------------------------------------------------------------------------
 
 class Gain(Base):
