@@ -356,6 +356,19 @@ def populate_primary_headers(num_cpu=1):
 #-------------------------------------------------------------------------------
 
 def get_spt_keys(filename):
+    """ Read the necessary keywords from SPT files
+
+    Parameters
+    ----------
+    filename : str
+        name of the file to read
+
+    Returns
+    -------
+    keywords : dict
+        dictionary of keyword,value pairs
+    """
+
     with fits.open(filename) as hdu:
         keywords = {'rootname':hdu[0].header.get('rootname', None),
                     'proc_typ':hdu[0].header.get('proc_typ', None),
@@ -573,7 +586,7 @@ def show_file_from_all(filename):
             q = """SELECT * FROM {} WHERE rootname LIKE '%{}%'""".format(table.name, rootname)
 
             results = engine.execute(text(q))
-            
+
             for i, row in enumerate(results):
                 for k in row.keys():
                     print(table.name, rootname, k, row[k])

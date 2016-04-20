@@ -341,7 +341,6 @@ class sptkeys(Base):
 
     id = Column(Integer, primary_key=True)
 
-    #spt file keywords
     rootname = Column(String(9))
     proc_typ = Column(String(20)) # primary extention
     lomfstp = Column(Float) #2 ext, focus in spreadsheet
