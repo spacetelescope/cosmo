@@ -342,7 +342,8 @@ class sptkeys(Base):
     id = Column(Integer, primary_key=True)
 
     rootname = Column(String(9))
-    proc_typ = Column(String(20)) # primary extention
+    proc_typ = Column(String(20)) # primary extentio
+    prop_typ = Column(String(10))
     lomfstp = Column(Float) #2 ext, focus in spreadsheet
     lapxlvdt = Column(Integer) #2 ext, aper_disp in spreadsheet
     lapdlvdt = Column(Integer) #2 ext, aper_xdisp in spreadsheet

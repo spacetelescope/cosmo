@@ -372,6 +372,7 @@ def get_spt_keys(filename):
     with fits.open(filename) as hdu:
         keywords = {'rootname':hdu[0].header.get('rootname', None),
                     'proc_typ':hdu[0].header.get('proc_typ', None),
+                    'prop_typ':hdu[0].header.get('prop_typ', None),
                     'lomfstp':hdu[2].header.get('lomfstp', None),
                     'lapxlvdt':hdu[2].header.get('lapxlvdt', None),
                     'lapdlvdt':hdu[2].header.get('lapdlvdt', None),
