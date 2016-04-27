@@ -307,7 +307,7 @@ def parallelize(myfunc, mylist):
     playmean = 0.40
 
     # Split list into multiple lists if it's large.
-    maxnum = 50
+    maxnum = 25
     if len(mylist) > maxnum:
         metalist = [mylist[i:i+maxnum] for i in xrange(0, len(mylist), maxnum)]
     else:
@@ -317,11 +317,15 @@ def parallelize(myfunc, mylist):
         loadavg = os.getloadavg()[0]
         ncores = psutil.cpu_count()
         # If too many cores are being used, wait 10 mins, and reasses.
-        while loadavg >= ncores:
+        while loadavg >= (ncores-1):
             time.sleep(600)
         else: 
             avail = ncores - math.ceil(loadavg)
             nprocs = int(np.floor(avail * playnice))
+        # If, after rounding, no cores are available, default to 1 to avoid 
+        # pooling with processes=0.
+        if nprocs == 0:
+            nrpcos = 1
         pool = mp.Pool(processes=nprocs)
         pool.map(myfunc, onelist)
 
@@ -380,4 +384,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
     prl = args.prl
     run_all_labor(prl)
-
