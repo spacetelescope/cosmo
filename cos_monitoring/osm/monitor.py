@@ -255,7 +255,7 @@ def make_plots(data):
     os.remove(os.path.join(MONITOR_DIR,'FUV_shifts.png'))
     fig.savefig(os.path.join(MONITOR_DIR,'FUV_shifts.png'))
     plt.close(fig)
-    os.chmod(os.path.join(MONITOR_DIR,'FUV_shifts.png'),0766)
+    os.chmod(os.path.join(MONITOR_DIR,'FUV_shifts.png'),0o766)
 
     ##########
 
@@ -402,7 +402,7 @@ def make_plots(data):
                 bbox_inches='tight',
                 pad_inches=.5)
     plt.close(fig)
-    os.chmod(os.path.join(MONITOR_DIR, 'NUV_shifts.png'),0766)
+    os.chmod(os.path.join(MONITOR_DIR, 'NUV_shifts.png'),0o766)
 
     ##############
 
@@ -422,7 +422,7 @@ def make_plots(data):
         os.remove(os.path.join(MONITOR_DIR, '{}_shifts.png'.format(elem.upper())))
         fig.savefig(os.path.join(MONITOR_DIR, '{}_shifts.png'.format(elem.upper())))
         plt.close(fig)
-        os.chmod((os.path.join(MONITOR_DIR, '{}_shifts.png'.format(elem.upper()))),0766)
+        os.chmod((os.path.join(MONITOR_DIR, '{}_shifts.png'.format(elem.upper()))),0o766)
 
     print('Plotting cenwaves')
     for grating in list(set(data['opt_elem'])):
@@ -466,7 +466,7 @@ def make_plots(data):
                     (grating)))
         plt.close(fig)
         os.chmod(os.path.join(MONITOR_DIR, '%s_shifts_color.pdf' %
-                    (grating)), 0766)
+                    (grating)), 0o766)
 
 #----------------------------------------------------------
 

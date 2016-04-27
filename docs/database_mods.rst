@@ -4,7 +4,7 @@ A description of what these modules do...
 
 create_master_csv
 -----------------
-.. automodule:: scripts.create_master_csv
+.. automodule:: cos_monitoring.scripts.create_master_csv
    :members:
 
 database
