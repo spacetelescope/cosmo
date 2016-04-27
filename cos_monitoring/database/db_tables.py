@@ -272,7 +272,7 @@ class Stims(Base):
     #file = relationship("Files", backref=backref('Stims', order_by=id))
 
 #-------------------------------------------------------------------------------
-
+'''
 class Phd(Base):
     __tablename__ = 'phd'
 
@@ -313,7 +313,7 @@ class Phd(Base):
 
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('Phd', order_by=id))
-
+'''
 #-------------------------------------------------------------------------------
 
 class Gain(Base):
@@ -341,9 +341,9 @@ class sptkeys(Base):
 
     id = Column(Integer, primary_key=True)
 
-    #spt file keywords
     rootname = Column(String(9))
-    proc_typ = Column(String(20)) # primary extention
+    proc_typ = Column(String(20)) # primary extentio
+    prop_typ = Column(String(10))
     lomfstp = Column(Float) #2 ext, focus in spreadsheet
     lapxlvdt = Column(Integer) #2 ext, aper_disp in spreadsheet
     lapdlvdt = Column(Integer) #2 ext, aper_xdisp in spreadsheet

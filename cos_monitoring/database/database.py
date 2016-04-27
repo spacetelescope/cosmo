@@ -9,6 +9,8 @@ mpl.use('Agg')
 import numpy as np
 import multiprocessing as mp
 import types
+import argparse
+import pprint
 
 from ..cci.gainmap import write_and_pull_gainmap
 from ..cci.monitor import monitor as cci_monitor
@@ -22,7 +24,7 @@ from ..stim.monitor import stim_monitor
 from .db_tables import load_connection, open_settings
 from .db_tables import Base
 from .db_tables import Files, Headers
-from .db_tables import Lampflash, Stims, Phd, Darks, sptkeys, Data, Gain
+from .db_tables import Lampflash, Stims, Darks, sptkeys, Data, Gain
 
 
 SETTINGS = open_settings()
@@ -131,7 +133,7 @@ def insert_files(**kwargs):
     print("Querying previously found files")
     previous_files = {os.path.join(path, fname) for path, fname in session.query(Files.path, Files.name)}
 
-    for i, (path, filename) in enumerate(find_all_datasets(data_location)):
+    for i, (path, filename) in enumerate(find_all_datasets(data_location, SETTINGS['num_cpu'])):
         full_filepath = os.path.join(path, filename)
 
         if full_filepath in previous_files:
@@ -273,7 +275,9 @@ def populate_spt(num_cpu=1):
     print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert,args)
+
 #-------------------------------------------------------------------------------
+
 def populate_data(num_cpu=1):
     print("adding to data")
 
@@ -352,9 +356,23 @@ def populate_primary_headers(num_cpu=1):
 #-------------------------------------------------------------------------------
 
 def get_spt_keys(filename):
+    """ Read the necessary keywords from SPT files
+
+    Parameters
+    ----------
+    filename : str
+        name of the file to read
+
+    Returns
+    -------
+    keywords : dict
+        dictionary of keyword,value pairs
+    """
+
     with fits.open(filename) as hdu:
         keywords = {'rootname':hdu[0].header.get('rootname', None),
                     'proc_typ':hdu[0].header.get('proc_typ', None),
+                    'prop_typ':hdu[0].header.get('prop_typ', None),
                     'lomfstp':hdu[2].header.get('lomfstp', None),
                     'lapxlvdt':hdu[2].header.get('lapxlvdt', None),
                     'lapdlvdt':hdu[2].header.get('lapdlvdt', None),
@@ -365,7 +383,8 @@ def get_spt_keys(filename):
                     'ldcampat':hdu[2].header.get('ldcampat', None),
                     'ldcampbt':hdu[2].header.get('ldcampbt', None),
                     'lmmcetmp':hdu[2].header.get('lmmcetmp', None)}
-        return keywords
+
+    return keywords
 
 #-------------------------------------------------------------------------------
 
@@ -456,7 +475,7 @@ def get_primary_keys(filename):
 
                           'dethvl':hdu[1].header.get('dethvl', None),
                                                                         }
-        return keywords
+    return keywords
 
 #-------------------------------------------------------------------------------
 def update_data(args):
@@ -485,6 +504,17 @@ def update_data(args):
 
 #-------------------------------------------------------------------------------
 
+def cm_delete():
+    parser = argparse.ArgumentParser(description='Delete file from all databases.')
+    parser.add_argument('filename',
+                        type=str,
+                        help='search string to delete')
+    args = parser.parse_args()
+
+    delete_file_from_all(args.filename)
+
+#-------------------------------------------------------------------------------
+
 def delete_file_from_all(filename):
     """Delete a filename from all databases and directory structure
 
@@ -497,18 +527,70 @@ def delete_file_from_all(filename):
 
     session = Session()
 
+    print(filename)
     files_to_remove = [(result.id, os.path.join(result.path, result.name))
                             for result in session.query(Files).\
-                                    filter(Files.name.like('%{}%'.format(filename)))]
+                                    filter(Files.name.like("""%{}%""".format(filename)))]
+    session.close()
 
 
+    print("Found: ")
+    print(files_to_remove)
     for (file_id, file_path) in files_to_remove:
         for table in reversed(Base.metadata.sorted_tables):
-            session.query(table).filter(table.file_id==file_id).delete()
-        print("Removing file {}".format(file_path))
-        os.remove(file_path)
+            print("Removing {}, {} from {}".format(file_path, file_id, table.name))
+            if table.name == 'files':
+                q = """DELETE FROM {} WHERE id={}""".format(table.name, file_id)
+            else:
+                q = """DELETE FROM {} WHERE file_id={}""".format(table.name, file_id)
 
+            engine.execute(text(q))
+
+
+#-------------------------------------------------------------------------------
+
+def cm_describe():
+    parser = argparse.ArgumentParser(description='Show file from all databases.')
+    parser.add_argument('filename',
+                        type=str,
+                        help='search string to show')
+    args = parser.parse_args()
+
+    show_file_from_all(args.filename)
+
+#-------------------------------------------------------------------------------
+
+def show_file_from_all(filename):
+    """
+    """
+
+    session = Session()
+
+    print(filename)
+    files_to_show = [result.rootname
+                            for result in session.query(Files).\
+                                    filter(Files.name.like("""%{}%""".format(filename)))]
     session.close()
+
+
+    print("Found: ")
+    print(files_to_show)
+    for table in reversed(Base.metadata.sorted_tables):
+        if not 'rootname' in table.columns:
+            continue
+
+        print("**************************")
+        print("Searching {}".format(table.name))
+        print("**************************")
+
+        for rootname in set(files_to_show):
+            q = """SELECT * FROM {} WHERE rootname LIKE '%{}%'""".format(table.name, rootname)
+
+            results = engine.execute(text(q))
+
+            for i, row in enumerate(results):
+                for k in row.keys():
+                    print(table.name, rootname, k, row[k])
 
 #-------------------------------------------------------------------------------
 
@@ -552,7 +634,6 @@ def run_all_monitors():
     cci_monitor()
     stim_monitor()
     osm_monitor()
-
 
 #-------------------------------------------------------------------------------
 
