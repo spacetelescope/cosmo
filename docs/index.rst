@@ -13,10 +13,6 @@ Institute (STScI). COSMOS uses a `MySQL <https://dev.mysql.com/doc/>`_ database 
 that are important for extending the lifetime of COS. The database is broken up into many different relational tables which include header keyword and monitoring data.
 These tables are then queried by the monitors to generate figures and other deliverables like reference files with delivery forms in a format for direct delivery to CDBS.
 
-.. figure:: cos_logo.png
-   :scale: 80 %
-   :alt: F218W Bandpass
-
 How do I access COSMOS?
 -----------------------
 
@@ -146,6 +142,7 @@ COSMOS Monitors
    stim_mods
    utils_mods
    dark_mods
+   retrieval
 
 
 Need Help?
