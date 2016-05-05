@@ -9,9 +9,13 @@ import datetime
 import numpy as np
 import shutil
 import glob
+import math
 
 from astropy.io import fits
 from astropy.time import Time
+
+from calcos import orbit
+from calcos.timeline import gmst, ASECtoRAD, DEGtoRAD, eqSun, DIST_SUN, RADIUS_EARTH, computeAlt, computeZD, rectToSph
 
 from .solar import get_solar_data
 from .plotting import plot_histogram, plot_time, plot_orbital_rate
@@ -22,6 +26,51 @@ from sqlalchemy.sql.functions import concat
 
 base_dir = '/grp/hst/cos/Monitors/Darks/'
 web_directory = '/grp/webpages/COS/'
+
+#-------------------------------------------------------------------------------
+
+def get_sun_loc(mjd, dataset):
+    print(dataset)
+    rootname = fits.getval(dataset, 'ROOTNAME')
+
+    path, _ = os.path.split(dataset)
+    sptfile = os.path.join(path, rootname + '_spt.fits')
+    if not os.path.exists(sptfile):
+        sptfile += '.gz'
+        if not os.path.exists(sptfile):
+            raise IOError("Cannot find sptfile {}".format(sptfile))
+
+    orb = orbit.HSTOrbit(sptfile)
+
+    if isinstance(mjd, (int, float)):
+        mjd = list(mjd)
+
+    for m in mjd:
+
+        (rect_hst, vel_hst) = orb.getPos(m)
+        (r, ra_hst, dec_hst) = rectToSph(rect_hst)
+
+        # Assume that we want geocentric latitude.  The difference from
+        # astronomical latitude can be up to about 8.6 arcmin.
+        lat_hst = dec_hst
+        # Subtract the sidereal time at Greenwich to convert to longitude.
+        long_hst = ra_hst - 2. * math.pi * gmst(m)
+        if long_hst < 0.:
+            long_hst += (2. * math.pi)
+
+        long_col = long_hst / DEGtoRAD
+        lat_col = lat_hst / DEGtoRAD
+        rect_sun = eqSun(m)                   # equatorial coords of the Sun
+
+        (r, ra_sun, dec_sun) = rectToSph(rect_sun)
+        lat_sun = dec_sun
+        long_sun = ra_sun - 2. * math.pi * gmst(m)
+        if long_sun < 0.:
+            long_sun += (2. * math.pi)
+        long_sun /= DEGtoRAD
+        lat_sun /= DEGtoRAD
+
+        yield long_sun, lat_sun
 
 #-------------------------------------------------------------------------------
 
@@ -127,19 +176,29 @@ def pull_orbital_info(dataset, step=25):
     info['temp'] = get_temp(dataset)
 
     times = timeline['time'][::step].copy()
+
     lat = timeline['latitude'][:-1][::step].copy().astype(np.float64)
     lon = timeline['longitude'][:-1][::step].copy().astype(np.float64)
-    try:
-        sun_lat = timeline['sun_lat'][:-1][::step].copy().astype(np.float64)
-        sun_lon = timeline['sun_lon'][:-1][::step].copy().astype(np.float64)
-    except KeyError:
-        sun_lat = lat.copy() * 0
-        sun_lon = lat.copy() * 0
-
 
     mjd = hdu[1].header['EXPSTART'] + \
-        times.copy()[:-1].astype(np.float64) * \
+        times.copy().astype(np.float64) * \
         SECOND_PER_MJD
+    sun_lat = []
+    sun_lon = []
+    for item in get_sun_loc(mjd, dataset):
+        sun_lon.append(item[0])
+        sun_lat.append(item[1])
+
+    print(len(lat), len(sun_lat))
+
+    #try:
+    #    sun_lat = timeline['sun_lat'][:-1][::step].copy().astype(np.float64)
+    #    sun_lon = timeline['sun_lon'][:-1][::step].copy().astype(np.float64)
+    #except KeyError:
+    #    sun_lat = lat.copy() * 0
+    #    sun_lon = lat.copy() * 0
+
+    mjd = mjd[:-1]
 
     decyear = mjd_to_decyear(mjd)
 
@@ -396,7 +455,7 @@ def monitor():
 
         if detector == 'FUV':
             make_plots(detector, TA=True)
-    
+
     move_products()
 
 #-------------------------------------------------------------------------------
