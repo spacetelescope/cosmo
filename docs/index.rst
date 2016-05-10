@@ -1,23 +1,24 @@
 COSMOS (COS Monitoring System)
 ==============================
 
-Welcome! This is the documentation for the COS Monitoring System (COSMOS). This document aims to give a high level overview of COSMOS and you can get your copy here:
-`COSMOS <https://github.com/justincely/cos_monitoring>`_
+Welcome! This is the documentation for the COS Monitoring System (COSMOS). This document aims to give a high level overview of COSMOS with short SQL
+tutorials for users. You can get your copy here: `COSMOS <https://github.com/justincely/cos_monitoring>`_
 
 What is COSMOS?
 ---------------
 
 COSMOS is a backend database that is structured specifically for the Cosmic Origins Spectrogragh (COS) team at Space Telescope Science
 Institute (STScI). COSMOS uses a `MySQL <https://dev.mysql.com/doc/>`_ database server with
-`SQL Alchemy <http://docs.sqlalchemy.org/en/rel_1_0/>`_ object-relational mapper (ORM) for python. This allows for interfacing with monitors
-that are important for extending the lifetime of COS. The database is broken up into many different relational tables which include header keyword and monitoring data.
-These tables are then queried by the monitors to generate figures and other deliverables like reference files with delivery forms in a format for direct delivery to CDBS.
+`SQL Alchemy <http://docs.sqlalchemy.org/en/rel_1_0/>`_, an object-relational mapper (ORM) for python. This allows for interfacing with monitors
+that are important for extending the mission lifetime of COS. The database is broken up into different relational tables which include header keyword and monitoring data.
+The system is set up to query these tables by the monitors and then returns deliverables such as reference files, figures and CRDS delivery forms. This allows us to have
+the most up-to-date resources available for the COS team and community.
 
 How do I access COSMOS?
 -----------------------
 
 First, you will need to ask ITSD for a username and password to access the COSMOS database. Once you have these credentials
-to access COSMOS you will need to SSH into one of the INS computing clusters (plhstins1, plhstins2, plhstins3). After you are on the cluster you will need to create a file titled
+to access COSMOS you will need to SSH into one of the INS computing clusters (plhstins1, plhstins2, or plhstins3). After you are on the cluster you will need to create a file titled
 'configure.yaml' in your home directory that contains the information that was given to you by ITSD. An example of how your configure.yaml file should look is located below ::
 
   #an example of a configure.yaml file
@@ -25,23 +26,23 @@ to access COSMOS you will need to SSH into one of the INS computing clusters (pl
   user: 'user_name'
   password: 'string_of_random_characters'
   port: port_number
-  host: 'greendev.stsci.edu'
+  host: 'name_of_host'
   database: 'cos_cci'
-  connection_string: 'mysql+pymysql://user:password@greendev.stsci.edu:port/cos_cci'
+  connection_string: 'mysql+pymysql://user:password@host:port/cos_cci'
   data_location: '/smov/cos/Data/'
   num_cpu: 16
 
 .. admonition:: NOTE
    :class: note
 
-   | In the ``conection_string`` variable above where ``user``, ``password``, and ``port`` are located, ENTER YOUR ACTUAL USERNAME, PASSWORD, AND PORT into the string.
+   | In the ``conection_string`` variable above where ``user``, ``password``, ``host`` and ``port`` are located, ENTER YOUR ACTUAL USERNAME, PASSWORD, HOST, AND PORT
+     into the string.
    |
    | If you are wondering about your password and port number, the password will be a sting of random characters i.e. have single or double quotes around it and the port
      will be a much shorter integer i.e. no single or double quotes around it.
 
 
-After you have created your configure.yaml file, now it is time to access the database. After your configure.yaml file is finished now you will need to enter this following
-command ::
+After you have created your configure.yaml file, now it is time to access the database. To enter the COSMOS database you should now enter::
 
   $ mysql -hgreendev -u username -Pportnumber -ppassword
 
@@ -51,8 +52,8 @@ You should now be in a mysql session which should change the terminal prompt to 
 
 Navigating COSMOS
 -----------------
-
-To see the databases that are hosted you can enter the next command ::
+Now that you have successfully entered the database, you need to understand how to navigate the database before using it.
+To see the databases that are hosted you can enter ::
 
   mysql> SHOW DATABASES;
 
@@ -67,8 +68,8 @@ and the database we want to use is ``cos_cci``. To access the the database enter
 
   mysql> USE cos_cci;
 
-now you are in the cos_cci database used by COSMOS. The database will contain tables, a table is a collection of related data in an organized fashion in the database.
-This can be done by entering the following command ::
+and now you are in the cos_cci database used by COSMOS. The database will contain a structure called tables, a table is a collection of related data in an organized
+fashion in the database. This can be done by entering the following command ::
 
   mysql> SHOW TABLES;
 
@@ -87,8 +88,8 @@ This can be done by entering the following command ::
   | stims             |
   +-------------------+
 
-Another import SQL intrinsic you may want to use is the ``DESCRIBE`` which will return a high level overview of how the table is constructed. As an example we will look at
-the stims table using ``DESCRIBE`` which returns ::
+Another important SQL intrinsic you may want to use is the ``DESCRIBE`` method which will return a high level overview of how the table is constructed. As an example we will
+look at the stims table using ``DESCRIBE`` ::
 
   mysql> DESCRIBE stims;
 
@@ -108,13 +109,14 @@ the stims table using ``DESCRIBE`` which returns ::
   | file_id  | int(11)    | YES  | MUL | NULL    |                |
   +----------+------------+------+-----+---------+----------------+
 
-the ``Field`` which you can think of as a the column header, ``Type`` which is the datatype of the column, ``Null`` which shows whether NULLS are present, ``Key``
+the ``Field`` is the column header, ``Type`` which is the datatype of the column, ``Null`` shows whether NULLS are present in the column, ``Key``
 which shows the type of key, ``Default`` which is the default option if the value wasn't located, and ``Extra`` which tell you if the ``Field`` has any other functionality to it.
 
 .. admonition:: NOTE
    :class: note
 
    | You may have noticed by now that it is convention to use capital letters for SQL intrinsic commands and lowercase for tables, databases, etc.
+     This is only convention, but lowercase letters will work as well. The conventions make the query more human readable.
    | **TIP:** You can terminate an SQL query with a semicolon and for longer queries you can use enter to break the lines up before terminating with a semicolon.
 
 Higher Level SQL with COSMOS
