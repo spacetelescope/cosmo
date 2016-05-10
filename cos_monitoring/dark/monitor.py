@@ -24,7 +24,6 @@ from ..utils import corrtag_image
 from ..database.db_tables import open_settings, load_connection
 from sqlalchemy.sql.functions import concat
 
-base_dir = '/grp/hst/cos/Monitors/Darks/'
 web_directory = '/grp/webpages/COS/'
 
 #-------------------------------------------------------------------------------
@@ -293,7 +292,7 @@ def pha_hist(filename):
 
 #-------------------------------------------------------------------------------
 
-def make_plots(detector, TA=False):
+def make_plots(detector, base_dir, TA=False):
     print('#-------------------#')
     print('Making plots for {}'.format(detector))
     print('#-------------------#')
@@ -308,7 +307,7 @@ def make_plots(detector, TA=False):
         raise ValueError('Only FUV or NUV allowed.  NOT:{}'.format(detector) )
 
     try:
-        solar_data = np.genfromtxt(base_dir + 'solar_flux.txt', dtype=None)
+        solar_data = np.genfromtxt(os.path.join(base_dir, 'solar_flux.txt'), dtype=None)
         solar_date = np.array( mjd_to_decyear([line[0] for line in solar_data]) )
         solar_flux = np.array([line[1] for line in solar_data])
     except TypeError:
@@ -351,6 +350,8 @@ def make_plots(detector, TA=False):
         temp = temp[index_keep]
 
         outname = os.path.join(base_dir, detector, '{}_vs_time_{}.png'.format(dark_key, segment))
+        if not os.path.exists(os.path.split(outname)[0]):
+            os.makedirs(os.path.split(outname)[0])
         plot_time(detector, dark, mjd, temp, solar_flux, solar_date, outname)
 
         #-- Plot vs orbit
@@ -411,7 +412,7 @@ def make_plots(detector, TA=False):
 
 #-------------------------------------------------------------------------------
 
-def move_products():
+def move_products(base_dir):
     '''Move created pdf files to webpage directory
     '''
 
@@ -445,17 +446,17 @@ def move_products():
 
 #-------------------------------------------------------------------------------
 
-def monitor():
+def monitor(out_dir):
     """Main monitoring pipeline"""
 
-    get_solar_data('/grp/hst/cos/Monitors/Darks/')
+    get_solar_data(out_dir)
 
     for detector in ['FUV', 'NUV']:
-        make_plots(detector)
+        make_plots(detector, out_dir)
 
         if detector == 'FUV':
-            make_plots(detector, TA=True)
+            make_plots(detector, out_dir, TA=True)
 
-    move_products()
+    move_products(out_dir)
 
 #-------------------------------------------------------------------------------
