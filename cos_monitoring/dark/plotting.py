@@ -14,6 +14,8 @@ import numpy as np
 import math
 import os
 
+from ..utils import remove_if_there
+
 #-------------------------------------------------------------------------------
 
 def magnitude(x):
@@ -49,7 +51,7 @@ def plot_histogram(dark, outname):
         name of the output plot
 
     """
-    os.remove(outname)
+    remove_if_there(outname)
     fig = plt.figure(figsize=(12, 9))
 
     ax = fig.add_subplot(2, 1, 1)
@@ -106,9 +108,7 @@ def plot_histogram(dark, outname):
                numpoints=1,
                bbox_to_anchor=[0.8, 0.8])
 
-    if os.path.exists(outname):
-        os.remove(outname)
-
+    remove_if_there(outname)
     fig.savefig(outname, bbox_inches='tight')
     plt.close(fig)
 
@@ -138,7 +138,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
         name of output plot
 
     """
-    os.remove(outname)
+    remove_if_there(outname)
     fig = plt.figure(figsize=(20, 12))
 
     sorted_index = np.argsort(solar_date)
@@ -275,9 +275,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
         sub_ax.legend(numpoints=1, shadow=True, loc='best')
         sub_ax.grid(True)
 
-    if os.path.exists(outname):
-        os.remove(outname)
-
+    remove_if_there(outname)
     fig.savefig(outname, bbox_inches='tight')
     plt.close(fig)
 
@@ -306,7 +304,7 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
     color_min = darkrate.min()
     color_max = darkrate.min() + 3 * darkrate.std()
 
-    os.remove(outname)
+    remove_if_there(outname)
     fig = plt.figure(figsize=(20, 15))
 
     if 'FUVA' in outname:
@@ -418,9 +416,7 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
     ax3.set_ylabel('Latitude - sub-solar point')
     ax3.set_xlabel('Longitude - sub-solar point')
 
-    if os.path.exists(outname):
-        os.remove(outname)
-
+    remove_if_there(outname)
     fig.savefig(outname, bbox_inches='tight')
     plt.close(fig)
 

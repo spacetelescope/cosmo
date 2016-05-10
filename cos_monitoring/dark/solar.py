@@ -12,6 +12,8 @@ from ftplib import FTP
 
 from astropy.time import Time
 
+from ..utils import remove_if_there
+
 #-------------------------------------------------------------------------------
 
 def grab_solar_files(file_dir):
@@ -49,8 +51,6 @@ def compile_txt(file_dir):
 
     Parameters
     ----------
-    file_dir : str
-        directory containing retrieved solar data txt files
 
     Returns
     -------
@@ -74,7 +74,6 @@ def compile_txt(file_dir):
             print("Removing duplicate observations: {}".format(item))
             os.remove(item)
             continue
-
         data = ascii.read(item, data_start=1, comment='[#,:]')
 
         for line in data:
@@ -115,7 +114,8 @@ def get_solar_data(file_dir):
     date, flux = compile_txt(file_dir)
 
     out_solar_file = os.path.join(file_dir, 'solar_flux.txt')
-    os.remove(out_solar_file)
+    remove_if_there(out_solar_file)
+
     with open(out_solar_file, 'w') as outfile:
         for d, f in zip(date, flux):
             outfile.write('%4.5f  %d\n' % (d, f))
