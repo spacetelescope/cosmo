@@ -630,7 +630,7 @@ def do_all():
 #-------------------------------------------------------------------------------
 
 def run_all_monitors():
-    dark_monitor()
+    dark_monitor(SETTINGS['monitor_location'])
     cci_monitor()
     stim_monitor()
     osm_monitor()
