@@ -448,14 +448,16 @@ def move_products(base_dir):
 
 def monitor(out_dir):
     """Main monitoring pipeline"""
-
-    get_solar_data(out_dir)
+    SETTINGS = open_settings()
+    out_dir = SETTINGS['monitor_location']
+    data_dir = '/grp/hst/cos/Monitors/Darks/'
+    get_solar_data(data_dir)
 
     for detector in ['FUV', 'NUV']:
-        make_plots(detector, out_dir)
+        make_plots(detector, data_dir)
 
         if detector == 'FUV':
-            make_plots(detector, out_dir, TA=True)
+            make_plots(detector, data_dir, TA=True)
 
     move_products(out_dir)
 

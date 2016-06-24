@@ -344,10 +344,12 @@ def populate_primary_headers(num_cpu=1):
     """
 
     engine.execute(text(t))
-
+    results = engine.execute(text(q))
+    print(results)
     files_to_add = [(result.file_id, result.file_to_grab) for result in engine.execute(text(q))
                         if not result.file_id == None]
 
+    print(files_to_add)
     args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
     print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
@@ -620,20 +622,20 @@ def do_all():
     Base.metadata.create_all(engine)
     insert_files(**SETTINGS)
     populate_primary_headers(SETTINGS['num_cpu'])
-    populate_spt(SETTINGS['num_cpu'])
-    populate_data(SETTINGS['num_cpu'])
-    populate_lampflash(SETTINGS['num_cpu'])
-    populate_darks(SETTINGS['num_cpu'])
-    populate_gain(SETTINGS['num_cpu'])
-    populate_stims(SETTINGS['num_cpu'])
+    #populate_spt(SETTINGS['num_cpu'])
+    #populate_data(SETTINGS['num_cpu'])
+    #populate_lampflash(SETTINGS['num_cpu'])
+    #populate_darks(SETTINGS['num_cpu'])
+    #populate_gain(SETTINGS['num_cpu'])
+    #populate_stims(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
 def run_all_monitors():
     dark_monitor(SETTINGS['monitor_location'])
-    cci_monitor()
-    stim_monitor()
-    osm_monitor()
+    #cci_monitor()
+    #stim_monitor()
+    #osm_monitor()
 
 #-------------------------------------------------------------------------------
 

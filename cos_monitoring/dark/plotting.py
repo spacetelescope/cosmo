@@ -184,7 +184,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
                         label='1.5e-6',
                         zorder=1,
                         alpha=.6)
-
+    
     dark_ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
     dark_ax.yaxis.set_major_formatter(FormatStrFormatter('%3.2e'))
 
