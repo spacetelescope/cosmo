@@ -107,7 +107,10 @@ def connect_dadsops():
         print("Querying MAST dadsops_rep database....")
         # Connect to the database.
         Session, engine = load_connection(SETTINGS['connection_string'])
+        print("about to execute")
+        pdb.set_trace()
         engine.execute("use dadsops_rep;")
+        print("I executed")
         # Get all jitter, science (ASN), and CCI datasets.
         jitters = list(engine.execute("SELECT ads_data_set_name,ads_pep_id "
                                       "FROM archive_data_set_all WHERE " 

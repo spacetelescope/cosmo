@@ -157,6 +157,8 @@ def retrieve_data(dest_dir, datasets):
     for item in dataset_lists:
         xml_file = build_xml_request(dest_dir, item)
         result = submit_xml_request(xml_file)
+        print(xml_file)
+        print(result)
         tmp_id = re.search("("+MYUSER+"[0-9]{5})", result).group()
         tracking_ids.append(tmp_id)
    
@@ -270,6 +272,7 @@ def run_all_retrievals(pkl_file):
         # If there are more than N*100 programs to be retrieved, stop 
         # and calibrate and zip.
         # NOTE: I have the value set to two right now for testing purposes!
+        # NOTE: It should be set to 100.
         if pend > century*2:
             century += 1
             print("Pausing retrieval to calibrate and zip current data")
