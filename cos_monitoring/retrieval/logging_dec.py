@@ -7,14 +7,16 @@ from functools import wraps
 
 def config_logging(logfile):
     '''
-    Define the logging configuration including the output file and 
+    Define the logging configuration including the output file and
     logging level.
 
     Parameters:
+    -----------
         logfile : string
             The path and filename of the output logging file.
 
-    Returns: 
+    Returns:
+    --------
         Nothing
     '''
     logging.basicConfig(filename=logfile,
@@ -27,7 +29,8 @@ def log_function(func):
     This is a decorator to be used to log modules and retain important
     information and errors.
 
-    Use: 
+    Use:
+    ----
         This should be imported and used as a decorator:
 
         from logging_dec import log_function
@@ -37,10 +40,12 @@ def log_function(func):
             ...
 
     Parameters:
+    -----------
         func : function
             The input function to decorate
 
     Returns:
+    --------
         wrapper : function
             A wrapper to the modified function.
     '''
@@ -56,6 +61,5 @@ def log_function(func):
             logging.info("{0} completed successfully".format(funcname))
         except Exception, err:
             logging.exception("Error in function {0}.{1}: ".format(modname,funcname))
-    
+
     return wrapper
-            

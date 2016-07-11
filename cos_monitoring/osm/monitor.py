@@ -13,6 +13,7 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
+from astropy.time import Time
 
 import scipy
 from scipy.stats import linregress
@@ -69,7 +70,11 @@ def pull_flashes(filename):
                     'segment': hdu[0].header['SEGMENT'],
                     'opt_elem': hdu[0].header['OPT_ELEM'],
                     'cenwave': hdu[0].header['CENWAVE'],
-                    'fppos': hdu[0].header.get('FPPOS', None)}
+                    'fppos': hdu[0].header.get('FPPOS', None),
+                    'filetype': hdu[0].header.get('FILETYPE', None)}
+
+        t = Time(out_info['date'], format='mjd')
+        out_info['cal_date'] = t.iso
 
         if '_lampflash.fits' in filename:
             out_info['lamptab'] = hdu[0].header['LAMPTAB'].split('$')[-1]

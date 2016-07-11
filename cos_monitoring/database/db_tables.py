@@ -128,6 +128,8 @@ class Lampflash(Base):
     flash = Column(Integer)
     x_shift = Column(Float)
     y_shift = Column(Float)
+    filetype = Column(String(8))
+    cal_date = Column(String(30))
     found = Column(Boolean)
 
     file_id = Column(Integer, ForeignKey('files.id'))

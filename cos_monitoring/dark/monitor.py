@@ -9,9 +9,13 @@ import datetime
 import numpy as np
 import shutil
 import glob
+import math
 
 from astropy.io import fits
 from astropy.time import Time
+
+from calcos import orbit
+from calcos.timeline import gmst, ASECtoRAD, DEGtoRAD, eqSun, DIST_SUN, RADIUS_EARTH, computeAlt, computeZD, rectToSph
 
 from .solar import get_solar_data
 from .plotting import plot_histogram, plot_time, plot_orbital_rate
@@ -20,8 +24,52 @@ from ..utils import corrtag_image
 from ..database.db_tables import open_settings, load_connection
 from sqlalchemy.sql.functions import concat
 
-base_dir = '/grp/hst/cos/Monitors/Darks/'
 web_directory = '/grp/webpages/COS/'
+
+#-------------------------------------------------------------------------------
+
+def get_sun_loc(mjd, dataset):
+    print(dataset)
+    rootname = fits.getval(dataset, 'ROOTNAME')
+
+    path, _ = os.path.split(dataset)
+    sptfile = os.path.join(path, rootname + '_spt.fits')
+    if not os.path.exists(sptfile):
+        sptfile += '.gz'
+        if not os.path.exists(sptfile):
+            raise IOError("Cannot find sptfile {}".format(sptfile))
+
+    orb = orbit.HSTOrbit(sptfile)
+
+    if isinstance(mjd, (int, float)):
+        mjd = list(mjd)
+
+    for m in mjd:
+
+        (rect_hst, vel_hst) = orb.getPos(m)
+        (r, ra_hst, dec_hst) = rectToSph(rect_hst)
+
+        # Assume that we want geocentric latitude.  The difference from
+        # astronomical latitude can be up to about 8.6 arcmin.
+        lat_hst = dec_hst
+        # Subtract the sidereal time at Greenwich to convert to longitude.
+        long_hst = ra_hst - 2. * math.pi * gmst(m)
+        if long_hst < 0.:
+            long_hst += (2. * math.pi)
+
+        long_col = long_hst / DEGtoRAD
+        lat_col = lat_hst / DEGtoRAD
+        rect_sun = eqSun(m)                   # equatorial coords of the Sun
+
+        (r, ra_sun, dec_sun) = rectToSph(rect_sun)
+        lat_sun = dec_sun
+        long_sun = ra_sun - 2. * math.pi * gmst(m)
+        if long_sun < 0.:
+            long_sun += (2. * math.pi)
+        long_sun /= DEGtoRAD
+        lat_sun /= DEGtoRAD
+
+        yield long_sun, lat_sun
 
 #-------------------------------------------------------------------------------
 
@@ -127,19 +175,29 @@ def pull_orbital_info(dataset, step=25):
     info['temp'] = get_temp(dataset)
 
     times = timeline['time'][::step].copy()
+
     lat = timeline['latitude'][:-1][::step].copy().astype(np.float64)
     lon = timeline['longitude'][:-1][::step].copy().astype(np.float64)
-    try:
-        sun_lat = timeline['sun_lat'][:-1][::step].copy().astype(np.float64)
-        sun_lon = timeline['sun_lon'][:-1][::step].copy().astype(np.float64)
-    except KeyError:
-        sun_lat = lat.copy() * 0
-        sun_lon = lat.copy() * 0
-
 
     mjd = hdu[1].header['EXPSTART'] + \
-        times.copy()[:-1].astype(np.float64) * \
+        times.copy().astype(np.float64) * \
         SECOND_PER_MJD
+    sun_lat = []
+    sun_lon = []
+    for item in get_sun_loc(mjd, dataset):
+        sun_lon.append(item[0])
+        sun_lat.append(item[1])
+
+    print(len(lat), len(sun_lat))
+
+    #try:
+    #    sun_lat = timeline['sun_lat'][:-1][::step].copy().astype(np.float64)
+    #    sun_lon = timeline['sun_lon'][:-1][::step].copy().astype(np.float64)
+    #except KeyError:
+    #    sun_lat = lat.copy() * 0
+    #    sun_lon = lat.copy() * 0
+
+    mjd = mjd[:-1]
 
     decyear = mjd_to_decyear(mjd)
 
@@ -234,7 +292,7 @@ def pha_hist(filename):
 
 #-------------------------------------------------------------------------------
 
-def make_plots(detector, TA=False):
+def make_plots(detector, base_dir, TA=False):
     print('#-------------------#')
     print('Making plots for {}'.format(detector))
     print('#-------------------#')
@@ -249,7 +307,7 @@ def make_plots(detector, TA=False):
         raise ValueError('Only FUV or NUV allowed.  NOT:{}'.format(detector) )
 
     try:
-        solar_data = np.genfromtxt(base_dir + 'solar_flux.txt', dtype=None)
+        solar_data = np.genfromtxt(os.path.join(base_dir, 'solar_flux.txt'), dtype=None)
         solar_date = np.array( mjd_to_decyear([line[0] for line in solar_data]) )
         solar_flux = np.array([line[1] for line in solar_data])
     except TypeError:
@@ -292,6 +350,8 @@ def make_plots(detector, TA=False):
         temp = temp[index_keep]
 
         outname = os.path.join(base_dir, detector, '{}_vs_time_{}.png'.format(dark_key, segment))
+        if not os.path.exists(os.path.split(outname)[0]):
+            os.makedirs(os.path.split(outname)[0])
         plot_time(detector, dark, mjd, temp, solar_flux, solar_date, outname)
 
         #-- Plot vs orbit
@@ -352,7 +412,7 @@ def make_plots(detector, TA=False):
 
 #-------------------------------------------------------------------------------
 
-def move_products():
+def move_products(base_dir):
     '''Move created pdf files to webpage directory
     '''
 
@@ -386,17 +446,19 @@ def move_products():
 
 #-------------------------------------------------------------------------------
 
-def monitor():
+def monitor(out_dir):
     """Main monitoring pipeline"""
-
-    get_solar_data('/grp/hst/cos/Monitors/Darks/')
+    SETTINGS = open_settings()
+    out_dir = SETTINGS['monitor_location']
+    data_dir = '/grp/hst/cos/Monitors/Darks/'
+    get_solar_data(data_dir)
 
     for detector in ['FUV', 'NUV']:
-        make_plots(detector)
+        make_plots(detector, data_dir)
 
         if detector == 'FUV':
-            make_plots(detector, TA=True)
-    
-    move_products()
+            make_plots(detector, data_dir, TA=True)
+
+    move_products(out_dir)
 
 #-------------------------------------------------------------------------------

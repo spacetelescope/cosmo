@@ -1,6 +1,14 @@
+import os
+
 from astropy.io import fits
 import numpy as np
 from calcos import ccos
+
+#-------------------------------------------------------------------------------
+
+def remove_if_there(filename):
+    if os.path.exists(filename):
+        os.remove(filename)
 
 #-------------------------------------------------------------------------------
 
