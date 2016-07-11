@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 from __future__ import print_function, absolute_import, division
-
+print("hello")
 '''
 This module compares what datasets are currently in
 /smov/cos/Data (by accessing the COS database) versus all datasets currently
@@ -23,6 +23,7 @@ import yaml
 from collections import OrderedDict
 import pdb
 from sqlalchemy import text
+from subprocess import Popen, PIPE
 
 from ..database.db_tables import load_connection
 from .request_data import run_all_retrievals
