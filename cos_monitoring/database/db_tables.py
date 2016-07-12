@@ -356,9 +356,34 @@ class sptkeys(Base):
     ldcampat = Column(Float)
     ldcampbt = Column(Float)
     lmmcetmp = Column(Float)
+    dominant_gs = Column(String(20))
+    secondary_gs = Column(String(20))
+    start_time = Column(String(20))
+    search_dimensions = Column(Integer)
+    search_step_size = Column(Float)
+    search_type = Column(String(20))
+    search_floor = Column(Integer)
+    lqtadpos = Column(Float)
+    lqtaxpos = Column(Float)
+    lqitime = Column(Integer)
 
     file_id = Column(Integer, ForeignKey('files.id'))
 
     __table_args__ = (Index('idx_rootname', 'rootname', unique=False), )
 
+#-------------------------------------------------------------------------------
+
+class Acqs(Base):
+    __tablename__ = "acqs"
+
+    id = Column(Integer, primary_key=True)
+
+    rootname = Column(String(9))
+    proposid = Column(Integer)
+    obset_id = Column(String(7))
+    linenum = Column(String(10))
+    exptype = Column(String(10))
+    detector = Column(String(4))
+
+    file_id = Column(Integer, ForeignKey('files.id'))
 #-------------------------------------------------------------------------------

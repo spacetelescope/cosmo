@@ -36,6 +36,7 @@ import shutil
 #from bokeh import charts
 #from bokeh.plotting import figure
 
+from .gainmap import make_all_hv_maps, make_all_gainmaps, make_total_gain
 from ..utils import enlarge, send_email
 from .findbad import time_trends
 from .gsag import main as gsag_main
@@ -270,8 +271,11 @@ def plotting():
 def monitor():
     """ Main driver for monitoring program.
     """
-    
-    print 'phaimages'
+
+    print('Making ALL Gain Maps')
+    make_all_gainmaps()
+
+    print('phaimages')
     make_phaimages(False)
 
     time_trends()

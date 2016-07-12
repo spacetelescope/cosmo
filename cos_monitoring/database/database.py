@@ -12,6 +12,7 @@ import types
 import argparse
 import pprint
 
+from ..cci.gainmap import make_all_hv_maps
 from ..cci.gainmap import write_and_pull_gainmap
 from ..cci.monitor import monitor as cci_monitor
 from ..dark.monitor import monitor as dark_monitor
@@ -24,7 +25,7 @@ from ..stim.monitor import stim_monitor
 from .db_tables import load_connection, open_settings
 from .db_tables import Base
 from .db_tables import Files, Headers
-from .db_tables import Lampflash, Stims, Darks, sptkeys, Data, Gain
+from .db_tables import Lampflash, Stims, Darks, sptkeys, Data, Gain, Acqs
 
 
 SETTINGS = open_settings()
@@ -354,7 +355,21 @@ def populate_primary_headers(num_cpu=1):
     print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
+#-------------------------------------------------------------------------------
+def populate_acqs(num_cpu=1):
+    print("adding to data")
 
+    session = Session()
+    files_to_add = [(result.id, os.path.join(result.path, result.name))
+                        for result in session.query(Files).\
+                                filter(Files.name.like('%_rawacq.fits%')).\
+                                outerjoin(Acqs, Files.id == Acqs.file_id).\
+                                filter(Acqs.file_id == None)]
+    session.close()
+    args = [(full_filename, Acqs, get_acq_keys, f_key) for f_key, full_filename in files_to_add]
+    print("Found {} files to add".format(len(args)))
+    pool = mp.Pool(processes=num_cpu)
+    pool.map(mp_insert, args)
 #-------------------------------------------------------------------------------
 
 def get_spt_keys(filename):
@@ -384,7 +399,18 @@ def get_spt_keys(filename):
                     'lom2posf':hdu[2].header.get('lom2posf', None),
                     'ldcampat':hdu[2].header.get('ldcampat', None),
                     'ldcampbt':hdu[2].header.get('ldcampbt', None),
-                    'lmmcetmp':hdu[2].header.get('lmmcetmp', None)}
+                    'lmmcetmp':hdu[2].header.get('lmmcetmp', None),
+                    'dominant_gs':hdu[0].header.get('dgestar', None),
+                    'secondary_gs':hdu[0].header.get('sgestar', None),
+                    'start_time':hdu[0].header.get('PSTRTIME', None),
+                    'search_dimensions':hdu[1].header.get('lqtascan', None),
+                    'search_step_size':hdu[1].header.get('lqtastep', None),
+                    'search_type':hdu[1].header.get('lqtacent', None),
+                    'search_floor':hdu[1].header.get('lqtaflor', None),
+                    'lqtadpos':hdu[1].header.get('lqtadpos', None),
+                    'lqtaxpos':hdu[1].header.get('lqtaxpos', None),
+                    'lqitime':hdu[1].header.get('lqitime', None)
+                    }
 
     return keywords
 
@@ -503,6 +529,17 @@ def update_data(args):
             return data
     except IOError:
         print('IOERROR')
+#-------------------------------------------------------------------------------
+
+def get_acq_keys(filename):
+    with fits.open(filename) as hdu:
+        keywords = {'rootname':hdu[0].header['rootname'],
+                    'obset_id':hdu[1].header.get('obset_id', None),
+                    'linenum':hdu[0].header['linenum'],
+                    'exptype':hdu[0].header['exptype'],
+                    'target':hdu[0].header.get('target', None),
+                    }
+    return keywords
 
 #-------------------------------------------------------------------------------
 
@@ -596,8 +633,9 @@ def show_file_from_all(filename):
 
 #-------------------------------------------------------------------------------
 
-def clear_all_databases(SETTINGS):
+def clear_all_databases(SETTINGS, nuke=False):
     """Dump all databases of all contents...seriously"""
+
 
     if not raw_input("Are you sure you want to delete everything? Y/N: ") == 'Y':
         sys.exit("Not deleting, getting out of here.")
@@ -621,32 +659,47 @@ def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
     insert_files(**SETTINGS)
-    populate_primary_headers(SETTINGS['num_cpu'])
+    #populate_primary_headers(SETTINGS['num_cpu'])
     #populate_spt(SETTINGS['num_cpu'])
     #populate_data(SETTINGS['num_cpu'])
     #populate_lampflash(SETTINGS['num_cpu'])
     #populate_darks(SETTINGS['num_cpu'])
-    #populate_gain(SETTINGS['num_cpu'])
+    populate_gain(SETTINGS['num_cpu'])
     #populate_stims(SETTINGS['num_cpu'])
+    #populate_acqs(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
 def run_all_monitors():
-    dark_monitor(SETTINGS['monitor_location'])
-    #cci_monitor()
+    print('RUNNING MONITORS')
+    #dark_monitor(SETTINGS['monitor_location'])
+    cci_monitor()
     #stim_monitor()
     #osm_monitor()
 
 #-------------------------------------------------------------------------------
 
+def clean_slate_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n",'--nuke',
+                        help="Parser argument to nuke DB", default=True)
+    args = parser.parse_args()
+    return args
+
+#-------------------------------------------------------------------------------
+
 def clean_slate(config_file=None):
-    clear_all_databases(SETTINGS)
-    #Base.metadata.drop_all(engine, checkfirst=False)
-    Base.metadata.create_all(engine)
 
-    do_all()
+    args = clean_slate_parser()
+    if args.nuke == True:
+        #clear_all_databases(SETTINGS, args.nuke)
+        #Base.metadata.drop_all(engine, checkfirst=False)
+        #Base.metadata.create_all(engine)
 
-    run_all_monitors()
+        #do_all()
+
+        #run_all_monitors()
+        print('NUKKKKE')
 
 #-------------------------------------------------------------------------------
 

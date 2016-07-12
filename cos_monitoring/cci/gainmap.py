@@ -380,6 +380,7 @@ def make_all_hv_maps():
         tmp_hdu = pyfits.open( os.path.join( MONITOR_DIR, 'total_gain.fits') )
         for ext in (1, 2):
             tmp_hdu[ext].data -= .393 * (float(178) - hv)
+        print('WRITING {} TO {}')
         tmp_hdu.writeto( os.path.join( MONITOR_DIR, 'total_gain_%d.fits' % hv ), clobber=True )
 
 #-------------------------------------------------------------------------------
@@ -426,8 +427,8 @@ def make_all_gainmaps(processors=1):
 
     """
 
-    add_cumulative_data(ending)
-    '''
+    #add_cumulative_data(ending)
+
     hdu_out = pyfits.HDUList(pyfits.PrimaryHDU())
     hdu_out.append(pyfits.ImageHDU(data=make_total_gain('FUVA', reverse=True)))
     hdu_out[1].header['EXTNAME'] = 'FUVAINIT'
@@ -440,8 +441,9 @@ def make_all_gainmaps(processors=1):
     hdu_out.writeto(os.path.join(MONITOR_DIR, 'total_gain.fits'), clobber=True)
     hdu_out.close()
 
+    print('Making ALL HV Maps')
     make_all_hv_maps()
-    '''
+
 
 #------------------------------------------------------------
 
