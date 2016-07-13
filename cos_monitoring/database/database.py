@@ -85,12 +85,12 @@ def insert_with_yield(filename, table, function, foreign_key=None):
         #-- Pull data from generator and commit
         for i, row in enumerate(data):
             row['file_id'] = foreign_key
-            if i == 0:
-                print(row.keys())
-            print(row.values())
+            #if i == 0:
+            #    print(row.keys())
+            #print(row.values())
 
         #-- Converts np arrays to native python type...
-        #-- This is to allow the database to injest values as type float
+        #-- This is to allow the database to ingest values as type float
         #-- instead of Decimal Class types in sqlalchemy....
             for key in row:
                 if isinstance(row[key], np.generic):
@@ -245,8 +245,8 @@ def populate_gain(num_cpu=1):
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
                             outerjoin(Gain, Files.id == Gain.file_id).\
-                            filter(or_(Files.name.like('l\_%\_00\____\_cci%'),
-                                       Files.name.like('l\_%\_01\____\_cci%'))).\
+                            filter(or_(Files.name.like('l\_20161%\_00\____\_cci%'),
+                                       Files.name.like('l\_20161%\_01\____\_cci%'))).\
                             filter(Gain.file_id == None)]
     session.close()
 
@@ -534,10 +534,10 @@ def update_data(args):
 def get_acq_keys(filename):
     with fits.open(filename) as hdu:
         keywords = {'rootname':hdu[0].header['rootname'],
-                    'obset_id':hdu[1].header.get('obset_id', None),
+                    'obset_id': hdu[1].header.get('obset_id', None),
                     'linenum':hdu[0].header['linenum'],
                     'exptype':hdu[0].header['exptype'],
-                    'target':hdu[0].header.get('target', None),
+                    'target':hdu[0].header.get('targname', None),
                     }
     return keywords
 
@@ -658,7 +658,7 @@ def clear_all_databases(SETTINGS, nuke=False):
 def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
-    insert_files(**SETTINGS)
+    #insert_files(**SETTINGS)
     #populate_primary_headers(SETTINGS['num_cpu'])
     #populate_spt(SETTINGS['num_cpu'])
     #populate_data(SETTINGS['num_cpu'])

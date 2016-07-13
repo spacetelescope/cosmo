@@ -274,13 +274,15 @@ def monitor():
 
     print('Making ALL Gain Maps')
     make_all_gainmaps()
-
+    '''
     print('phaimages')
-    make_phaimages(False)
+    make_phaimages()
 
+    print('Looking at Time Trends')
     time_trends()
 
-    gsag_main(False)
+    print('Making Gain Sag Table')
+    gsag_main()
 
     #-- quicklooks
     all_gainmaps = glob.glob(os.path.join(MONITOR_DIR, '*gainmap*.fits'))
@@ -299,8 +301,8 @@ def monitor():
     message += 'Sincerely,\n %s'% (__file__)
 
     move_to_web()
-    #send_email(subject='CCI Monitor complete', message=message)
-
+    send_email(subject='CCI Monitor complete', message=message)
+    '''
 #-------------------------------------------------------------------------------
 def move_to_web():
     """Copy output products to web-facing directories.

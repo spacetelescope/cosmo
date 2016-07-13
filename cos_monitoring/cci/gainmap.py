@@ -77,7 +77,7 @@ class CCI:
         print('Measuring Modal Gain Map')
 
         if not self.numfiles:
-            print('CCI contines no data.  Skipping modal gain measurements')
+            print('CCI contains no data.  Skipping modal gain measurements')
             return
 
         gainmap, counts, std = measure_gainimage(self.big_array)
@@ -380,8 +380,8 @@ def make_all_hv_maps():
         tmp_hdu = pyfits.open( os.path.join( MONITOR_DIR, 'total_gain.fits') )
         for ext in (1, 2):
             tmp_hdu[ext].data -= .393 * (float(178) - hv)
-        print('WRITING {} TO {}')
         tmp_hdu.writeto( os.path.join( MONITOR_DIR, 'total_gain_%d.fits' % hv ), clobber=True )
+        print('WRITING  total_gain_{}.fits TO {}'.format(hv, MONITOR_DIR))
 
 #-------------------------------------------------------------------------------
 
@@ -392,8 +392,10 @@ def make_total_gain( segment, start_mjd=55055, end_mjd=70000, min_hv=163, max_hv
         ending = '*01_???_cci_gainmap.fits'
 
     all_datasets = [ item for item in glob.glob( os.path.join( MONITOR_DIR, ending) ) ]
-
     all_datasets.sort()
+
+    print(all_datasets)
+
     if reverse:
         all_datasets = all_datasets[::-1]
 
