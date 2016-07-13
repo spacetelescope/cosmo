@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 from __future__ import print_function, absolute_import, division
-print("hello")
+
 '''
 This module compares what datasets are currently in
 /smov/cos/Data (by accessing the COS database) versus all datasets currently
@@ -109,39 +109,52 @@ def connect_dadsops():
     with open(config_file, 'r') as f:
         SETTINGS = yaml.load(f)
 
-        print("Querying MAST dadsops_rep database....")
-        # Connect to the database.
-        Session, engine = load_connection(SETTINGS['connection_string'])
-        print("about to execute")
-        pdb.set_trace()
-        engine.execute("use dadsops_rep;")
-        print("I executed")
-        # Get all jitter, science (ASN), and CCI datasets.
-        jitters = list(engine.execute("SELECT ads_data_set_name,ads_pep_id "
-                                      "FROM archive_data_set_all WHERE "
-                                      "ads_instrument='cos' AND "
-                                      "ads_data_set_name LIKE '%J';"))
-        science = list(engine.execute("SELECT sci_data_set_name,sci_pep_id "
-                                      "FROM science WHERE sci_instrume='cos';"))
-        cci = list(engine.execute("SELECT ads_data_set_name,ads_pep_id "
-                                  "FROM archive_data_set_all WHERE "
-                                  "ads_archive_class='csi';"))
+    # Get all jitter, science (ASN), and CCI datasets.
+    print("Querying MAST dadsops_rep database....")
+    cci_query = "SELECT ads_data_set_name,ads_pep_id FROM " \
+    "archive_data_set_all WHERE ads_archive_class='csi'\ngo\n"
+    jitter_query = "SELECT ads_data_set_name,ads_pep_id FROM " \
+    "archive_data_set_all WHERE ads_instrument='cos' AND " \
+    "ads_data_set_name LIKE '%J'\ngo\n"
+    science_query = "SELECT sci_data_set_name,sci_pep_id FROM " \
+    "science WHERE sci_instrume='cos'\ngo\n"
+    
+    cci = janky_connect(SETTINGS, cci_query)    
+    jitters = janky_connect(SETTINGS, jitter_query)
+    science = janky_connect(SETTINGS, science_query)
+   
+    # Store results as dictionaries (we need dataset name and proposal ID).
+    jitdict = OrderedDict()
+    sciencedict = OrderedDict()
+    ccidict = OrderedDict()
+    for row in jitters:
+        jitdict[row[0]] = row[1]
+    for row in science:
+        sciencedict[row[0]] = row[1]
+    for row in cci:
+        ccidict[row[0]] = row[1]
+    
+    return jitdict, sciencedict, ccidict
+        
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+def janky_connect(SETTINGS, query_string):
+    # Connect to the database.
+    p = Popen("tsql -S%s -D%s -U%s -P%s -t'|||'" % (SETTINGS["server"], 
+              SETTINGS["database"], SETTINGS["username"], 
+              SETTINGS["password"]), shell=True, stdin=PIPE, stdout=PIPE,
+              stderr=PIPE, close_fds=True)
+    (transmit, receive, err) = (p.stdin, p.stdout, p.stderr)
+    transmit.write(query_string)
+    transmit.close()
+    query_result = receive.readlines()
+    receive.close()
+    error_report = err.readlines()
+    err.close()
+    
+    result = [x.strip().split("|||") for x in query_result if "|||" in x][1:]
 
-        # Store SQLAlchemy results as dictionaries (we need dataset name
-        # and proposal ID).
-        jitdict = OrderedDict()
-        sciencedict = OrderedDict()
-        ccidict = OrderedDict()
-        for row in jitters:
-            jitdict[row[0]] = row[1]
-        for row in science:
-            sciencedict[row[0]] = row[1]
-        for row in cci:
-            ccidict[row[0]] = row[1]
-        # Close connection
-        engine.dispose()
-        return jitdict, sciencedict, ccidict
-
+    return result
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
