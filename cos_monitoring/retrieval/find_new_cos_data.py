@@ -192,7 +192,8 @@ def compare_tables():
 
     # Combine science and jitter lists.
     missing_data_names = missing_sci_names + missing_jit_names
-    missing_data_props = missing_sci_props + missing_jit_props
+    missing_data_props_str = missing_sci_props + missing_jit_props
+    missing_data_props = [int(x) for x in missing_data_props_str]
 
     # Create dictionaries groupoed by proposal ID, it is much easier
     # to retrieve them this way.
