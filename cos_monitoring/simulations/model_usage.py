@@ -19,7 +19,6 @@ def enlarge(a, x=2, y=None):
     If y is left as None, uses factor x for both dimensions.
     """
 
-    import numpy as np
     a = np.asarray(a)
     assert a.ndim == 2
     if y == None:

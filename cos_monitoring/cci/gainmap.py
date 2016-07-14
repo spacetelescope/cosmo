@@ -597,7 +597,7 @@ def write_and_pull_gainmap(cci_name):
     """
 
     current = CCI(cci_name, xbinning=X_BINNING, ybinning=Y_BINNING)
-    #current.write()
+    current.write()
 
     index = np.where(current.gain_image > 0)
 

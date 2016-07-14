@@ -245,8 +245,8 @@ def populate_gain(num_cpu=1):
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
                             outerjoin(Gain, Files.id == Gain.file_id).\
-                            filter(or_(Files.name.like('l\_20161%\_00\____\_cci%'),
-                                       Files.name.like('l\_20161%\_01\____\_cci%'))).\
+                            filter(or_(Files.name.like('l\_%\_00\____\_cci%'),
+                                       Files.name.like('l\_%\_01\____\_cci%'))).\
                             filter(Gain.file_id == None)]
     session.close()
 
@@ -658,24 +658,24 @@ def clear_all_databases(SETTINGS, nuke=False):
 def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
-    #insert_files(**SETTINGS)
+    insert_files(**SETTINGS)
     #populate_primary_headers(SETTINGS['num_cpu'])
-    #populate_spt(SETTINGS['num_cpu'])
-    #populate_data(SETTINGS['num_cpu'])
-    #populate_lampflash(SETTINGS['num_cpu'])
-    #populate_darks(SETTINGS['num_cpu'])
+    populate_spt(SETTINGS['num_cpu'])
+    populate_data(SETTINGS['num_cpu'])
+    populate_lampflash(SETTINGS['num_cpu'])
+    populate_darks(SETTINGS['num_cpu'])
     populate_gain(SETTINGS['num_cpu'])
-    #populate_stims(SETTINGS['num_cpu'])
-    #populate_acqs(SETTINGS['num_cpu'])
+    populate_stims(SETTINGS['num_cpu'])
+    populate_acqs(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
 def run_all_monitors():
     print('RUNNING MONITORS')
-    #dark_monitor(SETTINGS['monitor_location'])
+    dark_monitor(SETTINGS['monitor_location'])
     cci_monitor()
-    #stim_monitor()
-    #osm_monitor()
+    stim_monitor()
+    osm_monitor()
 
 #-------------------------------------------------------------------------------
 
