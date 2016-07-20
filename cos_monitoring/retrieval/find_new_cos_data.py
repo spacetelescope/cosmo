@@ -41,11 +41,11 @@ def connect_cosdb():
 
     Returns:
     --------
-        nullrows : list
+        nullsmov : list
             All rootnames of files where ASN_ID = NONE.
-        asnrows : list
+        asnsmov : list
             All ASN_IDs for files where ASN_ID is not NONE.
-        smovjitrows : list
+        jitsmov : list
             All rootnames of jitter files.
     '''
 
@@ -66,19 +66,19 @@ def connect_cosdb():
                                   "WHERE asn_id!='NONE';"))
 
         # Store SQLAlchemy results as lists
-        nullrows = []
-        asnrows = []
-        smovjitrows = []
+        nullsmov = []
+        asnsmov = []
+        jitsmov = []
         for row in null:
-            nullrows.append(row["rootname"].upper())
+            nullsmov.append(row["rootname"].upper())
         for row in asn:
-            asnrows.append(row["asn_id"])
+            asnsmov.append(row["asn_id"])
         for row in jitters:
-            smovjitrows.append(row["rootname"].upper())
+            jitsmov.append(row["rootname"].upper())
 
         # Close connection
         engine.dispose()
-        return nullrows, asnrows, smovjitrows
+        return nullsmov, asnsmov, jitsmov
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -93,13 +93,13 @@ def connect_dadsops():
 
     Returns:
     --------
-        jitdict : dictionary
+        jitmast : dictionary
             Dictionary where the keys are rootnames of jitter files and the
             values are the corresponding proposal IDs.
-        sciencedict : dictionary
+        sciencemast : dictionary
             Dictionary where the keys are rootnames of all COS files and the
             values are the corresponding proposal IDs.
-        ccidict : dictionary
+        ccimast : dictionary
             Dictionary where the keys are rootnames of CCI files and the
             values are the corresponding proposal IDs.
     '''
@@ -124,17 +124,17 @@ def connect_dadsops():
     science = janky_connect(SETTINGS, science_query)
    
     # Store results as dictionaries (we need dataset name and proposal ID).
-    jitdict = OrderedDict()
-    sciencedict = OrderedDict()
-    ccidict = OrderedDict()
+    jitmast = OrderedDict()
+    sciencemast = OrderedDict()
+    ccimast = OrderedDict()
     for row in jitters:
-        jitdict[row[0]] = row[1]
+        jitmast[row[0]] = row[1]
     for row in science:
-        sciencedict[row[0]] = row[1]
+        sciencemast[row[0]] = row[1]
     for row in cci:
-        ccidict[row[0]] = row[1]
+        ccimast[row[0]] = row[1]
     
-    return jitdict, sciencedict, ccidict
+    return jitmast, sciencemast, ccimast
         
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -172,23 +172,23 @@ def compare_tables():
         Nothing
     '''
 
-    nullrows, asnrows, smovjitrows = connect_cosdb()
-    jitdict, sciencedict, ccidict = connect_dadsops()
+    nullsmov, asnsmov, jitsmov = connect_cosdb()
+    jitmast, sciencemast, ccimast = connect_dadsops()
     print("Finding missing COS data...")
 
-    existing = set()
-    existing_jit = set()
+    existing = set(nullsmov + asnsmov)
+    existing_jit = set(jitsmov)
 
     # Determine which science, jitter, and CCI datasets are missing.
-    missing_sci_names = list(set(sciencedict.keys()) - existing)
-    missing_jit_names = list(set(jitdict.keys()) - existing_jit)
-    missing_cci_names = list(set(ccidict.keys()) - existing)
+    missing_sci_names = list(set(sciencemast.keys()) - existing)
+    missing_jit_names = list(set(jitmast.keys()) - existing_jit)
+    missing_cci_names = list(set(ccimast.keys()) - existing)
 
     # For science and jitter data, determine corresponding proposal ID for
     # each missing dataset name (to place in the correct directory).
     # We don't need the propids for CCIs (NULL)
-    missing_sci_props = [sciencedict[i] for i in missing_sci_names]
-    missing_jit_props = [jitdict[i] for i in missing_jit_names]
+    missing_sci_props = [sciencemast[i] for i in missing_sci_names]
+    missing_jit_props = [jitmast[i] for i in missing_jit_names]
 
     # Combine science and jitter lists.
     missing_data_names = missing_sci_names + missing_jit_names
@@ -203,6 +203,7 @@ def compare_tables():
     for i in xrange(len(missing_data_names)):
         prop_dict[missing_data_props[i]].append(missing_data_names[i])
 
+    print("Data missing for {0} programs".format(len(prop_keys)))
     pkl_file = "filestoretrieve.p"
     pickle.dump(prop_dict, open(pkl_file, "wb"))
     cwd = os.getcwd()
