@@ -57,28 +57,17 @@ def connect_cosdb():
         print("Querying COS greendev database....")
         # Connect to the database.
         Session, engine = load_connection(SETTINGS['connection_string'])
-        # All entries that ASN_ID = NULL (should be individual jits, acqs)
-        null = list(engine.execute("SELECT rootname FROM headers WHERE asn_id='NONE';"))
-        # All entries that have ASN_ID defined (will pull science, jit, acq)
-        jitters = list(engine.execute("SELECT rootname FROM files "
-                                      "WHERE RIGHT(rootname,1) = 'j';"))
-        asn = list(engine.execute("SELECT asn_id FROM headers "
-                                  "WHERE asn_id!='NONE';"))
+        sci_files = list(engine.execute("SELECT DISTINCT rootname FROM files;"))
+        cci_files = list(engine.execute("SELECT DISTINCT name FROM files "
+                                        "WHERE rootname IS NULL;"))
 
         # Store SQLAlchemy results as lists
-        nullsmov = []
-        asnsmov = []
-        jitsmov = []
-        for row in null:
-            nullsmov.append(row["rootname"].upper())
-        for row in asn:
-            asnsmov.append(row["asn_id"])
-        for row in jitters:
-            jitsmov.append(row["rootname"].upper())
-
+        all_smov = []
+        all_smov = [row["rootname"].upper() for row in [sci_files + cii_files]]
+        
         # Close connection
         engine.dispose()
-        return nullsmov, asnsmov, jitsmov
+        return all_smov
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -133,7 +122,9 @@ def connect_dadsops():
         sciencemast[row[0]] = row[1]
     for row in cci:
         ccimast[row[0]] = row[1]
-    
+   
+   
+    pdb.set_trace()
     return jitmast, sciencemast, ccimast
         
 #-----------------------------------------------------------------------------#
@@ -172,7 +163,7 @@ def compare_tables():
         Nothing
     '''
 
-    nullsmov, asnsmov, jitsmov = connect_cosdb()
+    all_smov = connect_cosdb()
     jitmast, sciencemast, ccimast = connect_dadsops()
     print("Finding missing COS data...")
 
@@ -203,6 +194,7 @@ def compare_tables():
     for i in xrange(len(missing_data_names)):
         prop_dict[missing_data_props[i]].append(missing_data_names[i])
 
+    pdb.set_trace()
     print("Data missing for {0} programs".format(len(prop_keys)))
     pkl_file = "filestoretrieve.p"
     pickle.dump(prop_dict, open(pkl_file, "wb"))
