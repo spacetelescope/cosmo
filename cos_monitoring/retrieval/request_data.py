@@ -337,5 +337,5 @@ def run_all_retrievals(pkl_file):
 #-----------------------------------------------------------------------------#
 
 if __name__ == "__main__":
-    pkl_file = "testing_dict.p"
+    pkl_file = "filestoretrieve.p"
     run_all_retrievals(pkl_file)
