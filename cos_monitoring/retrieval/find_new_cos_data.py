@@ -114,15 +114,9 @@ def connect_dadsops():
     all_l = janky_connect(SETTINGS, query1) 
     all_mast_res = all_cos + all_l
     # Store results as dictionaries (we need dataset name and proposal ID).
-    tester = {row[0]:row[1] for row in all_mast_res if len(row[0]) == 9 or row[0].startswith("L_")}
-    tester2 = [row[0] for row in all_mast_res]
-   
-    all_mast = [x[0] for x in all_cos if len(x[0]) == 9 or x[0].startswith("L_")]
-    all_mast2 = [x[0] for x in all_l]
-
-    all_mast += all_mast2
+    all_mast = {row[0]:row[1] for row in all_mast_res if len(row[0]) == 9 or row[0].startswith("L_")}
     
-    return tester
+    return all_mast
         
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -164,39 +158,24 @@ def compare_tables():
         Nothing
     '''
 
-    all_smov = connect_cosdb()
-    all_mast = connect_dadsops()
+    existing = connect_cosdb()
+    mast = connect_dadsops()
     print("Finding missing COS data...")
-    pdb.set_trace()
 
-    existing = set(nullsmov + asnsmov)
-    existing_jit = set(jitsmov)
-
-    # Determine which science, jitter, and CCI datasets are missing.
-    missing_sci_names = list(set(sciencemast.keys()) - existing)
-    missing_jit_names = list(set(jitmast.keys()) - existing_jit)
-    missing_cci_names = list(set(ccimast.keys()) - existing)
-
-    # For science and jitter data, determine corresponding proposal ID for
-    # each missing dataset name (to place in the correct directory).
-    # We don't need the propids for CCIs (NULL)
-    missing_sci_props = [sciencemast[i] for i in missing_sci_names]
-    missing_jit_props = [jitmast[i] for i in missing_jit_names]
-
-    # Combine science and jitter lists.
-    missing_data_names = missing_sci_names + missing_jit_names
-    missing_data_props_str = missing_sci_props + missing_jit_props
-    missing_data_props = [int(x) for x in missing_data_props_str]
+    # Determine which datasets are missing.
+    missing_names = list(set(mast.keys()) - set(existing))
 
     # Create dictionaries groupoed by proposal ID, it is much easier
     # to retrieve them this way.
-    prop_keys = set(missing_data_props)
+    # For most data, determine corresponding proposal ID. CCIs and some
+    # odd files will have proposal ID = NULL though.
+    missing_props = [int(mast[x]) if mast[x] != "NULL" else "CCI" if x.startswith("L_") else mast[x] for x in missing_names]
+    prop_keys = set(missing_props)
     prop_vals = [[] for x in xrange(len(prop_keys))]
     prop_dict = dict(zip(prop_keys, prop_vals))
-    for i in xrange(len(missing_data_names)):
-        prop_dict[missing_data_props[i]].append(missing_data_names[i])
+    for i in xrange(len(missing_names)):
+        prop_dict[missing_props[i]].append(missing_names[i])
 
-    pdb.set_trace()
     print("Data missing for {0} programs".format(len(prop_keys)))
     pkl_file = "filestoretrieve.p"
     pickle.dump(prop_dict, open(pkl_file, "wb"))
