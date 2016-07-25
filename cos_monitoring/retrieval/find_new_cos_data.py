@@ -57,13 +57,16 @@ def connect_cosdb():
         print("Querying COS greendev database....")
         # Connect to the database.
         Session, engine = load_connection(SETTINGS['connection_string'])
-        sci_files = list(engine.execute("SELECT DISTINCT rootname FROM files;"))
+        sci_files = list(engine.execute("SELECT DISTINCT rootname FROM files "
+                                        "WHERE rootname IS NOT NULL;"))
         cci_files = list(engine.execute("SELECT DISTINCT name FROM files "
-                                        "WHERE rootname IS NULL;"))
-
+                                        "WHERE rootname IS NULL AND " 
+                                        "LEFT(name,1)='l';"))
+                                        
         # Store SQLAlchemy results as lists
-        all_smov = []
-        all_smov = [row["rootname"].upper() for row in [sci_files + cii_files]]
+        all_sci = [row["rootname"].upper() for row in sci_files]
+        all_cci = [row["name"].strip("_cci.fits.gz").upper() for row in cci_files]
+        all_smov = all_sci + all_cci
         
         # Close connection
         engine.dispose()
@@ -100,35 +103,30 @@ def connect_dadsops():
 
     # Get all jitter, science (ASN), and CCI datasets.
     print("Querying MAST dadsops_rep database....")
-    cci_query = "SELECT ads_data_set_name,ads_pep_id FROM " \
-    "archive_data_set_all WHERE ads_archive_class='csi'\ngo\n"
-    jitter_query = "SELECT ads_data_set_name,ads_pep_id FROM " \
-    "archive_data_set_all WHERE ads_instrument='cos' AND " \
-    "ads_data_set_name LIKE '%J'\ngo\n"
-    science_query = "SELECT sci_data_set_name,sci_pep_id FROM " \
-    "science WHERE sci_instrume='cos'\ngo\n"
+    query0 = "SELECT ads_data_set_name,ads_pep_id FROM "\
+    "archive_data_set_all WHERE ads_instrument='cos'\ngo"
+    # Some COS observations don't have ads_instrumnet=cos
+    query1 = "SELECT ads_data_set_name,ads_pep_id FROM "\
+    "archive_data_set_all WHERE LEN(ads_data_set_name)=9 "\
+    "AND ads_data_set_name LIKE 'L%'\ngo"
     
-    cci = janky_connect(SETTINGS, cci_query)    
-    jitters = janky_connect(SETTINGS, jitter_query)
-    science = janky_connect(SETTINGS, science_query)
-   
+    all_cos = janky_connect(SETTINGS, query0) 
+    all_l = janky_connect(SETTINGS, query1) 
+    all_mast_res = all_cos + all_l
     # Store results as dictionaries (we need dataset name and proposal ID).
-    jitmast = OrderedDict()
-    sciencemast = OrderedDict()
-    ccimast = OrderedDict()
-    for row in jitters:
-        jitmast[row[0]] = row[1]
-    for row in science:
-        sciencemast[row[0]] = row[1]
-    for row in cci:
-        ccimast[row[0]] = row[1]
+    tester = {row[0]:row[1] for row in all_mast_res if len(row[0]) == 9 or row[0].startswith("L_")}
+    tester2 = [row[0] for row in all_mast_res]
    
-   
-    pdb.set_trace()
-    return jitmast, sciencemast, ccimast
+    all_mast = [x[0] for x in all_cos if len(x[0]) == 9 or x[0].startswith("L_")]
+    all_mast2 = [x[0] for x in all_l]
+
+    all_mast += all_mast2
+    
+    return tester
         
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
+
 def janky_connect(SETTINGS, query_string):
     # Connect to the database.
     p = Popen("tsql -S%s -D%s -U%s -P%s -t'|||'" % (SETTINGS["server"], 
@@ -144,8 +142,11 @@ def janky_connect(SETTINGS, query_string):
     err.close()
     
     result = [x.strip().split("|||") for x in query_result if "|||" in x][1:]
-
+    
+    # Ensure that nothing was wrong with the query syntax.
+    assert (len(error_report) < 3), "Something went wrong in query:{0}".format(error_report[2])
     return result
+
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
@@ -164,8 +165,9 @@ def compare_tables():
     '''
 
     all_smov = connect_cosdb()
-    jitmast, sciencemast, ccimast = connect_dadsops()
+    all_mast = connect_dadsops()
     print("Finding missing COS data...")
+    pdb.set_trace()
 
     existing = set(nullsmov + asnsmov)
     existing_jit = set(jitsmov)
