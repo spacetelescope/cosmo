@@ -343,9 +343,11 @@ def populate_primary_headers(num_cpu=1):
         FROM which_file
             WHERE (has_x1d = 1 OR has_corr = 1 OR has_raw = 1 OR has_acq);
     """
-
+    print('1')
     engine.execute(text(t))
+    print('2')
     results = engine.execute(text(q))
+    print('3')
     print(results)
     files_to_add = [(result.file_id, result.file_to_grab) for result in engine.execute(text(q))
                         if not result.file_id == None]
@@ -659,14 +661,14 @@ def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
     insert_files(**SETTINGS)
-    #populate_primary_headers(SETTINGS['num_cpu'])
-    populate_spt(SETTINGS['num_cpu'])
-    populate_data(SETTINGS['num_cpu'])
-    populate_lampflash(SETTINGS['num_cpu'])
-    populate_darks(SETTINGS['num_cpu'])
-    populate_gain(SETTINGS['num_cpu'])
-    populate_stims(SETTINGS['num_cpu'])
-    populate_acqs(SETTINGS['num_cpu'])
+    populate_primary_headers(SETTINGS['num_cpu'])
+    #populate_spt(SETTINGS['num_cpu'])
+    #populate_data(SETTINGS['num_cpu'])
+    #populate_lampflash(SETTINGS['num_cpu'])
+    #populate_darks(SETTINGS['num_cpu'])
+    #populate_gain(SETTINGS['num_cpu'])
+    #populate_stims(SETTINGS['num_cpu'])
+    #populate_acqs(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 

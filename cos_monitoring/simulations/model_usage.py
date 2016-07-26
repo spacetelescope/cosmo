@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from astropy.io import ascii
 import pdb
 import argparse
+import multiprocessing as mp
 
 from scipy.signal import medfilt
 
@@ -33,7 +34,6 @@ def make_slope_file( hv_values, segment, outname ):
 
     """
     Generate arrays of mean slope in each pixel
-
     Parameters
     ----------
         hv_values: array like
@@ -42,7 +42,6 @@ def make_slope_file( hv_values, segment, outname ):
             Detector Segment
         outname: string
             name of file created by function
-
     Returns
     -------
         None
@@ -82,11 +81,9 @@ def assemble_slopes():
     """
     uses make_slope files to calculate all of the slopes for each pixel for each
     segment and selected HV levels.
-
     Parameters
     ----------
         None
-
     Returns
     -------
         None
@@ -103,18 +100,15 @@ def assemble_slopes():
 def make_usage_file( file_list, outname ):
     """
     Creates (writes) the usage file that is then used to perform aging simulations.
-
     Parameters
     ----------
         file_list: array like
             A list of files that contain cumulative count and exposure time info.
         outname: string
             The name of the file being created.
-
     Returns
     -------
         None
-
     """
 
     if not len( file_list ): return None
@@ -137,27 +131,19 @@ def assemble_usage():
     assemble_usage gathers files created by Dave Sanhow (sahnow@stsci.edu) which
     cycles through smov/cos/Data and creates a fits file that keeps track of the
     cumulative counts and exposure times for each cenwave setting and segment.
-
     A few intermediate files are created by this function...
-
-
     1.) 'summed_{}_{}.fits'.format( lp, segment )
         This file sums all of the counts for each segment and LP.
-
     2.) 'summed_{}_{}_{}.fits'.format( grating, lp, segment )
         This file sums all of the counts for each segment and LP for each grating
-
     3.) 'summed_{}_{}_{}.fits'.format( cenwave, lp, segment )
         This file sums all of the counts for each segment and LP for each cenwave.
-
     Parameters
     ----------
         None
-
     Returns
     -------
         None
-
     """
     data_dir = '/grp/hst/cos/coslife/mode_by_mode'
 
@@ -203,7 +189,6 @@ def make_degrade_file( slopes, frac_usage, multiplier = 2.0, outname='degredatio
 
     """
     Makes the file that show the degredation at each LP based on predictions and usage.
-
     Parameters
     ----------
     slopes:
@@ -215,11 +200,9 @@ def make_degrade_file( slopes, frac_usage, multiplier = 2.0, outname='degredatio
         previous cycles.
     outname:str
         The name of the file that is going to be output
-
     Returns
     -------
         None
-
     """
 
     gainloss_per_day = multiplier * slopes * frac_usage
@@ -241,14 +224,12 @@ def make_fractional_files( lp, usage_file=None ):
     """
     make_fracitonal_files calculates the fractional usage
     for all cenwave settings for both segments of the COS FUV mode
-
     Parameters
     ----------
     lp : str
         The lifetime position of the detector (LP1, LP2, .... etc).
     usage_file : str
         A text file that contains 4 columns for aging simulations
-
         column 1: Item
             Cenwave setting
         column 2: Cycle 20
@@ -258,12 +239,12 @@ def make_fractional_files( lp, usage_file=None ):
         column 4: change
             The ratio of usage time from cycle 20 and 22 to show how much the usage has increased
             or decreased to make predictions for future cycles.
-
     Returns
     -------
         None
-
     """
+
+    path = '/grp/hst/cos/coslife/simulations/'
     if usage_file:
         usage = ascii.read( usage_file )
         multiplier = {}
@@ -287,10 +268,10 @@ def make_fractional_files( lp, usage_file=None ):
                 print 'Already exists'
                 continue
 
-            slopes = pyfits.getdata( 'slope_{}_{}.fits'.format( segment, lp ) )
+            slopes = pyfits.getdata( os.path.join(path, 'slope_{}_{}.fits'.format( segment, lp ) ) )
             try:
-                frac_usage = pyfits.getdata( 'summed_{}_{}_{}.fits'.format(cenwave, lp, segment[-1]) ) \
-                    / pyfits.getdata( 'summed_{}_{}.fits'.format( lp, segment[-1]) )
+                frac_usage = pyfits.getdata(os.path.join(path, 'summed_{}_{}_{}.fits'.format(cenwave, lp, segment[-1]) )) \
+                    / pyfits.getdata( (path,'summed_{}_{}.fits'.format( lp, segment[-1]) ) )
             except IOError:
                 continue
             make_degrade_file( slopes, frac_usage, multiplier=mode_multiplier, outname=outname )
@@ -300,25 +281,20 @@ def make_fractional_files( lp, usage_file=None ):
 def count_sagged( gain, yrange=(0,1024), xrange=(0,16384), thresh=3.0 ):
     """
     Return # of pixels and # of columns affected by sagged pixels
-
     Parameters
     ----------
     gain: array-like
         The gain information for each setting and segment
-
     yrange: tuple
         The range of coordinates in the y direction of the detector
-
     thresh: float
         PHA threshold
-
     Returns
     -------
     n_pixels: int
         the length of effected pixels.
     n_columns: int
         the length of effected columns.
-
     """
 
     index = np.where( gain[yrange[0]:yrange[1], xrange[0]:xrange[1]] <= thresh )
@@ -334,19 +310,16 @@ def increase_gain( modal_gain, hv_step):
 
     """
     Return # of pixels and # of columns affected by sagged pixels
-
     Parameters
     ----------
     modal_gain: int
         modal gain of the detector segment
     hv_steps: array-like
         list of high voltage steps
-
     Returns
     -------
     modal_gain: int
         modal gain of the detector segment
-
     """
 
     index = np.where( modal_gain )
@@ -360,7 +333,6 @@ def assemble_degrade( life_adj, segment, *args ):
 
     """
     generate the degredation array for all combinations of life_adj and segment.
-
     Parameters
     ----------
         life_adj: int
@@ -390,11 +362,11 @@ def assemble_degrade( life_adj, segment, *args ):
 
 #-------------------------------------------------------------------------------
 
-def simulate( gain_start=163, steps=[178], segment='FUVB', gain_thresh=3, affected_thresh = .05,
-              yshift=0, xshift=0):
+def simulate(args_list):
+#def simulate( gain_start=163, steps=[178], segment='FUVB', gain_thresh=3, affected_thresh = .05,
+#              yshift=0, xshift=0):
     """
     simulate gain degredation
-
     Parameters
     ----------
         gain_start: int
@@ -414,14 +386,17 @@ def simulate( gain_start=163, steps=[178], segment='FUVB', gain_thresh=3, affect
     Returns
     -------
         None
-
     Part of Old docstring we should hold onto.
     ------------------------------------------
     1. degrade LP2 with all modes using predicted Cycle 21 usage untill Sept 01 2014
       - Leave G140L at LP2 and degrade, raising HV whenever gainsagged pixels appear
       - Leave G140L at Lp1 ''
-
     """
+
+    gain_start, steps, segment, y_shift, x_shift = args_list
+
+    gain_thresh=3
+    affected_thresh = .05
 
     print '#-------------------#'
     print 'Begginning simulation'
@@ -646,7 +621,6 @@ def main():
 
     '''
     Main driver
-
     Argparse, maybe combine a couple of the arguments into a list to shrink
     the number of args.
     '''
@@ -666,20 +640,17 @@ def main():
     args = parser.parse_args()
 
 
-    assemble_usage()
-    assemble_slopes()
-
-    for lifepos in args.lp:
+    for lifepos in args.lifepos:
         if lifepos == 'LP1':
             make_fractional_files(lp=lifepos)
         else:
-            make_fractional_files(lp=lifepos, usage_file='usage.txt' )
+            make_fractional_files(lp=lifepos, usage_file=usage )
 
 
     plt.ioff()
 
-    #simulate( gain_start=167, steps=[167, 173, 178], segment='FUVA', yshift=-70, xshift=70 )
-    simulate( gain_start=args.gain_start, steps=args.steps, segment=args.seg,  yshift=args.y_shift, xshift=args.x_shift )
+    simulate( gain_start=167, steps=[167, 173, 178], segment='FUVA', yshift=-70, xshift=70 )
+    #simulate( gain_start=args.gain_start, steps=args.steps, segment=args.segment,  yshift=args.y_shift, xshift=args.x_shift )
 
     #verify_degradation()
     #for yshift in [ -71, -74, -82 ]:
