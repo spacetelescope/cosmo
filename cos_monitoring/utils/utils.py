@@ -3,7 +3,29 @@ import os
 from astropy.io import fits
 import numpy as np
 from calcos import ccos
+from BeautifulSoup import BeautifulSoup
+import urllib2
+import re
 
+#-------------------------------------------------------------------------------
+def scrape_cycle(asn_id):
+
+    if asn_id == 'NONE' or asn_id is None:
+        return None
+
+    url = 'http://archive.stsci.edu/cgi-bin/mastpreview?mission=hst&dataid={}'.format(asn_id)
+    page = urllib2.urlopen(url)
+    soup = BeautifulSoup(page)
+
+    soup_text = soup.text
+    regex = r"Cycle \d{2}"
+
+    match = re.search(regex, soup_text)
+    match = match.group(0)
+    
+    cycle_number = re.sub("[^0-9]", "", match)
+
+    return cycle_number
 #-------------------------------------------------------------------------------
 
 def remove_if_there(filename):

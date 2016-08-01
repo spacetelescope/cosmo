@@ -227,6 +227,7 @@ class Headers(Base):
 
     #NUV keywords
     dethvl = Column(Float)
+    cycle = Column(Integer)
 
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('headers', order_by=id))

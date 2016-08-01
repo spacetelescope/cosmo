@@ -2,7 +2,7 @@ from __future__ import print_function, absolute_import, division
 
 from astropy.io import fits
 import os
-from sqlalchemy import and_, or_, text
+from sqlalchemy import and_, or_, text, MetaData
 import sys
 import matplotlib as mpl
 mpl.use('Agg')
@@ -22,6 +22,7 @@ from ..osm.monitor import pull_flashes
 from ..osm.monitor import monitor as osm_monitor
 from ..stim.monitor import locate_stims
 from ..stim.monitor import stim_monitor
+from ..utils.utils import scrape_cycle
 from .db_tables import load_connection, open_settings
 from .db_tables import Base
 from .db_tables import Files, Headers
@@ -85,9 +86,9 @@ def insert_with_yield(filename, table, function, foreign_key=None):
         #-- Pull data from generator and commit
         for i, row in enumerate(data):
             row['file_id'] = foreign_key
-            #if i == 0:
-            #    print(row.keys())
-            #print(row.values())
+            if i == 0:
+                print(row.keys())
+            print(row.values())
 
         #-- Converts np arrays to native python type...
         #-- This is to allow the database to ingest values as type float
@@ -319,40 +320,37 @@ def populate_primary_headers(num_cpu=1):
     q = """
         SELECT
          CASE
-                           WHEN which_file.has_x1d = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                files.name LIKE CONCAT(which_file.rootname, '_x1d.fits%') LIMIT 1)
-                           WHEN which_file.has_corr = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
-                           WHEN which_file.has_raw = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                files.name LIKE CONCAT(which_file.rootname, '_rawtag%') LIMIT 1)
-                           WHEN which_file.has_acq = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                files.name LIKE CONCAT(which_file.rootname, '_rawacq%') LIMIT 1)
-                           ELSE NULL
-                         END as file_to_grab,
+            WHEN which_file.has_x1d = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                    files.name LIKE CONCAT(which_file.rootname, '_x1d.fits%') LIMIT 1)
+            WHEN which_file.has_corr = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                    files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
+            WHEN which_file.has_raw = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                    files.name LIKE CONCAT(which_file.rootname, '_rawtag%') LIMIT 1)
+            WHEN which_file.has_acq = 1 THEN (SELECT CONCAT(files.path, '/', files.name) FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                    files.name LIKE CONCAT(which_file.rootname, '_rawacq%') LIMIT 1)
+            ELSE NULL
+        END as file_to_grab,
          CASE
-                            WHEN which_file.has_x1d = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_x1d.fits%') LIMIT 1)
-                            WHEN which_file.has_corr = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
-                            WHEN which_file.has_raw = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_rawtag%') LIMIT 1)
-                            WHEN which_file.has_acq = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
-                                                                                                 files.name LIKE CONCAT(which_file.rootname, '_rawacq%') LIMIT 1)
-                            ELSE NULL
-                          END as file_id
+            WHEN which_file.has_x1d = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                    files.name LIKE CONCAT(which_file.rootname, '_x1d.fits%') LIMIT 1)
+            WHEN which_file.has_corr = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                    files.name LIKE CONCAT(which_file.rootname, '_corrtag%') LIMIT 1)
+            WHEN which_file.has_raw = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                    files.name LIKE CONCAT(which_file.rootname, '_rawtag%') LIMIT 1)
+            WHEN which_file.has_acq = 1 THEN (SELECT files.id FROM files WHERE files.rootname = which_file.rootname AND
+                                                                                    files.name LIKE CONCAT(which_file.rootname, '_rawacq%') LIMIT 1)
+            ELSE NULL
+        END as file_id
+
         FROM which_file
             WHERE (has_x1d = 1 OR has_corr = 1 OR has_raw = 1 OR has_acq);
     """
-    print('1')
+
     engine.execute(text(t))
-    print('2')
-    results = engine.execute(text(q))
-    print('3')
-    print(results)
+
     files_to_add = [(result.file_id, result.file_to_grab) for result in engine.execute(text(q))
                         if not result.file_id == None]
 
-    print(files_to_add)
     args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
     print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
@@ -504,6 +502,7 @@ def get_primary_keys(filename):
                           'sp_err_c':hdu[1].header.get('sp_err_c', None),
 
                           'dethvl':hdu[1].header.get('dethvl', None),
+                          'cycle':scrape_cycle(hdu[0].header.get('asn_id', None))
                                                                         }
     return keywords
 
@@ -639,36 +638,40 @@ def clear_all_databases(SETTINGS, nuke=False):
     """Dump all databases of all contents...seriously"""
 
 
-    if not raw_input("Are you sure you want to delete everything? Y/N: ") == 'Y':
-        sys.exit("Not deleting, getting out of here.")
+    #if not raw_input("Are you sure you want to delete everything? Y/N: ") == 'Y':
+    #    sys.exit("Not deleting, getting out of here.")
 
-    session = Session()
-    for table in reversed(Base.metadata.sorted_tables):
-        #if table.name == 'files':
-        #    #continue
-        #    pass
-        try:
-            print("Deleting {}".format(table.name))
-            session.execute(table.delete())
-            session.commit()
-        except:
-            print("Cannot delete {}".format(table.name))
-            pass
+    if nuke:
+        session = Session()
+        for table in reversed(Base.metadata.sorted_tables):
+            #if table.name == 'files':
+            #    #continue
+            #    pass
+            try:
+                print("Deleting {}".format(table.name))
+                session.execute(table.delete())
+                session.commit()
+            except:
+                print("Cannot delete {}".format(table.name))
+                pass
+    else:
+        print('TO DELETE DB YOU NEED TO SET NUKE FLAG')
+        print('EXITING')
 
 #-------------------------------------------------------------------------------
 
 def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
-    insert_files(**SETTINGS)
+    #insert_files(**SETTINGS)
     populate_primary_headers(SETTINGS['num_cpu'])
-    #populate_spt(SETTINGS['num_cpu'])
-    #populate_data(SETTINGS['num_cpu'])
-    #populate_lampflash(SETTINGS['num_cpu'])
-    #populate_darks(SETTINGS['num_cpu'])
-    #populate_gain(SETTINGS['num_cpu'])
-    #populate_stims(SETTINGS['num_cpu'])
-    #populate_acqs(SETTINGS['num_cpu'])
+    populate_spt(SETTINGS['num_cpu'])
+    populate_data(SETTINGS['num_cpu'])
+    populate_lampflash(SETTINGS['num_cpu'])
+    populate_darks(SETTINGS['num_cpu'])
+    populate_gain(SETTINGS['num_cpu'])
+    populate_stims(SETTINGS['num_cpu'])
+    populate_acqs(SETTINGS['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
@@ -681,27 +684,20 @@ def run_all_monitors():
 
 #-------------------------------------------------------------------------------
 
-def clean_slate_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-n",'--nuke',
-                        help="Parser argument to nuke DB", default=True)
-    args = parser.parse_args()
-    return args
-
-#-------------------------------------------------------------------------------
-
 def clean_slate(config_file=None):
 
-    args = clean_slate_parser()
-    if args.nuke == True:
-        #clear_all_databases(SETTINGS, args.nuke)
-        #Base.metadata.drop_all(engine, checkfirst=False)
-        #Base.metadata.create_all(engine)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n",'--nuke',
+                        help="Parser argument to nuke DB", default=False)
+    args = parser.parse_args()
 
-        #do_all()
+    clear_all_databases(SETTINGS, args.nuke)
+    Base.metadata.drop_all(engine, checkfirst=False)
+    Base.metadata.create_all(engine)
 
-        #run_all_monitors()
-        print('NUKKKKE')
+    do_all()
+
+    run_all_monitors()
 
 #-------------------------------------------------------------------------------
 
