@@ -79,16 +79,17 @@ def make_csum(unzipped_raws):
 
     Parameters:
     -----------
-        unzipped_raws : list
-            A list of all filenames that are unzipped to be calibrated.
+        unzipped_raws : list or string
+            A list or string filenames that are unzipped to be calibrated.
 
     Returns:
     --------
         Nothing
     '''
-
     run_calcos = clobber_calcos(calcos.calcos)
     #logger.info("Creating CSUM files")
+    if isinstance(unzipped_raws, basestring):
+        unzipped_raws = [unzipped_raws]
     for item in unzipped_raws:
         existence = csum_existence(item)
         if not existence:
@@ -348,11 +349,49 @@ def parallelize(myfunc, mylist):
             nrpcos = 1
         pool = mp.Pool(processes=nprocs)
         pool.map(myfunc, onelist)
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+def only_one_seg(uz_files):
+    '''
+    If rawtag_a and rawtag_b both exist in a list of raw files, 
+    keep only one of the segments. Keep NUV and acq files as is.
+
+    Parameters:
+    -----------
+        uz_files : list
+            List of all unzipped files.
+
+    Returns:
+    --------
+        uz_files_1seg : list
+            List of all unzipped files with only one segment for a given root
+            (if applicable).
+    '''
+    
+    bad_inds = []
+    uz_files_1seg = []
+    for i in xrange(len(uz_files)):
+        if i not in bad_inds:
+            if "rawtag.fits" in uz_files[i] or "rawacq.fits" in uz_files[i]: # NUV/acq files
+                uz_files_1seg.append(uz_files[i])
+                continue
+            segs = ["_a.fits", "_b.fits"]
+            for j in xrange(len(segs)):
+                if segs[j] in uz_files[i]:
+                    other_seg = uz_files[i].replace(segs[j], segs[j-1])
+                    if other_seg in uz_files:
+                        bad_inds.append(uz_files.index(other_seg))
+                        uz_files_1seg.append(uz_files[i])
+                    else:
+                        uz_files_1seg.append(uz_files[i])
+
+    return uz_files_1seg
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-def run_all_labor(prl):
+def work_laboriously(prl):
     '''
     Run all the functions in the correct order.
 
@@ -384,8 +423,9 @@ def run_all_labor(prl):
         else:
             unzip_mistakes(zipped)
 
-    unzipped_raws = glob.glob(os.path.join(base_dir, "?????", "*rawtag*fits")) + \
+    unzipped_raws_ab = glob.glob(os.path.join(base_dir, "?????", "*rawtag*fits")) + \
                    glob.glob(os.path.join(base_dir, "?????", "*rawacq.fits"))
+    unzipped_raws = only_one_seg(unzipped_raws_ab)
     if unzipped_raws:
         if prl:
             parallelize(make_csum, unzipped_raws)
@@ -412,4 +452,4 @@ if __name__ == "__main__":
                         default=False, help="Parallellize functions")
     args = parser.parse_args()
     prl = args.prl
-    run_all_labor(prl)
+    work_laboriously(prl)
