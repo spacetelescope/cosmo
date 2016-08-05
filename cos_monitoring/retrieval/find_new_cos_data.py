@@ -133,9 +133,10 @@ def janky_connect(SETTINGS, query_string):
     receive.close()
     error_report = err.readlines()
     err.close()
-    
-    result = [x.strip().split("|||") for x in query_result if "|||" in x][1:]
-    
+
+    badness = ["locale", "charset", "1>", "affected"]
+    result = [x.strip().split("|||") if "|||" in x else x.strip() 
+              for x in query_result if not any(y in x for y in badness)]
     # Ensure that nothing was wrong with the query syntax.
     assert (len(error_report) < 3), "Something went wrong in query:{0}".format(error_report[2])
     return result
