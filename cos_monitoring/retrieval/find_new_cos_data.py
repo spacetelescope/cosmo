@@ -20,7 +20,6 @@ import time
 import pickle
 import os
 import yaml
-from collections import OrderedDict
 import pdb
 from sqlalchemy import text
 from subprocess import Popen, PIPE
@@ -109,7 +108,7 @@ def connect_dadsops():
     query1 = "SELECT ads_data_set_name,ads_pep_id FROM "\
     "archive_data_set_all WHERE LEN(ads_data_set_name)=9 "\
     "AND ads_data_set_name LIKE 'L%'\ngo"
-    
+
     all_cos = janky_connect(SETTINGS, query0) 
     all_l = janky_connect(SETTINGS, query1) 
     all_mast_res = all_cos + all_l
@@ -165,6 +164,9 @@ def compare_tables():
     # Determine which datasets are missing.
     missing_names = list(set(mast.keys()) - set(existing))
 
+    # To retrieve ALL COS data, uncomment the line below.
+    missing_names = list(set(mast.keys() ))
+
     # Create dictionaries groupoed by proposal ID, it is much easier
     # to retrieve them this way.
     # For most data, determine corresponding proposal ID. CCIs and some
@@ -181,7 +183,7 @@ def compare_tables():
     pickle.dump(prop_dict, open(pkl_file, "wb"))
     cwd = os.getcwd()
     print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
-#    run_all_retrievals(pkl_file)
+    run_all_retrievals(pkl_file)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#

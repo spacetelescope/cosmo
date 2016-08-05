@@ -30,7 +30,7 @@ try:
 except ImportError:
     from httplib import HTTPSConnection
 
-from .manualabor import run_all_labor
+from .manualabor import work_laboriously
 from .SignStsciRequest import SignStsciRequest
 from .logging_dec import log_function
 
@@ -272,7 +272,7 @@ def run_all_retrievals(pkl_file):
     prop_dict_keys = prop_dict.keys()
     #prop_dict_keys = [13128,12952,12919,12775,12545,14516,14486,14444,14359]
     int_num = 5 # should be 5
-    century = 20 # should be 50
+    century = 50 # should be 50
     if pend < int_num:
         pend = int_num + 1 
 
@@ -282,9 +282,9 @@ def run_all_retrievals(pkl_file):
         # If there are more than N*50 programs to be retrieved, stop 
         # and calibrate and zip.
         if pend > century:
-            century += 20 # should be 50
+            century += 50 # should be 50
             print("Pausing retrieval to calibrate and zip current data")
-            run_all_labor(prl=True)
+            work_laboriously(prl=True)
         # For each proposal (prop) in the current grouping (total number
         # of programs split up for manageability), retrieve data for it.
         for prop in prop_dict_keys[pstart:pend]:
@@ -337,5 +337,6 @@ def run_all_retrievals(pkl_file):
 #-----------------------------------------------------------------------------#
 
 if __name__ == "__main__":
+#    pkl_file = "testing_dict.p"
     pkl_file = "filestoretrieve.p"
     run_all_retrievals(pkl_file)
