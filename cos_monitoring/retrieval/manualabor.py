@@ -61,9 +61,9 @@ def unzip_mistakes(zipped):
     for zfile in zipped:
         rootname = os.path.basename(zfile)[:9]
         dirname = os.path.dirname(zfile)
-        existence = csum_existence(zfile)
-        if not existence:
-            chmod_recurs(dirname, 0o755)
+        existence, donotcal= csum_existence(zfile)
+        if existence is False and donotcal is False:
+            chmod_recurs(dirname, 0755)
             files_to_unzip = glob.glob(zfile)
             uncompress_files(files_to_unzip)
         else:
@@ -91,8 +91,8 @@ def make_csum(unzipped_raws):
     if isinstance(unzipped_raws, basestring):
         unzipped_raws = [unzipped_raws]
     for item in unzipped_raws:
-        existence = csum_existence(item)
-        if not existence:
+        existence, donotcal = csum_existence(item)
+        if existence is False and donotcal is False:
             dirname = os.path.dirname(item)
             try:
                 os.chmod(dirname, 0755)
@@ -100,9 +100,8 @@ def make_csum(unzipped_raws):
             except SyntaxError:
                 os.chmod(dirname, 0o755)
                 os.chmod(item, 0o755)
-            csum_dir = os.path.join(dirname, "csum")
             try:
-                run_calcos(item, outdir=csum_dir, verbosity=2,
+                run_calcos(item, outdir=dirname, verbosity=0,#2
                            create_csum_image=True, only_csum=True,
                            compress_csum=False)
 
@@ -110,15 +109,6 @@ def make_csum(unzipped_raws):
                 print(e)
                 #logger.exception("There was an error processing {}:".format(item))
                 pass
-            if os.path.exists(csum_dir):
-                csums = glob.glob(os.path.join(csum_dir, "*csum*"))
-                if csums:
-                    for csum in csums:
-                        shutil.copy(csum, dirname)
-                else:
-                    print("A csum dir was created but there were no csums: {0}".format(csum_dir))
-                    #logger.error("A csum dir was created but there are no csums: {}".format(csum_dir))
-                shutil.rmtree(csum_dir)
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -208,13 +198,17 @@ def csum_existence(filename):
     # If getting one header keyword, getval is faster than opening.
     # The more you know.
     if exptype != "ACQ/PEAKD" and exptype != "ACQ/PEAKXD":
+        donotcal = False
         csums = glob.glob(os.path.join(dirname,rootname+"*csum*"))
         if not csums:
             existence = False
         else:
             existence = True
+    else:
+        donotcal = True
+        existence = False
 
-    return existence
+    return existence, donotcal
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -406,15 +400,10 @@ def work_laboriously(prl):
     '''
 
     base_dir = "/grp/hst/cos2/smov_testing/"
-<<<<<<< HEAD
     try:
         chmod_recurs(base_dir, 0755) 
     except SyntaxError:
         chmod_recurs(base_dir, 0o755) 
-=======
-    chmod_recurs(base_dir, 0o755)
-
->>>>>>> c6becd42cb32d58725d2e98f8fdeb6f8512c9fe6
     # using glob is faster than using os.walk
     zipped = glob.glob(os.path.join(base_dir, "?????", "*raw*gz"))
     if zipped:
