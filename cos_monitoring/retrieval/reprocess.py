@@ -58,6 +58,25 @@ def handle_datasets(datasets):
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
+
+def parse_input(args):
+    ind_args = []
+    for item in args:
+        if "," in item:
+            tmp = (x for x in item.split(",") if x)
+            for tmpitem in tmp:
+                if len(tmpitem) != 9 and "*" not in tmpitem:
+                    tmpitem += "*"
+                ind_args.append(tmpitem)
+        else:
+            if len(item) != 9 and "*" not in item:
+                item += "*"
+            ind_args.append(item)
+
+    return ind_args
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # This is a required argument. To input multiple arguments, they must be
@@ -65,17 +84,17 @@ if __name__ == "__main__":
     parser.add_argument("data", nargs="+",  help="Reprocess programs or datasets")
     args = parser.parse_args()
 
-    data = args.data
-    isproposal = []
-    data_dict = {}
+    data = parse_input(args.data)
+    print(data)
+    
+    
     for item in data:
         try:
             prop = int(item)
-            isproposal.append(True)
-            prop_datasets = query_proposal(prop)
+    #        prop_datasets = query_proposal(prop)
+#            retrieve_data()
         except ValueError:
-            isproposal.append(False)
-            handle_datasets(item)        
-    
-    print(args.data)
+            pass
+     #       handle_datasets(item)        
+#            retrieve_data()    
 
