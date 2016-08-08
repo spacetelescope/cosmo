@@ -41,20 +41,31 @@ def query_proposal(proposal):
 
     # Now we need to go back to dadsop_rep to get ads_data_set_name
     SETTINGS["database"] = "dadsops_rep"
-    query1 = "SELECT DISTINCT ads_data_set_name,ads_pep_id FROM archive_data_set_all "\
-    "WHERE ads_data_set_name LIKE '_{0}%'\ngo".format(str(vid[0]))
+    query1 = "SELECT DISTINCT ads_data_set_name,ads_pep_id FROM "\
+    "archive_data_set_all WHERE ads_data_set_name "\
+    "LIKE '_{0}%'\ngo".format(str(vid[0]))
     prop_datasets = janky_connect(SETTINGS, query1)
 
     return prop_datasets
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
-def handle_datasets(datasets):
+def handle_datasets(rootname):
     '''
     Get proposal IDs and, if applicable, all member datasets given a visit
     '''
+    
+    config_file = os.path.join(os.environ['HOME'], "configure2.yaml")
+    with open(config_file, 'r') as f:
+        SETTINGS = yaml.load(f)
+    
+    query = "SELECT DISTINCT ads_data_set_name,ads_pep_id FROM "\
+    "archive_data_set_all WHERE ads_data_set_name "\
+    "LIKE '{0}%'\ngo".format(str(rootname))
 
-
+    root_datasets = janky_connect(SETTINGS, query)
+    pdb.set_trace()
+    return root_datasets
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -65,15 +76,29 @@ def parse_input(args):
         if "," in item:
             tmp = (x for x in item.split(",") if x)
             for tmpitem in tmp:
-                if len(tmpitem) != 9 and "*" not in tmpitem:
+                isprop = is_proposal(tmpitem)
+                if len(tmpitem) != 9 and "*" not in tmpitem and not isprop:
                     tmpitem += "*"
                 ind_args.append(tmpitem)
         else:
-            if len(item) != 9 and "*" not in item:
+            isprop = is_proposal(item)
+            if len(item) != 9 and "*" not in item and not isprop:
                 item += "*"
             ind_args.append(item)
 
     return ind_args
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+def is_proposal(mystring):
+    try:
+        prop = int(mystring)
+        status = True
+    except ValueError:
+        status = False
+
+    return status
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -87,14 +112,17 @@ if __name__ == "__main__":
     data = parse_input(args.data)
     print(data)
     
-    
+    all_data = []
     for item in data:
-        try:
-            prop = int(item)
-    #        prop_datasets = query_proposal(prop)
-#            retrieve_data()
-        except ValueError:
-            pass
-     #       handle_datasets(item)        
-#            retrieve_data()    
+        isprop = is_proposal(item)
+        if isprop:
+            prop_datasets = query_proposal(item)
+            all_data += prop_datasets
+        else:
+            root_datasets = handle_datasets(item)        
+            all_data += root_datasets
 
+    to_retrieve = {row[0]:row[1] for row in all_data}
+
+    pdb.set_trace()
+#   retrieve(all_data)
