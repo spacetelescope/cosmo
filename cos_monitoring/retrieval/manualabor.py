@@ -58,6 +58,8 @@ def unzip_mistakes(zipped):
         Nothing
     '''
 
+    if isinstance(zipped, basestring):
+        zipped = [zipped]
     for zfile in zipped:
         rootname = os.path.basename(zfile)[:9]
         dirname = os.path.dirname(zfile)
@@ -220,14 +222,16 @@ def compress_files(uz_files):
 
     Paramters:
     ----------
-        uz_files : list
-            A list of unzipped files to zip
+        uz_files : list or string
+            Unzipped file(s) to zip
 
     Returns:
     --------
         Nothing
     '''
 
+    if isinstance(uz_files, basestring):
+        uz_files = [uz_files]
     for uz_item in uz_files:
         z_item = uz_item + ".gz"
         with open(uz_item, "rb") as f_in, gzip.open(z_item, "wb") as f_out:
