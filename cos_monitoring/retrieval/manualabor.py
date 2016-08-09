@@ -103,7 +103,7 @@ def make_csum(unzipped_raws):
                 os.chmod(dirname, 0o755)
                 os.chmod(item, 0o755)
             try:
-                run_calcos(item, outdir=dirname, verbosity=0,#2
+                run_calcos(item, outdir=dirname, verbosity=2,
                            create_csum_image=True, only_csum=True,
                            compress_csum=False)
 
@@ -347,6 +347,8 @@ def parallelize(myfunc, mylist):
             nrpcos = 1
         pool = mp.Pool(processes=nprocs)
         pool.map(myfunc, onelist)
+        pool.close()
+        pool.join()
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
