@@ -324,15 +324,17 @@ def run_all_retrievals(prop_dict=None, pkl_file=None):
     # When pend > total # of programs, it does not mean all have been
     # retrieved. Check, and retrieve if so.
     else:
+        end_msg = "\nAll data from {0} programs were successfully " \
+        "delivered. ".format(len(prop_dict_keys))
         if (len(prop_dict_keys) - (pend-int_num)) > 0:
             for prop in prop_dict_keys[pend-int_num:]:
                 all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
-            end_msg = "\nAll data from {0} programs were successfully " \
-            "delivered. ".format(len(prop_dict_keys))
             print(end_msg)
         else:
             print(end_msg)
+    print("Beginning calibration and zipping now...")
     work_laboriously(prl=True)
+
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 

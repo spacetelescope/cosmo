@@ -174,5 +174,4 @@ if __name__ == "__main__":
     for key in to_retrieve.keys():
         prop_dict[to_retrieve[key]].append(key)
 
-    pdb.set_trace()
     run_all_retrievals(prop_dict=prop_dict)
