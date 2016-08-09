@@ -144,14 +144,15 @@ def janky_connect(SETTINGS, query_string):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def compare_tables():
+def compare_tables(pkl_it):
     '''
     Compare the set of all files currently in the COS repository to the list
     all files currently ingested into MAST. Retrieve missing datasets.
 
     Parameters:
     -----------
-        None
+        pkl_it : Boolean
+            True if output should be saved to pickle file.
 
     Returns:
     --------
@@ -180,14 +181,22 @@ def compare_tables():
         prop_dict[missing_props[i]].append(missing_names[i])
 
     print("Data missing for {0} programs".format(len(prop_keys)))
-    pkl_file = "filestoretrieve.p"
-    pickle.dump(prop_dict, open(pkl_file, "wb"))
-    cwd = os.getcwd()
-    print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
-    run_all_retrievals(pkl_file)
+    if pkl_it:
+        pkl_file = "filestoretrieve.p"
+        pickle.dump(prop_dict, open(pkl_file, "wb"))
+        cwd = os.getcwd()
+        print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
+        run_all_retrievals(pkl_file=pkl_file)
+    else:
+        run_all_retrievals(prop_dict=prop_dict)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 if __name__ == "__main__":
-    compare_tables()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", dest="pkl_it", action="store_true", default=False,
+                        help="Save output to pickle file")
+    args = parser.parse_args()
+
+    compare_tables(args.pkl_it)
