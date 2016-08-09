@@ -242,7 +242,7 @@ def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
 #-----------------------------------------------------------------------------#
 
 #@log_function
-def run_all_retrievals(pkl_file):
+def run_all_retrievals(prop_dict=None, pkl_file=None):
     '''
     Open the pickle file containing a dictionary of all missing COS data
     to be retrieved. It is set up to handle all situations (if run daily=few
@@ -265,17 +265,17 @@ def run_all_retrievals(pkl_file):
         Nothing
     '''
 
-    all_tracking_ids = []
+    if pkl_file:
+        prop_dict = pickle.load(open(pkl_file, "rb"))
+    prop_dict_keys = prop_dict.keys()
     pstart = 0
     pend = 10 # should be 10
-    prop_dict = pickle.load(open(pkl_file, "rb"))
-    prop_dict_keys = prop_dict.keys()
-    #prop_dict_keys = [13128,12952,12919,12775,12545,14516,14486,14444,14359]
     int_num = 5 # should be 5
     century = 50 # should be 50
-    if pend < int_num:
-        pend = int_num + 1 
+    if pend > len(prop_dict_keys):
+        pend = len(prop_dict_keys)
 
+    all_tracking_ids = []
     # While the number of processed programs is less than total programs
     while pend < len(prop_dict_keys): 
         
@@ -332,7 +332,7 @@ def run_all_retrievals(pkl_file):
             print(end_msg)
         else:
             print(end_msg)
-
+    work_laboriously(prl=True)
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
