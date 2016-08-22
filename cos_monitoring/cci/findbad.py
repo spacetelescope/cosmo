@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 """Routine to monitor the modal gain in each pixel as a
 function of time.  Uses COS Cumulative Image (CCI) files
 to produce a modal gain map for each time period.  Modal gain
@@ -37,15 +37,14 @@ from .constants import Y_BINNING, X_BINNING, MONITOR_DIR
 #-------------------------------------------------------------------------------
 
 def time_trends():
-    print '\n#----------------------#'
-    print 'Finding trends with time'
-    print '#----------------------#'
+    print('#----------------------#')
+    print('Finding trends with time')
+    print('#----------------------#')
 
-    print 'Cleaning previous products'
+    print('Cleaning previous products')
     for item in glob.glob(os.path.join(MONITOR_DIR, 'cumulative_gainmap_*.png')):
         os.remove(item)
 
-    print "Connecting to the DB"
     SETTINGS = open_settings()
     Session, engine = load_connection(SETTINGS['connection_string'])
 
@@ -72,7 +71,7 @@ def time_trends():
     connection.close()
 
     all_combos = [(row['segment'], row['dethv']) for row in result]
-    print all_combos
+    print(all_combos)
     pool = mp.Pool(processes=10)
     pool.map(find_flagged, all_combos)
 
@@ -86,7 +85,7 @@ def find_flagged(args):
 
     connection = engine.connect()
 
-    print "{}, {}: Searching for pixels below 3.".format(segment, hvlevel)
+    print("{}, {}: Searching for pixels below 3.".format(segment, hvlevel))
     results = connection.execute("""SELECT DISTINCT x,y
                                            FROM gain
                                            WHERE segment='%s'
@@ -97,13 +96,13 @@ def find_flagged(args):
 
     #-- refine to active area
     all_coords = [(row['x'], row['y']) for row in results]
-    print "{}, {}: found {} superpixels below 3.".format(segment,
+    print("{}, {}: found {} superpixels below 3.".format(segment,
                                                          hvlevel,
-                                                         len(all_coords))
+                                                         len(all_coords)))
 
     plotfile = os.path.join(MONITOR_DIR, 'flagged_{}_{}.pdf'.format(segment,
                                                                     hvlevel))
-    print "Plotting to {}:".format(plotfile)
+    print("Plotting to {}:".format(plotfile))
     #with PdfPages(plotfile) as pdf:
     with open('blank', 'w') as pdf:
         for x, y in all_coords:
@@ -163,12 +162,11 @@ def find_flagged(args):
                 plt.close(fig)
                 '''
                 MJD_bad = round(MJD_bad, 5)
-                print "inserting {} {} {} {} {}".format(segment,
+                print("inserting {} {} {} {} {}".format(segment,
                                                         hvlevel,
                                                         x*X_BINNING,
                                                         y*Y_BINNING,
-                                                        MJD_bad)
-                print all_gain, all_counts
+                                                        MJD_bad))
                 connection.execute("""INSERT INTO flagged VALUES ('{}','{}','{}','{}','{}');""".format(MJD_bad,
                                                                                                        segment,
                                                                                                        hvlevel,

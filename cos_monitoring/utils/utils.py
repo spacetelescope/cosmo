@@ -22,7 +22,7 @@ def scrape_cycle(asn_id):
 
     match = re.search(regex, soup_text)
     match = match.group(0)
-    
+
     cycle_number = re.sub("[^0-9]", "", match)
 
     return cycle_number

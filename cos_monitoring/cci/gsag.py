@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+
 """Routine to monitor the modal gain in each pixel as a
 function of time.  Uses COS Cumulative Image (CCI) files
 to produce a modal gain map for each time period.  Modal gain
@@ -55,7 +55,7 @@ def main(run_regress=False):
     if run_regress:
         test_gsag_calibration(new_gsagtab)
     else:
-        print "Regression set skipped"
+        print("Regression set skipped")
 
     send_forms()
 
@@ -88,11 +88,11 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
     """
     ### Needs to be tested ###
 
-    print '\n#-------------------#'
-    print 'Comparing Gsag tables'
-    print '#-------------------#'
-    print 'New GSAGTAB %s'%( new )
-    print 'Old GSAGTAB %s'%( old )
+    print('\n#-------------------#')
+    print('Comparing Gsag tables')
+    print('#-------------------#')
+    print(('New GSAGTAB %s'%( new )))
+    print(('Old GSAGTAB %s'%( old )))
 
     if type(new) == str:
         new = fits.open(new)
@@ -101,7 +101,7 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
 
     report_file = open( os.path.join( MONITOR_DIR,'gsag_report.txt'), 'w')
 
-    possible_hv_levels = [0,100] + range(100,179)
+    possible_hv_levels = [0,100] + list(range(100,179))
 
     for segment,hv_keyword in zip( ['FUVA','FUVB'], ['HVLEVELA','HVLEVELB'] ):
         new_hv = set( [ ext.header[hv_keyword] for ext in new[1:] if ext.header['SEGMENT'] == segment ] )
@@ -113,14 +113,14 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
         both_hv = list( new_hv.union( old_hv ) )
         both_hv.sort()
 
-        print '#---',segment,'---#'
+        print(('#---',segment,'---#'))
 
         #assert ( len(only_old_hv) == 0 ),'There is an HV value found in the old table that is not found in the new.'
         if len(only_old_hv) > 0:
-            print 'WARNING: There is an HV value found in the old table that is not found in the new.'
+            print('WARNING: There is an HV value found in the old table that is not found in the new.')
 
         if len( only_new_hv ):
-            print 'There is at least one new extension, you should probably deliver this one'
+            print('There is at least one new extension, you should probably deliver this one')
             report_file.write('There is at least one new extension, you should probably deliver this one \n')
             report_file.write('New HV extensions:\n')
             report_file.write(','.join( map(str,np.sort( list(only_new_hv) ) ) ) )
@@ -133,11 +133,11 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
             new_ext_index = get_index( new, segment, hv )
 
             if old_ext_index == -1:
-                print '%s %d: not found in old table'%( segment, hv )
+                print(('%s %d: not found in old table'%( segment, hv )))
                 continue
 
             if new_ext_index == -1:
-                print 'WARNING: %s %d: not found in new table'%( segment, hv )
+                print(('WARNING: %s %d: not found in new table'%( segment, hv )))
                 continue
 
             else:
@@ -168,13 +168,13 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
                     report_file.write( 'Nothing added or deleted \n')
 
                 if N_old > 0:
-                    print 'Warning: %s %d: You apparently got rid of %d from the old table'%( segment, hv, N_old )
-                    report_file.write( '%d entries have been removed from the old table. \n'%( N_old ) )
+                    print('Warning: %s %d: You apparently got rid of %d from the old table'%(segment, hv, N_old))
+                    report_file.write( '%d entries have been removed from the old table. \n'%(N_old) )
                     report_file.write( '\n'.join( map(str,only_old_coords) ) )
                     report_file.write('\n\n')
 
                 if N_new > 0:
-                    print '%s %d: You added %d to the new table'%( segment, hv, N_new )
+                    print('%s %d: You added %d to the new table'%( segment, hv, N_new ))
                     report_file.write( '%d entries have been added to the new table. \n'%( N_new ) )
                     report_file.write( '\n'.join( map(str,only_new_coords) )  )
                     report_file.write('\n\n')
@@ -190,8 +190,8 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
 
                     mjd_difference = old_mjd - new_mjd
                     if mjd_difference:
-                        print 'MJD difference of %5.7f days'%(mjd_difference)
-                        print 'at (y,x):  (%d,%d)'%coord_pair
+                        print('MJD difference of %5.7f days'%(mjd_difference))
+                        print('at (y,x):  (%d,%d)'%coord_pair)
                         report_file.write( 'MJD difference of %5.7f days at (y,x):  (%d,%d)'%(mjd_difference,coord_pair[0],coord_pair[1]) )
 
 #------------------------------------------------------------
@@ -201,9 +201,9 @@ def test_gsag_calibration(gsagtab):
 
     Any datasets that fail calibration will be emailed to the user.
     """
-    print '#-------------------------#'
-    print 'Calibrating with %s'%(gsagtab)
-    print '#-------------------------#'
+    print('#-------------------------#')
+    print('Calibrating with %s'%(gsagtab))
+    print('#-------------------------#')
 
     os.environ['lref'] = '/grp/hst/cdbs/lref/'
     os.environ['testdir'] = TEST_DIR
@@ -225,7 +225,7 @@ def test_gsag_calibration(gsagtab):
     for item in test_datasets:
         try:
             status = calcos.calcos( item,outdir=TEST_DIR )
-            print "CalCOS exit status is",status
+            print(("CalCOS exit status is",status))
         except:
             failed_runs.append( item )
 
@@ -359,9 +359,9 @@ def populate_down(gsag_file):
     intervening time.
     """
 
-    print '#---------------------------------------------#'
-    print 'Populating flagged regions to lower HV settings'
-    print '#---------------------------------------------#'
+    print('#---------------------------------------------#')
+    print('Populating flagged regions to lower HV settings')
+    print('#---------------------------------------------#')
     gsagtab = fits.open(gsag_file)
     for segment,hv_keyword in zip( ['FUVA','FUVB'], ['HVLEVELA','HVLEVELB'] ):
         all_hv = [ (ext.header[hv_keyword],i+1) for i,ext in enumerate(gsagtab[1:]) if ext.header['segment'] == segment ]
@@ -394,12 +394,12 @@ def populate_down(gsag_file):
 
                         if line[0] < current_line[0]:
                             current_lines[ index ] = line
-                            print '--Earlier time found',line[0],'-->',current_line[0]
+                            print(('--Earlier time found',line[0],'-->',current_line[0]))
                             N_changes += 1
 
 
             if N_changes:
-                print 'Updating %s/%d ext:%d with %d changes'%(segment,current_dethv,current_ext,N_changes)
+                print(('Updating %s/%d ext:%d with %d changes'%(segment,current_dethv,current_ext,N_changes)))
                 current_lines.sort()
                 date = [ line[0] for line in current_lines ]
                 lx = [ line[1] for line in current_lines ]
@@ -409,7 +409,7 @@ def populate_down(gsag_file):
                 dq = [ line[5] for line in current_lines ]
                 gsagtab[current_ext] = gsagtab_extension(date, lx, dx, ly, dy, dq, current_dethv, hv_keyword, segment)
             else:
-                print 'No Changes to %s/%d ext:%d '%(segment,current_dethv,current_ext)
+                print(('No Changes to %s/%d ext:%d '%(segment,current_dethv,current_ext)))
 
     gsagtab.writeto(gsag_file,clobber=True)
 
@@ -481,7 +481,7 @@ def make_gsagtab():
     --------
     new_gsagtab.fits
     """
-    print 'Making new GSAGTAB'
+    print('Making new GSAGTAB')
     out_fits = os.path.join(MONITOR_DIR,'gsag_%s.fits'%(TIMESTAMP) )
     input_list = glob.glob(os.path.join(MONITOR_DIR,'flagged_bad_??_cci_???.txt'))
     input_list.sort()
@@ -521,7 +521,7 @@ def make_gsagtab():
     hdu_out[0].header.add_history('the measured modal gain of a region falls to ')
     hdu_out[0].header.add_history('%d given current lower pulse height filtering.'%(MODAL_GAIN_LIMIT) )
 
-    possible_hv_strings = ['000','100'] + map(str,range(142,179))
+    possible_hv_strings = ['000','100'] + list(map(str,list(range(142,179))))
 
     for segment_string in [FUVA_string,FUVB_string]:
         for hv_level_st in possible_hv_strings:
@@ -553,7 +553,7 @@ def make_gsagtab():
                         line[i] = float(line[i])
 
                     if len(line) != 5:
-                        print 'Skipping'
+                        print('Skipping')
                         continue
 
                     lx.append( line[0] )
@@ -579,7 +579,7 @@ def make_gsagtab():
             hdu_out.append(tab)
 
     hdu_out.writeto(out_fits,clobber=True)
-    print 'WROTE: GSAGTAB to %s'%(out_fits)
+    print(('WROTE: GSAGTAB to %s'%(out_fits)))
     return out_fits
 
 #------------------------------------------------------------
@@ -618,7 +618,7 @@ def make_gsagtab_db(blue=False):
     --------
     new_gsagtab.fits
     """
-    print 'Making new GSAGTAB'
+    print('Making new GSAGTAB')
     out_fits = os.path.join(MONITOR_DIR, 'gsag_%s.fits'%(TIMESTAMP))
     #Populates regions found in HV == X, Segment Y, to any
     #extensions of lower HV for same segment.
@@ -652,10 +652,10 @@ def make_gsagtab_db(blue=False):
     hdu_out[0].header.add_history('the measured modal gain of a region falls to ')
     hdu_out[0].header.add_history('%d given current lower pulse height filtering.'%(MODAL_GAIN_LIMIT) )
 
-    possible_hv_strings = ['000', '100'] + map(str, range(142, 179))
+    possible_hv_strings = ['000', '100'] + list(map(str, list(range(142, 179))))
 
     #--working on it
-    print "Connecting"
+    print("Connecting")
 
     SETTINGS = open_settings()
     Session, engine = load_connection(SETTINGS['connection_string'])
@@ -666,7 +666,7 @@ def make_gsagtab_db(blue=False):
 
     segments = [item[0] for item in results]
 
-    print "looping over segments, {}".format(segments)
+    print(("looping over segments, {}".format(segments)))
     for seg in segments:
         hvlevel_string = 'HVLEVEL' + seg[-1].upper()
 
@@ -679,7 +679,7 @@ def make_gsagtab_db(blue=False):
             dq = []
 
             hv_level = int(hv_level)
-            print seg, hv_level
+            print((seg, hv_level))
             results = connection.execute("""SELECT DISTINCT x,y
                                             FROM flagged WHERE segment='%s'
                                             and dethv>='%s'
@@ -709,7 +709,7 @@ def make_gsagtab_db(blue=False):
                     continue
 
                 if blue and in_boundary(seg, y*Y_BINNING, Y_BINNING):
-                    print "Excluding for blue modes: {} {} {}".format(seg, y*Y_BINNING, Y_BINNING)
+                    print(("Excluding for blue modes: {} {} {}".format(seg, y*Y_BINNING, Y_BINNING)))
                     continue
 
 
@@ -731,7 +731,7 @@ def make_gsagtab_db(blue=False):
                 date.append(0)
                 dq.append(8192)
 
-            print len(date), ' found bad regions'
+            print((len(date), ' found bad regions'))
             tab = gsagtab_extension(date, lx, dx, ly, dy, dq, hv_level, hvlevel_string, seg)
             hdu_out.append(tab)
 
@@ -745,7 +745,7 @@ def make_gsagtab_db(blue=False):
         hdu_out[0].header['DESCRIP'] = descrip_string
 
     hdu_out.writeto(out_fits, clobber=True)
-    print 'WROTE: GSAGTAB to %s'%(out_fits)
+    print(('WROTE: GSAGTAB to %s'%(out_fits)))
     return out_fits
 
 #------------------------------------------------------------
