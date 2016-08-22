@@ -30,10 +30,10 @@ def test_CCI_object():
 
 def test_time_fitting():
     TOLERANCE = 10E-10
-    
+
     x_to_fit = np.array( range(10) )
     y_to_fit = np.array( range(10) )
-    fit,parameters,success = findbad.time_fitting( x_to_fit,y_to_fit ) 
+    fit,parameters,success = findbad.time_fitting( x_to_fit,y_to_fit )
     fit_diff = fit - y_to_fit
     param_diff = parameters - np.array( [1,0] )
 
@@ -51,9 +51,7 @@ def test_rename():
     test_data = os.path.join(os.getcwd(), 'lft01_2013007232606_cci.fits.gz')
     hdu_out = fits.HDUList(fits.PrimaryHDU())
     hdu_out[0].header['DETHV'] = '167'
-    hdu_out.writeto(test_data, clobber=True)  
-
-    print gainmap.rename(test_data, write=False)
+    hdu_out.writeto(test_data, clobber=True)
 
     assert gainmap.rename(test_data, write=False) == 'l_2013007232606_01_167_cci.fits.gz', \
         'Renaming not functioning properly'
