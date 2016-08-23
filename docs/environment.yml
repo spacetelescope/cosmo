@@ -1,4 +1,4 @@
-name: refstis
+name: cos_monitoring
 channels:
   - http://ssb.stsci.edu/astroconda
 dependencies:
