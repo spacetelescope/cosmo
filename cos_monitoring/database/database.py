@@ -28,10 +28,6 @@ from .db_tables import Base
 from .db_tables import Files, Headers
 from .db_tables import Lampflash, Stims, Darks, sptkeys, Data, Gain, Acqs
 
-
-SETTINGS = open_settings()
-Session, engine = load_connection(SETTINGS['connection_string'])
-
 #-------------------------------------------------------------------------------
 
 def mp_insert(args):
@@ -70,6 +66,7 @@ def insert_with_yield(filename, table, function, foreign_key=None):
         foreign key to update the table with
     """
 
+    SETTINGS = open_settings()
     Session, engine = load_connection(SETTINGS['connection_string'])
     session = Session()
 
@@ -128,6 +125,9 @@ def insert_files(**kwargs):
 
     """
 
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     data_location = kwargs.get('data_location', './')
     print("Looking for new files in {}".format(data_location))
 
@@ -168,6 +168,9 @@ def populate_lampflash(num_cpu=1):
 
     """
     print("Adding to lampflash")
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     session = Session()
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
@@ -191,6 +194,9 @@ def populate_stims(num_cpu=1):
 
     """
     print("Adding to stims")
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     session = Session()
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
@@ -215,6 +221,9 @@ def populate_darks(num_cpu=1):
     """
 
     print("Adding to Darks")
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     session = Session()
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
@@ -241,6 +250,9 @@ def populate_gain(num_cpu=1):
     """
 
     print("Adding to gain")
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     session = Session()
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
@@ -264,6 +276,9 @@ def populate_spt(num_cpu=1):
 
     """
     print("Adding SPT headers")
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     session = Session()
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
@@ -284,6 +299,9 @@ def populate_data(num_cpu=1):
     print("adding to data")
 
     session = Session()
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
                                 filter(Files.name.like('%_x1d.fits%')).\
@@ -346,6 +364,9 @@ def populate_primary_headers(num_cpu=1):
             WHERE (has_x1d = 1 OR has_corr = 1 OR has_raw = 1 OR has_acq);
     """
 
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     engine.execute(text(t))
 
     files_to_add = [(result.file_id, result.file_to_grab) for result in engine.execute(text(q))
@@ -355,9 +376,13 @@ def populate_primary_headers(num_cpu=1):
     print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
+
 #-------------------------------------------------------------------------------
+
 def populate_acqs(num_cpu=1):
     print("adding to data")
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
 
     session = Session()
     files_to_add = [(result.id, os.path.join(result.path, result.name))
@@ -370,6 +395,7 @@ def populate_acqs(num_cpu=1):
     print("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
+
 #-------------------------------------------------------------------------------
 
 def get_spt_keys(filename):
@@ -530,6 +556,7 @@ def update_data(args):
             return data
     except IOError:
         print('IOERROR')
+
 #-------------------------------------------------------------------------------
 
 def get_acq_keys(filename):
@@ -564,6 +591,9 @@ def delete_file_from_all(filename):
         name of the file, will be pattern-matched with %filename%
 
     """
+
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
 
     session = Session()
 
@@ -604,6 +634,9 @@ def show_file_from_all(filename):
     """
     """
 
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     session = Session()
 
     print(filename)
@@ -642,6 +675,9 @@ def clear_all_databases(SETTINGS, nuke=False):
     #    sys.exit("Not deleting, getting out of here.")
 
     if nuke:
+        SETTINGS = open_settings()
+        Session, engine = load_connection(SETTINGS['connection_string'])
+
         session = Session()
         for table in reversed(Base.metadata.sorted_tables):
             #if table.name == 'files':

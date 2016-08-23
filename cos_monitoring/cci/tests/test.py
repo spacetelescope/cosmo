@@ -7,7 +7,7 @@ from ..constants import MONITOR_DIR
 from ...cci import findbad, gainmap, cci_read
 
 PRECISION = sys.float_info.epsilon
-ONES_FILE =  os.path.join( MONITOR_DIR,'tests/ones_cci.fits' )
+ONES_FILE =  os.path.join(MONITOR_DIR, 'tests/ones_cci.fits')
 
 #------------------------------------------------------------------
 
