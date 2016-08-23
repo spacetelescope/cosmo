@@ -184,7 +184,7 @@ def plot_time(detector, dark, date, temp, solar, solar_date, outname):
                         label='1.5e-6',
                         zorder=1,
                         alpha=.6)
-    
+
     dark_ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
     dark_ax.yaxis.set_major_formatter(FormatStrFormatter('%3.2e'))
 
@@ -391,7 +391,7 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
         sun_lat = sun_lat[index_keep]
         sun_lon = sun_lon[index_keep]
     else:
-        print 'I sure hope this is NUV data'
+        print('I sure hope this is NUV data')
 
     lon_diff = longitude - sun_lon
     lat_diff = latitude - sun_lat

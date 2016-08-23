@@ -50,7 +50,7 @@ def make_slope_file( hv_values, segment, outname ):
     slopes_dir = '/grp/hst/cos/Monitors/CCI/'
 
     if os.path.exists( outname ):
-        print 'Slope file already exists, skipping'
+        print('Slope file already exists, skipping')
         return
 
     if segment == 'FUVA':
@@ -116,7 +116,7 @@ def make_usage_file( file_list, outname ):
     hdu_out = pyfits.open( file_list[0] )
 
     for item in file_list[1:]:
-        print item
+        print(item)
         new_hdu = pyfits.open( item )
         hdu_out[1].header['exptime'] += new_hdu[1].header['exptime']
         hdu_out[1].data += new_hdu[1].data
@@ -149,11 +149,11 @@ def assemble_usage():
 
     for segment in ['A', 'B']:
         for lp in ['LP1', 'LP2']:
-            print 'Cumulating {} {} datasets'.format( segment, lp )
+            print('Cumulating {} {} datasets'.format( segment, lp ))
             all_datasets = glob.glob( os.path.join( data_dir, 'FP*_{}-{}.fits*'.format( lp, segment) ) )
             outname = 'summed_{}_{}.fits'.format( lp, segment )
             if os.path.exists( outname ):
-                print outname, 'already exists'
+                print(outname, 'already exists')
                 continue
             make_usage_file( all_datasets, outname )
 
@@ -161,11 +161,11 @@ def assemble_usage():
     for grating in ['G130M', 'G160M', 'G140L']:
         for segment in ['A', 'B']:
             for lp in ['LP1', 'LP2']:
-                print 'Cumulating {} {} {} datasets'.format( grating, segment, lp )
+                print('Cumulating {} {} {} datasets'.format( grating, segment, lp ))
                 all_datasets = glob.glob( os.path.join( data_dir, 'FP*{}*_{}-{}.fits*'.format(grating, lp, segment) ) )
                 outname = 'summed_{}_{}_{}.fits'.format( grating, lp, segment )
                 if os.path.exists( outname ):
-                    print outname, 'already exists'
+                    print(outname, 'already exists')
                     continue
                 make_usage_file( all_datasets, outname )
 
@@ -175,11 +175,11 @@ def assemble_usage():
                     '1589', '1600', '1611', '1623']:
         for segment in ['A', 'B']:
             for lp in ['LP1', 'LP2']:
-                print 'Cumulating {} {} {} datasets'.format( cenwave, segment, lp )
+                print('Cumulating {} {} {} datasets'.format( cenwave, segment, lp ))
                 all_datasets = glob.glob( os.path.join( data_dir, 'FP*{}*_{}-{}.fits*'.format(cenwave, lp, segment) ) )
                 outname = 'summed_{}_{}_{}.fits'.format( cenwave, lp, segment )
                 if os.path.exists( outname ):
-                    print outname, 'already exists'
+                    print(outname, 'already exists')
                     continue
                 make_usage_file( all_datasets, outname )
 
@@ -249,7 +249,7 @@ def make_fractional_files( lp, usage_file=None ):
         usage = ascii.read( usage_file )
         multiplier = {}
         for line in usage:
-            print line['Item']
+            print(line['Item'])
             cenwave = str(line['Item'])
             multiplier[ cenwave ] = line['change']
 
@@ -265,7 +265,7 @@ def make_fractional_files( lp, usage_file=None ):
                 mode_multiplier = 1
 
             if os.path.exists( outname ):
-                print 'Already exists'
+                print('Already exists')
                 continue
 
             slopes = pyfits.getdata( os.path.join(path, 'slope_{}_{}.fits'.format( segment, lp ) ) )
@@ -347,16 +347,16 @@ def assemble_degrade( life_adj, segment, *args ):
             an array full of all of the degredation information.
     """
 
-    print 'Creating degredation array for life_adj: {}, segment: {}'.format( life_adj, segment )
-    print args
+    print('Creating degredation array for life_adj: {}, segment: {}'.format( life_adj, segment ))
+    print(args)
 
     all_degrade_array = np.zeros( (1024, 16384) )
 
     for cenwave in args:
-        print cenwave
+        print(cenwave)
         try: all_degrade_array += pyfits.getdata( '{}_degrade_{}_LP{}.fits'.format( cenwave, segment, life_adj ) )
         except IOError:
-            print 'Not using ', cenwave, segment, life_adj, 'due to IOError'
+            print('Not using ', cenwave, segment, life_adj, 'due to IOError')
 
     return all_degrade_array
 
@@ -398,9 +398,9 @@ def simulate(args_list):
     gain_thresh=3
     affected_thresh = .05
 
-    print '#-------------------#'
-    print 'Begginning simulation'
-    print '#-------------------#'
+    print('#-------------------#')
+    print('Begginning simulation')
+    print('#-------------------#')
 
     gain_end = max( steps )
     initial_steps = steps[:] # force copy on mutable datatype
@@ -424,7 +424,7 @@ def simulate(args_list):
     seg_ext = {'FUVA':1, 'FUVB':2}
     gainmap_dir = '/grp/hst/cos/Monitors/CCI'
 
-    print 'Creating usage arrays'
+    print('Creating usage arrays')
     gainmap = pyfits.getdata( os.path.join( gainmap_dir, 'total_gain_{}.fits'.format( gain_start ) ),
                               ext=seg_ext[segment] )
 
@@ -467,7 +467,7 @@ def simulate(args_list):
             gainmap[ low_index ] += (all_degrade_array[low_index] / 2.) * days_step
         elif n_days < total_lp3:
             if not reset_lp2:
-                print 'RESET at Lp3'
+                print('RESET at Lp3')
                 increase_gain( gainmap, gain_start -current_gain )
                 current_gain = gain_start
                 steps = initial_steps[:]
@@ -483,7 +483,7 @@ def simulate(args_list):
 
         else:
             if not reset_lp3:
-                print 'RESET at lp4'
+                print('RESET at lp4')
                 increase_gain( gainmap, gain_start -current_gain )
                 current_gain = gain_start
                 steps = initial_steps[:]
@@ -507,7 +507,7 @@ def simulate(args_list):
         #    hdu_out.writeto( 'simulation_{}_{}_{}_{}_{}.fits'.format( segment, yshift, xshift, n_days, current_gain ), clobber=True )
 
         if (current_gain < gain_end) and frac_affected > .02:
-            print 'Raising gain on day', n_days, 'gain end', gain_end
+            print('Raising gain on day', n_days, 'gain end', gain_end)
 
             #if n_days > total_lp2:
             #    hdu_out = pyfits.HDUList(pyfits.PrimaryHDU())
@@ -518,7 +518,7 @@ def simulate(args_list):
             increase_gain( gainmap, new_gain - current_gain )
             current_gain = new_gain
 
-        print n_days, n_columns, frac_affected, current_gain , ylim
+        print(n_days, n_columns, frac_affected, current_gain , ylim)
         ax.plot( np.min(gainmap[ylim[0]:ylim[1]], axis=0) )
         ax.axhline( y=3, color='r', lw=3 )
         ax.set_ylim(0, 15 )
@@ -532,7 +532,7 @@ def simulate(args_list):
 
         if n_days > 1500: break
 
-    print 'Total time spent:', n_days/365.25
+    print('Total time spent:', n_days/365.25)
 
     hdu_out = pyfits.HDUList(pyfits.PrimaryHDU())
     hdu_out.append(pyfits.ImageHDU(data=gainmap))
@@ -581,7 +581,7 @@ def verify_degradation():
     dethv = hdu[0].header['DETHV']
 
     initial_gain = increase_gain( initial_gain, 8 )
-    print dethv + 8
+    print(dethv + 8)
     n_days = 1070
 
     final_gain = initial_gain + degrade_lp1 * n_days

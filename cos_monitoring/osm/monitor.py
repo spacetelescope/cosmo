@@ -504,7 +504,7 @@ def make_plots_2(data):
         plt.close(fig)
     '''
 
-    print "relations"
+    print("relations")
     for cenwave in set(data['cenwave']):
         cw_index = np.where(data['cenwave'] == cenwave)
         all_segments = set(data[cw_index]['segment'])
@@ -526,13 +526,13 @@ def make_plots_2(data):
         os.remove(os.path.join(MONITOR_DIR, 'shift_relation_{}.png'.format(cenwave)))
         fig.savefig(os.path.join(MONITOR_DIR, 'shift_relation_{}.png'.format(cenwave)))
         plt.close(fig)
-        os.chmod(os.path.join(MONITOR_DIR, 'shift_relation_{}.png'.format(cenwave)),0766)
+        os.chmod(os.path.join(MONITOR_DIR, 'shift_relation_{}.png'.format(cenwave)), 0o766)
 
 
 #----------------------------------------------------------
 
 def fp_diff(data):
-    print "Checking the SHIFT2 difference"
+    print("Checking the SHIFT2 difference")
 
     index = np.where((data['detector'] == 'FUV'))[0]
     data = data[index]
@@ -568,7 +568,7 @@ def fp_diff(data):
         diff = a_shift - b_shift
 
         diff_dict[cenwave].append((mjd, diff))
-        print '%5.5f  %s  %d  %d   %3.2f  %3.2f  \n'%(mjd, opt_elem, cenwave, fppos, a_shift, b_shift)
+        print('%5.5f  %s  %d  %d   %3.2f  %3.2f  \n'%(mjd, opt_elem, cenwave, fppos, a_shift, b_shift))
         ofile.write('%5.5f  %s  %d  %d   %3.2f  %3.2f  \n' %
                     (mjd, opt_elem, cenwave, fppos, a_shift, b_shift))
 
@@ -579,7 +579,6 @@ def fp_diff(data):
         if not len(all_diff):
             continue
 
-        print 'plotting', cenwave
         plt.figure(figsize=(8, 5))
         plt.plot(all_mjd, all_diff, 'o', label='%s' % (cenwave))
         plt.xlabel('MJD')
@@ -589,7 +588,7 @@ def fp_diff(data):
         os.remove(os.path.join(MONITOR_DIR, 'difference_%s.pdf' % (cenwave)))
         plt.savefig(os.path.join(MONITOR_DIR, 'difference_%s.pdf' % (cenwave)))
         plt.close()
-        os.chmod(os.path.join(MONITOR_DIR, 'difference_%s.pdf' % (cenwave)),0766)
+        os.chmod(os.path.join(MONITOR_DIR, 'difference_%s.pdf' % (cenwave)), 0o766)
 
     # for cenwave in diff_dict:
     #    all_diff = diff_dict[cenwave]
