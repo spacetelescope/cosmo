@@ -28,8 +28,8 @@ import os
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'numpydoc',
     'sphinx.ext.autosummary',
-    'sphinx.ext.napolean',
     'sphinx.ext.viewcode'
 ]
 

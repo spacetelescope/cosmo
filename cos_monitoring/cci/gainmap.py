@@ -154,7 +154,12 @@ class CCI:
             self.brftab = 'x1u1459il_brf.fits'
 
         if self.expstart:
+            #----Finds to most recently created HVTAB
+            hvtable_list = glob.glob(os.path.join(os.environ['lref'], '*hv.fits'))
+            HVTAB = hvtable_list[np.array([pyfits.getval(item, 'DATE') for item in hvtable_list]).argmax()]
+
             hvtab = pyfits.open(HVTAB)
+
             if self.segment == 'FUVA':
                 hv_string = 'HVLEVELA'
             elif self.segment == 'FUVB':
@@ -304,7 +309,20 @@ class CCI:
 #------------------------------------------------------------
 
 def rename(input_file, mode='move'):
-    """Test the CCI renaming script
+    """Rename CCI file from old to new naming convention
+
+    Parameters
+    ----------
+    input_file : str
+        Old-style CCI file
+    mode : str, optional
+        if 'move', the original file will be removed.  Otherwise, simply the new
+        name will be printed and returned.
+
+    Returns
+    -------
+    outname : str
+        Name in the new naming convention.
     """
 
     options = ['copy', 'move', 'print']
@@ -351,6 +369,25 @@ def rename(input_file, mode='move'):
 #-------------------------------------------------------------------------------
 
 def read_brftab(filename, segment):
+    """Parse Baseline Reference Table for needed information
+
+    Reads the active area for the specified segment from the COS BRFTAB
+    (Baseline Reference Table).  The four corners (left, right, top, bottom)
+    of the active area are returned.
+
+    Parameters
+    ----------
+    filename : str
+        Input BRFTAB
+    segment : str
+        'FUVA' or 'FUVB', which segment to parse from
+
+    Returns
+    -------
+    corners : tuple
+        left, right, top, bottom corners of the active area
+    """
+
     with pyfits.open(filename) as hdu:
         index = np.where(hdu[1].data['segment'] == segment)[0]
 
@@ -364,6 +401,24 @@ def read_brftab(filename, segment):
 #-------------------------------------------------------------------------------
 
 def read_spottab(filename, segment, expstart, expend):
+    """Parse the COS spottab
+
+    Parameters
+    ----------
+    filename : str
+        Input SPOTTAB fits file
+    segment : str
+        'FUVA' or 'FUVB', which segment to parse from
+    expstart : float, int
+        return only rows with STOP > expstart
+    expend : float, int
+        return only rows with START < expend
+
+    Returns
+    -------
+    
+
+    """
     with pyfits.open(filename) as hdu:
         index = np.where((hdu[1].data['SEGMENT'] == segment) &
                          (hdu[1].data['START'] < expend) &
@@ -742,7 +797,7 @@ def explode(filename):
     like the CSUMs.  1 image containing the events with each integer PHA value
     will be stacked into the output datacube.
 
-    Parameters:
+    Parameters
     ----------
     filename : str
         name of the COS corrtag file
