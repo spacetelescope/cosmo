@@ -3,7 +3,7 @@ import os
 from astropy.io import fits
 import numpy as np
 from calcos import ccos
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 import urllib2
 import re
 
@@ -199,9 +199,9 @@ def send_email(subject=None, message=None, from_addr=None, to_addr=None):
     users_email=getpass.getuser()+'@stsci.edu'
 
     if not subject:
-	subject='Message from %s'%(__file__)
+        subject='Message from %s'%(__file__)
     if not message:
-	message='You forgot to put a message into me'
+        message='You forgot to put a message into me'
     if not from_addr:
         from_addr=users_email
     if not to_addr:
@@ -216,4 +216,4 @@ def send_email(subject=None, message=None, from_addr=None, to_addr=None):
     s = smtplib.SMTP(svr_addr)
     s.sendmail(from_addr, to_addr, msg.as_string())
     s.quit()
-    print '\nEmail sent to %s \n' %(from_addr)
+    print('\nEmail sent to %s \n' %(from_addr))
