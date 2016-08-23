@@ -34,5 +34,6 @@ setup(
                         'matplotlib',
                         'scipy',
                         'fitsio',
-                        'psutil']
+                        'psutil',
+                        'beautifulsoup4']
     )

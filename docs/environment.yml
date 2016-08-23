@@ -10,3 +10,4 @@ dependencies:
   - calcos
   - numpydoc
   - pyyaml
+  - beautifulsoup4
