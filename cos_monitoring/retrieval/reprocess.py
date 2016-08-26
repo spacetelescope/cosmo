@@ -47,7 +47,7 @@ def query_proposal(proposal):
     "LIKE '_{0}%'\ngo".format(str(vid[0]))
     datasets = janky_connect(SETTINGS, query1)
     prop_datasets = [[x, proposal] for x in datasets]
-    
+
     return prop_datasets
 
 #-----------------------------------------------------------------------------#
@@ -79,15 +79,53 @@ def handle_datasets(rootname):
 
     # If data do not have a PID in dadsops_rep, look at opus_rep
     if root_datasets[0][1] == "NULL":
-        program_id = rootname[1:4]
-        query1 = "SELECT DISTINCT proposal_id FROM executed WHERE "\
-        "program_id='{0}'\ngo".format(program_id)
-        SETTINGS["database"] = "opus_rep"
-        prop = janky_connect(SETTINGS, query1)
+        if root_datasets[0][0].startswith("L_"):
+            prop = "CCI"
+        else:
+            program_id = rootname[1:4]
+            query1 = "SELECT DISTINCT proposal_id FROM executed WHERE "\
+            "program_id='{0}'\ngo".format(program_id)
+            SETTINGS["database"] = "opus_rep"
+            prop = janky_connect(SETTINGS, query1)
+            if not prop:
+                prop = "NULL"
         for i in range(len(root_datasets)):
             root_datasets[i][1] = prop
     
     return root_datasets
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+def handle_cci(get_old=False):
+    '''
+    Retrieve all CCI datasets.
+
+    Parameters:
+    -----------
+        get_old : Boolean
+            In 2014, the CCI naming convention changed. Should the old CCIs
+            be retrieved as well?
+
+    Returns:
+    --------
+        cci_datasets : list
+            List of all CCI datasets to be retrieved.. 
+    '''
+    
+    config_file = os.path.join(os.environ['HOME'], "configure2.yaml")
+    with open(config_file, 'r') as f:
+        SETTINGS = yaml.load(f)
+    
+    query0 = "SELECT ads_data_set_name FROM archive_data_set_all WHERE "\
+    "ads_archive_class='CSI'\ngo"
+    all_ccis = janky_connect(SETTINGS, query0)
+
+    if not get_old:
+        cci_datasets = [[x,"CCI"] for x in all_ccis if x.startswith("L_")]
+    else:
+        cci_datasets = [[x,"CCI"] for x in all_ccis]
+    
+    return cci_datasets
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -155,10 +193,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     data = parse_input(args.data)
-    print(data)
+    print("Requesting: {0}".format(data))
     
     all_data = []
     for item in data:
+        if item.upper() == "CCI":
+            all_data += handle_cci()
+            continue
         isprop = is_proposal(item)
         if isprop:
             prop_datasets = query_proposal(item)
@@ -167,7 +208,7 @@ if __name__ == "__main__":
             root_datasets = handle_datasets(item)        
             all_data += root_datasets
 
-    to_retrieve = {row[0]:int(row[1]) for row in all_data}
+    to_retrieve = { (row[0]):(row[1] if row[1]=="CCI" else int(row[1])) for row in all_data}
     prop_keys = list(set(to_retrieve.values()))
     prop_vals = [[] for x in xrange(len(prop_keys))]
     prop_dict = dict(zip(prop_keys, prop_vals))
