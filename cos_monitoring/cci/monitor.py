@@ -79,7 +79,7 @@ def make_quicklooks(gainmap, clobber=True):
 
     path, name = os.path.split(gainmap)
     pha_name = os.path.join(path, 'l_' + name.split('_')[1] + '_phaimage_cci_phf.fits')
-    print pha_name
+    print(pha_name)
 
     has_gain = np.zeros(image.shape)
     index = np.where(image > 0)
@@ -147,7 +147,7 @@ def make_quicklooks(gainmap, clobber=True):
 
     fig.savefig(out_image_file)
     plt.close(fig)
-    print 'WROTE: %s'% (out_image_file)
+    print('WROTE: %s'% (out_image_file))
 
 #------------------------------------------------------------
 

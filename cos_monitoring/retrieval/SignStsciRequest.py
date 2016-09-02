@@ -41,8 +41,14 @@ try:
   import libxml2
 except ImportError:
   usexml=False
-import urllib2
-import urllib  # urllib2 does not define urlencode, you have to get it here.
+try:
+    from urllib.request import Request
+    from urllib.parse import urlencode
+except ImportError:
+    from urllib import urlencode
+    from urllib2 import Request
+
+from six.moves.urllib.request import urlopen
 import warnings
 import re
 
@@ -78,17 +84,17 @@ class SignStsciRequest:
       try:
         keysmngr = xmlsec.KeysMngr()
         if keysmngr is None:
-            raise RuntimeError, "Error: failed to create keys manager."
+            raise RuntimeError("Error: failed to create keys manager.")
         if xmlsec.cryptoAppDefaultKeysMngrInit(keysmngr) < 0:
             keysmngr.destroy()
-            raise RuntimeError, "Error: failed to initialize keys manager."
+            raise RuntimeError("Error: failed to initialize keys manager.")
 
         key = xmlsec.cryptoAppKeyLoad(filename = file, pwd = None,
            format = xmlsec.KeyDataFormatPem, pwdCallback = None,
            pwdCallbackCtx = None)
         if xmlsec.cryptoAppDefaultKeysMngrAdoptKey(keysmngr, key) < 0:
             keysmngr.destroy()
-            raise RuntimeError, "Error: failed to load key into keys manager" 
+            raise RuntimeError("Error: failed to load key into keys manager")
 
         dsig_ctx = xmlsec.DSigCtx(keysmngr)
 
@@ -106,7 +112,7 @@ class SignStsciRequest:
 
         if doc is None or doc.getRootElement() is None:
             keysmngr.destroy()
-            raise RuntimeError, "Error: unable to parse XML data"
+            raise RuntimeError("Error: unable to parse XML data")
 
         # find the XML-DSig start node
         node = xmlsec.findNode(doc.getRootElement(), xmlsec.NodeSignature,
@@ -130,7 +136,7 @@ class SignStsciRequest:
  <KeyValue><RSAKeyValue>
   <Modulus></Modulus>
   <Exponent></Exponent>
- </RSAKeyValue></KeyValue> 
+ </RSAKeyValue></KeyValue>
 </KeyInfo>
 </Signature>
 """)
@@ -145,7 +151,7 @@ class SignStsciRequest:
                     child.setProp('Id', 'distributionRequest')
             node = xmlsec.findNode(doc.getRootElement(), xmlsec.NodeSignature,
                        xmlsec.DSigNs)
-	    
+
 
         # Remove passwords
 
@@ -166,16 +172,16 @@ class SignStsciRequest:
         doc.freeDoc()
         keysmngr.destroy()
         if status < 0:
-            raise RuntimeError, "Error: signature failed"
+            raise RuntimeError("Error: signature failed")
         return output
       except:
         usexml=False
         return signRequest(file, request, dtd, cgi)
      else:
         values = {'request' : request, 'privatekey' : open(file).read(), 'mission' : mission }
-	data = urllib.urlencode(values)
-        req = urllib2.Request(url=cgi, data=data)
-	f = urllib2.urlopen(req)
+        data = urlencode(values)
+        req = Request(url=cgi, data=data)
+        f = urlopen(req)
         return f.read()
 
     def __del__(self):

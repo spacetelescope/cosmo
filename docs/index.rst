@@ -139,6 +139,7 @@ COSMOS Monitors
 .. toctree::
    :maxdepth: 2
 
+   cci_mods
    database_mods
    osm_mods
    stim_mods

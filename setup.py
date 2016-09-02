@@ -27,11 +27,13 @@ setup(
                                         ],
     },
     install_requires = ['setuptools',
-                        'numpy',
+                        'numpy>=1.11.1',
                         'astropy>=1.0.1',
                         'sqlalchemy>=1.0.12',
                         'pymysql',
                         'matplotlib',
                         'scipy',
-                        'fitsio']
+                        'fitsio',
+                        'psutil',
+                        'beautifulsoup4']
     )
