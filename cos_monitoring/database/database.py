@@ -663,7 +663,7 @@ def clear_all_databases(SETTINGS, nuke=False):
 def do_all():
     print(SETTINGS)
     Base.metadata.create_all(engine)
-    #insert_files(**SETTINGS)
+    insert_files(**SETTINGS)
     populate_primary_headers(SETTINGS['num_cpu'])
     populate_spt(SETTINGS['num_cpu'])
     populate_data(SETTINGS['num_cpu'])

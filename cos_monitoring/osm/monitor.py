@@ -225,7 +225,7 @@ def make_plots(data):
 
     #############
 
-    fig = plt.figure( figsize=(14,8) )
+    fig = plt.figure( figsize=(16,8) )
     ax = fig.add_subplot(3,1,1)
 
     ax.plot( data['date'][G130M_A], data['x_shift'][G130M_A],'b.',label='G130M')
@@ -255,7 +255,7 @@ def make_plots(data):
         axis.axhline(y=-285,color='k',lw=3,ls='--',zorder=1)
         fit,ydata,parameters,err = fit_data( data['date'][index],data['x_shift'][index] )
         axis.plot( ydata,fit,'k-',lw=3,label='%3.5fx'%(parameters[0]) )
-        axis.legend(numpoints=1,shadow=True,prop={'size':10})
+        axis.legend(bbox_to_anchor=(1,1), loc='upper left', ncol=1, numpoints=1,shadow=True,prop={'size':10})
 
     os.remove(os.path.join(MONITOR_DIR,'FUV_shifts.png'))
     fig.savefig(os.path.join(MONITOR_DIR,'FUV_shifts.png'))
@@ -264,7 +264,7 @@ def make_plots(data):
 
     ##########
 
-    fig = plt.figure(figsize=(14, 18))
+    fig = plt.figure(figsize=(16, 18))
     ax = fig.add_subplot(7, 1, 1)
     ax.plot(data['date'][G185M_A].data, data['x_shift'][G185M_A].data, 'bo', label='G185M')
     ax.plot(data['date'][G185M_B].data, data['x_shift'][G185M_B].data, 'bo', markeredgecolor='k')
@@ -361,7 +361,7 @@ def make_plots(data):
         fit, ydata, parameters, err = fit_data(
             data['date'][index], data['x_shift'][index])
         axis.plot(ydata, fit, 'k-', lw=3, label='%3.5fx' % (parameters[0]))
-        axis.legend(numpoints=1, shadow=True, loc='upper left', fontsize=12, ncol=3)
+        axis.legend(bbox_to_anchor=(1,1), loc='upper left', ncol=1, numpoints=1, shadow=True, fontsize=12)
 
     ax4.set_xlabel('date')
 
@@ -370,7 +370,7 @@ def make_plots(data):
     fit, ydata, parameters, err = fit_data(
         data['date'][NUV], data['x_shift'][NUV])
     ax.plot(ydata, fit, 'k-', lw=3, label='%3.5fx' % (parameters[0]))
-    ax.legend(numpoints=1, shadow=True, loc='upper left')
+    ax.legend(bbox_to_anchor=(1,1), loc='upper left', ncol=1,numpoints=1, shadow=True)
     ax.set_ylabel('All NUV')
     ax.xaxis.set_ticklabels(['' for item in ax.xaxis.get_ticklabels()])
     ax.set_xlim(data['date'].min(), data['date'].max() + 50)
@@ -383,7 +383,7 @@ def make_plots(data):
     fit, ydata, parameters, err = fit_data(
         data['date'][mirrora], data['x_shift'][mirrora])
     ax.plot(ydata, fit, 'k-', lw=3, label='%3.5fx' % (parameters[0]))
-    ax.legend(numpoints=1, shadow=True, loc='upper left')
+    ax.legend(bbox_to_anchor=(1,1), loc='upper left', ncol=1,numpoints=1, shadow=True)
     ax.set_xlim(data['date'].min(), data['date'].max() + 50)
     ax.set_ylabel('MIRRORA')
     ax.set_xlabel('date')
@@ -396,7 +396,7 @@ def make_plots(data):
     fit, ydata, parameters, err = fit_data(
         data['date'][mirrorb], data['x_shift'][mirrorb])
     ax.plot(ydata, fit, 'k-', lw=3, label='%3.5fx' % (parameters[0]))
-    ax.legend(numpoints=1, shadow=True, loc='upper left')
+    ax.legend(bbox_to_anchor=(1,1), loc='upper left', ncol=1,numpoints=1, shadow=True)
     ax.set_xlim(data['date'].min(), data['date'].max() + 50)
     ax.set_ylabel('MIRRORB')
     ax.set_xlabel('date')
