@@ -21,10 +21,14 @@ import pickle
 import os
 import urllib
 import string
-import httplib
 from datetime import datetime
 import time
 import pdb
+
+try:
+    from http.client import HTTPSConnection
+except ImportError:
+    from httplib import HTTPSConnection
 
 from .manualabor import run_all_labor
 from .SignStsciRequest import SignStsciRequest
@@ -126,7 +130,7 @@ def submit_xml_request(xml_file):
         "request": request_xml_str})
     headers = {"Accept": "text/html",
                "User-Agent": "{0}PythonScript".format(user)}
-    req = httplib.HTTPSConnection("archive.stsci.edu")
+    req = HTTPSConnection("archive.stsci.edu")
     req.request("POST", "/cgi-bin/dads.cgi", params, headers)
     response = req.getresponse().read()
 

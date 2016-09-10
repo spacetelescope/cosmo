@@ -4,7 +4,7 @@ from astropy.io import fits
 import numpy as np
 from calcos import ccos
 from bs4 import BeautifulSoup
-import urllib2
+from six.moves.urllib.request import urlopen
 import re
 
 #-------------------------------------------------------------------------------
@@ -14,7 +14,7 @@ def scrape_cycle(asn_id):
         return None
 
     url = 'http://archive.stsci.edu/cgi-bin/mastpreview?mission=hst&dataid={}'.format(asn_id)
-    page = urllib2.urlopen(url)
+    page = urlopen(url)
     soup = BeautifulSoup(page)
 
     soup_text = soup.text
