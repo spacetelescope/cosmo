@@ -30,7 +30,6 @@ import time
 from datetime import datetime
 import gzip
 import glob
-import itertools
 
 from astropy.io import fits as pyfits
 from astropy.modeling import models, fitting
@@ -44,6 +43,9 @@ import fitsio
 from ..utils import rebin, enlarge
 from .constants import *  ## I know this is bad, but shut up.
 #from db_interface import session, engine, Gain
+
+if sys.version_info.major == 2:
+    import itertools.izip as zip
 
 #------------------------------------------------------------
 
@@ -416,7 +418,7 @@ def read_spottab(filename, segment, expstart, expend):
 
     Returns
     -------
-    
+
 
     """
     with pyfits.open(filename) as hdu:
@@ -558,7 +560,7 @@ def measure_gainimage(data_cube, mincounts=30, phlow=1, phhigh=31):
     """
 
     # Suppress certain pharanges
-    for i in range(0, phlow+1) + range(phhigh, len(data_cube) ):
+    for i in list(range(0, phlow+1)) + list(range(phhigh, len(data_cube))):
         data_cube[i] = 0
 
     counts_im = np.sum(data_cube, axis=0)
@@ -571,7 +573,7 @@ def measure_gainimage(data_cube, mincounts=30, phlow=1, phhigh=31):
     if not len(index_search):
         return out_gain, out_counts, out_std
 
-    for y, x in itertools.izip(*index_search):
+    for y, x in zip(*index_search):
         dist = data_cube[:, y, x]
 
         g, fit_g, success = fit_distribution(dist)
@@ -663,7 +665,7 @@ def write_and_pull_gainmap(cci_name):
     if not len(index[0]):
         yield info
     else:
-        for y, x in itertools.izip(*index):
+        for y, x in zip(*index):
             info['gain'] = round(float(current.gain_image[y, x]), 3)
             info['counts'] = round(float(current.counts_image[y, x]), 3)
             info['std'] = round(float(current.std_image[y, x]), 3)
