@@ -174,7 +174,7 @@ class Headers(Base):
     apmpos = Column(String(20))
     aperxpos = Column(Float)
     aperypos = Column(Float)
-    aperture = Column(String(4))
+    aperture = Column(String(8))
     opt_elem = Column(String(7))
     shutter = Column(String(20))
     extended = Column(String(20))
