@@ -4,22 +4,15 @@ import numpy as np
 from astropy.io import fits
 
 from ..constants import MONITOR_DIR
-from ...cci import findbad, gainmap, cci_read
+from ...cci import findbad, gainmap
 
 PRECISION = sys.float_info.epsilon
 ONES_FILE =  os.path.join(MONITOR_DIR, 'tests/ones_cci.fits')
 
 #------------------------------------------------------------------
 
-def test_cci_read():
-    data = cci_read.read( ONES_FILE ).reshape( (32,1024,16384) )
-    for plane in data:
-        assert plane.sum() == 16384*1024, "CCI array not read in correctly"
-
-#------------------------------------------------------------------
-
 def test_CCI_object():
-    cci = gainmap.CCI_object( ONES_FILE )
+    cci = gainmap.CCI(ONES_FILE)
 
     ONES_TOTAL = 32*1024*16384
 
@@ -53,7 +46,7 @@ def test_rename():
     hdu_out[0].header['DETHV'] = '167'
     hdu_out.writeto(test_data, clobber=True)
 
-    assert gainmap.rename(test_data, write=False) == 'l_2013007232606_01_167_cci.fits.gz', \
+    assert gainmap.rename(test_data, 'print') == 'l_2013007232606_01_167_cci.fits.gz', \
         'Renaming not functioning properly'
 
 
