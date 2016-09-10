@@ -273,17 +273,18 @@ def monitor():
     """
 
     print('Making ALL Gain Maps')
-    make_all_gainmaps()
-    '''
+    ###make_all_gainmaps()
+
     print('phaimages')
-    make_phaimages()
+    ###make_phaimages()
 
     print('Looking at Time Trends')
     time_trends()
 
     print('Making Gain Sag Table')
-    gsag_main()
+    ###gsag_main()
 
+    '''
     #-- quicklooks
     all_gainmaps = glob.glob(os.path.join(MONITOR_DIR, '*gainmap*.fits'))
     all_gainmaps.sort()
@@ -293,16 +294,16 @@ def monitor():
     #--
 
     make_cumulative_plots()
-
-    message = 'CCI Monitor run for %s complete.  \n'% (TIMESTAMP)
-    message += '\n'
-    message += 'Calibration with CalCOS has finished \n '
-    message += 'Check over the gsagtab comparison log and see if we need to deliver this file.\n\n\n'
-    message += 'Sincerely,\n %s'% (__file__)
-
-    move_to_web()
-    send_email(subject='CCI Monitor complete', message=message)
     '''
+    #message = 'CCI Monitor run for %s complete.  \n'% (TIMESTAMP)
+    #message += '\n'
+    #message += 'Calibration with CalCOS has finished \n '
+    #message += 'Check over the gsagtab comparison log and see if we need to deliver this file.\n\n\n'
+    #message += 'Sincerely,\n %s'% (__file__)
+
+    #move_to_web()
+    #send_email(subject='CCI Monitor complete', message=message)
+
 #-------------------------------------------------------------------------------
 def move_to_web():
     """Copy output products to web-facing directories.

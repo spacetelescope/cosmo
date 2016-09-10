@@ -386,4 +386,37 @@ class Acqs(Base):
     target = Column(String(50))
 
     file_id = Column(Integer, ForeignKey('files.id'))
+
+#-------------------------------------------------------------------------------
+
+class Flagged(Base):
+    __tablename__ = 'flagged'
+
+    id = Column(BigInteger, primary_key=True)
+
+    mjd = Column(Float)
+    segment = Column(String(4))
+    dethv = Column(Integer)
+    x = Column(Integer)
+    y = Column(Integer)
+
+    __table_args__ = (Index('coord', 'x', 'y', unique=False), )
+
+#-------------------------------------------------------------------------------
+
+class GainTrends(Base):
+    __tablename__ = 'gain_trends'
+
+    id = Column(BigInteger, primary_key=True)
+
+    mjd = Column(Float)
+    segment = Column(String(4))
+    dethv = Column(Integer)
+    x = Column(Integer)
+    y = Column(Integer)
+    slope = Column(Float)
+    intercept = Column(Float)
+
+    __table_args__ = (Index('coord', 'x', 'y', unique=False), )
+
 #-------------------------------------------------------------------------------

@@ -1,20 +1,6 @@
 from __future__ import absolute_import, print_function
-"""Routine to monitor the modal gain in each pixel as a
-function of time.  Uses COS Cumulative Image (CCI) files
-to produce a modal gain map for each time period.  Modal gain
-maps for each period are collated to monitor the progress of
-each pixel(superpixel) with time.  Pixels that drop below
-a threshold value are flagged and collected into a
-gain sag table reference file (gsagtab).
 
-The PHA modal gain threshold is set by global variable MODAL_GAIN_LIMIT.
-Allowing the modal gain of a distribution to come within 1 gain bin
-of the threshold results in ~8% loss of flux.  Within
-2 gain bins, ~4%
-3 gain bins, ~2%
-4 gain bins, ~1%
-
-However, due to the column summing, a 4% loss in a region does not appear to be so in the extracted spectrum.
+"""
 """
 
 __author__ = 'Justin Ely'
@@ -24,15 +10,20 @@ __status__ = 'Active'
 
 import os
 import glob
-from sqlalchemy.engine import create_engine
-from ..database.db_tables import open_settings, load_connection
 
+from astropy.io import fits
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import multiprocessing as mp
+from sqlalchemy.engine import create_engine
+from sqlalchemy import and_, distinct
+import scipy
+from scipy.optimize import leastsq, newton, curve_fit
 
 from .constants import Y_BINNING, X_BINNING, MONITOR_DIR
+from ..database.db_tables import open_settings, load_connection
+from ..database.db_tables import Flagged, GainTrends, Gain
 
 #-------------------------------------------------------------------------------
 
@@ -47,33 +38,66 @@ def time_trends():
 
     SETTINGS = open_settings()
     Session, engine = load_connection(SETTINGS['connection_string'])
+    session = Session()
 
-    connection = engine.connect()
+    #-- Clean out previous results from flagged table
+    session.query(Flagged).delete()
 
-    try:
-        connection.execute("""CREATE TABLE flagged (mjd real,
-                                                    segment text,
-                                                    dethv int,
-                                                    x int,
-                                                    y int);""")
-        connection.execute("""CREATE INDEX position ON flagged (x,y);""")
-    except:
-        connection.execute("""DROP TABLE flagged;""")
-        connection.execute("""CREATE TABLE flagged (mjd real,
-                                                    segment text,
-                                                    dethv int,
-                                                    x int,
-                                                    y int);""")
-        connection.execute("""CREATE INDEX position ON flagged (x,y);""")
+    #-- Clean out previous results from gain trends table
+    session.query(GainTrends).delete()
 
-    result = connection.execute("""SELECT DISTINCT segment,dethv FROM gain WHERE segment!= 'None' and dethv!= 'None'""")
+    #-- Force commit.
+    session.commit()
+    session.close()
+    engine.dispose()
 
-    connection.close()
 
-    all_combos = [(row['segment'], row['dethv']) for row in result]
-    print(all_combos)
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+    session = Session()
+
     pool = mp.Pool(processes=10)
+    print("Finding bad pixels for all HV/Segments.")
+    print("This will take a while, so go make yourself some tea or something.")
+    all_combos = [(row.segment, row.dethv) for row in session.query(Gain).filter(and_(Gain.segment!='None',
+                                                                                      Gain.dethv!='None'))]
+
+
+    #-- Distinct call above not working apparently.
+    all_combos = list(set(all_combos))
+
+    print(all_combos)
     pool.map(find_flagged, all_combos)
+
+    print("Measuring gain degredation slopes.")
+    print("this doesn't take quite so much time...i think.")
+    pool.map(measure_slopes, all_combos)
+
+    #-- write projection files
+    for (segment, dethv) in all_combos:
+        print("Outputing projection files for {} {}".format(segment, dethv))
+        results = session.query(GainTrends).filter(and_(GainTrends.segment==segment,
+                                                         GainTrends.dethv==dethv))
+
+        slope_image = np.zeros((1024, 16384))
+        intercept_image = np.zeros((1024, 16384))
+        bad_image = np.zeros((1024, 16384))
+
+        for row in results:
+            print(row)
+            y = row.y
+            x = row.x
+            slope_image[y:y+Y_BINNING, x:x+X_BINNING] = row.slope
+            intercept_image[y:y+Y_BINNING, x:x+X_BINNING] = row.intercept
+
+            bad_image[y:y+Y_BINNING, x:x+X_BINNING] = row.mjd
+
+        if slope_image.any():
+            write_projection(slope_image, intercept_image, bad_image, segment, dethv)
+
+    session.commit()
+    session.close()
+    engine.dispose()
 
 #-------------------------------------------------------------------------------
 
@@ -83,19 +107,15 @@ def find_flagged(args):
     SETTINGS = open_settings()
     Session, engine = load_connection(SETTINGS['connection_string'])
 
-    connection = engine.connect()
+    session = Session()
 
     print("{}, {}: Searching for pixels below 3.".format(segment, hvlevel))
-    results = connection.execute("""SELECT DISTINCT x,y
-                                           FROM gain
-                                           WHERE segment='%s'
-                                                 AND dethv='%s'
-                                                 AND gain<=3
-                                                 AND counts>=30;""" % (segment,
-                                                                       hvlevel))
-
-    #-- refine to active area
-    all_coords = [(row['x'], row['y']) for row in results]
+    all_coords = [(row.x, row.y) for row in session.query(Gain).distinct(Gain.x, Gain.y).filter(and_(Gain.segment==segment,
+                                                                                                     Gain.dethv==hvlevel,
+                                                                                                     Gain.gain<=3,
+                                                                                                     Gain.counts>=30))]
+    #-- again, Distinct not working or not being used correctly
+    all_coords = list(set(all_coords))
     print("{}, {}: found {} superpixels below 3.".format(segment,
                                                          hvlevel,
                                                          len(all_coords)))
@@ -114,23 +134,21 @@ def find_flagged(args):
             #-- Nothing bad before 2010,
             #-- and there are some weird gainmaps back there
             #-- filtering out for now.
-            results = connection.execute("""SELECT gain,counts,std,expstart
-                                                FROM gain
-                                                    WHERE segment='%s'
-                                                        AND dethv='%s'
-                                                        AND x='%s'
-                                                        AND y='%s'
-                                                        AND expstart>55197;""" % (segment, hvlevel, x, y))
+            results = session.query(Gain).filter(and_(Gain.segment==segment,
+                                                      Gain.dethv==hvlevel,
+                                                      Gain.x==x,
+                                                      Gain.y==y,
+                                                      Gain.expstart>55197))
 
             all_gain = []
             all_counts = []
             all_std = []
             all_expstart = []
             for row in results:
-                all_gain.append(row['gain'])
-                all_counts.append(row['counts'])
-                all_std.append(row['std'])
-                all_expstart.append(row['expstart'])
+                all_gain.append(row.gain)
+                all_counts.append(row.counts)
+                all_std.append(row.std)
+                all_expstart.append(row.expstart)
 
             all_gain = np.array(all_gain)
             all_expstart = np.array(all_expstart)
@@ -162,24 +180,118 @@ def find_flagged(args):
                 plt.close(fig)
                 '''
                 MJD_bad = round(MJD_bad, 5)
-                print("inserting {} {} {} {} {}".format(segment,
-                                                        hvlevel,
-                                                        x*X_BINNING,
-                                                        y*Y_BINNING,
-                                                        MJD_bad))
-                connection.execute("""INSERT INTO flagged VALUES ('{}','{}','{}','{}','{}');""".format(MJD_bad,
-                                                                                                       segment,
-                                                                                                       hvlevel,
-                                                                                                       x,
-                                                                                                       y))
+                session.add(Flagged(mjd=MJD_bad,
+                                    segment=segment,
+                                    dethv=hvlevel,
+                                    x=x,
+                                    y=y))
+
+    session.commit()
+    session.close()
+    engine.dispose()
+
+#-------------------------------------------------------------------------------
+
+def measure_slopes(args):
+    segment, hvlevel = args
+
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
+    session = Session()
+
+
+    print("{}, {}: Measuring gain degredation slopes.".format(segment, hvlevel))
+
+    all_coords = [(row.x, row.y) for row in session.query(Gain).distinct(Gain.x, Gain.y).filter(and_(Gain.segment==segment,
+                                                                                                     Gain.dethv==hvlevel))]
+
+    #-- once more, distinct error
+    all_coords = list(set(all_coords))
+    for x, y in all_coords:
+
+        #--filter above and below possible spectral locations
+        if (y > 600//Y_BINNING) or (y < 400//Y_BINNING):
+            continue
+
+        #-- Nothing bad before 2010,
+        #-- and there are some weird gainmaps back there
+        #-- filtering out for now.
+        results = session.query(Gain).filter(and_(Gain.segment==segment,
+                                                  Gain.dethv==hvlevel,
+                                                  Gain.x==x,
+                                                  Gain.y==y,
+                                                  Gain.gain>0,
+                                                  Gain.expstart>55197))
+
+        all_gain = []
+        all_counts = []
+        all_expstart = []
+        for row in results:
+            all_gain.append(row.gain)
+            all_counts.append(row.counts)
+            all_expstart.append(row.expstart)
+
+        all_gain = np.array(all_gain)
+        all_expstart = np.array(all_expstart)
+
+        if not len(all_gain) > 5:
+            continue
+
+        sorted_index = all_gain.argsort()
+        all_gain = all_gain[sorted_index]
+        all_expstart = all_expstart[sorted_index]
+
+
+        fit, parameters, success = time_fitting(all_expstart, all_gain)
+
+        if success:
+            intercept = parameters[1]
+            slope = parameters[0]
+
+            f = lambda x, a, b: a * x + b - 3
+            fprime = lambda x, a, b: a
+
+            try:
+                date_bad = newton(f, all_gain[-1], fprime, args=tuple(parameters), tol=1e-5, maxiter=1000)
+            except RuntimeError:
+                date_bad = 0
+
+
+            print(date_bad, segment, hvlevel, x, y, slope, intercept)
+            session.add(GainTrends(mjd=round(date_bad, 5),
+                                   segment=segment,
+                                   dethv=hvlevel,
+                                   x=x,
+                                   y=y,
+                                   slope=round(slope, 5),
+                                   intercept=round(intercept, 5)))
+
+    session.commit()
+    session.close()
+    engine.dispose()
 
 #-------------------------------------------------------------------------------
 
 def check_rapid_changes(x_values, y_values):
-    """Check for rapid changes in the values.
+    """Check for rapid changes in gain values.
 
-    An email will be sent if any rapid dip or jump is seen.
+    Jumps of 5 PHA values within 28 days (~1 month) are considered severe and
+    their MJD values will be returned.
+
+    Parameters
+    ----------
+    x_values : np.ndarray
+        MJD values of gain measurements
+    y_values : np.ndarray
+        gain measurements
+
+    Returns
+    -------
+    jumps : dates of significant jumps
+
     """
+
     gain_thresh = 5
     mjd_thresh = 28
     #Set initial values at ridiculous numbers
@@ -197,5 +309,99 @@ def check_rapid_changes(x_values, y_values):
         previous_mjd = mjd
 
     return jumps
+
+#-------------------------------------------------------------------------------
+
+def write_projection(slope_image, intercept_image, bad_image, segment, dethv):
+    """Writs a fits file with information useful for post-monitoring analysis.
+
+    Parameters
+    ----------
+    slope_image : np.ndarray
+        2D image of linear gain degredation slopes
+    intercept_image : np.ndarray
+        2D image of intercepts for the linear gain degredations
+    bad_image : np.ndarray
+        2D image of the extrapolated date where the gain will drop below 3
+    segment : str
+        'FUVA' or 'FUVB', COS detector segment of the measurements
+    dethv : int
+        Detector high-voltage setting of the measurements
+
+    Returns
+    -------
+        None
+
+    Outputs
+    -------
+        FITS file with the saved array data.
+    """
+
+    print('Writing projection file')
+    hdu_out = fits.HDUList(fits.PrimaryHDU())
+    hdu_out[0].header.update('TELESCOP', 'HST')
+    hdu_out[0].header.update('INSTRUME', 'COS')
+    hdu_out[0].header.update('DETECTOR', 'FUV')
+    hdu_out[0].header.update('OPT_ELEM', 'ANY')
+    hdu_out[0].header.update('FILETYPE', 'PROJ_BAD')
+    hdu_out[0].header.update('DETHV', dethv)
+
+    hdu_out[0].header.update('SEGMENT', segment)
+
+    #---Ext 1
+    hdu_out.append(fits.ImageHDU(data=bad_image))
+    hdu_out[1].header.update('EXTNAME', 'PROJBAD')
+
+    #---Ext 2
+    hdu_out.append(fits.ImageHDU(data=slope_image))
+    hdu_out[2].header.update('EXTNAME', 'SLOPE')
+
+    #---Ext 3
+    hdu_out.append(fits.ImageHDU(data=intercept_image))
+    hdu_out[3].header.update('EXTNAME', 'INTERCEPT')
+
+    #---Writeout
+    hdu_out.writeto(MONITOR_DIR+'proj_bad_{}_{}.fits'.format(segment, dethv),clobber=True)
+    hdu_out.close()
+
+#-------------------------------------------------------------------------------
+
+def time_fitting(x_fit, y_fit):
+    """Fit a linear relation to the x_fit and y_fit parameters
+
+    Parameters
+    ----------
+    x_fit : np.ndarray
+        x-values to fit
+    y_fit : np.ndarray
+        y-values to fit
+
+    Returns
+    -------
+    fit, parameters, success : tuple
+        fit to the values, fit parameters, boolean-success
+    """
+
+    x_fit = np.array(x_fit)
+    y_fit = np.array(y_fit)
+
+    ###First fit iteration and remove outliers
+    POLY_FIT_ORDER = 1
+
+    slope, intercept = scipy.polyfit(x_fit, y_fit, POLY_FIT_ORDER)
+    fit = scipy.polyval((slope, intercept), x_fit)
+    fit_sigma = fit.std()
+    include_index = np.where(np.abs(fit-y_fit) < 1.5*fit_sigma)[0]
+
+    if len(include_index) < 4:
+        return None, None, False
+
+    x_fit_clipped = x_fit[include_index]
+    y_fit_clipped = y_fit[include_index]
+
+    parameters = scipy.polyfit(x_fit_clipped, y_fit_clipped, POLY_FIT_ORDER)
+    fit = scipy.polyval(parameters, x_fit)
+
+    return fit, parameters, True
 
 #-------------------------------------------------------------------------------

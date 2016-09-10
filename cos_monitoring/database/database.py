@@ -698,6 +698,9 @@ def clear_all_databases(SETTINGS, nuke=False):
 
 def do_all():
     print(SETTINGS)
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
     Base.metadata.create_all(engine)
     insert_files(**SETTINGS)
     populate_primary_headers(SETTINGS['num_cpu'])
@@ -713,10 +716,16 @@ def do_all():
 
 def run_all_monitors():
     print('RUNNING MONITORS')
-    dark_monitor(SETTINGS['monitor_location'])
+    #-- make sure all tables are present
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+
+    Base.metadata.create_all(engine)
+
+    #dark_monitor(SETTINGS['monitor_location'])
     cci_monitor()
-    stim_monitor()
-    osm_monitor()
+    #stim_monitor()
+    #osm_monitor()
 
 #-------------------------------------------------------------------------------
 
