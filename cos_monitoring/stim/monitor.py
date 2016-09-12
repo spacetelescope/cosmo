@@ -30,11 +30,6 @@ from ..database.db_tables import open_settings, load_connection
 from ..utils import remove_if_there
 
 #-------------------------------------------------------------------------------
-#--------------------Constants--------------------------------------------------
-
-brf_file = os.path.join(os.environ['lref'], 's7g1700el_brf.fits')
-
-#-------------------------------------------------------------------------------
 
 def find_center(data):
     """ Returns (height, x, y, width_x, width_y)
@@ -104,7 +99,12 @@ def find_stims(image, segment, stim, brf_file):
 
 #-------------------------------------------------------------------------------
 
-def locate_stims(fits_file, start=0, increment=None):
+def locate_stims(fits_file, start=0, increment=None, brf_file=None):
+
+    ### change this to pull brf file from the header if not specified
+    if not brf_file:
+        brf_file = os.path.join(os.environ['lref'], 's7g1700el_brf.fits')
+
     DAYS_PER_SECOND = 1. / 60. / 60. / 24.
 
     file_path, file_name = os.path.split(fits_file)
@@ -337,6 +337,8 @@ def make_plots(out_dir, connection_string):
     """
 
     plt.ioff()
+
+    brf_file = os.path.join(os.environ['lref'], 's7g1700el_brf.fits')
 
     brf = fits.getdata(brf_file, 1)
 
