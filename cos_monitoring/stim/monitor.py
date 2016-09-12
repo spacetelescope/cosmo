@@ -27,16 +27,12 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 from ..database.db_tables import open_settings, load_connection
+from ..utils import remove_if_there
 
 #-------------------------------------------------------------------------------
 #--------------------Constants--------------------------------------------------
 
-DATA_DIR = '/smov/cos/Data/'
-MONITOR_DIR = '/grp/hst/cos/Monitors/Stim/'
-WEB_DIR = '/grp/webpages/COS/stim/'
-
-brf_file = '/grp/hst/cdbs/lref/s7g1700el_brf.fits'
-
+brf_file = os.path.join(os.environ['lref'], 's7g1700el_brf.fits')
 
 #-------------------------------------------------------------------------------
 
@@ -218,7 +214,7 @@ def find_missing():
 
 #-------------------------------------------------------------------------------
 
-def check_individual():
+def check_individual(out_dir, connection_string):
     """Run tests on each individual datasets.
 
     Currently checks if any coordinate deviates from the mean
@@ -229,8 +225,7 @@ def check_individual():
     print('Checking individual datasets')
     print('#--------------------------#')
 
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    Session, engine = load_connection(connection_string)
 
     query = """SELECT headers.rootname,
                       headers.segment,
@@ -255,7 +250,7 @@ def check_individual():
         data.append(row.values())
 
     t = Table(rows=data, names=keys)
-    t.write(os.path.join(MONITOR_DIR, "STIM_problem_rootnames.txt"), delimiter='|', format='ascii.fixed_width')
+    t.write(os.path.join(out_dir, "STIM_problem_rootnames.txt"), delimiter='|', format='ascii.fixed_width')
 
 #-------------------------------------------------------------------------------
 
@@ -270,15 +265,24 @@ def stim_monitor():
 
     """
 
+    settings = open_settings()
+
+    webpage_dir = os.path.join(settings['webpage_location'], 'stim')
+    monitor_dir = os.path.join(settings['monitor_location'], 'Stims')
+
+    for place in [webpage_dir, monitor_dir]:
+        if not os.path.exists(place):
+            os.makedirs(place)
+
     missing_obs, missing_dates = find_missing()
     send_email(missing_obs, missing_dates)
 
     print('Making Plots')
-    make_plots()
+    make_plots(monitor_dir, settings['connection_string'])
 
     print('Moving to web')
-    move_to_web()
-    check_individual()
+    move_to_web(monitor_dir, webpage_dir)
+    check_individual(monitor_dir, settings['connection_string'])
 
 #-------------------------------------------------------------------------------
 
@@ -318,23 +322,25 @@ def send_email(missing_obs, missing_dates):
     msg['To'] = recipients
 
     msg.attach(MIMEText(message))
-    s = smtplib.SMTP(svr_addr)
-    s.sendmail(from_addr, recipients, msg.as_string())
-    s.quit()
+    try:
+        s = smtplib.SMTP(svr_addr)
+        s.sendmail(from_addr, recipients, msg.as_string())
+        s.quit()
+    except:
+        print("Cannot send email - perhaps you're not on the internal network?")
 
 #-------------------------------------------------------------------------------
 
-def make_plots():
+def make_plots(out_dir, connection_string):
     """Make the overall STIM monitor plots.
-    They will all be output to MONITOR_DIR.
+    They will all be output to out_dir.
     """
 
     plt.ioff()
 
     brf = fits.getdata(brf_file, 1)
 
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    Session, engine = load_connection(connection_string)
 
     print('#-------------------------------#')
     print('Plots of STIM (X,Y) positions')
@@ -488,10 +494,10 @@ def make_plots():
     plt.ylabel('RAWY')
 
     plt.draw()
-    os.remove(os.path.join(MONITOR_DIR, 'STIM_locations.png'))
-    plt.savefig(os.path.join(MONITOR_DIR, 'STIM_locations.png'))
+    remove_if_there(os.path.join(out_dir, 'STIM_locations.png'))
+    plt.savefig(os.path.join(out_dir, 'STIM_locations.png'))
     plt.close(1)
-    os.chmod(os.path.join(MONITOR_DIR, 'STIM_locations.png'),0o766)
+    os.chmod(os.path.join(out_dir, 'STIM_locations.png'),0o766)
 
     print('#-------------------------------#')
     print('Stim location plots')
@@ -525,12 +531,12 @@ def make_plots():
             coords = [line[1] for line in data]
             ax.plot(times, coords, 'o')
 
-        os.remove(os.path.join(MONITOR_DIR, 'STIM_locations_vs_time_%s.png' %
+        remove_if_there(os.path.join(out_dir, 'STIM_locations_vs_time_%s.png' %
                                                                     (segment)))
-        fig.savefig(os.path.join(MONITOR_DIR, 'STIM_locations_vs_time_%s.png' %
+        fig.savefig(os.path.join(out_dir, 'STIM_locations_vs_time_%s.png' %
                                                                     (segment)))
         plt.close(fig)
-        os.chmod(os.path.join(MONITOR_DIR, 'STIM_locations_vs_time_%s.png' %
+        os.chmod(os.path.join(out_dir, 'STIM_locations_vs_time_%s.png' %
                                                                     (segment)),0o766)
 
 
@@ -603,13 +609,13 @@ def make_plots():
         ax4.plot(times, midpoint, 'o')
         ax4.set_xlabel('MJD')
         ax4.set_ylabel('Midpoint Y')
-        os.remove(os.path.join(MONITOR_DIR, 'STIM_stretch_vs_time_%s.png' %
+        remove_if_there(os.path.join(out_dir, 'STIM_stretch_vs_time_%s.png' %
                      (segment)))
         fig.savefig(
-            os.path.join(MONITOR_DIR, 'STIM_stretch_vs_time_%s.png' %
+            os.path.join(out_dir, 'STIM_stretch_vs_time_%s.png' %
                          (segment)))
         plt.close(fig)
-        os.chmod(os.path.join(MONITOR_DIR, 'STIM_stretch_vs_time_%s.png' %
+        os.chmod(os.path.join(out_dir, 'STIM_stretch_vs_time_%s.png' %
                      (segment)),0o766)
 
     print('#------------------------#')
@@ -715,7 +721,7 @@ def make_plots():
     ax.set_title('Segment B: Y vs Y')
 
     #fig.colorbar(colors)
-    fig.savefig(os.path.join(MONITOR_DIR, 'STIM_coord_relations_density.png'))
+    fig.savefig(os.path.join(out_dir, 'STIM_coord_relations_density.png'))
     plt.close(fig)
 
 
@@ -775,7 +781,7 @@ def make_plots():
     cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
     cbar_ax.set_title('MJD')
     fig.colorbar(colors, cax=cbar_ax)
-    fig.savefig(os.path.join(MONITOR_DIR, 'STIM_coord_relations_time.png'))
+    fig.savefig(os.path.join(out_dir, 'STIM_coord_relations_time.png'))
     plt.close(fig)
     """
 
@@ -791,18 +797,18 @@ def trend(val1, val2):
 
 #-------------------------------------------------------------------------------
 
-def move_to_web():
+def move_to_web(data_dir, web_dir):
     """Copy output products to web-facing directories.
 
-    Simple function to move created plots in the MONITOR_DIR
-    to the WEB_DIR.  Will move all files that match the string
+    Simple function to move created plots in the data_dir
+    to the web_dir.  Will move all files that match the string
     STIM*.p* and then change permissions to 777.
     """
 
     print('Moving plots to web')
-    for item in glob.glob(os.path.join(MONITOR_DIR, 'STIM*.p*')):
-        os.remove(os.path.join(WEB_DIR,os.path.basename(item)))
-        shutil.copy(item, WEB_DIR)
-        os.chmod(os.path.join(WEB_DIR, os.path.basename(item)), 0o777)
+    for item in glob.glob(os.path.join(data_dir, 'STIM*.p*')):
+        remove_if_there(os.path.join(web_dir, os.path.basename(item)))
+        shutil.copy(item, web_dir)
+        os.chmod(os.path.join(web_dir, os.path.basename(item)), 0o777)
 
 #-------------------------------------------------------------------------------

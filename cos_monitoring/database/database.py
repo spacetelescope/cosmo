@@ -1,3 +1,12 @@
+""" Module to populate and interact with the COSMoS database.
+
+.. warning ::
+    The functions contained in this module require a configuration
+    file to run.  This file gives the connectring string into the
+    database, and is needed to run.
+
+"""
+
 from __future__ import print_function, absolute_import, division
 
 from astropy.io import fits
@@ -11,6 +20,7 @@ import multiprocessing as mp
 import types
 import argparse
 import pprint
+import inspect
 
 from ..cci.gainmap import make_all_hv_maps
 from ..cci.gainmap import write_and_pull_gainmap
@@ -27,6 +37,29 @@ from .db_tables import load_connection, open_settings
 from .db_tables import Base
 from .db_tables import Files, Headers
 from .db_tables import Lampflash, Stims, Darks, sptkeys, Data, Gain, Acqs
+
+#-------------------------------------------------------------------------------
+
+def db_connect(child):
+    """Decorator to wrap functions that need a db connection.
+
+    TESTING
+
+    """
+
+    def wrapper():
+        settings = open_settings()
+
+        Session, engine = load_connection(kwargs['settings']['connection_string'])
+        session = Session()
+
+        child(settings=settings, engine=engine, session=session)
+
+        session.commit()
+        session.close()
+        engine.dispose()
+
+    return wrapper
 
 #-------------------------------------------------------------------------------
 
@@ -99,12 +132,8 @@ def insert_with_yield(filename, table, function, foreign_key=None):
             session.add(table(**row))
     except (IOError, ValueError) as e:
         #-- Handle missing files
-        print(e.message)
+        print(e)
         session.add(table(file_id=foreign_key))
-
-        session.commit()
-        session.close()
-        engine.dispose()
 
     session.commit()
     session.close()
@@ -298,9 +327,9 @@ def populate_spt(num_cpu=1):
 def populate_data(num_cpu=1):
     print("adding to data")
 
-    session = Session()
     SETTINGS = open_settings()
     Session, engine = load_connection(SETTINGS['connection_string'])
+    session = Session()
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
@@ -691,15 +720,15 @@ def clear_all_databases(SETTINGS, nuke=False):
                 print("Cannot delete {}".format(table.name))
                 pass
     else:
-        print('TO DELETE DB YOU NEED TO SET NUKE FLAG')
-        print('EXITING')
+        sys.exit('TO DELETE DB YOU NEED TO SET NUKE FLAG, EXITING')
 
 #-------------------------------------------------------------------------------
 
 def do_all():
-    print(SETTINGS)
     SETTINGS = open_settings()
     Session, engine = load_connection(SETTINGS['connection_string'])
+
+    print(SETTINGS)
 
     Base.metadata.create_all(engine)
     insert_files(**SETTINGS)
@@ -722,21 +751,28 @@ def run_all_monitors():
 
     Base.metadata.create_all(engine)
 
-    #dark_monitor(SETTINGS['monitor_location'])
+    dark_monitor(SETTINGS['monitor_location'])
     cci_monitor()
-    #stim_monitor()
-    #osm_monitor()
+    stim_monitor()
+    osm_monitor()
 
 #-------------------------------------------------------------------------------
 
-def clean_slate(config_file=None):
+### @db_connect
+def clean_slate(settings=None, engine=None, session=None):
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-n",'--nuke',
-                        help="Parser argument to nuke DB", default=False)
+    parser.add_argument("-n",
+                        '--nuke',
+                        default=False,
+                        help="Parser argument to nuke DB")
+
     args = parser.parse_args()
 
-    clear_all_databases(SETTINGS, args.nuke)
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
+
+    clear_all_databases(settings, args.nuke)
     Base.metadata.drop_all(engine, checkfirst=False)
     Base.metadata.create_all(engine)
 
@@ -745,6 +781,3 @@ def clean_slate(config_file=None):
     run_all_monitors()
 
 #-------------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    clean_slate('~/configure.yaml')

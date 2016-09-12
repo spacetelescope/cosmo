@@ -382,7 +382,7 @@ class Acqs(Base):
     rootname = Column(String(9))
     obset_id = Column(String(7))
     linenum = Column(String(10))
-    exptype = Column(String(10))
+    exptype = Column(String(12))
     target = Column(String(50))
 
     file_id = Column(Integer, ForeignKey('files.id'))

@@ -45,7 +45,7 @@ from .constants import *  ## I know this is bad, but shut up.
 #from db_interface import session, engine, Gain
 
 if sys.version_info.major == 2:
-    import itertools.izip as zip
+    from itertools import izip as zip
 
 #------------------------------------------------------------
 
