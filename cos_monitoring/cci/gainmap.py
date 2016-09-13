@@ -23,6 +23,7 @@ __maintainer__ = 'Justin Ely'
 __email__ = 'ely@stsci.edu'
 __status__ = 'Active'
 
+import argparse
 import os
 import shutil
 import sys
@@ -442,16 +443,16 @@ def make_all_hv_maps():
 
 #-------------------------------------------------------------------------------
 
-def make_total_gain( segment, start_mjd=55055, end_mjd=70000, min_hv=163, max_hv=175, reverse=False ):
+def make_total_gain(gainmap_dir=None, segment='FUV', start_mjd=55055, end_mjd=70000, min_hv=163, max_hv=175, reverse=False):
     if segment == 'FUVA':
-        ending = '*00_???_cci_gainmap.fits'
+        search_string = 'l_*_01_???_cci_gainmap.fits'
     elif segment == 'FUVB':
-        ending = '*01_???_cci_gainmap.fits'
+        search_string = 'l_*_01_???_cci_gainmap.fits'
 
-    all_datasets = [ item for item in glob.glob( os.path.join( MONITOR_DIR, ending) ) ]
+    all_datasets = [item for item in glob.glob(os.path.join(gainmap_dir, search_string))]
     all_datasets.sort()
 
-    print(all_datasets)
+    print("Combining {} datasets".format(len(all_datasets)))
 
     if reverse:
         all_datasets = all_datasets[::-1]
@@ -477,31 +478,82 @@ def make_total_gain( segment, start_mjd=55055, end_mjd=70000, min_hv=163, max_hv
         out_data[index] = cci_data[index]
         out_data[index_both] = mean_data[index_both]
 
-    return enlarge(out_data, x=X_BINNING, y=Y_BINNING )
+    return enlarge(out_data, x=X_BINNING, y=Y_BINNING)
 
 #------------------------------------------------------------
 
-def make_all_gainmaps(processors=1):
-    """ Main driver for monitoring program.
+def make_all_gainmaps_entry():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f",
+                        '--filename',
+                        type=str,
+                        default='total_gain.fits',
+                        help="Filename to write gain file to")
+
+    parser.add_argument("-d",
+                        '--dir',
+                        type=str,
+                        default='/grp/hst/cos/Monitors/CCI/',
+                        help="directory containing the gainmaps")
+
+    parser.add_argument("-s",
+                        '--start',
+                        type=float,
+                        default=55055.0,
+                        help="MJD of the first gainmap to include")
+
+    parser.add_argument("-e",
+                        '--end',
+                        type=float,
+                        default=70000,
+                        help="MJD of the last gainmap to include")
+
+    parser.add_argument('--hvmin',
+                        type=int,
+                        default=163,
+                        help="Minimum DETHVS of gainmaps to include")
+
+
+    parser.add_argument('--hvmax',
+                        type=int,
+                        default=175,
+                        help="Maximum DETHV of gainmaps to include.")
+
+
+    args = parser.parse_args()
+
+    print("Creating all gainmaps using:")
+    print(args)
+    make_all_gainmaps(filename=args.filename,
+                      gainmap_dir=args.dir,
+                      start_mjd=args.start,
+                      end_mjd=args.end,
+                      min_hv=args.hvmin,
+                      max_hv=args.hvmax)
+
+#------------------------------------------------------------
+
+def make_all_gainmaps(filename, gainmap_dir, start_mjd=55055, end_mjd=70000, min_hv=163, max_hv=175):
+    """
 
     """
 
     #add_cumulative_data(ending)
 
     hdu_out = pyfits.HDUList(pyfits.PrimaryHDU())
-    hdu_out.append(pyfits.ImageHDU(data=make_total_gain('FUVA', reverse=True)))
+    hdu_out.append(pyfits.ImageHDU(data=make_total_gain(gainmap_dir, 'FUVA', start_mjd, end_mjd, min_hv, max_hv, reverse=True)))
     hdu_out[1].header['EXTNAME'] = 'FUVAINIT'
-    hdu_out.append(pyfits.ImageHDU(data=make_total_gain('FUVB', reverse=True)))
+    hdu_out.append(pyfits.ImageHDU(data=make_total_gain(gainmap_dir, 'FUVB', start_mjd, end_mjd, min_hv, max_hv,  reverse=True)))
     hdu_out[2].header['EXTNAME'] = 'FUVBINIT'
-    hdu_out.append(pyfits.ImageHDU(data=make_total_gain('FUVA')))
+    hdu_out.append(pyfits.ImageHDU(data=make_total_gain(gainmap_dir, 'FUVA', start_mjd, end_mjd, min_hv, max_hv)))
     hdu_out[3].header['EXTNAME'] = 'FUVALAST'
-    hdu_out.append(pyfits.ImageHDU(data=make_total_gain('FUVB')))
+    hdu_out.append(pyfits.ImageHDU(data=make_total_gain(gainmap_dir, 'FUVB', start_mjd, end_mjd, min_hv, max_hv)))
     hdu_out[4].header['EXTNAME'] = 'FUVBLAST'
-    hdu_out.writeto(os.path.join(MONITOR_DIR, 'total_gain.fits'), clobber=True)
+    hdu_out.writeto(filename, clobber=True)
     hdu_out.close()
 
     print('Making ALL HV Maps')
-    make_all_hv_maps()
+    ###make_all_hv_maps()
 
 
 #------------------------------------------------------------

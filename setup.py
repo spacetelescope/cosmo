@@ -23,8 +23,8 @@ setup(
                                         'find_new_cos_data=cos_monitoring.retrieval.find_new_cos_data:compare_tables',
 					                    'cm_reports=cos_monitoring.database.report:query_all',
                                         'cm_delete=cos_monitoring.database.database:cm_delete',
-                                        'cm_describe=cos_monitoring.database.database:cm_describe'
-                                        ],
+                                        'cm_describe=cos_monitoring.database.database:cm_describe',
+                                        'cm_tot_gain=cos_monitoring.cci.gainmap:make_all_gainmaps_entry'],
     },
     install_requires = ['setuptools',
                         'numpy>=1.11.1',
