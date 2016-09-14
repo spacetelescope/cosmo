@@ -229,6 +229,7 @@ def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
 
     prop_dir = os.path.join(BASE_DIR, str(prop))
     if not os.path.exists(prop_dir):
+        os.chmod(BASE_DIR, 0755)
         os.mkdir(prop_dir)
     os.chmod(prop_dir, 0755)
     print("I am retrieving {0} dataset(s) for {1}".format(len(prop_dict[prop]),prop))
