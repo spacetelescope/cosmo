@@ -21,6 +21,7 @@ import pickle
 import os
 import yaml
 import pdb
+import argparse
 from sqlalchemy import text
 from subprocess import Popen, PIPE
 
@@ -113,8 +114,34 @@ def connect_dadsops():
     all_l = janky_connect(SETTINGS, query1) 
     all_mast_res = all_cos + all_l
     # Store results as dictionaries (we need dataset name and proposal ID).
-    all_mast = {row[0]:row[1] for row in all_mast_res if len(row[0]) == 9 or row[0].startswith("L_")}
-    
+    # Don't get Podfiles (LZ*)
+    all_mast = {row[0]:row[1] for row in all_mast_res if not row[0].startswith("LZ_")}
+    badfiles = []
+    for key,val in all_mast.items():
+        if val == "NULL":
+            if key.startswith("LF") or key.startswith("LN") or key.startswith("L_"):
+                all_mast[key] = "CCI"
+            elif len(key) == 9:
+                program_id = key[1:4]
+                query2 = "SELECT DISTINCT proposal_id FROM executed WHERE "\
+                "program_id='{0}'\ngo".format(program_id)
+                SETTINGS["database"] = "opus_rep"
+                prop = janky_connect(SETTINGS, query2)
+                if len(prop) == 0:
+                    badfiles.append(key)
+                else:
+                    all_mast[key] = prop[0]
+            else:
+                all_mast.pop(key, None)
+
+#    SETTINGS["database"] = "dadsops_rep"
+#    for item in badfiles:
+#        q = "SELECT DISTINCT ads_generation_date FROM archive_data_set_all WHERE ads_data_set_name = '{0}'\ngo".format(item)
+#        d = janky_connect(SETTINGS, q)
+#        import datetime
+#        mydate = datetime.datetime.strptime(d[0][:11],"%b %d %Y")
+#        if mydate > datetime.datetime(2009,05,30):
+#            print(item,d) 
     return all_mast
         
 #-----------------------------------------------------------------------------#
@@ -173,13 +200,15 @@ def compare_tables(pkl_it):
     # to retrieve them this way.
     # For most data, determine corresponding proposal ID. CCIs and some
     # odd files will have proposal ID = NULL though.
-    missing_props = [int(mast[x]) if mast[x] != "NULL" else "CCI" if x.startswith("L_") else mast[x] for x in missing_names]
+    missing_props = [int(mast[x]) if mast[x] not in ["CCI","NULL"] else mast[x] for x in missing_names]
     prop_keys = set(missing_props)
     prop_vals = [[] for x in xrange(len(prop_keys))]
     prop_dict = dict(zip(prop_keys, prop_vals))
     for i in xrange(len(missing_names)):
         prop_dict[missing_props[i]].append(missing_names[i])
 
+    for item in already_there:
+        prop_dict.pop(item, None)
     print("Data missing for {0} programs".format(len(prop_keys)))
     if pkl_it:
         pkl_file = "filestoretrieve.p"
@@ -188,6 +217,7 @@ def compare_tables(pkl_it):
         print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
         run_all_retrievals(pkl_file=pkl_file)
     else:
+        print("Retrieving data now...")
         run_all_retrievals(prop_dict=prop_dict)
 
 #-----------------------------------------------------------------------------#
