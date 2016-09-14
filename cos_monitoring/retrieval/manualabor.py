@@ -413,6 +413,7 @@ def work_laboriously(prl):
     # using glob is faster than using os.walk
     zipped = glob.glob(os.path.join(base_dir, "?????", "*raw*gz"))
     if zipped:
+        print("Unzipping mistakes")
         if prl:
             parallelize(unzip_mistakes, zipped)
         else:
@@ -422,6 +423,7 @@ def work_laboriously(prl):
                    glob.glob(os.path.join(base_dir, "?????", "*rawacq.fits"))
     unzipped_raws = only_one_seg(unzipped_raws_ab)
     if unzipped_raws:
+        print("Calibrating raw files")
         if prl:
             parallelize(make_csum, unzipped_raws)
         else:
@@ -429,20 +431,23 @@ def work_laboriously(prl):
 
     all_unzipped = glob.glob(os.path.join(base_dir, "?????", "*fits"))
     if all_unzipped:
+        print("Zipping uncomprssed files")
         if prl:
             parallelize(compress_files, all_unzipped)
         else:
             compress_files(all_unzipped)
 
+    print("Fixing permissions")
     fix_perm(base_dir)
     # permission determined by stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
     chmod_recurs(base_dir, 872)
 
+    print("Done!")
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParse()
+    parser = argparse.ArgumentParser()
     parser.add_argument("-p", dest="prl", action="store_true",
                         default=False, help="Parallellize functions")
     args = parser.parse_args()
