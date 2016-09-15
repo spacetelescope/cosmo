@@ -461,10 +461,10 @@ def make_total_gain(gainmap_dir=None, segment='FUV', start_mjd=55055, end_mjd=70
 
     for item in all_datasets:
         cci_hdu = pyfits.open(item)
-        if not cci_hdu[0].header['EXPSTART'] > start_mjd: continue
-        if not cci_hdu[0].header['EXPSTART'] < end_mjd: continue
-        if not cci_hdu[0].header['DETHV'] > min_hv: continue
-        if not cci_hdu[0].header['DETHV'] < max_hv: continue
+        if not cci_hdu[0].header['EXPSTART'] >= start_mjd: continue
+        if not cci_hdu[0].header['EXPSTART'] <= end_mjd: continue
+        if not cci_hdu[0].header['DETHV'] >= min_hv: continue
+        if not cci_hdu[0].header['DETHV'] <= max_hv: continue
         cci_data = cci_hdu['MOD_GAIN'].data
 
         dethv = cci_hdu[0].header['DETHV']
