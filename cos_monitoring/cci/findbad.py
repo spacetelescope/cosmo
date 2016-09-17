@@ -52,6 +52,7 @@ def time_trends():
     engine.dispose()
 
 
+
     SETTINGS = open_settings()
     Session, engine = load_connection(SETTINGS['connection_string'])
     session = Session()
@@ -62,9 +63,12 @@ def time_trends():
     all_combos = [(row.segment, row.dethv) for row in session.query(Gain).filter(and_(Gain.segment!='None',
                                                                                       Gain.dethv!='None'))]
 
-
     #-- Distinct call above not working apparently.
     all_combos = list(set(all_combos))
+
+    session.commit()
+    session.close()
+    engine.dispose()
 
     print(all_combos)
     pool.map(find_flagged, all_combos)
@@ -73,6 +77,10 @@ def time_trends():
     print("this doesn't take quite so much time...i think.")
     pool.map(measure_slopes, all_combos)
 
+
+    SETTINGS = open_settings()
+    Session, engine = load_connection(SETTINGS['connection_string'])
+    session = Session()
     #-- write projection files
     for (segment, dethv) in all_combos:
         print("Outputing projection files for {} {}".format(segment, dethv))
@@ -85,8 +93,8 @@ def time_trends():
 
         for row in results:
             print(row)
-            y = row.y
-            x = row.x
+            y = row.y * Y_BINNING
+            x = row.x * X_BINNING
             slope_image[y:y+Y_BINNING, x:x+X_BINNING] = row.slope
             intercept_image[y:y+Y_BINNING, x:x+X_BINNING] = row.intercept
 

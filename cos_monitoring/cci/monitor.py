@@ -272,17 +272,17 @@ def monitor():
     """ Main driver for monitoring program.
     """
 
-    print('Making ALL Gain Maps')
-    ###make_all_gainmaps()
+    #print('Making ALL Gain Maps')
+    #make_all_gainmaps()
 
-    print('phaimages')
-    ###make_phaimages()
+    #print('phaimages')
+    #make_phaimages()
 
     print('Looking at Time Trends')
     time_trends()
 
-    print('Making Gain Sag Table')
-    ###gsag_main()
+    #print('Making Gain Sag Table')
+    #gsag_main()
 
     '''
     #-- quicklooks
@@ -305,6 +305,7 @@ def monitor():
     #send_email(subject='CCI Monitor complete', message=message)
 
 #-------------------------------------------------------------------------------
+
 def move_to_web():
     """Copy output products to web-facing directories.
 
@@ -320,4 +321,5 @@ def move_to_web():
             os.remove(os.path.join(WEB_DIR,os.path.basename(item)))
         shutil.copy(item, WEB_DIR)
         os.chmod(os.path.join(WEB_DIR, os.path.basename(item)),0o766)
+
 #-------------------------------------------------------------------------------
