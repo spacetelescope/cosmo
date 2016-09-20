@@ -463,20 +463,20 @@ def make_total_gain(gainmap_dir=None, segment='FUV', start_mjd=55055, end_mjd=70
         cci_hdu = pyfits.open(item)
         if not cci_hdu[0].header['EXPSTART'] > start_mjd: continue
         if not cci_hdu[0].header['EXPSTART'] < end_mjd: continue
-        if not cci_hdu[0].header['DETHV'] > min_hv: continue
-        if not cci_hdu[0].header['DETHV'] < max_hv: continue
+        if not cci_hdu[0].header['DETHV'] >= min_hv: continue
+        if not cci_hdu[0].header['DETHV'] <= max_hv: continue
         cci_data = cci_hdu['MOD_GAIN'].data
 
         dethv = cci_hdu[0].header['DETHV']
 
         index = np.where(cci_data)
-        cci_data[index] += .393 * (float(178) - dethv)
+        #cci_data[index] += .393 * (float(178) - dethv)
 
         index_both = np.where((cci_data > 0) & (out_data > 0))
-        mean_data = np.mean([cci_data, out_data], axis=0)
+        #mean_data = np.mean([cci_data, out_data], axis=0)
 
         out_data[index] = cci_data[index]
-        out_data[index_both] = mean_data[index_both]
+        #out_data[index_both] = mean_data[index_both]
 
     return enlarge(out_data, x=X_BINNING, y=Y_BINNING)
 
