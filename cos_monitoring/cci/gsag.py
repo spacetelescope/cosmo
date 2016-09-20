@@ -29,6 +29,8 @@ from datetime import datetime
 import glob
 import sys
 from sqlalchemy.engine import create_engine
+import logging
+logger = logging.getLogger(__name__)
 
 from astropy.io import fits
 import numpy as np
@@ -42,22 +44,22 @@ from .constants import *  #Shut yo face
 
 #------------------------------------------------------------
 
-def main(run_regress=False):
+def main(data_dir, run_regress=False):
     """ Main driver for monitoring program.
     """
-    new_gsagtab = make_gsagtab_db(blue=False)
-    blue_gsagtab = make_gsagtab_db(blue=True)
+    new_gsagtab = make_gsagtab_db(data_dir, blue=False)
+    blue_gsagtab = make_gsagtab_db(data_dir, blue=True)
 
     old_gsagtab = get_cdbs_gsagtab()
 
-    compare_gsag(new_gsagtab,old_gsagtab)
+    compare_gsag(new_gsagtab, old_gsagtab, data_dir)
 
     if run_regress:
         test_gsag_calibration(new_gsagtab)
     else:
         print("Regression set skipped")
 
-    send_forms()
+    send_forms(data_dir)
 
 #------------------------------------------------------------
 
@@ -83,7 +85,7 @@ def get_index( gsag, segment, dethv ):
 
 #------------------------------------------------------------
 
-def compare_gsag(new,old,outdir = MONITOR_DIR):
+def compare_gsag(new, old, outdir):
     """Compare two gainsag tables to see what has changed
     """
     ### Needs to be tested ###
@@ -99,7 +101,7 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
     if type(old) == str:
         old = fits.open(old)
 
-    report_file = open( os.path.join( MONITOR_DIR,'gsag_report.txt'), 'w')
+    report_file = open(os.path.join(outdir, 'gsag_report.txt'), 'w')
 
     possible_hv_levels = [0,100] + list(range(100,179))
 
@@ -205,7 +207,6 @@ def test_gsag_calibration(gsagtab):
     print('Calibrating with %s'%(gsagtab))
     print('#-------------------------#')
 
-    os.environ['lref'] = '/grp/hst/cdbs/lref/'
     os.environ['testdir'] = TEST_DIR
     if not os.path.exists(TEST_DIR):
         os.mkdir(TEST_DIR)
@@ -239,7 +240,7 @@ def test_gsag_calibration(gsagtab):
 
 #------------------------------------------------------------
 
-def send_forms():
+def send_forms(data_dir):
     """Compose CDBS delivery form and email a copy to user
     """
     ###Needs some modifications
@@ -312,7 +313,7 @@ def send_forms():
     message += '16-Disk location and name of files:\n'
 
     initial_dir = os.getcwd()
-    os.chdir( MONITOR_DIR )
+    os.chdir( data_dir )
 
     message += os.getcwd()+'\n'
     here = os.getcwd()
@@ -322,10 +323,13 @@ def send_forms():
         message += line
     os.remove('tmp.txt')
 
-    delivery_form = open( os.path.join( MONITOR_DIR, 'deliveryform.txt'),'w' )
+    delivery_form = open( os.path.join( data_dir, 'deliveryform.txt'),'w' )
     delivery_form.write(message)
 
-    send_email(subject='COS GSAGTAB Delivery Form',message=message)
+    try:
+        send_email(subject='COS GSAGTAB Delivery Form',message=message)
+    except:
+        logger.warning("could not send delivery form")
 
 #------------------------------------------------------------
 
@@ -600,7 +604,7 @@ def in_boundary(segment, ly, dy):
 
 #------------------------------------------------------------
 
-def make_gsagtab_db(blue=False):
+def make_gsagtab_db(out_dir, blue=False):
     """Create GSAGTAB from flagged locations.
 
     Grabs txt files of flagged bad regions from MONITOR_DIR
@@ -618,8 +622,8 @@ def make_gsagtab_db(blue=False):
     --------
     new_gsagtab.fits
     """
-    print('Making new GSAGTAB')
-    out_fits = os.path.join(MONITOR_DIR, 'gsag_%s.fits'%(TIMESTAMP))
+
+    out_fits = os.path.join(out_dir, 'gsag_%s.fits'%(TIMESTAMP))
     #Populates regions found in HV == X, Segment Y, to any
     #extensions of lower HV for same segment.
 
@@ -754,13 +758,10 @@ def get_cdbs_gsagtab():
     """Retrieve most recently delivered GSAGTAB from CDBS
     for comparison with the one just made.
     """
-    gsag_tables = glob.glob( '/grp/hst/cdbs/lref/*gsag.fits' )
-    creation_dates = np.array( [ fits.getval(item,'DATE') for item in gsag_tables ] )
-    current_gsagtab = gsag_tables[ creation_dates.argmax() ]
+    gsag_tables = glob.glob(os.path.join(os.environ['lref'], '*gsag.fits'))
+    creation_dates = np.array([fits.getval(item, 'DATE') for item in gsag_tables])
+    current_gsagtab = gsag_tables[creation_dates.argmax()]
 
     return current_gsagtab
 
 #------------------------------------------------------------
-
-if __name__ == "__main__":
-    main()

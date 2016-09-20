@@ -77,10 +77,7 @@ class CCI:
         self.cci_name = cci_name
         self.open_fits()
 
-        print('Measuring Modal Gain Map')
-
         if not self.numfiles:
-            print('CCI contains no data.  Skipping modal gain measurements')
             return
 
         gainmap, counts, std = measure_gainimage(self.big_array)
@@ -135,8 +132,6 @@ class CCI:
         """Open CCI file and populated attributes with
         header keywords and data arrays.
         """
-        print('\nOpening %s'%(self.cci_name))
-
         hdu = fitsio.FITS(self.input_file)
         primary = hdu[0].read_header()
 
@@ -189,7 +184,6 @@ class CCI:
         Will also search for and add in accum data if any exists.
         """
 
-        print('Making array of cumulative counts')
         out_array = np.sum(in_array, axis=0)
 
         ###Test before implementation
@@ -204,7 +198,6 @@ class CCI:
             print('ERROR: name not standard')
 
         if os.path.exists(accum_name):
-            print('Adding in Accum data')
             accum_data = rebin(pyfits.getdata(CCI_DIR+accum_name, 0),bins=(Y_BINNING,self.xbinning))
             out_array += accum_data
             self.accum_data = accum_data
@@ -218,8 +211,6 @@ class CCI:
 
         Equation comes from D. Sahnow.
         """
-
-        print('Making array of extracted charge')
 
         coulomb_value = 1.0e-12*10**((np.array(range(0,32))-11.75)/20.5)
         zlen, ylen, xlen = in_array.shape
@@ -246,68 +237,66 @@ class CCI:
         hdu_out = pyfits.HDUList(pyfits.PrimaryHDU())
 
         hdu_out[0].header['TELESCOP'] = 'HST'
-        hdu_out[0].header.update('INSTRUME','COS')
-        hdu_out[0].header.update('DETECTOR','FUV')
-        hdu_out[0].header.update('OPT_ELEM','ANY')
-        hdu_out[0].header.update('FILETYPE','GAINMAP')
+        hdu_out[0].header['INSTRUME'] = 'COS'
+        hdu_out[0].header['DETECTOR'] = 'FUV'
+        hdu_out[0].header['OPT_ELEM'] = 'ANY'
+        hdu_out[0].header['FILETYPE'] = 'GAINMAP'
 
         hdu_out[0].header['XBINNING'] = self.xbinning
         hdu_out[0].header['YBINNING'] = self.ybinning
-        hdu_out[0].header.update('SRC_FILE', self.cci_name)
-        hdu_out[0].header.update('SEGMENT', self.segment)
-        hdu_out[0].header.update('EXPSTART', self.expstart)
-        hdu_out[0].header.update('EXPEND', self.expend)
-        hdu_out[0].header.update('EXPTIME', self.exptime)
-        hdu_out[0].header.update('NUMFILES', self.numfiles)
-        hdu_out[0].header.update('COUNTS', self.counts)
-        hdu_out[0].header.update('DETHV', self.dethv)
-        hdu_out[0].header.update('cnt00_00', self.cnt00_00)
-        hdu_out[0].header.update('cnt01_01', self.cnt01_01)
-        hdu_out[0].header.update('cnt02_30', self.cnt02_30)
-        hdu_out[0].header.update('cnt31_31', self.cnt31_31)
+        hdu_out[0].header['SRC_FILE'] = self.cci_name
+        hdu_out[0].header['SEGMENT'] = self.segment
+        hdu_out[0].header['EXPSTART'] = self.expstart
+        hdu_out[0].header['EXPEND'] = self.expend
+        hdu_out[0].header['EXPTIME'] = self.exptime
+        hdu_out[0].header['NUMFILES'] = self.numfiles
+        hdu_out[0].header['COUNTS'] = self.counts
+        hdu_out[0].header['DETHV'] = self.dethv
+        hdu_out[0].header['cnt00_00'] = self.cnt00_00
+        hdu_out[0].header['cnt01_01'] = self.cnt01_01
+        hdu_out[0].header['cnt02_30'] = self.cnt02_30
+        hdu_out[0].header['cnt31_31'] = self.cnt31_31
 
         #-------EXT=1
         included_files = np.array(self.file_list)
         files_col = pyfits.Column('files', '24A', 'rootname', array=included_files)
-        tab = pyfits.new_table([files_col])
+        tab = pyfits.BinTableHDU.from_columns([files_col])
 
         hdu_out.append(tab)
-        hdu_out[1].header.update('EXTNAME', 'FILES')
+        hdu_out[1].header['EXTNAME'] = 'FILES'
 
         #-------EXT=2
         hdu_out.append(pyfits.ImageHDU(data=self.gain_image))
-        hdu_out[2].header.update('EXTNAME', 'MOD_GAIN')
+        hdu_out[2].header['EXTNAME'] = 'MOD_GAIN'
 
         #-------EXT=3
         hdu_out.append(pyfits.ImageHDU(data=self.counts_image))
-        hdu_out[3].header.update('EXTNAME', 'COUNTS')
+        hdu_out[3].header['EXTNAME'] = 'COUNTS'
 
         #-------EXT=4
         hdu_out.append(pyfits.ImageHDU(data=self.extracted_charge))
-        hdu_out[4].header.update('EXTNAME', 'CHARGE')
+        hdu_out[4].header['EXTNAME'] = 'CHARGE'
 
         #-------EXT=5
         hdu_out.append(pyfits.ImageHDU(data=self.big_array[0]))
-        hdu_out[5].header.update('EXTNAME', 'cnt00_00')
+        hdu_out[5].header['EXTNAME'] = 'cnt00_00'
 
         #-------EXT=6
         hdu_out.append(pyfits.ImageHDU(data=self.big_array[1]))
-        hdu_out[6].header.update('EXTNAME', 'cnt01_01')
+        hdu_out[6].header['EXTNAME'] = 'cnt01_01'
 
         #-------EXT=7
         hdu_out.append(pyfits.ImageHDU(data=np.sum(self.big_array[2:31],axis=0)))
-        hdu_out[7].header.update('EXTNAME', 'cnt02_30')
+        hdu_out[7].header['EXTNAME'] = 'cnt02_30'
 
         #-------EXT=8
         hdu_out.append(pyfits.ImageHDU(data=self.big_array[31]))
-        hdu_out[8].header.update('EXTNAME', 'cnt31_31')
+        hdu_out[8].header['EXTNAME'] = 'cnt31_31'
 
 
         #-------Write to file
         hdu_out.writeto(out_fits)
         hdu_out.close()
-
-        print('WROTE: %s'%(out_fits))
 
 #------------------------------------------------------------
 

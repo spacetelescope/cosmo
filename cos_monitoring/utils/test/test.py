@@ -11,5 +11,4 @@ def test_rebin_default():
 
     assert np.array_equal(rebin(data, (2, 2)), out), "Failure on simple integer array"
 
-
 #-------------------------------------------------------------------------------

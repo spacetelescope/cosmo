@@ -240,18 +240,15 @@ class Phaimage:
 
 #------------------------------------------------------------
 
-def make_phaimages(clobber=False):
+def make_phaimages(data_dir, clobber=False):
     """Creates *_phf.fits reference files for each CCI period
     """
-    print('\n\n#--------------------#')
-    print('#--Making PHAIMAGES--#')
-    print('#--------------------#')
 
-    all_gainmaps = glob.glob(MONITOR_DIR + '*gainmap.fits')
+    all_gainmaps = glob.glob(os.path.join(data_dir, '*gainmap.fits'))
     all_gainmaps.sort()
 
     for gainmap in all_gainmaps:
-        if os.path.exists( Phaimage.outfile(gainmap) ) and not clobber:
+        if os.path.exists(Phaimage.outfile(gainmap)) and not clobber:
             print(Phaimage.outfile(gainmap), 'Already exists. Skipping')
         else:
             try:

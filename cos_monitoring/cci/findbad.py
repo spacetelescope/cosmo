@@ -10,6 +10,8 @@ __status__ = 'Active'
 
 import os
 import glob
+import logging
+logger = logging.getLogger(__name__)
 
 from astropy.io import fits
 import numpy as np
@@ -28,12 +30,10 @@ from ..database.db_tables import Flagged, GainTrends, Gain
 #-------------------------------------------------------------------------------
 
 def time_trends():
-    print('#----------------------#')
-    print('Finding trends with time')
-    print('#----------------------#')
+    logger.debug('Finding trends with time')
 
-    print('Cleaning previous products')
     for item in glob.glob(os.path.join(MONITOR_DIR, 'cumulative_gainmap_*.png')):
+        logger.debug("removing old product: {}".format(item))
         os.remove(item)
 
     SETTINGS = open_settings()
@@ -58,8 +58,7 @@ def time_trends():
     session = Session()
 
     pool = mp.Pool(processes=10)
-    print("Finding bad pixels for all HV/Segments.")
-    print("This will take a while, so go make yourself some tea or something.")
+    logger.debug("finding bad pixels for all HV/Segments")
     all_combos = [(row.segment, row.dethv) for row in session.query(Gain).filter(and_(Gain.segment!='None',
                                                                                       Gain.dethv!='None'))]
 
@@ -70,11 +69,10 @@ def time_trends():
     session.close()
     engine.dispose()
 
-    print(all_combos)
+
     pool.map(find_flagged, all_combos)
 
-    print("Measuring gain degredation slopes.")
-    print("this doesn't take quite so much time...i think.")
+    logger.debug("Measuring gain degredation slopes")
     pool.map(measure_slopes, all_combos)
 
 
@@ -83,7 +81,6 @@ def time_trends():
     session = Session()
     #-- write projection files
     for (segment, dethv) in all_combos:
-        print("Outputing projection files for {} {}".format(segment, dethv))
         results = session.query(GainTrends).filter(and_(GainTrends.segment==segment,
                                                          GainTrends.dethv==dethv))
 
@@ -92,7 +89,6 @@ def time_trends():
         bad_image = np.zeros((1024, 16384))
 
         for row in results:
-            print(row)
             y = row.y * Y_BINNING
             x = row.x * X_BINNING
             slope_image[y:y+Y_BINNING, x:x+X_BINNING] = row.slope
@@ -101,6 +97,7 @@ def time_trends():
             bad_image[y:y+Y_BINNING, x:x+X_BINNING] = row.mjd
 
         if slope_image.any():
+            logger.debug("Outputing projection files for {} {}".format(segment, dethv))
             write_projection(slope_image, intercept_image, bad_image, segment, dethv)
 
     session.commit()
@@ -117,20 +114,20 @@ def find_flagged(args):
 
     session = Session()
 
-    print("{}, {}: Searching for pixels below 3.".format(segment, hvlevel))
+    logger.debug("{}, {}: Searching for pixels below 3.".format(segment, hvlevel))
     all_coords = [(row.x, row.y) for row in session.query(Gain).distinct(Gain.x, Gain.y).filter(and_(Gain.segment==segment,
                                                                                                      Gain.dethv==hvlevel,
                                                                                                      Gain.gain<=3,
                                                                                                      Gain.counts>=30))]
     #-- again, Distinct not working or not being used correctly
     all_coords = list(set(all_coords))
-    print("{}, {}: found {} superpixels below 3.".format(segment,
+    logger.debug("{}, {}: found {} superpixels below 3.".format(segment,
                                                          hvlevel,
                                                          len(all_coords)))
 
     plotfile = os.path.join(MONITOR_DIR, 'flagged_{}_{}.pdf'.format(segment,
                                                                     hvlevel))
-    print("Plotting to {}:".format(plotfile))
+
     #with PdfPages(plotfile) as pdf:
     with open('blank', 'w') as pdf:
         for x, y in all_coords:
@@ -209,7 +206,7 @@ def measure_slopes(args):
     session = Session()
 
 
-    print("{}, {}: Measuring gain degredation slopes.".format(segment, hvlevel))
+    logger.debug("{}, {}: Measuring gain degredation slopes.".format(segment, hvlevel))
 
     all_coords = [(row.x, row.y) for row in session.query(Gain).distinct(Gain.x, Gain.y).filter(and_(Gain.segment==segment,
                                                                                                      Gain.dethv==hvlevel))]
@@ -266,7 +263,6 @@ def measure_slopes(args):
                 date_bad = 0
 
 
-            print(date_bad, segment, hvlevel, x, y, slope, intercept)
             session.add(GainTrends(mjd=round(date_bad, 5),
                                    segment=segment,
                                    dethv=hvlevel,

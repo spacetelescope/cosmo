@@ -33,6 +33,8 @@ import glob
 import numpy as np
 import multiprocessing as mp
 import shutil
+import logging
+logger = logging.getLogger(__name__)
 #from bokeh import charts
 #from bokeh.plotting import figure
 
@@ -251,7 +253,6 @@ def plotting():
     TOOLS = "pan,wheel_zoom,box_zoom,box_select,lasso_select,reset,resize,save"
 
     p = figure(tools=TOOLS, toolbar_location="above", logo="grey", plot_width=700)
-    #p.title = "{} LightCurve".format(name)
     p.background_fill= "#cccccc"
 
     p.circle(gain,
@@ -272,19 +273,22 @@ def monitor():
     """ Main driver for monitoring program.
     """
 
+    logger.info("start monitor")
+
+    settings = open_settings()
+    out_dir = os.path.join(settings['monitor_location'], 'CCI')
+
+    if not os.path.exists(out_dir):
+        logger.warning("Creating output directory: {}".format(out_dir))
+        os.makedirs(out_dir)
+
     #print('Making ALL Gain Maps')
     #make_all_gainmaps()
 
-    #print('phaimages')
-    #make_phaimages()
-
-    print('Looking at Time Trends')
+    make_phaimages(out_dir)
     time_trends()
+    gsag_main(out_dir)
 
-    #print('Making Gain Sag Table')
-    #gsag_main()
-
-    '''
     #-- quicklooks
     all_gainmaps = glob.glob(os.path.join(MONITOR_DIR, '*gainmap*.fits'))
     all_gainmaps.sort()
@@ -293,8 +297,8 @@ def monitor():
     pool.map(make_quicklooks, all_gainmaps)
     #--
 
-    make_cumulative_plots()
-    '''
+    ###make_cumulative_plots()
+
     #message = 'CCI Monitor run for %s complete.  \n'% (TIMESTAMP)
     #message += '\n'
     #message += 'Calibration with CalCOS has finished \n '
@@ -303,6 +307,8 @@ def monitor():
 
     #move_to_web()
     #send_email(subject='CCI Monitor complete', message=message)
+
+    logger.info("finish monitor")
 
 #-------------------------------------------------------------------------------
 

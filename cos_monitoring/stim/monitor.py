@@ -16,10 +16,14 @@ import shutil
 import os
 import glob
 import numpy as np
+np.seterr(divide='ignore')
 from astropy.table import Table
 from astropy.time import Time
 from astropy.io import fits
 from scipy.stats import linregress
+import logging
+logger = logging.getLogger(__name__)
+
 from calcos import ccos
 
 import smtplib
@@ -41,15 +45,13 @@ def find_center(data):
         return None, None
 
     X, Y = np.indices(data.shape)
-    x = (X * data).sum() / total
-    y = (Y * data).sum() / total
-    col = data[:, int(y)]
-    width_x = np.sqrt(
-        abs((np.arange(col.size) - y) ** 2 * col).sum() / col.sum())
-    row = data[int(x), :]
-    width_y = np.sqrt(
-        abs((np.arange(row.size) - x) ** 2 * row).sum() / row.sum())
-    height = data.max()
+    x = (X * data).sum() // total
+    y = (Y * data).sum() // total
+    #col = data[:, int(y)]
+    #width_x = np.sqrt(abs((np.arange(col.size) - y) ** 2 * col).sum() / col.sum())
+    #row = data[int(x), :]
+    #width_y = np.sqrt(abs((np.arange(row.size) - x) ** 2 * row).sum() / row.sum())
+    #height = data.max()
 
     return y, x
 
@@ -80,10 +82,10 @@ def brf_positions(brftab, segment, position):
     xwidth = brf[row]['XWIDTH']
     ywidth = brf[row]['YWIDTH']
 
-    xmin = max(xcenter - xwidth, 0)
-    xmax = min(xcenter + xwidth, 16384)
-    ymin = max(ycenter - ywidth, 0)
-    ymax = min(ycenter + ywidth, 1024)
+    xmin = int(max(xcenter - xwidth, 0))
+    xmax = int(min(xcenter + xwidth, 16384))
+    ymin = int(max(ycenter - ywidth, 0))
+    ymax = int(min(ycenter + ywidth, 1024))
 
     return xmin, xmax, ymin, ymax
 
@@ -221,9 +223,6 @@ def check_individual(out_dir, connection_string):
     over the exposure and produces a plot if so.
 
     """
-    print('#--------------------------#')
-    print('Checking individual datasets')
-    print('#--------------------------#')
 
     Session, engine = load_connection(connection_string)
 
@@ -237,7 +236,11 @@ def check_individual(out_dir, connection_string):
                       STD(stims.stim2_y) as stim2_ystd
                       FROM stims
                       JOIN headers on stims.rootname = headers.rootname
-                      GROUP BY stims.file_id
+                      GROUP BY stims.file_id,
+                               headers.rootname,
+                               headers.segment,
+                               headers.proposid,
+                               headers.targname
                       HAVING stim1_xstd > 2 OR
                              stim1_ystd > 2 OR
                              stim2_xstd > 2 OR
@@ -265,6 +268,8 @@ def stim_monitor():
 
     """
 
+    logger.info("Starting Monitor")
+
     settings = open_settings()
 
     webpage_dir = os.path.join(settings['webpage_location'], 'stim')
@@ -272,17 +277,18 @@ def stim_monitor():
 
     for place in [webpage_dir, monitor_dir]:
         if not os.path.exists(place):
+            logger.debug("creating monitor location: {}".format(place))
             os.makedirs(place)
 
     missing_obs, missing_dates = find_missing()
     send_email(missing_obs, missing_dates)
 
-    print('Making Plots')
     make_plots(monitor_dir, settings['connection_string'])
 
-    print('Moving to web')
     move_to_web(monitor_dir, webpage_dir)
     check_individual(monitor_dir, settings['connection_string'])
+
+    logger.info("Finished Monitor")
 
 #-------------------------------------------------------------------------------
 
@@ -343,11 +349,6 @@ def make_plots(out_dir, connection_string):
     brf = fits.getdata(brf_file, 1)
 
     Session, engine = load_connection(connection_string)
-
-    print('#-------------------------------#')
-    print('Plots of STIM (X,Y) positions')
-    print('over all time ')
-    print('#-------------------------------#')
 
     plt.figure(1, figsize=(18, 12))
     plt.grid(True)
@@ -501,10 +502,7 @@ def make_plots(out_dir, connection_string):
     plt.close(1)
     os.chmod(os.path.join(out_dir, 'STIM_locations.png'),0o766)
 
-    print('#-------------------------------#')
-    print('Stim location plots')
-    print('vs time')
-    print('#-------------------------------#')
+
     for segment in ['FUVA', 'FUVB']:
         fig = plt.figure(2, figsize=(18, 12))
         fig.suptitle('%s coordinate locations with time' % (segment))
@@ -620,9 +618,6 @@ def make_plots(out_dir, connection_string):
         os.chmod(os.path.join(out_dir, 'STIM_stretch_vs_time_%s.png' %
                      (segment)),0o766)
 
-    print('#------------------------#')
-    print(' y vs y and x vs x     ')
-    print('#------------------------#')
     fig = plt.figure(1, figsize=(18, 12))
     ax = fig.add_subplot(2, 2, 1)
     ax.grid(True)
@@ -807,7 +802,6 @@ def move_to_web(data_dir, web_dir):
     STIM*.p* and then change permissions to 777.
     """
 
-    print('Moving plots to web')
     for item in glob.glob(os.path.join(data_dir, 'STIM*.p*')):
         remove_if_there(os.path.join(web_dir, os.path.basename(item)))
         shutil.copy(item, web_dir)
