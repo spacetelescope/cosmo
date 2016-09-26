@@ -411,7 +411,7 @@ def work_laboriously(prl):
     except SyntaxError:
         chmod_recurs(base_dir, 0o755) 
     # using glob is faster than using os.walk
-    zipped = glob.glob(os.path.join(base_dir, "?????", "*raw*gz"))
+    zipped = glob.glob(os.path.join(base_dir, "*", "*raw*gz"))
     if zipped:
         print("Unzipping mistakes")
         if prl:
@@ -419,8 +419,8 @@ def work_laboriously(prl):
         else:
             unzip_mistakes(zipped)
 
-    unzipped_raws_ab = glob.glob(os.path.join(base_dir, "?????", "*rawtag*fits")) + \
-                   glob.glob(os.path.join(base_dir, "?????", "*rawacq.fits"))
+    unzipped_raws_ab = glob.glob(os.path.join(base_dir, "*", "*rawtag*fits")) + \
+                   glob.glob(os.path.join(base_dir, "*", "*rawacq.fits"))
     unzipped_raws = only_one_seg(unzipped_raws_ab)
     if unzipped_raws:
         print("Calibrating raw files")
@@ -429,7 +429,7 @@ def work_laboriously(prl):
         else:
             make_csum(unzipped_raws)
 
-    all_unzipped = glob.glob(os.path.join(base_dir, "?????", "*fits"))
+    all_unzipped = glob.glob(os.path.join(base_dir, "*", "*fits"))
     if all_unzipped:
         print("Zipping uncomprssed files")
         if prl:
