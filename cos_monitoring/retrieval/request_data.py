@@ -159,13 +159,19 @@ def retrieve_data(dest_dir, datasets):
                      for i in xrange(0, len(datasets), MAX_RETRIEVAL))
     tracking_ids = []
     for item in dataset_lists:
-        xml_file = build_xml_request(dest_dir, item)
-        result = submit_xml_request(xml_file)
-#        print(xml_file)
-#        print(result)
-        tmp_id = re.search("("+MYUSER+"[0-9]{5})", result).group()
-        tracking_ids.append(tmp_id)
-
+        try:
+            xml_file = build_xml_request(dest_dir, item)
+            result = submit_xml_request(xml_file)
+#            print(xml_file)
+#            print(result)
+            tmp_id = re.search("("+MYUSER+"[0-9]{5})", result).group()
+            tracking_ids.append(tmp_id)
+        # If you can't get a ID, MAST is most likely down. 
+        except AttributeError:
+            print("Something is wrong on the MAST side...")
+            print("Unsuccesful request for {0}".format(item))
+            print("Continuing to next dataset.")
+            pass 
     return tracking_ids
 
 #-----------------------------------------------------------------------------#
