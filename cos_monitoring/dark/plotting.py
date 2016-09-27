@@ -112,9 +112,6 @@ def plot_histogram(dark, outname):
     fig.savefig(outname, bbox_inches='tight')
     plt.close(fig)
 
-
-
-
 #-------------------------------------------------------------------------------
 
 def plot_time(detector, dark, date, temp, solar, solar_date, outname):

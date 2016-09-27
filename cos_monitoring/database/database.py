@@ -21,6 +21,7 @@ import types
 import argparse
 import pprint
 import inspect
+import functools
 import logging
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,11 @@ def db_connect(child):
 
 #-------------------------------------------------------------------------------
 
+def call(arg):
+    arg()
+
+#-------------------------------------------------------------------------------
+
 def mp_insert(args):
     """Wrapper function to parse arguments and pass into insertion function
 
@@ -86,7 +92,7 @@ def mp_insert(args):
 
 #-------------------------------------------------------------------------------
 
-def insert_with_yield(filename, table, function, foreign_key=None):
+def insert_with_yield(filename, table, function, foreign_key=None, **kwargs):
     """ Call function on filename and insert results into table
 
     Parameters
@@ -106,7 +112,7 @@ def insert_with_yield(filename, table, function, foreign_key=None):
     session = Session()
 
     try:
-        data = function(filename)
+        data = function(filename, **kwargs)
 
         if isinstance(data, dict):
             data = [data]
@@ -286,6 +292,8 @@ def populate_gain(num_cpu=1):
 
     logger.info("adding to gain table")
     settings = open_settings()
+    out_dir = os.path.join(settings['monitor_location'], 'CCI')
+
     Session, engine = load_connection(settings['connection_string'])
 
     session = Session()
@@ -298,11 +306,16 @@ def populate_gain(num_cpu=1):
                             filter(Gain.file_id == None)]
     session.close()
 
-    args = [(full_filename, Gain, write_and_pull_gainmap, f_key) for f_key, full_filename in files_to_add]
+    functions = [functools.partial(insert_with_yield,
+                                   filename=filename,
+                                   table=Gain,
+                                   function=write_and_pull_gainmap,
+                                   foreign_key=f_key,
+                                   out_dir=out_dir) for f_key, filename in files_to_add]
 
-    logger.info("Found {} files to add".format(len(args)))
+    logger.info("Found {} files to add".format(len(functions)))
     pool = mp.Pool(processes=num_cpu)
-    pool.map(mp_insert, args)
+    pool.map(call, functions)
 
 #-------------------------------------------------------------------------------
 
@@ -326,7 +339,7 @@ def populate_spt(num_cpu=1):
 
     logger.info("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
-    pool.map(mp_insert,args)
+    pool.map(mp_insert, args)
 
 #-------------------------------------------------------------------------------
 
@@ -408,11 +421,17 @@ def populate_primary_headers(num_cpu=1):
     files_to_add = [(result.file_id, result.file_to_grab) for result in engine.execute(text(q))
                         if not result.file_id == None]
 
-    args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
+    #args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
 
-    logger.info("Found {} files to add".format(len(args)))
+    functions = [functools.partial(insert_with_yield,
+                                   filename=filename,
+                                   table=Headers,
+                                   function=get_primary_keys,
+                                   foreign_key=f_key) for f_key, filename in files_to_add]
+
+    logger.info("Found {} files to add".format(len(functions)))
     pool = mp.Pool(processes=num_cpu)
-    pool.map(mp_insert, args)
+    pool.map(call, functions)
 
 #-------------------------------------------------------------------------------
 

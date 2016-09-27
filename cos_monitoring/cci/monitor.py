@@ -286,11 +286,11 @@ def monitor():
     #make_all_gainmaps()
 
     make_phaimages(out_dir)
-    time_trends()
+    time_trends(out_dir)
     gsag_main(out_dir)
 
     #-- quicklooks
-    all_gainmaps = glob.glob(os.path.join(MONITOR_DIR, '*gainmap*.fits'))
+    all_gainmaps = glob.glob(os.path.join(out_dir, '*gainmap*.fits'))
     all_gainmaps.sort()
 
     pool = mp.Pool(processes=10)

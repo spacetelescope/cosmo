@@ -320,11 +320,11 @@ def make_plots(detector, base_dir, TA=False):
 
     for key, segment in zip(search_strings, segments):
         #-- Plot vs time
-        logging.debug('creating time plot for {}:{}'.format(segment, key))
+        logger.debug('creating time plot for {}:{}'.format(segment, key))
         data = engine.execute("""SELECT date,{},temp,latitude,longitude
                                  FROM darks
                                  WHERE detector = '{}'
-                                 AND concat(temp, latitude, longitude)IS NOT NULL""".format(dark_key, segment)
+                                 AND concat(temp, latitude, longitude) IS NOT NULL""".format(dark_key, segment)
                                  )
         data = [row for row in data]
 
@@ -352,7 +352,7 @@ def make_plots(detector, base_dir, TA=False):
         plot_time(detector, dark, mjd, temp, solar_flux, solar_date, outname)
 
         #-- Plot vs orbit
-        logging.debug('creating orbit plot for {}:{}'.format(segment, key))
+        logger.debug('creating orbit plot for {}:{}'.format(segment, key))
         data = engine.execute("""SELECT {},latitude,longitude,sun_lat,sun_lon,date
                                  FROM darks
                                  WHERE detector = '{}'
@@ -378,7 +378,7 @@ def make_plots(detector, base_dir, TA=False):
         plot_orbital_rate(longitude, latitude, dark, sun_lon, sun_lat, outname)
 
         #-- Plot histogram of darkrates
-        logging.debug('creating histogram plot for {}:{}'.format(segment, key))
+        logger.debug('creating histogram plot for {}:{}'.format(segment, key))
         data = engine.execute("""SELECT {},date
                                  FROM darks
                                  WHERE detector = '{}'
@@ -409,12 +409,15 @@ def make_plots(detector, base_dir, TA=False):
 
 #-------------------------------------------------------------------------------
 
-def move_products(base_dir):
+def move_products(base_dir, web_dir):
     '''Move created pdf files to webpage directory
     '''
     for detector in ['FUV', 'NUV']:
 
-        write_dir = web_directory + detector.lower() + '_darks/'
+        write_dir = os.path.join(web_dir, detector.lower() + '_darks/')
+        if not os.path.exists(write_dir):
+            os.makedirs(write_dir)
+
         move_list = glob.glob(base_dir + detector + '/*.p??')
 
         for item in move_list:
@@ -432,7 +435,7 @@ def move_products(base_dir):
                 shutil.copy(item, write_dir + file_to_move)
 
             except OSError:
-                logging.warning("Hit an os error for {}, leaving it there".format(item))
+                logger.warning("Hit an os error for {}, leaving it there".format(item))
                 move_list.remove(item)
 
         os.system('chmod 777 ' + write_dir + '*.pdf')
@@ -446,9 +449,10 @@ def monitor(out_dir):
 
     settings = open_settings()
     out_dir = os.path.join(settings['monitor_location'], 'Darks')
+    web_dir = settings['webpage_location']
 
     if not os.path.exists(out_dir):
-        logging.warning("Creating output directory: {}".format(out_dir))
+        logger.warning("Creating output directory: {}".format(out_dir))
         os.makedirs(out_dir)
 
     get_solar_data(out_dir)
@@ -461,6 +465,6 @@ def monitor(out_dir):
             make_plots(detector, out_dir, TA=True)
 
     logger.info("moving products to web directory")
-    move_products(out_dir)
+    move_products(out_dir, web_dir)
 
 #-------------------------------------------------------------------------------

@@ -23,27 +23,29 @@ from sqlalchemy import and_, distinct
 import scipy
 from scipy.optimize import leastsq, newton, curve_fit
 
-from .constants import Y_BINNING, X_BINNING, MONITOR_DIR
+from .constants import Y_BINNING, X_BINNING
 from ..database.db_tables import open_settings, load_connection
 from ..database.db_tables import Flagged, GainTrends, Gain
 
 #-------------------------------------------------------------------------------
 
-def time_trends():
+def time_trends(save_dir):
     logger.debug('Finding trends with time')
 
-    for item in glob.glob(os.path.join(MONITOR_DIR, 'cumulative_gainmap_*.png')):
+    for item in glob.glob(os.path.join(save_dir, 'cumulative_gainmap_*.png')):
         logger.debug("removing old product: {}".format(item))
         os.remove(item)
 
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
     session = Session()
 
     #-- Clean out previous results from flagged table
+    logger.debug("Deleting flagged table")
     session.query(Flagged).delete()
 
     #-- Clean out previous results from gain trends table
+    logger.debug("Deleting GainTrends table")
     session.query(GainTrends).delete()
 
     #-- Force commit.
@@ -52,32 +54,27 @@ def time_trends():
     engine.dispose()
 
 
-
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    Session, engine = load_connection(settings['connection_string'])
     session = Session()
 
-    pool = mp.Pool(processes=10)
-    logger.debug("finding bad pixels for all HV/Segments")
-    all_combos = [(row.segment, row.dethv) for row in session.query(Gain).filter(and_(Gain.segment!='None',
-                                                                                      Gain.dethv!='None'))]
-
-    #-- Distinct call above not working apparently.
-    all_combos = list(set(all_combos))
+    pool = mp.Pool(processes=settings['num_cpu'])
+    logger.debug("looking for segment/dethv combinations")
+    all_combos = [(row.segment, row.dethv) for row in session.query(Gain.segment, Gain.dethv).distinct().filter(and_(Gain.segment!='None',
+                                                                                                                     Gain.dethv!='None'))]
 
     session.commit()
     session.close()
     engine.dispose()
 
-
+    logger.debug("finding bad pixels for all HV/Segments")
     pool.map(find_flagged, all_combos)
 
     logger.debug("Measuring gain degredation slopes")
     pool.map(measure_slopes, all_combos)
 
 
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
     session = Session()
     #-- write projection files
     for (segment, dethv) in all_combos:
@@ -98,7 +95,7 @@ def time_trends():
 
         if slope_image.any():
             logger.debug("Outputing projection files for {} {}".format(segment, dethv))
-            write_projection(slope_image, intercept_image, bad_image, segment, dethv)
+            write_projection(save_dir, slope_image, intercept_image, bad_image, segment, dethv)
 
     session.commit()
     session.close()
@@ -109,87 +106,59 @@ def time_trends():
 def find_flagged(args):
     segment, hvlevel = args
 
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
 
     session = Session()
 
-    logger.debug("{}, {}: Searching for pixels below 3.".format(segment, hvlevel))
-    all_coords = [(row.x, row.y) for row in session.query(Gain).distinct(Gain.x, Gain.y).filter(and_(Gain.segment==segment,
+    all_coords = [(row.x, row.y) for row in session.query(Gain.x, Gain.y).distinct(Gain.x, Gain.y).filter(and_(Gain.segment==segment,
                                                                                                      Gain.dethv==hvlevel,
                                                                                                      Gain.gain<=3,
                                                                                                      Gain.counts>=30))]
-    #-- again, Distinct not working or not being used correctly
-    all_coords = list(set(all_coords))
     logger.debug("{}, {}: found {} superpixels below 3.".format(segment,
                                                          hvlevel,
                                                          len(all_coords)))
 
-    plotfile = os.path.join(MONITOR_DIR, 'flagged_{}_{}.pdf'.format(segment,
-                                                                    hvlevel))
 
-    #with PdfPages(plotfile) as pdf:
-    with open('blank', 'w') as pdf:
-        for x, y in all_coords:
+    for x, y in all_coords:
 
-            #--filter above and below possible spectral locations
-            if (y > 600//Y_BINNING) or (y < 400//Y_BINNING):
-                continue
+        #--filter above and below possible spectral locations
+        if (y > 600//Y_BINNING) or (y < 400//Y_BINNING):
+            continue
 
-            #-- Nothing bad before 2010,
-            #-- and there are some weird gainmaps back there
-            #-- filtering out for now.
-            results = session.query(Gain).filter(and_(Gain.segment==segment,
-                                                      Gain.dethv==hvlevel,
-                                                      Gain.x==x,
-                                                      Gain.y==y,
-                                                      Gain.expstart>55197))
+        #-- Nothing bad before 2010,
+        #-- and there are some weird gainmaps back there
+        #-- filtering out for now.
+        results = session.query(Gain).filter(and_(Gain.segment==segment,
+                                                  Gain.dethv==hvlevel,
+                                                  Gain.x==x,
+                                                  Gain.y==y,
+                                                  Gain.expstart>55197))
 
-            all_gain = []
-            all_counts = []
-            all_std = []
-            all_expstart = []
-            for row in results:
-                all_gain.append(row.gain)
-                all_counts.append(row.counts)
-                all_std.append(row.std)
-                all_expstart.append(row.expstart)
+        all_gain = []
+        all_counts = []
+        all_std = []
+        all_expstart = []
+        for row in results:
+            all_gain.append(row.gain)
+            all_counts.append(row.counts)
+            all_std.append(row.std)
+            all_expstart.append(row.expstart)
 
-            all_gain = np.array(all_gain)
-            all_expstart = np.array(all_expstart)
+        all_gain = np.array(all_gain)
+        all_expstart = np.array(all_expstart)
 
-            below_thresh = np.where(all_gain <= 3)[0]
+        below_thresh = np.where(all_gain <= 3)[0]
 
-            if len(below_thresh):
-                MJD_bad = all_expstart[below_thresh].min()
+        if len(below_thresh):
+            MJD_bad = all_expstart[below_thresh].min()
 
-
-                '''
-            	fig = plt.figure(figsize=(16, 6))
-            	ax = fig.add_subplot(2, 1, 1)
-            	ax.set_title('{} {}'.format(x, y))
-
-            	ax.plot(all_expstart, all_gain, marker='o', color='b', ls='')
-            	ax.axhline(y=3, color='r', lw=2, ls='--', alpha=.5, zorder=0)
-            	ax.axvline(x=MJD_bad, color='r', lw=2, alpha=.5, zorder=0)
-
-            	ax2 = fig.add_subplot(2, 1, 2)
-            	ax2.plot(all_expstart, all_counts, marker='o', ls='')
-
-            	fig.set_rasterized(True)
-            	#fig.savefig(os.path.join(MONITOR_DIR, 'flagged_{}_{}_{}_{}.pdf'.format(segment, hvlevel, x, y)),
-                #	        bbox_inches='tight',
-                #        	dpi=300)
-
-            	pdf.savefig(fig, bbox_inches='tight')
-                plt.close(fig)
-                '''
-                MJD_bad = round(MJD_bad, 5)
-                session.add(Flagged(mjd=MJD_bad,
-                                    segment=segment,
-                                    dethv=hvlevel,
-                                    x=x,
-                                    y=y))
+            MJD_bad = round(MJD_bad, 5)
+            session.add(Flagged(mjd=MJD_bad,
+                                segment=segment,
+                                dethv=hvlevel,
+                                x=x,
+                                y=y))
 
     session.commit()
     session.close()
@@ -200,19 +169,17 @@ def find_flagged(args):
 def measure_slopes(args):
     segment, hvlevel = args
 
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
 
     session = Session()
 
 
     logger.debug("{}, {}: Measuring gain degredation slopes.".format(segment, hvlevel))
 
-    all_coords = [(row.x, row.y) for row in session.query(Gain).distinct(Gain.x, Gain.y).filter(and_(Gain.segment==segment,
-                                                                                                     Gain.dethv==hvlevel))]
+    all_coords = [(row.x, row.y) for row in session.query(Gain.x, Gain.y).distinct(Gain.x, Gain.y).filter(and_(Gain.segment==segment,
+                                                                                                               Gain.dethv==hvlevel))]
 
-    #-- once more, distinct error
-    all_coords = list(set(all_coords))
     for x, y in all_coords:
 
         #--filter above and below possible spectral locations
@@ -271,7 +238,8 @@ def measure_slopes(args):
                                    slope=round(slope, 5),
                                    intercept=round(intercept, 5)))
 
-    session.commit()
+            session.commit()
+
     session.close()
     engine.dispose()
 
@@ -316,7 +284,7 @@ def check_rapid_changes(x_values, y_values):
 
 #-------------------------------------------------------------------------------
 
-def write_projection(slope_image, intercept_image, bad_image, segment, dethv):
+def write_projection(out_dir, slope_image, intercept_image, bad_image, segment, dethv):
     """Writs a fits file with information useful for post-monitoring analysis.
 
     Parameters
@@ -341,13 +309,12 @@ def write_projection(slope_image, intercept_image, bad_image, segment, dethv):
         FITS file with the saved array data.
     """
 
-    print('Writing projection file')
     hdu_out = fits.HDUList(fits.PrimaryHDU())
     hdu_out[0].header.update('TELESCOP', 'HST')
     hdu_out[0].header.update('INSTRUME', 'COS')
     hdu_out[0].header.update('DETECTOR', 'FUV')
     hdu_out[0].header.update('OPT_ELEM', 'ANY')
-    hdu_out[0].header.update('FILETYPE', 'PROJ_BAD')
+    hdu_out[0].header.update('Fsave_dirILETYPE', 'PROJ_BAD')
     hdu_out[0].header.update('DETHV', dethv)
 
     hdu_out[0].header.update('SEGMENT', segment)
@@ -365,7 +332,7 @@ def write_projection(slope_image, intercept_image, bad_image, segment, dethv):
     hdu_out[3].header.update('EXTNAME', 'INTERCEPT')
 
     #---Writeout
-    hdu_out.writeto(MONITOR_DIR+'proj_bad_{}_{}.fits'.format(segment, dethv),clobber=True)
+    hdu_out.writeto(os.path.join(out_dir, 'proj_bad_{}_{}.fits'.format(segment, dethv)) ,clobber=True)
     hdu_out.close()
 
 #-------------------------------------------------------------------------------
