@@ -311,8 +311,7 @@ def run_all_retrievals(prop_dict=None, pkl_file=None):
                 counter.append(status)
                 if badness:
                     print("!"*70)
-                    print("Request {0} was killed. It can only be " 
-                          "attributable to human error.".format(tracking_id))
+                    print("RUH ROH!!! Request {0} was killed".format(tracking_id))
                     counter.append(badness)
             current_retrieved = [all_tracking_ids[i] for i in 
                                  xrange(len(counter)) if not counter[i]]
@@ -348,4 +347,7 @@ def run_all_retrievals(prop_dict=None, pkl_file=None):
 if __name__ == "__main__":
 #    pkl_file = "testing_dict.p"
     pkl_file = "filestoretrieve.p"
-    run_all_retrievals(pkl_file)
+    try:
+        run_all_retrievals(pkl_file)
+    except Exception as e:
+        print(Exception, e)
