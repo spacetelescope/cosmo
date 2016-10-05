@@ -22,6 +22,7 @@ import os
 import yaml
 import pdb
 import argparse
+import glob
 from sqlalchemy import text
 from subprocess import Popen, PIPE
 
@@ -170,6 +171,30 @@ def janky_connect(SETTINGS, query_string):
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
+def tally_cs():
+    '''
+    For testing purposes, tabulate all files in central store 
+    (/grp/hst/cos2/smov_testing/) and request all missing datasets.
+    
+    Parameters:
+    -----------
+        None
+
+    Returns:
+    --------
+        smovfiles : list
+            A list of all fits files in /grp/hst/cos2/smov_testing
+    '''
+
+    smovdir = "/grp/hst/cos2/smov_testing"
+    print ("Checking {0}...".format(smovdir))
+    allsmov = glob.glob(os.path.join(smovdir, "*", "*fits*"))
+    smovfiles = [os.path.basename(x).split("_cci")[0].upper() if "cci" in x else os.path.basename(x).split("_")[0].upper() for x in allsmov]
+    
+    return smovfiles 
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
 
 def compare_tables(pkl_it):
     '''
@@ -186,7 +211,8 @@ def compare_tables(pkl_it):
         Nothing
     '''
 
-    existing = connect_cosdb()
+#    existing = connect_cosdb()
+    existing = tally_cs()
     mast = connect_dadsops()
     print("Finding missing COS data...")
 
@@ -194,7 +220,7 @@ def compare_tables(pkl_it):
     missing_names = list(set(mast.keys()) - set(existing))
 
     # To retrieve ALL COS data, uncomment the line below.
-    missing_names = list(set(mast.keys() ))
+#    missing_names = list(set(mast.keys() ))
 
     # Create dictionaries groupoed by proposal ID, it is much easier
     # to retrieve them this way.
@@ -207,8 +233,6 @@ def compare_tables(pkl_it):
     for i in xrange(len(missing_names)):
         prop_dict[missing_props[i]].append(missing_names[i])
 
-    for item in already_there:
-        prop_dict.pop(item, None)
     print("Data missing for {0} programs".format(len(prop_keys)))
     if pkl_it:
         pkl_file = "filestoretrieve.p"
