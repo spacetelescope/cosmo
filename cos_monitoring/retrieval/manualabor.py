@@ -14,6 +14,7 @@ __date__ = "04-13-2016"
 __maintainer__ = "Jo Taylor"
 
 # Import necessary packages.
+import datetime
 import os
 import glob
 import shutil
@@ -199,7 +200,8 @@ def csum_existence(filename):
     exptype = pf.getval(filename, "exptype")
     # If getting one header keyword, getval is faster than opening.
     # The more you know.
-    if exptype != "ACQ/PEAKD" and exptype != "ACQ/PEAKXD":
+    #if exptype != "ACQ/PEAKD" and exptype != "ACQ/PEAKXD":
+    if exptype == "ACQ/IMAGE":
         donotcal = False
         csums = glob.glob(os.path.join(dirname,rootname+"*csum*"))
         if not csums:
@@ -345,6 +347,7 @@ def parallelize(myfunc, mylist):
         # pooling with processes=0.
         if nprocs == 0:
             nrpcos = 1
+        print("Using {0} cores at {1}".format(nprocs, datetime.datetime.now()))
         pool = mp.Pool(processes=nprocs)
         pool.map(myfunc, onelist)
         pool.close()
@@ -405,10 +408,12 @@ def work_laboriously(prl):
         Nothing
     '''
 
+    print("Starting at {0}...\n".format(datetime.datetime.now()))
     base_dir = "/grp/hst/cos2/smov_testing/"
     try:
         chmod_recurs(base_dir, 0755) 
     except SyntaxError:
+        print("Something went wrong")
         chmod_recurs(base_dir, 0o755) 
     # using glob is faster than using os.walk
     zipped = glob.glob(os.path.join(base_dir, "*", "*raw*gz"))
@@ -442,7 +447,7 @@ def work_laboriously(prl):
     # permission determined by stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
     chmod_recurs(base_dir, 872)
 
-    print("Done!")
+    print("\nFinished at {0}.".format(datetime.datetime.now()))
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
@@ -452,4 +457,7 @@ if __name__ == "__main__":
                         default=False, help="Parallellize functions")
     args = parser.parse_args()
     prl = args.prl
-    work_laboriously(prl)
+    try:
+        work_laboriously(prl)
+    except Exception as e:
+        print(Exception, e)
