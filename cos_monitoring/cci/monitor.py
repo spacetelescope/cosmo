@@ -33,9 +33,12 @@ import glob
 import numpy as np
 import multiprocessing as mp
 import shutil
+import logging
+logger = logging.getLogger(__name__)
 #from bokeh import charts
 #from bokeh.plotting import figure
 
+from .gainmap import make_all_hv_maps, make_all_gainmaps, make_total_gain
 from ..utils import enlarge, send_email
 from .findbad import time_trends
 from .gsag import main as gsag_main
@@ -78,7 +81,7 @@ def make_quicklooks(gainmap, clobber=True):
 
     path, name = os.path.split(gainmap)
     pha_name = os.path.join(path, 'l_' + name.split('_')[1] + '_phaimage_cci_phf.fits')
-    print pha_name
+    print(pha_name)
 
     has_gain = np.zeros(image.shape)
     index = np.where(image > 0)
@@ -146,7 +149,7 @@ def make_quicklooks(gainmap, clobber=True):
 
     fig.savefig(out_image_file)
     plt.close(fig)
-    print 'WROTE: %s'% (out_image_file)
+    print('WROTE: %s'% (out_image_file))
 
 #------------------------------------------------------------
 
@@ -250,7 +253,6 @@ def plotting():
     TOOLS = "pan,wheel_zoom,box_zoom,box_select,lasso_select,reset,resize,save"
 
     p = figure(tools=TOOLS, toolbar_location="above", logo="grey", plot_width=700)
-    #p.title = "{} LightCurve".format(name)
     p.background_fill= "#cccccc"
 
     p.circle(gain,
@@ -270,34 +272,46 @@ def plotting():
 def monitor():
     """ Main driver for monitoring program.
     """
-    
-    print 'phaimages'
-    make_phaimages(False)
 
-    time_trends()
+    logger.info("start monitor")
 
-    gsag_main(False)
+    settings = open_settings()
+    out_dir = os.path.join(settings['monitor_location'], 'CCI')
+
+    if not os.path.exists(out_dir):
+        logger.warning("Creating output directory: {}".format(out_dir))
+        os.makedirs(out_dir)
+
+    #print('Making ALL Gain Maps')
+    #make_all_gainmaps()
+
+    make_phaimages(out_dir)
+    time_trends(out_dir)
+    gsag_main(out_dir)
 
     #-- quicklooks
-    all_gainmaps = glob.glob(os.path.join(MONITOR_DIR, '*gainmap*.fits'))
+    all_gainmaps = glob.glob(os.path.join(out_dir, '*gainmap*.fits'))
     all_gainmaps.sort()
 
     pool = mp.Pool(processes=10)
     pool.map(make_quicklooks, all_gainmaps)
     #--
 
-    make_cumulative_plots()
+    ###make_cumulative_plots()
 
-    message = 'CCI Monitor run for %s complete.  \n'% (TIMESTAMP)
-    message += '\n'
-    message += 'Calibration with CalCOS has finished \n '
-    message += 'Check over the gsagtab comparison log and see if we need to deliver this file.\n\n\n'
-    message += 'Sincerely,\n %s'% (__file__)
+    #message = 'CCI Monitor run for %s complete.  \n'% (TIMESTAMP)
+    #message += '\n'
+    #message += 'Calibration with CalCOS has finished \n '
+    #message += 'Check over the gsagtab comparison log and see if we need to deliver this file.\n\n\n'
+    #message += 'Sincerely,\n %s'% (__file__)
 
-    move_to_web()
+    #move_to_web()
     #send_email(subject='CCI Monitor complete', message=message)
 
+    logger.info("finish monitor")
+
 #-------------------------------------------------------------------------------
+
 def move_to_web():
     """Copy output products to web-facing directories.
 
@@ -313,4 +327,5 @@ def move_to_web():
             os.remove(os.path.join(WEB_DIR,os.path.basename(item)))
         shutil.copy(item, WEB_DIR)
         os.chmod(os.path.join(WEB_DIR, os.path.basename(item)),0o766)
+
 #-------------------------------------------------------------------------------

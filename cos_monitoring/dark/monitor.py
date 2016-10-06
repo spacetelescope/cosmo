@@ -10,6 +10,8 @@ import numpy as np
 import shutil
 import glob
 import math
+import logging
+logger = logging.getLogger(__name__)
 
 from astropy.io import fits
 from astropy.time import Time
@@ -29,7 +31,6 @@ web_directory = '/grp/webpages/COS/'
 #-------------------------------------------------------------------------------
 
 def get_sun_loc(mjd, dataset):
-    print(dataset)
     rootname = fits.getval(dataset, 'ROOTNAME')
 
     path, _ = os.path.split(dataset)
@@ -149,8 +150,8 @@ def pull_orbital_info(dataset, step=25):
     try:
         timeline = hdu['timeline'].data
         segment = hdu[0].header['segment']
-        print(timeline)
     except KeyError:
+        logger.debug("no timeline extension found for: {}".format(dataset))
         yield info
         raise StopIteration
 
@@ -188,8 +189,6 @@ def pull_orbital_info(dataset, step=25):
         sun_lon.append(item[0])
         sun_lat.append(item[1])
 
-    print(len(lat), len(sun_lat))
-
     #try:
     #    sun_lat = timeline['sun_lat'][:-1][::step].copy().astype(np.float64)
     #    sun_lon = timeline['sun_lon'][:-1][::step].copy().astype(np.float64)
@@ -202,6 +201,7 @@ def pull_orbital_info(dataset, step=25):
     decyear = mjd_to_decyear(mjd)
 
     if not len(times):
+        logger.debug("time array empty for: {}".format(dataset))
         blank = np.array([0])
         yield info
         raise StopIteration
@@ -237,6 +237,7 @@ def pull_orbital_info(dataset, step=25):
         'Arrays are not equal in length {}:{}'.format(len(lat), len(counts))
 
     if not len(counts):
+        logger.debug("zero-length array found for: {}".format(dataset))
         yield info
     else:
         for i in range(len(counts)):
@@ -254,7 +255,6 @@ def pull_orbital_info(dataset, step=25):
 #-------------------------------------------------------------------------------
 
 def compile_phd():
-
     raise NotImplementedError("Nope, seriously can't do any of this.")
 
     #-- populate PHD table
@@ -293,10 +293,6 @@ def pha_hist(filename):
 #-------------------------------------------------------------------------------
 
 def make_plots(detector, base_dir, TA=False):
-    print('#-------------------#')
-    print('Making plots for {}'.format(detector))
-    print('#-------------------#')
-
     if detector == 'FUV':
         search_strings = ['_corrtag_a.fits', '_corrtag_b.fits']
         segments = ['FUVA', 'FUVB']
@@ -311,6 +307,7 @@ def make_plots(detector, base_dir, TA=False):
         solar_date = np.array( mjd_to_decyear([line[0] for line in solar_data]) )
         solar_flux = np.array([line[1] for line in solar_data])
     except TypeError:
+        logger.warning("Couldn't read solar data.  Putting in all zeros.")
         solar_date = np.ones(1000)
         solar_flux = np.ones(1000)
 
@@ -323,11 +320,11 @@ def make_plots(detector, base_dir, TA=False):
 
     for key, segment in zip(search_strings, segments):
         #-- Plot vs time
-        print('Plotting Time')
+        logger.debug('creating time plot for {}:{}'.format(segment, key))
         data = engine.execute("""SELECT date,{},temp,latitude,longitude
                                  FROM darks
                                  WHERE detector = '{}'
-                                 AND concat(temp, latitude, longitude)IS NOT NULL""".format(dark_key, segment)
+                                 AND concat(temp, latitude, longitude) IS NOT NULL""".format(dark_key, segment)
                                  )
         data = [row for row in data]
 
@@ -355,7 +352,7 @@ def make_plots(detector, base_dir, TA=False):
         plot_time(detector, dark, mjd, temp, solar_flux, solar_date, outname)
 
         #-- Plot vs orbit
-        print('Plotting Orbit')
+        logger.debug('creating orbit plot for {}:{}'.format(segment, key))
         data = engine.execute("""SELECT {},latitude,longitude,sun_lat,sun_lon,date
                                  FROM darks
                                  WHERE detector = '{}'
@@ -381,7 +378,7 @@ def make_plots(detector, base_dir, TA=False):
         plot_orbital_rate(longitude, latitude, dark, sun_lon, sun_lat, outname)
 
         #-- Plot histogram of darkrates
-        print('Plotting Hist')
+        logger.debug('creating histogram plot for {}:{}'.format(segment, key))
         data = engine.execute("""SELECT {},date
                                  FROM darks
                                  WHERE detector = '{}'
@@ -412,27 +409,25 @@ def make_plots(detector, base_dir, TA=False):
 
 #-------------------------------------------------------------------------------
 
-def move_products(base_dir):
+def move_products(base_dir, web_dir):
     '''Move created pdf files to webpage directory
     '''
-
-    print('#-------------------#')
-    print('Moving products into')
-    print('webpage directory')
-    print('#-------------------#')
-
     for detector in ['FUV', 'NUV']:
 
-        write_dir = web_directory + detector.lower() + '_darks/'
+        write_dir = os.path.join(web_dir, detector.lower() + '_darks/')
+        if not os.path.exists(write_dir):
+            os.makedirs(write_dir)
+
         move_list = glob.glob(base_dir + detector + '/*.p??')
 
         for item in move_list:
             try:
                 if item.endswith('.py~'):
+                    logger.debug("removing {}".format(item))
                     move_list.remove(item)
                     continue
                 else:
-                    print('MOVING {}'.format(item))
+                    logger.debug("moving {}".format(item))
 
                 path, file_to_move = os.path.split(item)
                 os.chmod(item, 0o766)
@@ -440,6 +435,7 @@ def move_products(base_dir):
                 shutil.copy(item, write_dir + file_to_move)
 
             except OSError:
+                logger.warning("Hit an os error for {}, leaving it there".format(item))
                 move_list.remove(item)
 
         os.system('chmod 777 ' + write_dir + '*.pdf')
@@ -448,17 +444,27 @@ def move_products(base_dir):
 
 def monitor(out_dir):
     """Main monitoring pipeline"""
-    SETTINGS = open_settings()
-    out_dir = SETTINGS['monitor_location']
-    data_dir = '/grp/hst/cos/Monitors/Darks/'
-    get_solar_data(data_dir)
+
+    logger.info("Starting Monitor")
+
+    settings = open_settings()
+    out_dir = os.path.join(settings['monitor_location'], 'Darks')
+    web_dir = settings['webpage_location']
+
+    if not os.path.exists(out_dir):
+        logger.warning("Creating output directory: {}".format(out_dir))
+        os.makedirs(out_dir)
+
+    get_solar_data(out_dir)
 
     for detector in ['FUV', 'NUV']:
-        make_plots(detector, data_dir)
+        logger.info("Making plots for {}".format(detector))
+        make_plots(detector, out_dir)
 
         if detector == 'FUV':
-            make_plots(detector, data_dir, TA=True)
+            make_plots(detector, out_dir, TA=True)
 
-    move_products(out_dir)
+    logger.info("moving products to web directory")
+    move_products(out_dir, web_dir)
 
 #-------------------------------------------------------------------------------

@@ -3,7 +3,29 @@ import os
 from astropy.io import fits
 import numpy as np
 from calcos import ccos
+from bs4 import BeautifulSoup
+from six.moves.urllib.request import urlopen
+import re
 
+#-------------------------------------------------------------------------------
+def scrape_cycle(asn_id):
+
+    if asn_id == 'NONE' or asn_id is None:
+        return None
+
+    url = 'http://archive.stsci.edu/cgi-bin/mastpreview?mission=hst&dataid={}'.format(asn_id)
+    page = urlopen(url)
+    soup = BeautifulSoup(page, "html.parser")
+
+    soup_text = soup.text
+    regex = r"Cycle \d{2}"
+
+    match = re.search(regex, soup_text)
+    match = match.group(0)
+
+    cycle_number = re.sub("[^0-9]", "", match)
+
+    return cycle_number
 #-------------------------------------------------------------------------------
 
 def remove_if_there(filename):
@@ -65,7 +87,7 @@ def rebin(a, bins=(2,2), mode='weird'):
 
     elif mode=='weird':
         #not tested, from internet
-        shape=(y/bins[0],x/bins[1])
+        shape=(y//bins[0],x//bins[1])
         sh = shape[0],a.shape[0]//shape[0],shape[1],a.shape[1]//shape[1]
         a= a.reshape(sh).sum(-1).sum(1)
 
@@ -177,9 +199,9 @@ def send_email(subject=None, message=None, from_addr=None, to_addr=None):
     users_email=getpass.getuser()+'@stsci.edu'
 
     if not subject:
-	subject='Message from %s'%(__file__)
+        subject='Message from %s'%(__file__)
     if not message:
-	message='You forgot to put a message into me'
+        message='You forgot to put a message into me'
     if not from_addr:
         from_addr=users_email
     if not to_addr:
@@ -194,4 +216,4 @@ def send_email(subject=None, message=None, from_addr=None, to_addr=None):
     s = smtplib.SMTP(svr_addr)
     s.sendmail(from_addr, to_addr, msg.as_string())
     s.quit()
-    print '\nEmail sent to %s \n' %(from_addr)
+    print('\nEmail sent to %s \n' %(from_addr))

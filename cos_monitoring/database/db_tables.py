@@ -174,7 +174,7 @@ class Headers(Base):
     apmpos = Column(String(20))
     aperxpos = Column(Float)
     aperypos = Column(Float)
-    aperture = Column(String(4))
+    aperture = Column(String(8))
     opt_elem = Column(String(7))
     shutter = Column(String(20))
     extended = Column(String(20))
@@ -227,6 +227,7 @@ class Headers(Base):
 
     #NUV keywords
     dethvl = Column(Float)
+    cycle = Column(Integer)
 
     file_id = Column(Integer, ForeignKey('files.id'))
     #file = relationship("Files", backref=backref('headers', order_by=id))
@@ -356,9 +357,66 @@ class sptkeys(Base):
     ldcampat = Column(Float)
     ldcampbt = Column(Float)
     lmmcetmp = Column(Float)
+    dominant_gs = Column(String(20))
+    secondary_gs = Column(String(20))
+    start_time = Column(String(20))
+    search_dimensions = Column(Integer)
+    search_step_size = Column(Float)
+    search_type = Column(String(20))
+    search_floor = Column(Integer)
+    lqtadpos = Column(Float)
+    lqtaxpos = Column(Float)
+    lqitime = Column(Integer)
 
     file_id = Column(Integer, ForeignKey('files.id'))
 
     __table_args__ = (Index('idx_rootname', 'rootname', unique=False), )
+
+#-------------------------------------------------------------------------------
+
+class Acqs(Base):
+    __tablename__ = "acqs"
+
+    id = Column(Integer, primary_key=True)
+
+    rootname = Column(String(9))
+    obset_id = Column(String(7))
+    linenum = Column(String(10))
+    exptype = Column(String(12))
+    target = Column(String(50))
+
+    file_id = Column(Integer, ForeignKey('files.id'))
+
+#-------------------------------------------------------------------------------
+
+class Flagged(Base):
+    __tablename__ = 'flagged'
+
+    id = Column(BigInteger, primary_key=True)
+
+    mjd = Column(Float)
+    segment = Column(String(4))
+    dethv = Column(Integer)
+    x = Column(Integer)
+    y = Column(Integer)
+
+    __table_args__ = (Index('coord', 'x', 'y', unique=False), )
+
+#-------------------------------------------------------------------------------
+
+class GainTrends(Base):
+    __tablename__ = 'gain_trends'
+
+    id = Column(BigInteger, primary_key=True)
+
+    mjd = Column(Float)
+    segment = Column(String(4))
+    dethv = Column(Integer)
+    x = Column(Integer)
+    y = Column(Integer)
+    slope = Column(Float)
+    intercept = Column(Float)
+
+    __table_args__ = (Index('coord', 'x', 'y', unique=False), )
 
 #-------------------------------------------------------------------------------

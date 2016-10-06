@@ -9,6 +9,8 @@ import numpy as np
 import os
 import glob
 from ftplib import FTP
+import logging
+logger = logging.getLogger(__name__)
 
 from astropy.time import Time
 
@@ -29,6 +31,8 @@ def grab_solar_files(file_dir):
 
     """
 
+    logging.debug("Connecting to NOAO site")
+
     ftp = FTP('ftp.swpc.noaa.gov')
     ftp.login()
 
@@ -38,7 +42,7 @@ def grab_solar_files(file_dir):
         if item.endswith('_DSD.txt'):
             year = int(item[:4])
             if year >= 2000:
-                print('Retrieving: {}'.format(item))
+                logging.debug('Retrieving: {}'.format(item))
                 destination = os.path.join(file_dir, item)
                 ftp.retrbinary('RETR {}'.format(item), open(destination, 'wb').write)
 
@@ -51,6 +55,7 @@ def compile_txt(file_dir):
 
     Parameters
     ----------
+    file_dir : str
 
     Returns
     -------
@@ -67,13 +72,14 @@ def compile_txt(file_dir):
     input_list.sort()
 
     for item in input_list:
-        print('Reading {}'.format(item))
+        logging.debug('Reading {}'.format(item))
 
         #-- clean up Q4 files when year-long file exists
         if ('Q4_' in item) and os.path.exists(item.replace('Q4_', '_')):
-            print("Removing duplicate observations: {}".format(item))
+            logger.debug("Removing duplicate observations: {}".format(item))
             os.remove(item)
             continue
+
         data = ascii.read(item, data_start=1, comment='[#,:]')
 
         for line in data:
@@ -106,8 +112,9 @@ def get_solar_data(file_dir):
 
     """
 
-    print('Gettting Solar flux data')
+    logger.info('Gettting Solar flux data')
     for txtfile in glob.glob(os.path.join(file_dir, '*_D?D.txt')):
+        logger.debug("Removing old file: {}".format(txtfile))
         os.remove(txtfile)
 
     grab_solar_files(file_dir)

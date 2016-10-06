@@ -4,10 +4,10 @@ from __future__ import print_function, absolute_import, division
 
 '''
 Contains functions that facilitate the downloading of COS data
-via XML requests to MAST. 
+via XML requests to MAST.
 
 Use:
-    This script is intended to be imported by other modules that 
+    This script is intended to be imported by other modules that
     download COS data.
 '''
 
@@ -21,10 +21,14 @@ import pickle
 import os
 import urllib
 import string
-import httplib
 from datetime import datetime
 import time
 import pdb
+
+try:
+    from http.client import HTTPSConnection
+except ImportError:
+    from httplib import HTTPSConnection
 
 from .manualabor import run_all_labor
 from .SignStsciRequest import SignStsciRequest
@@ -63,7 +67,7 @@ def build_xml_request(dest_dir, datasets):
     '''
     Build the xml request string.
 
-    Parameters: 
+    Parameters:
         dest_dir : string
             The path fo the directory in which the data will be downloaded.
         datasets : list
@@ -94,7 +98,7 @@ def build_xml_request(dest_dir, datasets):
         datasets = dataset_str)
     xml_request = string.Template(request_str)
     xml_request = xml_request.template
-    
+
     return xml_request
 
 #-----------------------------------------------------------------------------#
@@ -105,7 +109,7 @@ def submit_xml_request(xml_file):
     '''
     Submit the xml request to MAST.
 
-    Parameters: 
+    Parameters:
         xml_file : string
             The xml request string.
 
@@ -115,21 +119,21 @@ def submit_xml_request(xml_file):
     '''
     home = os.environ.get("HOME")
     user = os.environ.get("USER")
-    
+
     signer = SignStsciRequest()
-    request_xml_str = signer.signRequest("{0}/.ssh/privkey.pem".format(home), 
+    request_xml_str = signer.signRequest("{0}/.ssh/privkey.pem".format(home),
                                          xml_file)
     params = urllib.urlencode({
         "dadshost": "dmsops1.stsci.edu",
         "dadsport": 4703,
         "mission": "HST",
         "request": request_xml_str})
-    headers = {"Accept": "text/html", 
+    headers = {"Accept": "text/html",
                "User-Agent": "{0}PythonScript".format(user)}
-    req = httplib.HTTPSConnection("archive.stsci.edu")
+    req = HTTPSConnection("archive.stsci.edu")
     req.request("POST", "/cgi-bin/dads.cgi", params, headers)
     response = req.getresponse().read()
-    
+
     return response
 
 #-----------------------------------------------------------------------------#
@@ -140,8 +144,8 @@ def retrieve_data(dest_dir, datasets):
     '''
     For a given list of datasets, submit an xml request to MAST
     to retrieve them to a specified directory.
-    
-    Parameters: 
+
+    Parameters:
         dest_dir : string
             The path to the directory to which the data will be downloaded.
         datasets : list
@@ -151,7 +155,7 @@ def retrieve_data(dest_dir, datasets):
         tracking_ids : list
             The tracking IDs for all submitted for a given program.
     '''
-    dataset_lists = (datasets[i:i+MAX_RETRIEVAL] 
+    dataset_lists = (datasets[i:i+MAX_RETRIEVAL]
                      for i in xrange(0, len(datasets), MAX_RETRIEVAL))
     tracking_ids = []
     for item in dataset_lists:
@@ -161,7 +165,7 @@ def retrieve_data(dest_dir, datasets):
         print(result)
         tmp_id = re.search("("+MYUSER+"[0-9]{5})", result).group()
         tracking_ids.append(tmp_id)
-   
+
     return tracking_ids
 
 #-----------------------------------------------------------------------------#
@@ -170,7 +174,7 @@ def retrieve_data(dest_dir, datasets):
 #@log_function
 def everything_retrieved(tracking_id):
     '''
-    Check every 15 minutes to see if all submitted datasets have been 
+    Check every 15 minutes to see if all submitted datasets have been
     retrieved. Based on code from J. Ely.
 
     Parameters:
@@ -183,7 +187,7 @@ def everything_retrieved(tracking_id):
         killed : bool
             Boolean specifying is request was killed.
     '''
-    
+
     done = False
     killed = False
 #    print tracking_id
@@ -202,12 +206,12 @@ def everything_retrieved(tracking_id):
 #@log_function
 def cycle_thru(prop_dict, prop):
     '''
-    For a given proposal, determine path to put data. 
+    For a given proposal, determine path to put data.
     Retrieve data for a proposal and keep track of the tracking IDs
-    for each submission (each proposal may have multiple submissions 
+    for each submission (each proposal may have multiple submissions
     depending on number of datasets in proposal).
 
-    Parameters: 
+    Parameters:
         prop_dict : dictionary
             A dictionary whose keys are proposal IDs and keys are
             dataset names for each ID.
@@ -217,13 +221,13 @@ def cycle_thru(prop_dict, prop):
     Returns:
         all_tracking_ids : list
             Running tally of all tracking IDs for all propsals retrieved
-            to date. 
+            to date.
     '''
 
     prop_dir = os.path.join(BASE_DIR, str(prop))
     if not os.path.exists(prop_dir):
         os.mkdir(prop_dir)
-    os.chmod(prop_dir, 0755)
+    os.chmod(prop_dir, 0o755)
     print("I am retrieving %s datasets for %s" % (len(prop_dict[prop]),prop))
     ind_id = retrieve_data(prop_dir, prop_dict[prop])
     for item in ind_id:
@@ -238,16 +242,16 @@ def cycle_thru(prop_dict, prop):
 def run_all_retrievals(pkl_file):
     '''
     Open the pickle file containing a dictionary of all missing COS data
-    to be retrieved. It is set up to handle all situations (if run daily=few 
+    to be retrieved. It is set up to handle all situations (if run daily=few
     programs, if re-retrieving all data=hundreds of programs). If there
     are more than 100 programs to be retrieved, stop every 100 programs and
     run manualabor to calibrate and zip files. If this is not done, you will
-    QUICKLY run out of storage when running manualabor later. 
-    Split the total number of programs into groups, once a defined number 
-    of programs have been retrieved (int_num), add more to the queue. 
-    Using this method, there are always pending programs (as opposed to 
+    QUICKLY run out of storage when running manualabor later.
+    Split the total number of programs into groups, once a defined number
+    of programs have been retrieved (int_num), add more to the queue.
+    Using this method, there are always pending programs (as opposed to
     retrieving X, waiting until finished, then starting another X).
-    For each proposal in a group, use cycle_thru to request all datasets. 
+    For each proposal in a group, use cycle_thru to request all datasets.
     If there are too many datasets, it will split it up for manageability.
 
     Paramaters:
@@ -268,8 +272,8 @@ def run_all_retrievals(pkl_file):
     century = 1
 
     # While the number of processed programs is less than total programs
-    while pend < len(prop_dict_keys): 
-        # If there are more than N*100 programs to be retrieved, stop 
+    while pend < len(prop_dict_keys):
+        # If there are more than N*100 programs to be retrieved, stop
         # and calibrate and zip.
         # NOTE: I have the value set to two right now for testing purposes!
         # NOTE: It should be set to 100.
@@ -281,9 +285,9 @@ def run_all_retrievals(pkl_file):
         # of programs split up for manageability), retrieve data for it.
         for prop in prop_dict_keys[pstart:pend]:
             cycle_thru(prop_dict, prop)
-        # This while loop keeps track of how many submitted programs in the 
+        # This while loop keeps track of how many submitted programs in the
         # current group (defined as from pstart:pend) have been entirely
-        # retrieved, stored in counter. Once the number of finished 
+        # retrieved, stored in counter. Once the number of finished
         # programs reaches (total# - int_num), another int_num of programs
         # are added to the queue. While data not retrieved, wait 15 minutes
         # before checking again.
@@ -307,8 +311,8 @@ def run_all_retrievals(pkl_file):
             print("\nData delivered, adding {0} program(s) to queue".format(int_num))
             pstart = pend
             pend += int_num
-    # When pend > total # of programs, it does not mean all have been 
-    # retrieved. Check, and retrieve if so. 
+    # When pend > total # of programs, it does not mean all have been
+    # retrieved. Check, and retrieve if so.
     else:
         if (len(prop_dict_keys) - (pend-int_num)) > 0:
             for prop in prop_dict_keys[pend-int_num:]:
@@ -323,4 +327,3 @@ def run_all_retrievals(pkl_file):
 if __name__ == "__main__":
     pkl_file = "filestoretrieve.p"
     run_all_retrievals(pkl_file)
-

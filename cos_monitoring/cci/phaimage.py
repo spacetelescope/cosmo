@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+
 """
 Classes and functions to create PH filtering images for COS FUV observations
 ( PHAIMAGE )
@@ -236,23 +236,20 @@ class Phaimage:
         hdu_out.writeto(out_fits, clobber=clobber)
         hdu_out.close()
 
-        print 'WROTE: %s'% (out_fits)
+        print('WROTE: %s'% (out_fits))
 
 #------------------------------------------------------------
 
-def make_phaimages(clobber=False):
+def make_phaimages(data_dir, clobber=False):
     """Creates *_phf.fits reference files for each CCI period
     """
-    print '\n\n#--------------------#'
-    print '#--Making PHAIMAGES--#'
-    print '#--------------------#'
 
-    all_gainmaps = glob.glob(MONITOR_DIR + '*gainmap.fits')
+    all_gainmaps = glob.glob(os.path.join(data_dir, '*gainmap.fits'))
     all_gainmaps.sort()
 
     for gainmap in all_gainmaps:
-        if os.path.exists( Phaimage.outfile(gainmap) ) and not clobber:
-            print Phaimage.outfile(gainmap), 'Already exists. Skipping'
+        if os.path.exists(Phaimage.outfile(gainmap)) and not clobber:
+            print(Phaimage.outfile(gainmap), 'Already exists. Skipping')
         else:
             try:
                 inputs = Phaimage.inputs(gainmap)
@@ -261,7 +258,7 @@ def make_phaimages(clobber=False):
 
             for item in inputs:
                 if not os.path.exists(item):
-                    print 'Missing input: {}'.format(item)
+                    print('Missing input: {}'.format(item))
                     continue
 
             phaimage = Phaimage(gainmap)

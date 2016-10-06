@@ -63,7 +63,7 @@ def unzip_mistakes(zipped):
         dirname = os.path.dirname(zfile)
         existence = csum_existence(zfile)
         if not existence:
-            chmod_recurs(dirname, 0755)
+            chmod_recurs(dirname, 0o755)
             files_to_unzip = glob.glob(zfile)
             uncompress_files(files_to_unzip)
         else:
@@ -105,7 +105,7 @@ def make_csum(unzipped_raws):
                            create_csum_image=True, only_csum=True,
                            compress_csum=False)
 
-            except Exception, e:
+            except Exception as e:
                 print(e)
                 #logger.exception("There was an error processing {}:".format(item))
                 pass
@@ -367,10 +367,15 @@ def run_all_labor(prl):
     '''
 
     base_dir = "/grp/hst/cos2/smov_testing/"
+<<<<<<< HEAD
     try:
         chmod_recurs(base_dir, 0755) 
     except SyntaxError:
         chmod_recurs(base_dir, 0o755) 
+=======
+    chmod_recurs(base_dir, 0o755)
+
+>>>>>>> c6becd42cb32d58725d2e98f8fdeb6f8512c9fe6
     # using glob is faster than using os.walk
     zipped = glob.glob(os.path.join(base_dir, "?????", "*raw*gz"))
     if zipped:

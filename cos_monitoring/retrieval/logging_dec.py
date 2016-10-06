@@ -59,7 +59,7 @@ def log_function(func):
         try:
             func(*args, **kwargs)
             logging.info("{0} completed successfully".format(funcname))
-        except Exception, err:
+        except Exception as err:
             logging.exception("Error in function {0}.{1}: ".format(modname,funcname))
 
     return wrapper
