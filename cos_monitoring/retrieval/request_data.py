@@ -24,7 +24,7 @@ import string
 from datetime import datetime
 import time
 import pdb
-
+import stat
 try:
     from http.client import HTTPSConnection
 except ImportError:
@@ -37,7 +37,7 @@ from .logging_dec import log_function
 MAX_RETRIEVAL = 20
 BASE_DIR = "/grp/hst/cos2/smov_testing"
 MYUSER = "jotaylor"
-
+PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 REQUEST_TEMPLATE = string.Template('\
 <?xml version=\"1.0\"?> \n \
 <!DOCTYPE distributionRequest SYSTEM \"http://dmswww.stsci.edu/dtd/sso/distribution.dtd\"> \n \
@@ -235,9 +235,9 @@ def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
 
     prop_dir = os.path.join(BASE_DIR, str(prop))
     if not os.path.exists(prop_dir):
-        os.chmod(BASE_DIR, 0755)
+        os.chmod(BASE_DIR, PERM_755)
         os.mkdir(prop_dir)
-    os.chmod(prop_dir, 0755)
+    os.chmod(prop_dir, PERM_755)
     print("I am retrieving {0} dataset(s) for {1}".format(len(prop_dict[prop]),prop))
     ind_id = retrieve_data(prop_dir, prop_dict[prop])
     for item in ind_id:
@@ -345,7 +345,6 @@ def run_all_retrievals(prop_dict=None, pkl_file=None):
 #-----------------------------------------------------------------------------#
 
 if __name__ == "__main__":
-#    pkl_file = "testing_dict.p"
     pkl_file = "filestoretrieve.p"
     try:
         run_all_retrievals(pkl_file)

@@ -29,6 +29,7 @@ import math
 import time
 import pdb
 import numpy as np
+import stat
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -37,6 +38,8 @@ from .dec_calcos import clobber_calcos
 
 LINEOUT = "#"*75+"\n"
 STAROUT = "*"*75+"\n"
+PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
+PERM_872 = stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -66,7 +69,7 @@ def unzip_mistakes(zipped):
         dirname = os.path.dirname(zfile)
         existence, donotcal= csum_existence(zfile)
         if existence is False and donotcal is False:
-            chmod_recurs(dirname, 0755)
+            chmod_recurs(dirname, PERM_755)
             files_to_unzip = glob.glob(zfile)
             uncompress_files(files_to_unzip)
         else:
@@ -97,12 +100,8 @@ def make_csum(unzipped_raws):
         existence, donotcal = csum_existence(item)
         if existence is False and donotcal is False:
             dirname = os.path.dirname(item)
-            try:
-                os.chmod(dirname, 0755)
-                os.chmod(item, 0755)
-            except SyntaxError:
-                os.chmod(dirname, 0o755)
-                os.chmod(item, 0o755)
+            os.chmod(dirname, PERM_755)
+            os.chmod(item, PERM_755)
             try:
                 run_calcos(item, outdir=dirname, verbosity=2,
                            create_csum_image=True, only_csum=True,
@@ -410,11 +409,7 @@ def work_laboriously(prl):
 
     print("Starting at {0}...\n".format(datetime.datetime.now()))
     base_dir = "/grp/hst/cos2/smov_testing/"
-    try:
-        chmod_recurs(base_dir, 0755) 
-    except SyntaxError:
-        print("Something went wrong")
-        chmod_recurs(base_dir, 0o755) 
+    chmod_recurs(base_dir, PERM_755) 
     # using glob is faster than using os.walk
     zipped = glob.glob(os.path.join(base_dir, "*", "*raw*gz"))
     if zipped:
@@ -444,8 +439,7 @@ def work_laboriously(prl):
 
     print("Fixing permissions")
     fix_perm(base_dir)
-    # permission determined by stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
-    chmod_recurs(base_dir, 872)
+    chmod_recurs(base_dir, PERM_872)
 
     print("\nFinished at {0}.".format(datetime.datetime.now()))
 #------------------------------------------------------------------------------#
