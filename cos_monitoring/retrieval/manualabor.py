@@ -14,6 +14,7 @@ __date__ = "04-13-2016"
 __maintainer__ = "Jo Taylor"
 
 # Import necessary packages.
+import datetime
 import os
 import glob
 import shutil
@@ -28,6 +29,7 @@ import math
 import time
 import pdb
 import numpy as np
+import stat
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -36,6 +38,8 @@ from .dec_calcos import clobber_calcos
 
 LINEOUT = "#"*75+"\n"
 STAROUT = "*"*75+"\n"
+PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
+PERM_872 = stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -58,12 +62,14 @@ def unzip_mistakes(zipped):
         Nothing
     '''
 
+    if isinstance(zipped, basestring):
+        zipped = [zipped]
     for zfile in zipped:
         rootname = os.path.basename(zfile)[:9]
         dirname = os.path.dirname(zfile)
-        existence = csum_existence(zfile)
-        if not existence:
-            chmod_recurs(dirname, 0o755)
+        existence, donotcal= csum_existence(zfile)
+        if existence is False and donotcal is False:
+            chmod_recurs(dirname, PERM_755)
             files_to_unzip = glob.glob(zfile)
             uncompress_files(files_to_unzip)
         else:
@@ -79,25 +85,25 @@ def make_csum(unzipped_raws):
 
     Parameters:
     -----------
-        unzipped_raws : list
-            A list of all filenames that are unzipped to be calibrated.
+        unzipped_raws : list or string
+            A list or string filenames that are unzipped to be calibrated.
 
     Returns:
     --------
         Nothing
     '''
-
     run_calcos = clobber_calcos(calcos.calcos)
     #logger.info("Creating CSUM files")
+    if isinstance(unzipped_raws, basestring):
+        unzipped_raws = [unzipped_raws]
     for item in unzipped_raws:
-        existence = csum_existence(item)
-        if not existence:
+        existence, donotcal = csum_existence(item)
+        if existence is False and donotcal is False:
             dirname = os.path.dirname(item)
-            os.chmod(dirname, 0o755)
-            os.chmod(item, 0o755)
-            csum_dir = os.path.join(dirname, "csum")
+            os.chmod(dirname, PERM_755)
+            os.chmod(item, PERM_755)
             try:
-                run_calcos(item, outdir=csum_dir, verbosity=2,
+                run_calcos(item, outdir=dirname, verbosity=2,
                            create_csum_image=True, only_csum=True,
                            compress_csum=False)
 
@@ -105,15 +111,6 @@ def make_csum(unzipped_raws):
                 print(e)
                 #logger.exception("There was an error processing {}:".format(item))
                 pass
-            if os.path.exists(csum_dir):
-                csums = glob.glob(os.path.join(csum_dir, "*csum*"))
-                if csums:
-                    for csum in csums:
-                        shutil.copy(csum, dirname)
-                else:
-                    print("A csum dir was created but there were no csums: {0}".format(csum_dir))
-                    #logger.error("A csum dir was created but there are no csums: {}".format(csum_dir))
-                shutil.rmtree(csum_dir)
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -202,14 +199,19 @@ def csum_existence(filename):
     exptype = pf.getval(filename, "exptype")
     # If getting one header keyword, getval is faster than opening.
     # The more you know.
-    if exptype != "ACQ/PEAKD" and exptype != "ACQ/PEAKXD":
+    #if exptype != "ACQ/PEAKD" and exptype != "ACQ/PEAKXD":
+    if exptype == "ACQ/IMAGE":
+        donotcal = False
         csums = glob.glob(os.path.join(dirname,rootname+"*csum*"))
         if not csums:
             existence = False
         else:
             existence = True
+    else:
+        donotcal = True
+        existence = False
 
-    return existence
+    return existence, donotcal
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -221,14 +223,16 @@ def compress_files(uz_files):
 
     Paramters:
     ----------
-        uz_files : list
-            A list of unzipped files to zip
+        uz_files : list or string
+            Unzipped file(s) to zip
 
     Returns:
     --------
         Nothing
     '''
 
+    if isinstance(uz_files, basestring):
+        uz_files = [uz_files]
     for uz_item in uz_files:
         z_item = uz_item + ".gz"
         with open(uz_item, "rb") as f_in, gzip.open(z_item, "wb") as f_out:
@@ -342,13 +346,54 @@ def parallelize(myfunc, mylist):
         # pooling with processes=0.
         if nprocs == 0:
             nrpcos = 1
+        print("Using {0} cores at {1}".format(nprocs, datetime.datetime.now()))
         pool = mp.Pool(processes=nprocs)
         pool.map(myfunc, onelist)
+        pool.close()
+        pool.join()
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+def only_one_seg(uz_files):
+    '''
+    If rawtag_a and rawtag_b both exist in a list of raw files, 
+    keep only one of the segments. Keep NUV and acq files as is.
+
+    Parameters:
+    -----------
+        uz_files : list
+            List of all unzipped files.
+
+    Returns:
+    --------
+        uz_files_1seg : list
+            List of all unzipped files with only one segment for a given root
+            (if applicable).
+    '''
+    
+    bad_inds = []
+    uz_files_1seg = []
+    for i in xrange(len(uz_files)):
+        if i not in bad_inds:
+            if "rawtag.fits" in uz_files[i] or "rawacq.fits" in uz_files[i]: # NUV/acq files
+                uz_files_1seg.append(uz_files[i])
+                continue
+            segs = ["_a.fits", "_b.fits"]
+            for j in xrange(len(segs)):
+                if segs[j] in uz_files[i]:
+                    other_seg = uz_files[i].replace(segs[j], segs[j-1])
+                    if other_seg in uz_files:
+                        bad_inds.append(uz_files.index(other_seg))
+                        uz_files_1seg.append(uz_files[i])
+                    else:
+                        uz_files_1seg.append(uz_files[i])
+
+    return uz_files_1seg
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-def run_all_labor(prl):
+def work_laboriously(prl):
     '''
     Run all the functions in the correct order.
 
@@ -362,43 +407,51 @@ def run_all_labor(prl):
         Nothing
     '''
 
+    print("Starting at {0}...\n".format(datetime.datetime.now()))
     base_dir = "/grp/hst/cos2/smov_testing/"
-    chmod_recurs(base_dir, 0o755)
-
+    chmod_recurs(base_dir, PERM_755) 
     # using glob is faster than using os.walk
-    zipped = glob.glob(os.path.join(base_dir, "?????", "*raw*gz"))
+    zipped = glob.glob(os.path.join(base_dir, "*", "*raw*gz"))
     if zipped:
+        print("Unzipping mistakes")
         if prl:
             parallelize(unzip_mistakes, zipped)
         else:
             unzip_mistakes(zipped)
 
-    unzipped_raws = glob.glob(os.path.join(base_dir, "?????", "*rawtag*fits")) + \
-                   glob.glob(os.path.join(base_dir, "?????", "*rawacq.fits"))
+    unzipped_raws_ab = glob.glob(os.path.join(base_dir, "*", "*rawtag*fits")) + \
+                   glob.glob(os.path.join(base_dir, "*", "*rawacq.fits"))
+    unzipped_raws = only_one_seg(unzipped_raws_ab)
     if unzipped_raws:
+        print("Calibrating raw files")
         if prl:
             parallelize(make_csum, unzipped_raws)
         else:
             make_csum(unzipped_raws)
 
-    all_unzipped = glob.glob(os.path.join(base_dir, "?????", "*fits"))
+    all_unzipped = glob.glob(os.path.join(base_dir, "*", "*fits"))
     if all_unzipped:
+        print("Zipping uncomprssed files")
         if prl:
             parallelize(compress_files, all_unzipped)
         else:
             compress_files(all_unzipped)
 
+    print("Fixing permissions")
     fix_perm(base_dir)
-    # permission determined by stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
-    chmod_recurs(base_dir, 872)
+    chmod_recurs(base_dir, PERM_872)
 
+    print("\nFinished at {0}.".format(datetime.datetime.now()))
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParse()
+    parser = argparse.ArgumentParser()
     parser.add_argument("-p", dest="prl", action="store_true",
                         default=False, help="Parallellize functions")
     args = parser.parse_args()
     prl = args.prl
-    run_all_labor(prl)
+    try:
+        work_laboriously(prl)
+    except Exception as e:
+        print(Exception, e)

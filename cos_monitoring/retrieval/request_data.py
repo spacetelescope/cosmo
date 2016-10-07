@@ -24,20 +24,20 @@ import string
 from datetime import datetime
 import time
 import pdb
-
+import stat
 try:
     from http.client import HTTPSConnection
 except ImportError:
     from httplib import HTTPSConnection
 
-from .manualabor import run_all_labor
+from .manualabor import work_laboriously
 from .SignStsciRequest import SignStsciRequest
 from .logging_dec import log_function
 
 MAX_RETRIEVAL = 20
 BASE_DIR = "/grp/hst/cos2/smov_testing"
 MYUSER = "jotaylor"
-
+PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 REQUEST_TEMPLATE = string.Template('\
 <?xml version=\"1.0\"?> \n \
 <!DOCTYPE distributionRequest SYSTEM \"http://dmswww.stsci.edu/dtd/sso/distribution.dtd\"> \n \
@@ -159,11 +159,19 @@ def retrieve_data(dest_dir, datasets):
                      for i in xrange(0, len(datasets), MAX_RETRIEVAL))
     tracking_ids = []
     for item in dataset_lists:
-        xml_file = build_xml_request(dest_dir, item)
-        result = submit_xml_request(xml_file)
-        tmp_id = re.search("("+MYUSER+"[0-9]{5})", result).group()
-        tracking_ids.append(tmp_id)
-
+        try:
+            xml_file = build_xml_request(dest_dir, item)
+            result = submit_xml_request(xml_file)
+#            print(xml_file)
+#            print(result)
+            tmp_id = re.search("("+MYUSER+"[0-9]{5})", result).group()
+            tracking_ids.append(tmp_id)
+        # If you can't get a ID, MAST is most likely down. 
+        except AttributeError:
+            print("Something is wrong on the MAST side...")
+            print("Unsuccesful request for {0}".format(item))
+            print("Continuing to next dataset.")
+            pass 
     return tracking_ids
 
 #-----------------------------------------------------------------------------#
@@ -202,7 +210,7 @@ def everything_retrieved(tracking_id):
 #-----------------------------------------------------------------------------#
 
 #@log_function
-def cycle_thru(prop_dict, prop):
+def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
     '''
     For a given proposal, determine path to put data.
     Retrieve data for a proposal and keep track of the tracking IDs
@@ -215,6 +223,9 @@ def cycle_thru(prop_dict, prop):
             dataset names for each ID.
         prop : int
             The proposal ID for which to retrieve data.
+        all_tracking_ids_tmp : list
+            Running tally of all tracking IDs for all propsals retrieved
+            to date. 
 
     Returns:
         all_tracking_ids : list
@@ -224,20 +235,21 @@ def cycle_thru(prop_dict, prop):
 
     prop_dir = os.path.join(BASE_DIR, str(prop))
     if not os.path.exists(prop_dir):
+        os.chmod(BASE_DIR, PERM_755)
         os.mkdir(prop_dir)
-    os.chmod(prop_dir, 0o755)
-    print("I am retrieving %s datasets for %s" % (len(prop_dict[prop]),prop))
+    os.chmod(prop_dir, PERM_755)
+    print("I am retrieving {0} dataset(s) for {1}".format(len(prop_dict[prop]),prop))
     ind_id = retrieve_data(prop_dir, prop_dict[prop])
     for item in ind_id:
-        all_tracking_ids.append(item)
+        all_tracking_ids_tmp.append(item)
 
-    return all_tracking_ids
+    return all_tracking_ids_tmp
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 #@log_function
-def run_all_retrievals(pkl_file):
+def run_all_retrievals(prop_dict=None, pkl_file=None):
     '''
     Open the pickle file containing a dictionary of all missing COS data
     to be retrieved. It is set up to handle all situations (if run daily=few
@@ -260,29 +272,31 @@ def run_all_retrievals(pkl_file):
         Nothing
     '''
 
-    pstart = 0
-    pend = 1
-    prop_dict = pickle.load(open(pkl_file, "rb"))
+    if pkl_file:
+        prop_dict = pickle.load(open(pkl_file, "rb"))
     prop_dict_keys = prop_dict.keys()
-    prop_dict_keys = [13128,12952,12919,12775,12545]
-    all_tracking_ids = []
-    int_num = 3
-    century = 1
+    pstart = 0
+    pend = 10 # should be 10
+    int_num = 5 # should be 5
+    century = 50 # should be 50
+    if pend > len(prop_dict_keys):
+        pend = len(prop_dict_keys)
 
+    all_tracking_ids = []
     # While the number of processed programs is less than total programs
-    while pend < len(prop_dict_keys):
-        # If there are more than N*100 programs to be retrieved, stop
+    while pend < len(prop_dict_keys): 
+        
+        # If there are more than N*50 programs to be retrieved, stop 
         # and calibrate and zip.
-        # NOTE: I have the value set to two right now for testing purposes!
-        if pend > century*2:
-            century += 1
+        if pend > century:
+            century += 50 # should be 50
             print("Pausing retrieval to calibrate and zip current data")
-            run_all_labor(prl=True)
+            work_laboriously(prl=True)
         # For each proposal (prop) in the current grouping (total number
         # of programs split up for manageability), retrieve data for it.
         for prop in prop_dict_keys[pstart:pend]:
-            cycle_thru(prop_dict, prop)
-        # This while loop keeps track of how many submitted programs in the
+            all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
+        # This while loop keeps track of how many submitted programs in the 
         # current group (defined as from pstart:pend) have been entirely
         # retrieved, stored in counter. Once the number of finished
         # programs reaches (total# - int_num), another int_num of programs
@@ -296,31 +310,43 @@ def run_all_retrievals(pkl_file):
                 status,badness = everything_retrieved(tracking_id)
                 counter.append(status)
                 if badness:
-                    print("!!!RUH ROH!!! Request {0} was KILLED!".format(tracking_id))
+                    print("!"*70)
+                    print("RUH ROH!!! Request {0} was killed".format(tracking_id))
                     counter.append(badness)
-            current_retrieved = [all_tracking_ids[i] for i in xrange(len(counter)) if not counter[i]]
-            print(datetime.now())
-            print("Data not yet delivered for {0}. Checking again in 15 minutes".format(current_retrieved))
-            time.sleep(900)
+            current_retrieved = [all_tracking_ids[i] for i in 
+                                 xrange(len(counter)) if not counter[i]]
+            if sum(counter) < (num_ids - int_num):
+                print(datetime.now())
+                print("Data not yet delivered for {0}. Checking again in " 
+                      "15 minutes".format(current_retrieved))
+                time.sleep(900)
         # When total# - int_num programs have been retrieved, add int_num more
         # to queue.
         else:
-            print("\nData delivered, adding {0} program(s) to queue".format(int_num))
+            print("\nData delivered, adding {0} program(s) to queue".
+                  format(int_num))
             pstart = pend
             pend += int_num
     # When pend > total # of programs, it does not mean all have been
     # retrieved. Check, and retrieve if so.
     else:
+        end_msg = "\nAll data from {0} programs were successfully " \
+        "delivered. ".format(len(prop_dict_keys))
         if (len(prop_dict_keys) - (pend-int_num)) > 0:
             for prop in prop_dict_keys[pend-int_num:]:
-                cycle_thru(prop_dict, prop)
-            print("\nAll data delivered! Data from {0} programs were successfully retrieved").format(len(prop_dict_keys))
+                all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
+            print(end_msg)
         else:
-            print("\nAll data delivered! Data from {0} programs were successfully retrieved").format(len(prop_dict_keys))
+            print(end_msg)
+    print("Beginning calibration and zipping now...")
+    work_laboriously(prl=True)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 if __name__ == "__main__":
     pkl_file = "filestoretrieve.p"
-    run_all_retrievals(pkl_file)
+    try:
+        run_all_retrievals(pkl_file)
+    except Exception as e:
+        print(Exception, e)

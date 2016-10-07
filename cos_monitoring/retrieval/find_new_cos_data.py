@@ -20,9 +20,11 @@ import time
 import pickle
 import os
 import yaml
-from collections import OrderedDict
 import pdb
+import argparse
+import glob
 from sqlalchemy import text
+from subprocess import Popen, PIPE
 
 from ..database.db_tables import load_connection
 from .request_data import run_all_retrievals
@@ -40,11 +42,11 @@ def connect_cosdb():
 
     Returns:
     --------
-        nullrows : list
+        nullsmov : list
             All rootnames of files where ASN_ID = NONE.
-        asnrows : list
+        asnsmov : list
             All ASN_IDs for files where ASN_ID is not NONE.
-        smovjitrows : list
+        jitsmov : list
             All rootnames of jitter files.
     '''
 
@@ -56,28 +58,20 @@ def connect_cosdb():
         print("Querying COS greendev database....")
         # Connect to the database.
         Session, engine = load_connection(SETTINGS['connection_string'])
-        # All entries that ASN_ID = NULL (should be individual jits, acqs)
-        null = list(engine.execute("SELECT rootname FROM headers WHERE asn_id='NONE';"))
-        # All entries that have ASN_ID defined (will pull science, jit, acq)
-        jitters = list(engine.execute("SELECT rootname FROM files "
-                                      "WHERE RIGHT(rootname,1) = 'j';"))
-        asn = list(engine.execute("SELECT asn_id FROM headers "
-                                  "WHERE asn_id!='NONE';"))
-
+        sci_files = list(engine.execute("SELECT DISTINCT rootname FROM files "
+                                        "WHERE rootname IS NOT NULL;"))
+        cci_files = list(engine.execute("SELECT DISTINCT name FROM files "
+                                        "WHERE rootname IS NULL AND " 
+                                        "LEFT(name,1)='l';"))
+                                        
         # Store SQLAlchemy results as lists
-        nullrows = []
-        asnrows = []
-        smovjitrows = []
-        for row in null:
-            nullrows.append(row["rootname"].upper())
-        for row in asn:
-            asnrows.append(row["asn_id"])
-        for row in jitters:
-            smovjitrows.append(row["rootname"].upper())
-
+        all_sci = [row["rootname"].upper() for row in sci_files]
+        all_cci = [row["name"].strip("_cci.fits.gz").upper() for row in cci_files]
+        all_smov = all_sci + all_cci
+        
         # Close connection
         engine.dispose()
-        return nullrows, asnrows, smovjitrows
+        return all_smov
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -92,13 +86,13 @@ def connect_dadsops():
 
     Returns:
     --------
-        jitdict : dictionary
+        jitmast : dictionary
             Dictionary where the keys are rootnames of jitter files and the
             values are the corresponding proposal IDs.
-        sciencedict : dictionary
+        sciencemast : dictionary
             Dictionary where the keys are rootnames of all COS files and the
             values are the corresponding proposal IDs.
-        ccidict : dictionary
+        ccimast : dictionary
             Dictionary where the keys are rootnames of CCI files and the
             values are the corresponding proposal IDs.
     '''
@@ -108,91 +102,155 @@ def connect_dadsops():
     with open(config_file, 'r') as f:
         SETTINGS = yaml.load(f)
 
-        print("Querying MAST dadsops_rep database....")
-        # Connect to the database.
-        Session, engine = load_connection(SETTINGS['connection_string'])
-        engine.execute("use dadsops_rep;")
-        # Get all jitter, science (ASN), and CCI datasets.
-        jitters = list(engine.execute("SELECT ads_data_set_name,ads_pep_id "
-                                      "FROM archive_data_set_all WHERE "
-                                      "ads_instrument='cos' AND "
-                                      "ads_data_set_name LIKE '%J';"))
-        science = list(engine.execute("SELECT sci_data_set_name,sci_pep_id "
-                                      "FROM science WHERE sci_instrume='cos';"))
-        cci = list(engine.execute("SELECT ads_data_set_name,ads_pep_id "
-                                  "FROM archive_data_set_all WHERE "
-                                  "ads_archive_class='csi';"))
+    # Get all jitter, science (ASN), and CCI datasets.
+    print("Querying MAST dadsops_rep database....")
+    query0 = "SELECT ads_data_set_name,ads_pep_id FROM "\
+    "archive_data_set_all WHERE ads_instrument='cos'\ngo"
+    # Some COS observations don't have ads_instrumnet=cos
+    query1 = "SELECT ads_data_set_name,ads_pep_id FROM "\
+    "archive_data_set_all WHERE LEN(ads_data_set_name)=9 "\
+    "AND ads_data_set_name LIKE 'L%'\ngo"
 
-        # Store SQLAlchemy results as dictionaries (we need dataset name
-        # and proposal ID).
-        jitdict = OrderedDict()
-        sciencedict = OrderedDict()
-        ccidict = OrderedDict()
-        for row in jitters:
-            jitdict[row[0]] = row[1]
-        for row in science:
-            sciencedict[row[0]] = row[1]
-        for row in cci:
-            ccidict[row[0]] = row[1]
-        # Close connection
-        engine.dispose()
-        return jitdict, sciencedict, ccidict
+    all_cos = janky_connect(SETTINGS, query0) 
+    all_l = janky_connect(SETTINGS, query1) 
+    all_mast_res = all_cos + all_l
+    # Store results as dictionaries (we need dataset name and proposal ID).
+    # Don't get Podfiles (LZ*)
+    all_mast = {row[0]:row[1] for row in all_mast_res if not row[0].startswith("LZ_")}
+    badfiles = []
+    for key,val in all_mast.items():
+        if val == "NULL":
+            if key.startswith("LF") or key.startswith("LN") or key.startswith("L_"):
+                all_mast[key] = "CCI"
+            elif len(key) == 9:
+                program_id = key[1:4]
+                query2 = "SELECT DISTINCT proposal_id FROM executed WHERE "\
+                "program_id='{0}'\ngo".format(program_id)
+                SETTINGS["database"] = "opus_rep"
+                prop = janky_connect(SETTINGS, query2)
+                if len(prop) == 0:
+                    badfiles.append(key)
+                else:
+                    all_mast[key] = prop[0]
+            else:
+                all_mast.pop(key, None)
 
+#    SETTINGS["database"] = "dadsops_rep"
+#    for item in badfiles:
+#        q = "SELECT DISTINCT ads_generation_date FROM archive_data_set_all WHERE ads_data_set_name = '{0}'\ngo".format(item)
+#        d = janky_connect(SETTINGS, q)
+#        import datetime
+#        mydate = datetime.datetime.strptime(d[0][:11],"%b %d %Y")
+#        if mydate > datetime.datetime(2009,05,30):
+#            print(item,d) 
+    return all_mast
+        
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def compare_tables():
+def janky_connect(SETTINGS, query_string):
+    # Connect to the database.
+    p = Popen("tsql -S%s -D%s -U%s -P%s -t'|||'" % (SETTINGS["server"], 
+              SETTINGS["database"], SETTINGS["username"], 
+              SETTINGS["password"]), shell=True, stdin=PIPE, stdout=PIPE,
+              stderr=PIPE, close_fds=True)
+    (transmit, receive, err) = (p.stdin, p.stdout, p.stderr)
+    transmit.write(query_string)
+    transmit.close()
+    query_result = receive.readlines()
+    receive.close()
+    error_report = err.readlines()
+    err.close()
+
+    badness = ["locale", "charset", "1>", "affected"]
+    result = [x.strip().split("|||") if "|||" in x else x.strip() 
+              for x in query_result if not any(y in x for y in badness)]
+    # Ensure that nothing was wrong with the query syntax.
+    assert (len(error_report) < 3), "Something went wrong in query:{0}".format(error_report[2])
+    return result
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+def tally_cs():
     '''
-    Compare the set of all files currently in the COS repository to the list
-    all files currently ingested into MAST. Retrieve missing datasets.
-
+    For testing purposes, tabulate all files in central store 
+    (/grp/hst/cos2/smov_testing/) and request all missing datasets.
+    
     Parameters:
     -----------
         None
 
     Returns:
     --------
+        smovfiles : list
+            A list of all fits files in /grp/hst/cos2/smov_testing
+    '''
+
+    smovdir = "/grp/hst/cos2/smov_testing"
+    print ("Checking {0}...".format(smovdir))
+    allsmov = glob.glob(os.path.join(smovdir, "*", "*fits*"))
+    smovfiles = [os.path.basename(x).split("_cci")[0].upper() if "cci" in x else os.path.basename(x).split("_")[0].upper() for x in allsmov]
+    
+    return smovfiles 
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+def compare_tables(pkl_it):
+    '''
+    Compare the set of all files currently in the COS repository to the list
+    all files currently ingested into MAST. Retrieve missing datasets.
+
+    Parameters:
+    -----------
+        pkl_it : Boolean
+            True if output should be saved to pickle file.
+
+    Returns:
+    --------
         Nothing
     '''
 
-    nullrows, asnrows, smovjitrows = connect_cosdb()
-    jitdict, sciencedict, ccidict = connect_dadsops()
+#    existing = connect_cosdb()
+    existing = tally_cs()
+    mast = connect_dadsops()
     print("Finding missing COS data...")
 
-    existing = set()
-    existing_jit = set()
+    # Determine which datasets are missing.
+    missing_names = list(set(mast.keys()) - set(existing))
 
-    # Determine which science, jitter, and CCI datasets are missing.
-    missing_sci_names = list(set(sciencedict.keys()) - existing)
-    missing_jit_names = list(set(jitdict.keys()) - existing_jit)
-    missing_cci_names = list(set(ccidict.keys()) - existing)
-
-    # For science and jitter data, determine corresponding proposal ID for
-    # each missing dataset name (to place in the correct directory).
-    # We don't need the propids for CCIs (NULL)
-    missing_sci_props = [sciencedict[i] for i in missing_sci_names]
-    missing_jit_props = [jitdict[i] for i in missing_jit_names]
-
-    # Combine science and jitter lists.
-    missing_data_names = missing_sci_names + missing_jit_names
-    missing_data_props = missing_sci_props + missing_jit_props
+    # To retrieve ALL COS data, uncomment the line below.
+#    missing_names = list(set(mast.keys() ))
 
     # Create dictionaries groupoed by proposal ID, it is much easier
     # to retrieve them this way.
-    prop_keys = set(missing_data_props)
+    # For most data, determine corresponding proposal ID. CCIs and some
+    # odd files will have proposal ID = NULL though.
+    missing_props = [int(mast[x]) if mast[x] not in ["CCI","NULL"] else mast[x] for x in missing_names]
+    prop_keys = set(missing_props)
     prop_vals = [[] for x in xrange(len(prop_keys))]
     prop_dict = dict(zip(prop_keys, prop_vals))
-    for i in xrange(len(missing_data_names)):
-        prop_dict[missing_data_props[i]].append(missing_data_names[i])
+    for i in xrange(len(missing_names)):
+        prop_dict[missing_props[i]].append(missing_names[i])
 
-    pkl_file = "filestoretrieve.p"
-    pickle.dump(prop_dict, open(pkl_file, "wb"))
-    cwd = os.getcwd()
-    print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
-#    run_all_retrievals(pkl_file)
+    print("Data missing for {0} programs".format(len(prop_keys)))
+    if pkl_it:
+        pkl_file = "filestoretrieve.p"
+        pickle.dump(prop_dict, open(pkl_file, "wb"))
+        cwd = os.getcwd()
+        print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
+        run_all_retrievals(pkl_file=pkl_file)
+    else:
+        print("Retrieving data now...")
+        run_all_retrievals(prop_dict=prop_dict)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 if __name__ == "__main__":
-    compare_tables()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", dest="pkl_it", action="store_true", default=False,
+                        help="Save output to pickle file")
+    args = parser.parse_args()
+
+    compare_tables(args.pkl_it)

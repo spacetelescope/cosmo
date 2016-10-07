@@ -21,6 +21,9 @@ import types
 import argparse
 import pprint
 import inspect
+import functools
+import logging
+logger = logging.getLogger(__name__)
 
 from ..cci.gainmap import make_all_hv_maps
 from ..cci.gainmap import write_and_pull_gainmap
@@ -63,6 +66,11 @@ def db_connect(child):
 
 #-------------------------------------------------------------------------------
 
+def call(arg):
+    arg()
+
+#-------------------------------------------------------------------------------
+
 def mp_insert(args):
     """Wrapper function to parse arguments and pass into insertion function
 
@@ -84,7 +92,7 @@ def mp_insert(args):
 
 #-------------------------------------------------------------------------------
 
-def insert_with_yield(filename, table, function, foreign_key=None):
+def insert_with_yield(filename, table, function, foreign_key=None, **kwargs):
     """ Call function on filename and insert results into table
 
     Parameters
@@ -99,12 +107,12 @@ def insert_with_yield(filename, table, function, foreign_key=None):
         foreign key to update the table with
     """
 
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
     session = Session()
 
     try:
-        data = function(filename)
+        data = function(filename, **kwargs)
 
         if isinstance(data, dict):
             data = [data]
@@ -117,14 +125,15 @@ def insert_with_yield(filename, table, function, foreign_key=None):
         for i, row in enumerate(data):
             row['file_id'] = foreign_key
             if i == 0:
-                print(row.keys())
-            print(row.values())
+                logger.debug("Keys to insert: {}".format(row.keys()))
+            logger.debug("Values to insert: {}".format(row.values()))
 
         #-- Converts np arrays to native python type...
         #-- This is to allow the database to ingest values as type float
         #-- instead of Decimal Class types in sqlalchemy....
             for key in row:
                 if isinstance(row[key], np.generic):
+                    logger.debug("casting {} to scalar".format(row[key]))
                     row[key] = np.asscalar(row[key])
                 else:
                     continue
@@ -132,7 +141,8 @@ def insert_with_yield(filename, table, function, foreign_key=None):
             session.add(table(**row))
     except (IOError, ValueError) as e:
         #-- Handle missing files
-        print(e)
+        logger.warning("Exception hit for {}, adding blank entry".format(filename))
+        logger.warning(e)
         session.add(table(file_id=foreign_key))
 
     session.commit()
@@ -154,23 +164,25 @@ def insert_files(**kwargs):
 
     """
 
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    logger.info("Inserting files into db")
+
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
 
     data_location = kwargs.get('data_location', './')
-    print("Looking for new files in {}".format(data_location))
+    logger.info("Looking for new files in {}".format(data_location))
 
     session = Session()
-    print("Querying previously found files")
+    logger.debug("querying previously found files")
     previous_files = {os.path.join(path, fname) for path, fname in session.query(Files.path, Files.name)}
 
-    for i, (path, filename) in enumerate(find_all_datasets(data_location, SETTINGS['num_cpu'])):
+    for i, (path, filename) in enumerate(find_all_datasets(data_location, settings['num_cpu'])):
         full_filepath = os.path.join(path, filename)
 
         if full_filepath in previous_files:
             continue
 
-        print("NEW: Found {}".format(full_filepath))
+        logger.debug("NEW: Found {}".format(full_filepath))
 
         #-- properly formatted HST data should be the first 9 characters
         #-- if this is not the case, insert NULL for this value
@@ -196,10 +208,10 @@ def populate_lampflash(num_cpu=1):
     """ Populate the lampflash table
 
     """
-    print("Adding to lampflash")
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    logger.info("adding to lampflash table")
 
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
     session = Session()
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
@@ -208,11 +220,11 @@ def populate_lampflash(num_cpu=1):
                                 outerjoin(Lampflash, Files.id == Lampflash.file_id).\
                                 filter(Lampflash.file_id == None)]
     session.close()
-
+    engine.dispose()
 
     args = [(full_filename, Lampflash, pull_flashes, f_key) for f_key, full_filename in files_to_add]
 
-    print("Found {} files to add".format(len(args)))
+    logger.info("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
 
@@ -222,10 +234,10 @@ def populate_stims(num_cpu=1):
     """ Populate the stim table
 
     """
-    print("Adding to stims")
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    logger.info("adding to stim table")
 
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
     session = Session()
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
@@ -238,7 +250,7 @@ def populate_stims(num_cpu=1):
 
     args = [(full_filename, Stims, locate_stims, f_key) for f_key, full_filename in files_to_add]
 
-    print("Found {} files to add".format(len(args)))
+    logger.info("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
 
@@ -249,10 +261,10 @@ def populate_darks(num_cpu=1):
 
     """
 
-    print("Adding to Darks")
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    logger.info("Adding to Dark table")
 
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
     session = Session()
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
@@ -267,7 +279,7 @@ def populate_darks(num_cpu=1):
 
     args = [(full_filename, Darks, pull_orbital_info, f_key) for f_key, full_filename in files_to_add]
 
-    print("Found {} files to add".format(len(args)))
+    logger.info("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
 
@@ -278,9 +290,11 @@ def populate_gain(num_cpu=1):
 
     """
 
-    print("Adding to gain")
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    logger.info("adding to gain table")
+    settings = open_settings()
+    out_dir = os.path.join(settings['monitor_location'], 'CCI')
+
+    Session, engine = load_connection(settings['connection_string'])
 
     session = Session()
 
@@ -292,11 +306,16 @@ def populate_gain(num_cpu=1):
                             filter(Gain.file_id == None)]
     session.close()
 
-    args = [(full_filename, Gain, write_and_pull_gainmap, f_key) for f_key, full_filename in files_to_add]
+    functions = [functools.partial(insert_with_yield,
+                                   filename=filename,
+                                   table=Gain,
+                                   function=write_and_pull_gainmap,
+                                   foreign_key=f_key,
+                                   out_dir=out_dir) for f_key, filename in files_to_add]
 
-    print("Found {} files to add".format(len(args)))
+    logger.info("Found {} files to add".format(len(functions)))
     pool = mp.Pool(processes=num_cpu)
-    pool.map(mp_insert, args)
+    pool.map(call, functions)
 
 #-------------------------------------------------------------------------------
 
@@ -304,9 +323,9 @@ def populate_spt(num_cpu=1):
     """ Populate the table of primary header information
 
     """
-    print("Adding SPT headers")
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    logger.info("adding spt header table")
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
 
     session = Session()
 
@@ -318,17 +337,17 @@ def populate_spt(num_cpu=1):
     session.close()
     args = [(full_filename, sptkeys, get_spt_keys, f_key) for f_key, full_filename in files_to_add]
 
-    print("Found {} files to add".format(len(args)))
+    logger.info("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
-    pool.map(mp_insert,args)
+    pool.map(mp_insert, args)
 
 #-------------------------------------------------------------------------------
 
 def populate_data(num_cpu=1):
-    print("adding to data")
+    logger.info("adding to data table")
 
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
     session = Session()
 
     files_to_add = [(result.id, os.path.join(result.path, result.name))
@@ -338,7 +357,8 @@ def populate_data(num_cpu=1):
                                 filter(Data.file_id == None)]
     session.close()
     args = [(full_filename, Data, update_data, f_key) for f_key, full_filename in files_to_add]
-    print("Found {} files to add".format(len(args)))
+
+    logger.info("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
 
@@ -348,7 +368,7 @@ def populate_primary_headers(num_cpu=1):
     """ Populate the table of primary header information
 
     """
-    print("Adding to primary headers")
+    logger.info("adding to primary header table")
 
     t = """
         CREATE TEMPORARY TABLE which_file (rootname CHAR(9), has_x1d BOOLEAN,has_corr BOOLEAN, has_raw BOOLEAN, has_acq BOOLEAN);
@@ -393,27 +413,35 @@ def populate_primary_headers(num_cpu=1):
             WHERE (has_x1d = 1 OR has_corr = 1 OR has_raw = 1 OR has_acq);
     """
 
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
 
     engine.execute(text(t))
 
     files_to_add = [(result.file_id, result.file_to_grab) for result in engine.execute(text(q))
                         if not result.file_id == None]
 
-    args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
-    print("Found {} files to add".format(len(args)))
+    #args = [(full_filename, Headers, get_primary_keys, f_key) for f_key, full_filename in files_to_add]
+
+    functions = [functools.partial(insert_with_yield,
+                                   filename=filename,
+                                   table=Headers,
+                                   function=get_primary_keys,
+                                   foreign_key=f_key) for f_key, filename in files_to_add]
+
+    logger.info("Found {} files to add".format(len(functions)))
     pool = mp.Pool(processes=num_cpu)
-    pool.map(mp_insert, args)
+    pool.map(call, functions)
 
 #-------------------------------------------------------------------------------
 
 def populate_acqs(num_cpu=1):
-    print("adding to data")
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    logger.info("adding to data table")
 
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
     session = Session()
+
     files_to_add = [(result.id, os.path.join(result.path, result.name))
                         for result in session.query(Files).\
                                 filter(Files.name.like('%_rawacq.fits%')).\
@@ -421,7 +449,8 @@ def populate_acqs(num_cpu=1):
                                 filter(Acqs.file_id == None)]
     session.close()
     args = [(full_filename, Acqs, get_acq_keys, f_key) for f_key, full_filename in files_to_add]
-    print("Found {} files to add".format(len(args)))
+
+    logger.info("Found {} files to add".format(len(args)))
     pool = mp.Pool(processes=num_cpu)
     pool.map(mp_insert, args)
 
@@ -621,8 +650,8 @@ def delete_file_from_all(filename):
 
     """
 
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
 
     session = Session()
 
@@ -663,8 +692,8 @@ def show_file_from_all(filename):
     """
     """
 
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
 
     session = Session()
 
@@ -696,7 +725,7 @@ def show_file_from_all(filename):
 
 #-------------------------------------------------------------------------------
 
-def clear_all_databases(SETTINGS, nuke=False):
+def clear_all_databases(settings, nuke=False):
     """Dump all databases of all contents...seriously"""
 
 
@@ -704,8 +733,8 @@ def clear_all_databases(SETTINGS, nuke=False):
     #    sys.exit("Not deleting, getting out of here.")
 
     if nuke:
-        SETTINGS = open_settings()
-        Session, engine = load_connection(SETTINGS['connection_string'])
+        settings = open_settings()
+        Session, engine = load_connection(settings['connection_string'])
 
         session = Session()
         for table in reversed(Base.metadata.sorted_tables):
@@ -724,37 +753,57 @@ def clear_all_databases(SETTINGS, nuke=False):
 
 #-------------------------------------------------------------------------------
 
-def do_all():
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+def ingest_all():
+    setup_logging()
 
-    print(SETTINGS)
-
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
     Base.metadata.create_all(engine)
-    insert_files(**SETTINGS)
-    populate_primary_headers(SETTINGS['num_cpu'])
-    populate_spt(SETTINGS['num_cpu'])
-    populate_data(SETTINGS['num_cpu'])
-    populate_lampflash(SETTINGS['num_cpu'])
-    populate_darks(SETTINGS['num_cpu'])
-    populate_gain(SETTINGS['num_cpu'])
-    populate_stims(SETTINGS['num_cpu'])
-    populate_acqs(SETTINGS['num_cpu'])
+
+    logger.info("Ingesting all data")
+    insert_files(**settings)
+    populate_primary_headers(settings['num_cpu'])
+    populate_spt(settings['num_cpu'])
+    populate_data(settings['num_cpu'])
+    populate_lampflash(settings['num_cpu'])
+    populate_darks(settings['num_cpu'])
+    populate_gain(settings['num_cpu'])
+    populate_stims(settings['num_cpu'])
+    populate_acqs(settings['num_cpu'])
 
 #-------------------------------------------------------------------------------
 
 def run_all_monitors():
-    print('RUNNING MONITORS')
-    #-- make sure all tables are present
-    SETTINGS = open_settings()
-    Session, engine = load_connection(SETTINGS['connection_string'])
+    setup_logging()
 
+    #-- make sure all tables are present
+    settings = open_settings()
+    Session, engine = load_connection(settings['connection_string'])
     Base.metadata.create_all(engine)
 
-    dark_monitor(SETTINGS['monitor_location'])
+    logger.info("Starting to run all monitors.")
+
+    dark_monitor(settings['monitor_location'])
     cci_monitor()
     stim_monitor()
     osm_monitor()
+
+    logger.info("Finished running all monitors.")
+
+#-------------------------------------------------------------------------------
+
+def setup_logging():
+    # create the logging file handler
+    logging.basicConfig(filename="cosmos_monitors.log",
+                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                        level=logging.DEBUG)
+
+    #-- handler for STDOUT
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    logging.getLogger().addHandler(ch)
 
 #-------------------------------------------------------------------------------
 
@@ -776,7 +825,7 @@ def clean_slate(settings=None, engine=None, session=None):
     Base.metadata.drop_all(engine, checkfirst=False)
     Base.metadata.create_all(engine)
 
-    do_all()
+    ingest_all()
 
     run_all_monitors()
 

@@ -8,6 +8,8 @@ import glob
 import os
 import shutil
 import sys
+import logging
+logger = logging.getLogger(__name__)
 
 import numpy as np
 import matplotlib as mpl
@@ -157,8 +159,6 @@ def make_shift_table(connection_string):
 #-------------------------------------------------------------------------------
 
 def make_plots(data, out_dir):
-    print('Plotting')
-
     mpl.rcParams['figure.subplot.hspace'] = 0.05
 
     sorted_index = np.argsort(data['date'])
@@ -425,7 +425,7 @@ def make_plots(data, out_dir):
         plt.close(fig)
         os.chmod((os.path.join(out_dir, '{}_shifts.png'.format(elem.upper()))),0o766)
 
-    print('Plotting cenwaves')
+
     for grating in list(set(data['opt_elem'])):
         fig = plt.figure()
         ax = fig.add_axes([.1, .1, .75, .8])
@@ -500,7 +500,6 @@ def make_plots_2(data, out_dir):
         plt.close(fig)
     '''
 
-    print("relations")
     for cenwave in set(data['cenwave']):
         cw_index = np.where(data['cenwave'] == cenwave)
         all_segments = set(data[cw_index]['segment'])
@@ -528,8 +527,6 @@ def make_plots_2(data, out_dir):
 #----------------------------------------------------------
 
 def fp_diff(data):
-    print("Checking the SHIFT2 difference")
-
     index = np.where((data['detector'] == 'FUV'))[0]
     data = data[index]
 
@@ -564,7 +561,6 @@ def fp_diff(data):
         diff = a_shift - b_shift
 
         diff_dict[cenwave].append((mjd, diff))
-        print('%5.5f  %s  %d  %d   %3.2f  %3.2f  \n'%(mjd, opt_elem, cenwave, fppos, a_shift, b_shift))
         ofile.write('%5.5f  %s  %d  %d   %3.2f  %3.2f  \n' %
                     (mjd, opt_elem, cenwave, fppos, a_shift, b_shift))
 
@@ -604,6 +600,8 @@ def monitor():
     """Run the entire suite of monitoring
     """
 
+    logger.info("starting monitor")
+
     settings = open_settings()
 
     webpage_dir = os.path.join(settings['webpage_location'], 'shifts')
@@ -611,18 +609,19 @@ def monitor():
 
     for place in [webpage_dir, monitor_dir]:
         if not os.path.exists(place):
+            logger.debug("creating monitor location: {}".format(place))
             os.makedirs(place)
 
     flash_data = make_shift_table(settings['connection_string'])
     make_plots(flash_data, monitor_dir)
-    print('MAKE_PLOTS DONE')
     make_plots_2(flash_data, monitor_dir)
-    print('MAKE_PLOTS_2 DONE')
     #fp_diff(flash_data)
 
     for item in glob.glob(os.path.join(monitor_dir, '*.p??')):
         remove_if_there(os.path.join(webpage_dir, os.path.basename(item)))
         shutil.copy(item, webpage_dir)
+
+    logger.info("finish monitor")
 
 #----------------------------------------------------------
 '''

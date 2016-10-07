@@ -33,6 +33,8 @@ import glob
 import numpy as np
 import multiprocessing as mp
 import shutil
+import logging
+logger = logging.getLogger(__name__)
 #from bokeh import charts
 #from bokeh.plotting import figure
 
@@ -251,7 +253,6 @@ def plotting():
     TOOLS = "pan,wheel_zoom,box_zoom,box_select,lasso_select,reset,resize,save"
 
     p = figure(tools=TOOLS, toolbar_location="above", logo="grey", plot_width=700)
-    #p.title = "{} LightCurve".format(name)
     p.background_fill= "#cccccc"
 
     p.circle(gain,
@@ -272,29 +273,32 @@ def monitor():
     """ Main driver for monitoring program.
     """
 
-    print('Making ALL Gain Maps')
-    ###make_all_gainmaps()
+    logger.info("start monitor")
 
-    print('phaimages')
-    ###make_phaimages()
+    settings = open_settings()
+    out_dir = os.path.join(settings['monitor_location'], 'CCI')
 
-    print('Looking at Time Trends')
-    time_trends()
+    if not os.path.exists(out_dir):
+        logger.warning("Creating output directory: {}".format(out_dir))
+        os.makedirs(out_dir)
 
-    print('Making Gain Sag Table')
-    ###gsag_main()
+    #print('Making ALL Gain Maps')
+    #make_all_gainmaps()
 
-    '''
+    make_phaimages(out_dir)
+    time_trends(out_dir)
+    gsag_main(out_dir)
+
     #-- quicklooks
-    all_gainmaps = glob.glob(os.path.join(MONITOR_DIR, '*gainmap*.fits'))
+    all_gainmaps = glob.glob(os.path.join(out_dir, '*gainmap*.fits'))
     all_gainmaps.sort()
 
     pool = mp.Pool(processes=10)
     pool.map(make_quicklooks, all_gainmaps)
     #--
 
-    make_cumulative_plots()
-    '''
+    ###make_cumulative_plots()
+
     #message = 'CCI Monitor run for %s complete.  \n'% (TIMESTAMP)
     #message += '\n'
     #message += 'Calibration with CalCOS has finished \n '
@@ -304,7 +308,10 @@ def monitor():
     #move_to_web()
     #send_email(subject='CCI Monitor complete', message=message)
 
+    logger.info("finish monitor")
+
 #-------------------------------------------------------------------------------
+
 def move_to_web():
     """Copy output products to web-facing directories.
 
@@ -320,4 +327,5 @@ def move_to_web():
             os.remove(os.path.join(WEB_DIR,os.path.basename(item)))
         shutil.copy(item, WEB_DIR)
         os.chmod(os.path.join(WEB_DIR, os.path.basename(item)),0o766)
+
 #-------------------------------------------------------------------------------

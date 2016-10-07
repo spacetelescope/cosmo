@@ -15,7 +15,7 @@ def scrape_cycle(asn_id):
 
     url = 'http://archive.stsci.edu/cgi-bin/mastpreview?mission=hst&dataid={}'.format(asn_id)
     page = urlopen(url)
-    soup = BeautifulSoup(page)
+    soup = BeautifulSoup(page, "html.parser")
 
     soup_text = soup.text
     regex = r"Cycle \d{2}"
@@ -87,7 +87,7 @@ def rebin(a, bins=(2,2), mode='weird'):
 
     elif mode=='weird':
         #not tested, from internet
-        shape=(y/bins[0],x/bins[1])
+        shape=(y//bins[0],x//bins[1])
         sh = shape[0],a.shape[0]//shape[0],shape[1],a.shape[1]//shape[1]
         a= a.reshape(sh).sum(-1).sum(1)
 

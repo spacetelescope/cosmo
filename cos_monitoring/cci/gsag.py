@@ -29,6 +29,8 @@ from datetime import datetime
 import glob
 import sys
 from sqlalchemy.engine import create_engine
+import logging
+logger = logging.getLogger(__name__)
 
 from astropy.io import fits
 import numpy as np
@@ -42,22 +44,22 @@ from .constants import *  #Shut yo face
 
 #------------------------------------------------------------
 
-def main(run_regress=False):
+def main(data_dir, run_regress=False):
     """ Main driver for monitoring program.
     """
-    new_gsagtab = make_gsagtab_db(blue=False)
-    blue_gsagtab = make_gsagtab_db(blue=True)
+    new_gsagtab = make_gsagtab_db(data_dir, blue=False)
+    blue_gsagtab = make_gsagtab_db(data_dir, blue=True)
 
     old_gsagtab = get_cdbs_gsagtab()
 
-    compare_gsag(new_gsagtab,old_gsagtab)
+    compare_gsag(new_gsagtab, old_gsagtab, data_dir)
 
     if run_regress:
         test_gsag_calibration(new_gsagtab)
     else:
         print("Regression set skipped")
 
-    send_forms()
+    send_forms(data_dir)
 
 #------------------------------------------------------------
 
@@ -83,23 +85,19 @@ def get_index( gsag, segment, dethv ):
 
 #------------------------------------------------------------
 
-def compare_gsag(new,old,outdir = MONITOR_DIR):
+def compare_gsag(new, old, outdir):
     """Compare two gainsag tables to see what has changed
     """
     ### Needs to be tested ###
 
-    print('\n#-------------------#')
-    print('Comparing Gsag tables')
-    print('#-------------------#')
-    print(('New GSAGTAB %s'%( new )))
-    print(('Old GSAGTAB %s'%( old )))
+    logger.debug("Comparing new: {} to old: {}".format(new, old))
 
     if type(new) == str:
         new = fits.open(new)
     if type(old) == str:
         old = fits.open(old)
 
-    report_file = open( os.path.join( MONITOR_DIR,'gsag_report.txt'), 'w')
+    report_file = open(os.path.join(outdir, 'gsag_report.txt'), 'w')
 
     possible_hv_levels = [0,100] + list(range(100,179))
 
@@ -113,14 +111,12 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
         both_hv = list( new_hv.union( old_hv ) )
         both_hv.sort()
 
-        print(('#---',segment,'---#'))
-
         #assert ( len(only_old_hv) == 0 ),'There is an HV value found in the old table that is not found in the new.'
         if len(only_old_hv) > 0:
-            print('WARNING: There is an HV value found in the old table that is not found in the new.')
+            logger.warning('There is an HV value found in the old table that is not found in the new.')
 
         if len( only_new_hv ):
-            print('There is at least one new extension, you should probably deliver this one')
+            logger.warning("There is at least one new extension, this file should probably be delivered")
             report_file.write('There is at least one new extension, you should probably deliver this one \n')
             report_file.write('New HV extensions:\n')
             report_file.write(','.join( map(str,np.sort( list(only_new_hv) ) ) ) )
@@ -133,11 +129,11 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
             new_ext_index = get_index( new, segment, hv )
 
             if old_ext_index == -1:
-                print(('%s %d: not found in old table'%( segment, hv )))
+                logger.warning('%s %d: not found in old table'%(segment, hv))
                 continue
 
             if new_ext_index == -1:
-                print(('WARNING: %s %d: not found in new table'%( segment, hv )))
+                logger.warning('%s %d: not found in new table'%( segment, hv ))
                 continue
 
             else:
@@ -168,13 +164,13 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
                     report_file.write( 'Nothing added or deleted \n')
 
                 if N_old > 0:
-                    print('Warning: %s %d: You apparently got rid of %d from the old table'%(segment, hv, N_old))
+                    logger.warning(' %s %d: You apparently got rid of %d from the old table'%(segment, hv, N_old))
                     report_file.write( '%d entries have been removed from the old table. \n'%(N_old) )
                     report_file.write( '\n'.join( map(str,only_old_coords) ) )
                     report_file.write('\n\n')
 
                 if N_new > 0:
-                    print('%s %d: You added %d to the new table'%( segment, hv, N_new ))
+                    logger.debug('%s %d: You added %d to the new table'%( segment, hv, N_new ))
                     report_file.write( '%d entries have been added to the new table. \n'%( N_new ) )
                     report_file.write( '\n'.join( map(str,only_new_coords) )  )
                     report_file.write('\n\n')
@@ -190,8 +186,7 @@ def compare_gsag(new,old,outdir = MONITOR_DIR):
 
                     mjd_difference = old_mjd - new_mjd
                     if mjd_difference:
-                        print('MJD difference of %5.7f days'%(mjd_difference))
-                        print('at (y,x):  (%d,%d)'%coord_pair)
+                        logger.debug('MJD difference of {} days at (y,x) {}'.format(mjd_difference, coord_pair))
                         report_file.write( 'MJD difference of %5.7f days at (y,x):  (%d,%d)'%(mjd_difference,coord_pair[0],coord_pair[1]) )
 
 #------------------------------------------------------------
@@ -205,7 +200,6 @@ def test_gsag_calibration(gsagtab):
     print('Calibrating with %s'%(gsagtab))
     print('#-------------------------#')
 
-    os.environ['lref'] = '/grp/hst/cdbs/lref/'
     os.environ['testdir'] = TEST_DIR
     if not os.path.exists(TEST_DIR):
         os.mkdir(TEST_DIR)
@@ -239,7 +233,7 @@ def test_gsag_calibration(gsagtab):
 
 #------------------------------------------------------------
 
-def send_forms():
+def send_forms(data_dir):
     """Compose CDBS delivery form and email a copy to user
     """
     ###Needs some modifications
@@ -312,7 +306,7 @@ def send_forms():
     message += '16-Disk location and name of files:\n'
 
     initial_dir = os.getcwd()
-    os.chdir( MONITOR_DIR )
+    os.chdir( data_dir )
 
     message += os.getcwd()+'\n'
     here = os.getcwd()
@@ -322,10 +316,13 @@ def send_forms():
         message += line
     os.remove('tmp.txt')
 
-    delivery_form = open( os.path.join( MONITOR_DIR, 'deliveryform.txt'),'w' )
+    delivery_form = open( os.path.join( data_dir, 'deliveryform.txt'),'w' )
     delivery_form.write(message)
 
-    send_email(subject='COS GSAGTAB Delivery Form',message=message)
+    try:
+        send_email(subject='COS GSAGTAB Delivery Form',message=message)
+    except:
+        logger.warning("could not send delivery form")
 
 #------------------------------------------------------------
 
@@ -429,13 +426,13 @@ def gsagtab_extension(date, lx, dx, ly, dy, dq, dethv, hv_string, segment):
     ly_col = fits.Column('LY','J','pixel',array=ly)
     dy_col = fits.Column('DY','J','pixel',array=dy)
     dq_col = fits.Column('DQ','J','',array=dq)
-    tab = fits.new_table([date_col,lx_col,ly_col,dx_col,dy_col,dq_col])
+    tab = fits.TableHDU.from_columns([date_col,lx_col,ly_col,dx_col,dy_col,dq_col])
 
     tab.header.add_comment(' ',after='TFIELDS')
     tab.header.add_comment('  *** Column formats ***',after='TFIELDS')
     tab.header.add_comment(' ',after='TFIELDS')
-    tab.header.update(hv_string,dethv,after='TFIELDS',comment='High voltage level')
-    tab.header.update('SEGMENT',segment,after='TFIELDS')
+    tab.header.set(hv_string, dethv, after='TFIELDS',comment='High voltage level')
+    tab.header.set('SEGMENT', segment, after='TFIELDS')
     tab.header.add_comment(' ',after='TFIELDS')
     tab.header.add_comment('  *** End of mandatory fields ***',after='TFIELDS')
     tab.header.add_comment(' ',after='TFIELDS')
@@ -481,7 +478,7 @@ def make_gsagtab():
     --------
     new_gsagtab.fits
     """
-    print('Making new GSAGTAB')
+    logger.info('Making new GSAGTAB')
     out_fits = os.path.join(MONITOR_DIR,'gsag_%s.fits'%(TIMESTAMP) )
     input_list = glob.glob(os.path.join(MONITOR_DIR,'flagged_bad_??_cci_???.txt'))
     input_list.sort()
@@ -492,23 +489,23 @@ def make_gsagtab():
     hdu_out=fits.HDUList(fits.PrimaryHDU())
     date_time = str(datetime.now())
     date_time = date_time.split()[0]+'T'+date_time.split()[1]
-    hdu_out[0].header.update('DATE',date_time,'Creation UTC (CCCC-MM-DD) date')
-    hdu_out[0].header.update('TELESCOP','HST')
-    hdu_out[0].header.update('INSTRUME','COS')
-    hdu_out[0].header.update('DETECTOR','FUV')
-    hdu_out[0].header.update('COSCOORD','USER')
-    hdu_out[0].header.update('VCALCOS','2.0')
-    hdu_out[0].header.update('USEAFTER','May 11 2009 00:00:00')
+    hdu_out[0].header['DATE'] = (date_time,'Creation UTC (CCCC-MM-DD) date')
+    hdu_out[0].header['TELESCOP'] = 'HST'
+    hdu_out[0].header['INSTRUME'] = 'COS'
+    hdu_out[0].header['DETECTOR'] = 'FUV'
+    hdu_out[0].header['COSCOORD'] = 'USER'
+    hdu_out[0].header['VCALCOS'] = '2.0'
+    hdu_out[0].header['USEAFTER'] = 'May 11 2009 00:00:00'
 
     today_string = date_string(datetime.now())
-    hdu_out[0].header.update('PEDIGREE','INFLIGHT 25/05/2009 %s'%( today_string  ))
-    hdu_out[0].header.update('FILETYPE','GAIN SAG REFERENCE TABLE')
+    hdu_out[0].header['PEDIGREE'] = 'INFLIGHT 25/05/2009 %s'%(today_string)
+    hdu_out[0].header['FILETYPE'] = 'GAIN SAG REFERENCE TABLE'
 
     descrip_string = 'Gives locations of gain-sag regions as of %s'%( str(datetime.now().date() ))
     while len(descrip_string) < 67:
         descrip_string += '-'
-    hdu_out[0].header.update('DESCRIP',descrip_string )
-    hdu_out[0].header.update('COMMENT',"= 'This file was created by J. Ely'")
+    hdu_out[0].header['DESCRIP'] = descrip_string
+    hdu_out[0].header['COMMENT'] = "= 'This file was created by J. Ely'"
     hdu_out[0].header.add_history('Flagged region source files can be found here:')
     for item in input_list:
         hdu_out[0].header.add_history('%s'%(item))
@@ -600,7 +597,7 @@ def in_boundary(segment, ly, dy):
 
 #------------------------------------------------------------
 
-def make_gsagtab_db(blue=False):
+def make_gsagtab_db(out_dir, blue=False):
     """Create GSAGTAB from flagged locations.
 
     Grabs txt files of flagged bad regions from MONITOR_DIR
@@ -618,32 +615,32 @@ def make_gsagtab_db(blue=False):
     --------
     new_gsagtab.fits
     """
-    print('Making new GSAGTAB')
-    out_fits = os.path.join(MONITOR_DIR, 'gsag_%s.fits'%(TIMESTAMP))
+
+    out_fits = os.path.join(out_dir, 'gsag_%s.fits'%(TIMESTAMP))
     #Populates regions found in HV == X, Segment Y, to any
     #extensions of lower HV for same segment.
 
     hdu_out=fits.HDUList(fits.PrimaryHDU())
     date_time = str(datetime.now())
     date_time = date_time.split()[0]+'T'+date_time.split()[1]
-    hdu_out[0].header.update('DATE',date_time,'Creation UTC (CCCC-MM-DD) date')
-    hdu_out[0].header.update('TELESCOP','HST')
-    hdu_out[0].header.update('INSTRUME','COS')
-    hdu_out[0].header.update('DETECTOR','FUV')
-    hdu_out[0].header.update('COSCOORD','USER')
-    hdu_out[0].header.update('VCALCOS','2.0')
-    hdu_out[0].header.update('USEAFTER','May 11 2009 00:00:00')
+    hdu_out[0].header['DATE'] = (date_time, 'Creation UTC (CCCC-MM-DD) date')
+    hdu_out[0].header['TELESCOP'] = 'HST'
+    hdu_out[0].header['INSTRUME'] = 'COS'
+    hdu_out[0].header['DETECTOR'] = 'FUV'
+    hdu_out[0].header['COSCOORD'] = 'USER'
+    hdu_out[0].header['VCALCOS'] = '2.0'
+    hdu_out[0].header['USEAFTER'] = 'May 11 2009 00:00:00'
     hdu_out[0].header['CENWAVE'] = 'N/A'
 
     today_string = date_string(datetime.now())
-    hdu_out[0].header.update('PEDIGREE','INFLIGHT 25/05/2009 %s'%( today_string  ))
-    hdu_out[0].header.update('FILETYPE','GAIN SAG REFERENCE TABLE')
+    hdu_out[0].header['PEDIGREE'] = 'INFLIGHT 25/05/2009 %s'%(today_string)
+    hdu_out[0].header['FILETYPE'] = 'GAIN SAG REFERENCE TABLE'
 
     descrip_string = 'Gives locations of gain-sag regions as of %s'%( str(datetime.now().date() ))
     while len(descrip_string) < 67:
         descrip_string += '-'
-    hdu_out[0].header.update('DESCRIP',descrip_string )
-    hdu_out[0].header.update('COMMENT',"= 'This file was created by J. Ely'")
+    hdu_out[0].header['DESCRIP'] = descrip_string
+    hdu_out[0].header['COMMENT'] = ("= 'This file was created by J. Ely'")
     hdu_out[0].header.add_history('Flagged regions in higher voltages have been backwards populated')
     hdu_out[0].header.add_history('to all lower HV levels for the same segment.')
     hdu_out[0].header.add_history('')
@@ -654,8 +651,6 @@ def make_gsagtab_db(blue=False):
 
     possible_hv_strings = ['000', '100'] + list(map(str, list(range(142, 179))))
 
-    #--working on it
-    print("Connecting")
 
     SETTINGS = open_settings()
     Session, engine = load_connection(SETTINGS['connection_string'])
@@ -666,7 +661,6 @@ def make_gsagtab_db(blue=False):
 
     segments = [item[0] for item in results]
 
-    print(("looping over segments, {}".format(segments)))
     for seg in segments:
         hvlevel_string = 'HVLEVEL' + seg[-1].upper()
 
@@ -679,7 +673,7 @@ def make_gsagtab_db(blue=False):
             dq = []
 
             hv_level = int(hv_level)
-            print((seg, hv_level))
+
             results = connection.execute("""SELECT DISTINCT x,y
                                             FROM flagged WHERE segment='%s'
                                             and dethv>='%s'
@@ -709,7 +703,7 @@ def make_gsagtab_db(blue=False):
                     continue
 
                 if blue and in_boundary(seg, y*Y_BINNING, Y_BINNING):
-                    print(("Excluding for blue modes: {} {} {}".format(seg, y*Y_BINNING, Y_BINNING)))
+                    logger.debug("Excluding for blue modes: {} {} {}".format(seg, y*Y_BINNING, Y_BINNING))
                     continue
 
 
@@ -731,7 +725,7 @@ def make_gsagtab_db(blue=False):
                 date.append(0)
                 dq.append(8192)
 
-            print((len(date), ' found bad regions'))
+            logger.debug('found {} bad regions'.format(len(date)))
             tab = gsagtab_extension(date, lx, dx, ly, dy, dq, hv_level, hvlevel_string, seg)
             hdu_out.append(tab)
 
@@ -745,7 +739,7 @@ def make_gsagtab_db(blue=False):
         hdu_out[0].header['DESCRIP'] = descrip_string
 
     hdu_out.writeto(out_fits, clobber=True)
-    print(('WROTE: GSAGTAB to %s'%(out_fits)))
+    logger.info('WROTE: GSAGTAB to %s'%(out_fits))
     return out_fits
 
 #------------------------------------------------------------
@@ -754,13 +748,10 @@ def get_cdbs_gsagtab():
     """Retrieve most recently delivered GSAGTAB from CDBS
     for comparison with the one just made.
     """
-    gsag_tables = glob.glob( '/grp/hst/cdbs/lref/*gsag.fits' )
-    creation_dates = np.array( [ fits.getval(item,'DATE') for item in gsag_tables ] )
-    current_gsagtab = gsag_tables[ creation_dates.argmax() ]
+    gsag_tables = glob.glob(os.path.join(os.environ['lref'], '*gsag.fits'))
+    creation_dates = np.array([fits.getval(item, 'DATE') for item in gsag_tables])
+    current_gsagtab = gsag_tables[creation_dates.argmax()]
 
     return current_gsagtab
 
 #------------------------------------------------------------
-
-if __name__ == "__main__":
-    main()

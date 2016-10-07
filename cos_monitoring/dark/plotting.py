@@ -112,9 +112,6 @@ def plot_histogram(dark, outname):
     fig.savefig(outname, bbox_inches='tight')
     plt.close(fig)
 
-
-
-
 #-------------------------------------------------------------------------------
 
 def plot_time(detector, dark, date, temp, solar, solar_date, outname):
@@ -384,14 +381,16 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
     thresh = dark_smooth + 1.5*dark_smooth.std()
     index_keep = np.where((darkrate > thresh))[0]
 
-    if len(index_keep):
+    if len(index_keep) and detector in ['FUVA', 'FUVB']:
         darkrate = darkrate[index_keep]
         latitude = latitude[index_keep]
         longitude = longitude[index_keep]
         sun_lat = sun_lat[index_keep]
         sun_lon = sun_lon[index_keep]
+    elif detector == 'NUV':
+        pass
     else:
-        print('I sure hope this is NUV data')
+        raise ValueError("This needs to be NUV data at this point. Found: {}".format(detctor))
 
     lon_diff = longitude - sun_lon
     lat_diff = latitude - sun_lat
