@@ -198,12 +198,22 @@ def everything_retrieved(tracking_id):
     killed = False
 #    print tracking_id
     status_url = "http://archive.stsci.edu/cgi-bin/reqstat?reqnum=={0}".format(tracking_id)
-    for line in urllib.urlopen(status_url).readlines():
-        if "State" in line:
-            if "COMPLETE" in line:
-                done = True
-            elif "KILLED" in line:
-                killed = True
+    tries = 5
+    while tries:
+        try:
+            for line in urllib.urlopen(status_url).readlines():
+                if "State" in line:
+                    if "COMPLETE" in line:
+                        done = True
+                    elif "KILLED" in line:
+                        killed = True
+        except IOError:
+            tries -= 1
+            time.sleep(30)
+    else:
+        print("Something went wrong connecting to {0}.".format(status_url))
+        killed = True
+
     return done, killed
 
 #-----------------------------------------------------------------------------#
@@ -311,7 +321,7 @@ def run_all_retrievals(prop_dict=None, pkl_file=None):
                 counter.append(status)
                 if badness:
                     print("!"*70)
-                    print("RUH ROH!!! Request {0} was killed".format(tracking_id))
+                    print("RUH ROH!!! Request {0} was killed or cannot be connected!".format(tracking_id))
                     counter.append(badness)
             current_retrieved = [all_tracking_ids[i] for i in 
                                  xrange(len(counter)) if not counter[i]]
