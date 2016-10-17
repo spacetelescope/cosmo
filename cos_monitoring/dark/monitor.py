@@ -397,6 +397,7 @@ def make_plots(detector, base_dir, TA=False):
             index = np.where( (date >= year) &
                               (date < year + 1))
 
+            print(year)
             outname = os.path.join(base_dir, detector, '{}_hist_{}_{}.pdf'.format(dark_key, year, segment))
             plot_histogram(dark[index], outname)
 

@@ -54,8 +54,12 @@ def plot_histogram(dark, outname):
     remove_if_there(outname)
     fig = plt.figure(figsize=(12, 9))
 
+    bin_size = 1e-7
+    n_bins = int((dark.max()-dark.min())/bin_size)
+
+    print(n_bins)
     ax = fig.add_subplot(2, 1, 1)
-    ax.hist(dark, bins=100, align='mid', histtype='stepfilled')
+    ax.hist(dark, bins=n_bins, align='mid', histtype='stepfilled')
     counts, bins = np.histogram(dark, bins=100)
     cuml_dist = np.cumsum(counts)
     count_99 = abs(cuml_dist / float(cuml_dist.max()) - .99).argmin()
@@ -82,7 +86,7 @@ def plot_histogram(dark, outname):
 
     ax = fig.add_subplot(2, 1, 2)
     #log_bins = np.logspace(np.log10(dark.min()), np.log10(dark.max()), 100)
-    ax.hist(dark, bins=100, align='mid', log=True, histtype='stepfilled')
+    ax.hist(dark, bins=n_bins, align='mid', log=True, histtype='stepfilled')
     ax.axvline(x=mean, lw=2, ls='--', color='r', label='Mean')
     ax.axvline(x=med, lw=2, ls='-', color='r', label='Median')
     ax.axvline(x=med+(2*std), lw=2, ls='-', color='gold')
