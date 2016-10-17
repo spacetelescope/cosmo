@@ -301,12 +301,34 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
         name of the output plot
 
     """
+    
+    pretty_plot = True
+    if pretty_plot:
+        pl_opt = {"fontweight": "bold",
+                  "titlesize": 22,
+                  "labelsize": 18,
+                  "legendsize": 10,
+                  "tickwidth": 2,
+                  "ticksize": 13,
+                  "cbarticksize": 12,
+                  "ticklength": 5,
+                  "markersize": 12}
+    else:
+        pl_opt = {"fontweight": "semibold",
+                  "titlesize": 15,
+                  "labelsize": 15,
+                  "legendsize": 8,
+                  "tickwidth": 1.5,
+                  "ticksize": 10,
+                  "cbarticksize": 10,
+                  "ticklength": 4,
+                  "markersize": 10}
 
     color_min = darkrate.min()
     color_max = darkrate.min() + 3 * darkrate.std()
 
     remove_if_there(outname)
-    fig = plt.figure(figsize=(20, 15))
+    fig, (ax,ax2,ax3) = plt.subplots(3, sharex=True, figsize=(20, 15))
 
     if 'FUVA' in outname:
         detector = 'FUVA'
@@ -315,9 +337,10 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
     elif 'NUV' in outname:
         detector = 'NUV'
 
-    fig.suptitle('Orbital Variation in Darkrate for {}'.format(detector))
+    fig.suptitle('Orbital Variation in Darkrate for {}'.format(detector), 
+                 size=pl_opt['titlesize'], fontweight=pl_opt['fontweight'], 
+                 family='serif')
 
-    ax = fig.add_subplot(3, 1, 1)
     colors = ax.scatter(longitude,
                         latitude,
                         c=darkrate,
@@ -329,11 +352,13 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
                         vmin=color_min,
                         vmax=color_max,
                         rasterized=True)
-    fig.colorbar(colors)
 
     ax.set_xlim(0, 360)
-    ax.set_ylabel('Latitude')
-    ax.set_xlabel('Longitude')
+    ax.set_ylim(-35, 35)
+    ax.set_ylabel('Latitude', size=pl_opt['labelsize'],
+                  fontweight=pl_opt['fontweight'], family='serif')
+    ax.set_xlabel('Longitude', size=pl_opt['labelsize'],
+                  fontweight=pl_opt['fontweight'], family='serif')
 
     '''
     plt.ion()
@@ -345,7 +370,6 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
                 s=5, lw=0, vmin=color_min, vmax=color_max )
     raw_input()
     '''
-    ax2 = fig.add_subplot(3, 1, 2)
 
     #-- Get rid of the SAA passages
     index_keep = np.where((longitude < 250) | (latitude > 10))[0]
@@ -372,13 +396,13 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
                          vmin=color_min,
                          vmax=color_max,
                          rasterized=True)
-    fig.colorbar(colors)
 
     ax2.set_xlim(0, 360)
-    ax2.set_ylabel('Latitude - sub-solar point')
-    ax2.set_xlabel('Longitude - sub-solar point')
+    ax2.set_ylabel('Lat. - Sub-Solar Pnt', size=pl_opt['labelsize'], 
+                   fontweight=pl_opt['fontweight'], family='serif')
+    ax2.set_xlabel('Long. - Sub-Solar Pnt', size=pl_opt['labelsize'], 
+                   fontweight=pl_opt['fontweight'], family='serif')
 
-    ax3 = fig.add_subplot(3, 1, 3)
     #-- Cut out the low-points
     dark_smooth = convolve(darkrate, np.ones(91)/91, mode='mirror')
 
@@ -413,11 +437,28 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
                          vmin=color_min,
                          vmax=color_max,
                          rasterized=True)
-    fig.colorbar(colors)
+
+    cax = plt.axes([0.92, 0.2, 0.02, 0.6])
+    cbar = fig.colorbar(colors, cax=cax)
+    for ytick in cbar.ax.yaxis.get_ticklabels():
+        ytick.set_weight("bold")
+    cbar.ax.tick_params(axis="y", labelsize=pl_opt["cbarticksize"])
+    cbar.formatter.set_powerlimits((0,0))
+    cbar.update_ticks()
+#    cbar.ax.yaxis.set_major_formatter(FormatStrFormatter("%3.1e"))
 
     ax3.set_xlim(0, 360)
-    ax3.set_ylabel('Latitude - sub-solar point')
-    ax3.set_xlabel('Longitude - sub-solar point')
+    ax3.set_ylabel('Lat. - Sub-Solar Pnt', size=pl_opt['labelsize'], 
+                   fontweight=pl_opt['fontweight'], family='serif')
+    ax3.set_xlabel('Long. - Sub-Solar Pnt', size=pl_opt['labelsize'], 
+                   fontweight=pl_opt['fontweight'], family='serif')
+
+    for cur_ax in [ax, ax2, ax3]:
+        for xtick,ytick in zip(cur_ax.xaxis.get_ticklabels(),cur_ax.yaxis.get_ticklabels()):
+            xtick.set_weight("bold")
+            ytick.set_weight("bold")
+        cur_ax.tick_params(axis="both", which="major", labelsize=pl_opt['ticksize'],
+                           width=pl_opt['tickwidth'], length=pl_opt['ticklength'])
 
     remove_if_there(outname)
     fig.savefig(outname, bbox_inches='tight')
