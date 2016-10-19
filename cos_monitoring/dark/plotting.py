@@ -57,7 +57,6 @@ def plot_histogram(dark, outname):
     bin_size = 1e-7
     n_bins = int((dark.max()-dark.min())/bin_size)
 
-    print(n_bins)
     ax = fig.add_subplot(2, 1, 1)
     ax.hist(dark, bins=n_bins, align='mid', histtype='stepfilled')
     counts, bins = np.histogram(dark, bins=100)
@@ -301,7 +300,7 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
         name of the output plot
 
     """
-    
+
     pretty_plot = True
     if pretty_plot:
         pl_opt = {"fontweight": "bold",
@@ -337,8 +336,8 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
     elif 'NUV' in outname:
         detector = 'NUV'
 
-    fig.suptitle('Orbital Variation in Darkrate for {}'.format(detector), 
-                 size=pl_opt['titlesize'], fontweight=pl_opt['fontweight'], 
+    fig.suptitle('Orbital Variation in Darkrate for {}'.format(detector),
+                 size=pl_opt['titlesize'], fontweight=pl_opt['fontweight'],
                  family='serif')
 
     colors = ax.scatter(longitude,
@@ -398,9 +397,9 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
                          rasterized=True)
 
     ax2.set_xlim(0, 360)
-    ax2.set_ylabel('Lat. - Sub-Solar Pnt', size=pl_opt['labelsize'], 
+    ax2.set_ylabel('Lat. - Sub-Solar Pnt', size=pl_opt['labelsize'],
                    fontweight=pl_opt['fontweight'], family='serif')
-    ax2.set_xlabel('Long. - Sub-Solar Pnt', size=pl_opt['labelsize'], 
+    ax2.set_xlabel('Long. - Sub-Solar Pnt', size=pl_opt['labelsize'],
                    fontweight=pl_opt['fontweight'], family='serif')
 
     #-- Cut out the low-points
@@ -448,9 +447,9 @@ def plot_orbital_rate(longitude, latitude, darkrate, sun_lon, sun_lat, outname):
 #    cbar.ax.yaxis.set_major_formatter(FormatStrFormatter("%3.1e"))
 
     ax3.set_xlim(0, 360)
-    ax3.set_ylabel('Lat. - Sub-Solar Pnt', size=pl_opt['labelsize'], 
+    ax3.set_ylabel('Lat. - Sub-Solar Pnt', size=pl_opt['labelsize'],
                    fontweight=pl_opt['fontweight'], family='serif')
-    ax3.set_xlabel('Long. - Sub-Solar Pnt', size=pl_opt['labelsize'], 
+    ax3.set_xlabel('Long. - Sub-Solar Pnt', size=pl_opt['labelsize'],
                    fontweight=pl_opt['fontweight'], family='serif')
 
     for cur_ax in [ax, ax2, ax3]:
