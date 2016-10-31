@@ -215,4 +215,4 @@ if __name__ == "__main__":
     for key in to_retrieve.keys():
         prop_dict[to_retrieve[key]].append(key)
 
-    run_all_retrievals(prop_dict=prop_dict)
+    run_all_retrievals(prop_dict=prop_dict, pkl_file=None, run_labor=True)
