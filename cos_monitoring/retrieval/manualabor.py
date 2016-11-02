@@ -201,8 +201,9 @@ def csum_existence(filename):
     try:
         exptype = pf.getval(filename, "exptype")
     except KeyError:
+        exptype = None
         existence = True
-        donotcal = True    
+        donotcal = True
     # If getting one header keyword, getval is faster than opening.
     # The more you know.
     #if exptype != "ACQ/PEAKD" and exptype != "ACQ/PEAKXD":
@@ -417,7 +418,9 @@ def work_laboriously(prl):
     base_dir = "/grp/hst/cos2/smov_testing/"
     chmod_recurs(base_dir, PERM_755) 
     # using glob is faster than using os.walk
-    zipped = glob.glob(os.path.join(base_dir, "*", "*raw*gz"))
+    zipped = glob.glob(os.path.join(base_dir, "*", "*rawtag*gz")) +
+             glob.glob(os.path.join(base_dir, "*", "*rawaccum*gz")) +
+             glob.glob(os.path.join(base_dir, "*", "*rawacq*gz"))
     if zipped:
         print("Unzipping mistakes")
         if prl:
