@@ -192,11 +192,17 @@ def csum_existence(filename):
     --------
         existence : bool
             A boolean specifying if csums exist or not.
-
+        donotcall : bool
+            A boolean, True if the dataset should not be calibrated. 
     '''
+
     rootname = os.path.basename(filename)[:9]
     dirname = os.path.dirname(filename)
-    exptype = pf.getval(filename, "exptype")
+    try:
+        exptype = pf.getval(filename, "exptype")
+    except KeyError:
+        existence = True
+        donotcal = True    
     # If getting one header keyword, getval is faster than opening.
     # The more you know.
     #if exptype != "ACQ/PEAKD" and exptype != "ACQ/PEAKXD":
@@ -346,7 +352,7 @@ def parallelize(myfunc, mylist):
         # pooling with processes=0.
         if nprocs == 0:
             nrpcos = 1
-        print("Using {0} cores at {1}".format(nprocs, datetime.datetime.now()))
+#        print("Using {0} cores at {1}".format(nprocs, datetime.datetime.now()))
         pool = mp.Pool(processes=nprocs)
         pool.map(myfunc, onelist)
         pool.close()
