@@ -455,6 +455,7 @@ def work_laboriously(prl):
     print("Starting at {0}...\n".format(datetime.datetime.now()))
     chmod_recurs(BASE_DIR, PERM_755)
     nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*")) 
+    handle_nullfiles(null_files) 
     # using glob is faster than using os.walk
     zipped = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*gz")) + \
              glob.glob(os.path.join(BASE_DIR, "*", "*rawaccum*gz")) + \
