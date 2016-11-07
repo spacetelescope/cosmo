@@ -40,6 +40,7 @@ LINEOUT = "#"*75+"\n"
 STAROUT = "*"*75+"\n"
 PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 PERM_872 = stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
+BASE_DIR = "/grp/hst/cos2/smov_testing/"
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -116,7 +117,7 @@ def make_csum(unzipped_raws):
 #------------------------------------------------------------------------------#
 
 #@log_function
-def fix_perm(base_dir):
+def fix_perm(mydir):
     '''
     Walk through all directories in base directory and change the group ids
     to reflect the type of COS data (calbration, GTO, or GO).
@@ -127,7 +128,7 @@ def fix_perm(base_dir):
 
     Parameters:
     -----------
-        base_dir : string
+        mydir : string
             The base directory to walk through.
 
     Returns:
@@ -135,7 +136,7 @@ def fix_perm(base_dir):
         Nothing
     '''
     user_id = 5026 # jotaylor's user ID
-    for root, dirs, files in os.walk(base_dir):
+    for root, dirs, files in os.walk(mydir):
         # This expects the dirtree to be in the format /blah/blah/blah/12345
         pid = root.split("/")[-1]
         if pid in smov_proposals or pid in calib_proposals:
@@ -400,6 +401,43 @@ def only_one_seg(uz_files):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
+def handle_nullfiles(null_files):
+    '''
+    It can be difficult to tell if all files found by find_new_cos_data with
+    program ID 'NULL' are actually COS files (e.g. reference files that start
+    with 'L' can accidentally be downloaded). Delete any files that are not
+    actually COS files
+
+    Parameters:
+    -----------
+        null_files : list
+            List of all files in the NULL directory
+
+    Returns:
+    --------
+        None
+    '''
+
+    for item in null_files:
+        with pf.open(item) as hdulist:
+            hdr0 = hdulist[0].header
+        try:
+            instrument = hdr0["instrume"]
+            try:
+                pid = hdr0["proposid"]
+                if len(pid) > 0:
+                    if not os.path.exists(os.path.join(BASE_DIR, pid)):
+                        os.mkdir(os.path.join(BASE_DIR, pid)) 
+                    shutil.move(item, os.path.join(BASE_DIR, pid))
+            except KeyError:
+                pass
+        except KeyError:
+            os.remove(item)
+            print("Removing non-COS files")
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
 def work_laboriously(prl):
     '''
     Run all the functions in the correct order.
@@ -415,12 +453,12 @@ def work_laboriously(prl):
     '''
 
     print("Starting at {0}...\n".format(datetime.datetime.now()))
-    base_dir = "/grp/hst/cos2/smov_testing/"
-    chmod_recurs(base_dir, PERM_755) 
+    chmod_recurs(BASE_DIR, PERM_755)
+    nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*")) 
     # using glob is faster than using os.walk
-    zipped = glob.glob(os.path.join(base_dir, "*", "*rawtag*gz")) +
-             glob.glob(os.path.join(base_dir, "*", "*rawaccum*gz")) +
-             glob.glob(os.path.join(base_dir, "*", "*rawacq*gz"))
+    zipped = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*gz")) + \
+             glob.glob(os.path.join(BASE_DIR, "*", "*rawaccum*gz")) + \
+             glob.glob(os.path.join(BASE_DIR, "*", "*rawacq*gz"))
     if zipped:
         print("Unzipping mistakes")
         if prl:
@@ -428,8 +466,8 @@ def work_laboriously(prl):
         else:
             unzip_mistakes(zipped)
 
-    unzipped_raws_ab = glob.glob(os.path.join(base_dir, "*", "*rawtag*fits")) + \
-                   glob.glob(os.path.join(base_dir, "*", "*rawacq.fits"))
+    unzipped_raws_ab = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*fits")) + \
+                   glob.glob(os.path.join(BASE_DIR, "*", "*rawacq.fits"))
     unzipped_raws = only_one_seg(unzipped_raws_ab)
     if unzipped_raws:
         print("Calibrating raw files")
@@ -438,7 +476,7 @@ def work_laboriously(prl):
         else:
             make_csum(unzipped_raws)
 
-    all_unzipped = glob.glob(os.path.join(base_dir, "*", "*fits"))
+    all_unzipped = glob.glob(os.path.join(BASE_DIR, "*", "*fits"))
     if all_unzipped:
         print("Zipping uncomprssed files")
         if prl:
@@ -447,8 +485,8 @@ def work_laboriously(prl):
             compress_files(all_unzipped)
 
     print("Fixing permissions")
-    fix_perm(base_dir)
-    chmod_recurs(base_dir, PERM_872)
+    fix_perm(BASE_DIR)
+    chmod_recurs(BASE_DIR, PERM_872)
 
     print("\nFinished at {0}.".format(datetime.datetime.now()))
 #------------------------------------------------------------------------------#
