@@ -440,7 +440,7 @@ def make_all_hv_maps():
 
 def make_total_gain(gainmap_dir=None, segment='FUV', start_mjd=55055, end_mjd=70000, min_hv=163, max_hv=175, reverse=False):
     if segment == 'FUVA':
-        search_string = 'l_*_01_???_cci_gainmap.fits'
+        search_string = 'l_*_00_???_cci_gainmap.fits'
     elif segment == 'FUVB':
         search_string = 'l_*_01_???_cci_gainmap.fits'
 
