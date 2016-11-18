@@ -196,28 +196,23 @@ def tally_cs():
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def compare_tables(use_cs):
+def compare_tables(pkl_it):
     '''
     Compare the set of all files currently in the COS repository to the list
-    all files currently ingested into MAST.
+    all files currently ingested into MAST. Retrieve missing datasets.
 
     Parameters:
     -----------
-        use_cs : Bool
-            Switch to find missing data comparing what is currently on 
-            central store, as opposed to using the COSMO database.
+        pkl_it : Boolean
+            True if output should be saved to pickle file.
 
     Returns:
     --------
-        prop_dict : dictionary
-            Dictionary where the key is the proposal, and values are the
-            missing data.
+        Nothing
     '''
 
-    if use_cs:
-        existing = tally_cs()
-    else:
-        existing = connect_cosdb()
+#    existing = connect_cosdb()
+    existing = tally_cs()
     mast = connect_dadsops()
     print("Finding missing COS data...")
 
@@ -237,42 +232,17 @@ def compare_tables(use_cs):
     prop_dict = dict(zip(prop_keys, prop_vals))
     for i in xrange(len(missing_names)):
         prop_dict[missing_props[i]].append(missing_names[i])
-    
-    return prop_dict
 
-#-----------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------#
-def request_missing(prop_dict, pkl_it, run_labor):
-    '''
-    Call request_data to Retrieve missing datasets.
-
-    Parameters:
-    -----------
-        prop_dict : dictionary
-            Dictionary where the key is the proposal, and values are the
-            missing data.
-            
-        pkl_it : Boolean
-            True if output should be saved to pickle file.
-
-        run_labor : Boolean
-            True if manualabor should be run after retrieving data.
-
-    Returns:
-    --------
-        Nothing
-    '''
-
-    print("Data missing for {0} programs".format(len(prop_dict.keys())))
+    print("Data missing for {0} programs".format(len(prop_keys)))
     if pkl_it:
         pkl_file = "filestoretrieve.p"
         pickle.dump(prop_dict, open(pkl_file, "wb"))
         cwd = os.getcwd()
         print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
-        run_all_retrievals(prop_dict=None, pkl_file=pkl_file, run_labor=run_labor)
+        run_all_retrievals(pkl_file=pkl_file)
     else:
         print("Retrieving data now...")
-        run_all_retrievals(prop_dict=prop_dict, pkl_file=None, run_labor=run_labor)
+        run_all_retrievals(prop_dict=prop_dict)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -281,13 +251,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", dest="pkl_it", action="store_true", default=False,
                         help="Save output to pickle file")
-    parser.add_argument("-cs", dest="use_cs", action="store_true",
-                        default=False, 
-                        help="Find missing data comparing to central store, not DB") 
-    parser.add_argument("-labor", dest="run_labor", action="store_false",
-                        default=True, 
-                        help="Do not run manualabor after retrieving data.") 
     args = parser.parse_args()
 
-    prop_dict = compare_tables(args.use_cs)
-    request_missing(prop_dict, args.pkl_it, args.run_labor)
+    compare_tables(args.pkl_it)
