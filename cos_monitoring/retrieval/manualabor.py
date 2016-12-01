@@ -197,16 +197,12 @@ def csum_existence(filename):
     '''
     rootname = os.path.basename(filename)[:9]
     dirname = os.path.dirname(filename)
-<<<<<<< HEAD
-    exptype = pf.getval(filename, "exptype")
-=======
     try:
         exptype = pf.getval(filename, "exptype")
     except KeyError:
         exptype = None
         existence = True
         donotcal = True
->>>>>>> 46f70e1dfd8f1f2bd4fe091be9e4df7990f6fffd
     # If getting one header keyword, getval is faster than opening.
     # The more you know.
     #if exptype != "ACQ/PEAKD" and exptype != "ACQ/PEAKXD":
