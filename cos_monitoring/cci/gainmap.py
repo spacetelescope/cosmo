@@ -430,7 +430,7 @@ def read_spottab(filename, segment, expstart, expend):
 
 def make_all_hv_maps():
     for hv in range(150, 179):
-        tmp_hdu = fits.open( os.path.join( MONITOR_DIR, 'total_gain.fits') )
+        tmp_hdu = fits.open(os.path.join( MONITOR_DIR, 'total_gain.fits'))
         for ext in (1, 2):
             tmp_hdu[ext].data -= .393 * (float(178) - hv)
         tmp_hdu.writeto( os.path.join( MONITOR_DIR, 'total_gain_%d.fits' % hv ), clobber=True )
@@ -444,7 +444,13 @@ def make_total_gain(gainmap_dir=None, segment='FUV', start_mjd=55055, end_mjd=70
     elif segment == 'FUVB':
         search_string = 'l_*_01_???_cci_gainmap.fits'
 
+
     all_datasets = [item for item in glob.glob(os.path.join(gainmap_dir, search_string))]
+
+    if not len(all_datasets):
+        search_string = search_string + '.gz'
+        all_datasets = [item for item in glob.glob(os.path.join(gainmap_dir, search_string))]
+
     all_datasets.sort()
 
     print("Combining {} datasets".format(len(all_datasets)))
@@ -452,20 +458,22 @@ def make_total_gain(gainmap_dir=None, segment='FUV', start_mjd=55055, end_mjd=70
     if reverse:
         all_datasets = all_datasets[::-1]
 
-    out_data = np.zeros( (YLEN, XLEN) )
+    out_data = np.zeros((YLEN, XLEN))
 
     for item in all_datasets:
 
         cci_hdu = fits.open(item)
-        if not cci_hdu[0].header['EXPSTART'] > start_mjd: continue
-        if not cci_hdu[0].header['EXPSTART'] < end_mjd: continue
+        if not cci_hdu[0].header['EXPSTART'] >= start_mjd:
+            continue
+        if not cci_hdu[0].header['EXPSTART'] <= end_mjd:
+            continue
 
-        cci_hdu = fits.open(item)
-        if not cci_hdu[0].header['EXPSTART'] >= start_mjd: continue
-        if not cci_hdu[0].header['EXPSTART'] <= end_mjd: continue
+        if not cci_hdu[0].header['DETHV'] >= min_hv:
+            continue
+        if not cci_hdu[0].header['DETHV'] <= max_hv:
+            continue
 
-        if not cci_hdu[0].header['DETHV'] >= min_hv: continue
-        if not cci_hdu[0].header['DETHV'] <= max_hv: continue
+        test_list.append(item)
         cci_data = cci_hdu['MOD_GAIN'].data
 
         dethv = cci_hdu[0].header['DETHV']
@@ -542,6 +550,22 @@ def make_all_gainmaps(filename, gainmap_dir, start_mjd=55055, end_mjd=70000, min
     #add_cumulative_data(ending)
 
     hdu_out = fits.HDUList(fits.PrimaryHDU())
+
+    #-- Adding primary header with file specifications to make results reproducible
+
+    hdu_out[0].header['TELESCOP'] = 'HST'
+    hdu_out[0].header['INSTRUME'] = 'COS'
+    hdu_out[0].header['DETECTOR'] = 'FUV'
+    hdu_out[0].header['OPT_ELEM'] = 'ANY'
+    hdu_out[0].header['FILETYPE'] = 'GAINMAP'
+
+    hdu_out[0].header['EXPSTART'] = start_mjd
+    hdu_out[0].header['EXP_END'] = end_mjd
+    hdu_out[0].header['MIN_HV'] = min_hv
+    hdu_out[0].header['MAX_HV'] = max_hv
+    hdu_out[0].header['CCI_DIR'] = gainmap_dir
+
+    #-- Data ext
     hdu_out.append(fits.ImageHDU(data=make_total_gain(gainmap_dir, 'FUVA', start_mjd, end_mjd, min_hv, max_hv, reverse=True)))
     hdu_out[1].header['EXTNAME'] = 'FUVAINIT'
     hdu_out.append(fits.ImageHDU(data=make_total_gain(gainmap_dir, 'FUVB', start_mjd, end_mjd, min_hv, max_hv,  reverse=True)))

@@ -263,7 +263,7 @@ def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
 #-----------------------------------------------------------------------------#
 
 #@log_function
-def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
+def run_all_retrievals(prop_dict=None, pkl_file=None):
     '''
     Open the pickle file containing a dictionary of all missing COS data
     to be retrieved. It is set up to handle all situations (if run daily=few
@@ -352,9 +352,8 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
             print(end_msg)
         else:
             print(end_msg)
-    if run_labor:
-        print("Beginning calibration and zipping now...")
-        work_laboriously(prl=True)
+    print("Beginning calibration and zipping now...")
+    work_laboriously(prl=True)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -362,6 +361,6 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
 if __name__ == "__main__":
     pkl_file = "filestoretrieve.p"
     try:
-        run_all_retrievals(prop_dict=None, pkl_file=pkl_file, run_labor=True)
+        run_all_retrievals(pkl_file)
     except Exception as e:
         print(Exception, e)
