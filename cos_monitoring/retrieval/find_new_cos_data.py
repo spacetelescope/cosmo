@@ -105,14 +105,17 @@ def connect_dadsops():
     # Get all jitter, science (ASN), and CCI datasets.
     print("Querying MAST dadsops_rep database....")
     query0 = "SELECT ads_data_set_name,ads_pep_id FROM "\
-    "archive_data_set_all WHERE ads_instrument='cos'\ngo"
+    "archive_data_set_all WHERE ads_instrument='cos' "\
+    "AND ads_data_set_name NOT LIKE 'LZ%' AND "\
+    "ads_best_version='Y'\ngo"
     # Some COS observations don't have ads_instrumnet=cos
     query1 = "SELECT ads_data_set_name,ads_pep_id FROM "\
     "archive_data_set_all WHERE LEN(ads_data_set_name)=9 "\
-    "AND ads_data_set_name LIKE 'L%'\ngo"
+    "AND ads_data_set_name LIKE 'L%' AND ads_instrument='cos' "\
+    "AND ads_best_version='Y'\ngo"
 
     all_cos = janky_connect(SETTINGS, query0) 
-    all_l = janky_connect(SETTINGS, query1) 
+    all_l = janky_connect(SETTINGS, query1)
     all_mast_res = all_cos + all_l
     # Store results as dictionaries (we need dataset name and proposal ID).
     # Don't get Podfiles (LZ*)
