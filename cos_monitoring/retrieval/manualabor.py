@@ -401,7 +401,7 @@ def only_one_seg(uz_files):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-def handle_nullfiles(null_files):
+def handle_nullfiles(nullfiles):
     '''
     It can be difficult to tell if all files found by find_new_cos_data with
     program ID 'NULL' are actually COS files (e.g. reference files that start
@@ -410,7 +410,7 @@ def handle_nullfiles(null_files):
 
     Parameters:
     -----------
-        null_files : list
+        nullfiles : list
             List of all files in the NULL directory
 
     Returns:
@@ -418,7 +418,7 @@ def handle_nullfiles(null_files):
         None
     '''
 
-    for item in null_files:
+    for item in nullfiles:
         with pf.open(item) as hdulist:
             hdr0 = hdulist[0].header
         try:
@@ -426,14 +426,20 @@ def handle_nullfiles(null_files):
             try:
                 pid = hdr0["proposid"]
                 if len(pid) > 0:
+                    # These files have program IDs and should be moved.
                     if not os.path.exists(os.path.join(BASE_DIR, pid)):
                         os.mkdir(os.path.join(BASE_DIR, pid)) 
                     shutil.move(item, os.path.join(BASE_DIR, pid))
             except KeyError:
-                pass
+                try:
+                    # These files are reference files and should be removed.
+                    useafter = hdr0["useafter"]
+                    os.remove(item)
+                except KeyError:
+                    os.remove(item)
         except KeyError:
+            # These files are not COS datasets and should be removed.
             os.remove(item)
-            print("Removing non-COS files")
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -445,7 +451,7 @@ def work_laboriously(prl):
     Parameters:
     -----------
         prl : Boolean
-            Should functions be parallelized?
+            Switch for running functions in parallel
 
     Returns:
     --------
@@ -455,13 +461,15 @@ def work_laboriously(prl):
     print("Starting at {0}...\n".format(datetime.datetime.now()))
     chmod_recurs(BASE_DIR, PERM_755)
     nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*")) 
-    handle_nullfiles(null_files) 
+    if nullfiles:
+        print("Handling NULL datasets...")
+        handle_nullfiles(nullfiles) 
     # using glob is faster than using os.walk
     zipped = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*gz")) + \
              glob.glob(os.path.join(BASE_DIR, "*", "*rawaccum*gz")) + \
              glob.glob(os.path.join(BASE_DIR, "*", "*rawacq*gz"))
     if zipped:
-        print("Unzipping mistakes")
+        print("Checking for mistakenly zipped files...")
         if prl:
             parallelize(unzip_mistakes, zipped)
         else:
