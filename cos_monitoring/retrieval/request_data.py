@@ -332,8 +332,8 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
             if sum(counter) < (num_ids - int_num):
                 print(datetime.now())
                 print("Data not yet delivered for {0}. Checking again in " 
-                      "15 minutes".format(current_retrieved))
-                time.sleep(900)
+                      "5 minutes".format(current_retrieved))
+                time.sleep(350)
         # When total# - int_num programs have been retrieved, add int_num more
         # to queue.
         else:
