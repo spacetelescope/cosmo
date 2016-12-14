@@ -68,9 +68,9 @@ def unzip_mistakes(zipped):
     for zfile in zipped:
         rootname = os.path.basename(zfile)[:9]
         dirname = os.path.dirname(zfile)
-        existence, donotcal= csum_existence(zfile)
-        if existence is False and donotcal is False:
-            chmod_recurs(dirname, PERM_755)
+        existence, calibrate= csum_existence(zfile)
+        if existence is False and calibrate is True:
+            #chmod_recurs(dirname, PERM_755)
             files_to_unzip = glob.glob(zfile)
             uncompress_files(files_to_unzip)
         else:
@@ -98,8 +98,8 @@ def make_csum(unzipped_raws):
     if isinstance(unzipped_raws, basestring):
         unzipped_raws = [unzipped_raws]
     for item in unzipped_raws:
-        existence, donotcal = csum_existence(item)
-        if existence is False and donotcal is False:
+        existence, calibrate = csum_existence(item)
+        if existence is False and calibrate is True:
             dirname = os.path.dirname(item)
             os.chmod(dirname, PERM_755)
             os.chmod(item, PERM_755)
@@ -193,7 +193,7 @@ def csum_existence(filename):
     --------
         existence : bool
             A boolean specifying if csums exist or not.
-        donotcall : bool
+        calibrate : bool
             A boolean, True if the dataset should not be calibrated. 
     '''
 
@@ -204,22 +204,22 @@ def csum_existence(filename):
     except KeyError:
         exptype = None
         existence = True
-        donotcal = True
+        calibrate = False
     # If getting one header keyword, getval is faster than opening.
     # The more you know.
-    #if exptype != "ACQ/PEAKD" and exptype != "ACQ/PEAKXD":
-    if exptype == "ACQ/IMAGE":
-        donotcal = False
+    if exptype != "ACQ/PEAKD" and exptype != "ACQ/PEAKXD":
+#    if exptype == "ACQ/IMAGE":
+        calibrate = True
         csums = glob.glob(os.path.join(dirname,rootname+"*csum*"))
         if not csums:
             existence = False
         else:
             existence = True
     else:
-        donotcal = True
+        calibrate = False
         existence = False
 
-    return existence, donotcal
+    return existence, calibrate
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -424,8 +424,8 @@ def handle_nullfiles(nullfiles):
         try:
             instrument = hdr0["instrume"]
             try:
-                pid = hdr0["proposid"]
-                if len(pid) > 0:
+                pid = str(hdr0["proposid"])
+                if pid > 0:
                     # These files have program IDs and should be moved.
                     if not os.path.exists(os.path.join(BASE_DIR, pid)):
                         os.mkdir(os.path.join(BASE_DIR, pid)) 
