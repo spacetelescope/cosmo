@@ -20,7 +20,6 @@ import time
 import pickle
 import os
 import yaml
-import pdb
 import argparse
 import glob
 from sqlalchemy import text
@@ -265,7 +264,6 @@ def request_missing(prop_dict, pkl_it, run_labor):
     --------
         Nothing
     '''
-
     print("Data missing for {0} programs".format(len(prop_dict.keys())))
     if pkl_it:
         pkl_file = "filestoretrieve.p"
