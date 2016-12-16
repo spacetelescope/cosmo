@@ -293,10 +293,14 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
     pend = 10 # should be 10
     int_num = 5 # should be 5
     century = 50 # should be 50
-    if pend > len(prop_dict_keys):
-        pend = len(prop_dict_keys)
-
     all_tracking_ids = []
+    end_msg = "\nAll data from {0} programs were successfully " \
+    
+    if pend > len(prop_dict_keys):
+        for prop in prop_dict_keys:
+            all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
+        print(end_msg.format(len(prop_dict_keys)))
+    
     # While the number of processed programs is less than total programs
     while pend < len(prop_dict_keys): 
         
@@ -344,7 +348,6 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
     # When pend > total # of programs, it does not mean all have been
     # retrieved. Check, and retrieve if so.
     else:
-        end_msg = "\nAll data from {0} programs were successfully " \
         "delivered. ".format(len(prop_dict_keys))
         if (len(prop_dict_keys) - (pend-int_num)) > 0:
             for prop in prop_dict_keys[pend-int_num:]:
@@ -353,7 +356,7 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
         else:
             print(end_msg)
     if run_labor:
-        print("Beginning calibration and zipping now...")
+        print("Beginning manual labor now...")
         work_laboriously(prl=True)
 
 #-----------------------------------------------------------------------------#
