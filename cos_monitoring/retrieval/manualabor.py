@@ -30,6 +30,7 @@ import time
 import pdb
 import numpy as np
 import stat
+from functools import partial
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -73,8 +74,6 @@ def unzip_mistakes(zipped):
             #chmod_recurs(dirname, PERM_755)
             files_to_unzip = glob.glob(zfile)
             uncompress_files(files_to_unzip)
-        else:
-            unzip_status = False
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -175,6 +174,12 @@ def chmod_recurs(dirname, perm):
         if files:
             for item in files:
                 os.chmod(os.path.join(root, item), perm)
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+def chmod_recurs_prl(perm, item):
+    os.chmod(item, perm)
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -359,6 +364,38 @@ def parallelize(myfunc, mylist):
         pool.map(myfunc, onelist)
         pool.close()
         pool.join()
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+def check_disk_space():
+    '''
+    Determine how much free space there is in BASE_DIR
+
+    Parameters:
+    -----------
+        None
+
+    Returns:
+    --------
+#        free_gb : float
+#            Number of free GB in BASE_DIR.
+    '''
+    
+    statvfs = os.statvfs(BASE_DIR)
+    free_gb = (statvfs.f_frsize * statvfs.f_bfree) / 1e9
+    if free_gb < 200:
+        print("WARNING: There are {0}GB left on disk".format(free_gb))
+        csums_to_zip = glob.glob(os.path.join(BASE_DIR, "*", "*csum*.fits"))
+        if not csums_to_zip:
+            print("WARNING: Disk space is running very low, no csums to zip") 
+        else:
+            print("Zipping csums to save space...")
+            if prl:
+                parallelize(compress_files, csums_to_zip)
+            else:
+                compress_files(csums_to_zip)
+
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
@@ -459,7 +496,15 @@ def work_laboriously(prl):
     '''
 
     print("Starting at {0}...\n".format(datetime.datetime.now()))
-    chmod_recurs(BASE_DIR, PERM_755)
+#    all_dirs = [x[0] for x in os.walk(BASE_DIR)
+    if prl:
+        all_dirs = glob.glob(os.path.join(BASE_DIR, "*"))
+        all_files = glob.glob(os.path.join(BASE_DIR, "*", "*"))
+        chmod_func = partial(chmod_recurs_prl, PERM_755)
+        parallelize(chmod_func, all_dirs+all_files)
+    else:
+        chmod_recurs(BASE_DIR, PERM_755)
+
     nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*")) 
     if nullfiles:
         print("Handling NULL datasets...")
@@ -478,12 +523,30 @@ def work_laboriously(prl):
     unzipped_raws_ab = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*fits")) + \
                    glob.glob(os.path.join(BASE_DIR, "*", "*rawacq.fits"))
     unzipped_raws = only_one_seg(unzipped_raws_ab)
+    
+    max_files = 300
     if unzipped_raws:
-        print("Calibrating raw files")
-        if prl:
-            parallelize(make_csum, unzipped_raws)
+        if len(unzipped_raws) > max_files:
+            num_files = 0
+            while num_files < len(unzipped_raws):
+                num_files += max_files
+                print("There are too many raw files, calibrating in chunks of {0}".format(str(max_files)))
+                if prl:
+                    parallelize(make_csum, unzipped_raws[num_files-max_files:num_files])
+                else:
+                    make_csum(unzipped_raws)
+                csums_to_zip = glob.glob(os.path.join(BASE_DIR, "*", "*csum*.fits"))
+                print("Zipping csums now...")
+                if prl:
+                    parallelize(compress_files, csums_to_zip)
+                else:
+                    compress_files(csums_to_zip)
         else:
-            make_csum(unzipped_raws)
+            print("Calibrating raw files")
+            if prl:
+                parallelize(make_csum, unzipped_raws)
+            else:
+                make_csum(unzipped_raws)
 
     all_unzipped = glob.glob(os.path.join(BASE_DIR, "*", "*fits"))
     if all_unzipped:
