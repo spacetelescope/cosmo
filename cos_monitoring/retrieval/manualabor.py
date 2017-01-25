@@ -106,7 +106,6 @@ def make_csum(unzipped_raws):
                 run_calcos(item, outdir=dirname, verbosity=2,
                            create_csum_image=True, only_csum=True,
                            compress_csum=False)
-
             except Exception as e:
                 print(e)
                 #logger.exception("There was an error processing {}:".format(item))
@@ -550,7 +549,7 @@ def work_laboriously(prl):
 
     all_unzipped = glob.glob(os.path.join(BASE_DIR, "*", "*fits"))
     if all_unzipped:
-        print("Zipping uncomprssed files")
+        print("Zipping uncompressed files")
         if prl:
             parallelize(compress_files, all_unzipped)
         else:

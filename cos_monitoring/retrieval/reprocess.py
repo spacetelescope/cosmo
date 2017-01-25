@@ -76,7 +76,7 @@ def handle_datasets(rootname):
     "archive_data_set_all WHERE ads_data_set_name "\
     "LIKE '{0}%'\ngo".format(str(rootname))
     root_datasets = janky_connect(SETTINGS, query0)
-
+    
     # If data do not have a PID in dadsops_rep, look at opus_rep
     if root_datasets[0][1] == "NULL":
         if root_datasets[0][0].startswith("L_"):
