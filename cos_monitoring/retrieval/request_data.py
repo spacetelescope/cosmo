@@ -178,7 +178,7 @@ def retrieve_data(dest_dir, datasets):
 #-----------------------------------------------------------------------------#
 
 #@log_function
-def everything_retrieved(tracking_id):
+def check_id_status(tracking_id):
     '''
     Check every 15 minutes to see if all submitted datasets have been
     retrieved. Based on code from J. Ely.
@@ -242,7 +242,7 @@ def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
             to date. 
 
     Returns:
-        all_tracking_ids : list
+        all_tracking_ids_tmp : list
             Running tally of all tracking IDs for all propsals retrieved
             to date.
     '''
@@ -259,6 +259,22 @@ def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
 
     return all_tracking_ids_tmp
 
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+def check_data_retrieval(all_tracking_ids):
+    counter = []
+    for tracking_id in all_tracking_ids:
+        status,badness = check_id_status(tracking_id)
+        counter.append(status)
+        if badness:
+            print("!"*70)
+            print("RUH ROH!!! Request {0} was killed or cannot be connected!".format(tracking_id))
+            counter.append(badness)
+    current_retrieved = [all_tracking_ids[i] for i in 
+                         xrange(len(counter)) if not counter[i]]
+
+    return counter, current_retrieved
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
@@ -294,12 +310,23 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
     int_num = 5 # should be 5
     century = 50 # should be 50
     all_tracking_ids = []
-    end_msg = "\nAll data from {0} programs were successfully " \
+    end_msg = "\nAll data from {0} programs were successfully "
     
+    # If less than pend programs were requested, do not enter while loop.
     if pend > len(prop_dict_keys):
         for prop in prop_dict_keys:
             all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
-        print(end_msg.format(len(prop_dict_keys)))
+        counter = []
+        num_ids = len(all_tracking_ids)
+        while sum(counter) < len(all_tracking_ids):
+            counter,current_retrieved = check_data_retrieval(all_tracking_ids)
+            if sum(counter) < len(all_tracking_ids):
+                print(datetime.now())
+                print("Data not yet delivered for {0}. Checking again in " 
+                      "5 minutes".format(current_retrieved))
+                time.sleep(350)
+        else:
+            print(end_msg.format(len(prop_dict_keys)))
     
     # While the number of processed programs is less than total programs
     while pend < len(prop_dict_keys): 
@@ -318,14 +345,14 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
         # current group (defined as from pstart:pend) have been entirely
         # retrieved, stored in counter. Once the number of finished
         # programs reaches (total# - int_num), another int_num of programs
-        # are added to the queue. While data not retrieved, wait 15 minutes
+        # are added to the queue. While data not retrieved, wait 5 minutes
         # before checking again.
         counter = []
         num_ids = len(all_tracking_ids)
         while sum(counter) < (num_ids - int_num):
             counter = []
             for tracking_id in all_tracking_ids:
-                status,badness = everything_retrieved(tracking_id)
+                status,badness = check_id_status(tracking_id)
                 counter.append(status)
                 if badness:
                     print("!"*70)
