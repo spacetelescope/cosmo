@@ -16,6 +16,7 @@ __date__ = "04-13-2016"
 __maintainer__ = "Jo Taylor"
 __email__ = "jotaylor@stsci.edu"
 
+import urllib
 import time
 import pickle
 import os
@@ -163,7 +164,7 @@ def janky_connect(SETTINGS, query_string):
     receive.close()
     error_report = err.readlines()
     err.close()
-
+         
     badness = ["locale", "charset", "1>", "affected"]
     result = [x.strip().split("|||") if "|||" in x else x.strip() 
               for x in query_result if not any(y in x for y in badness)]
@@ -215,6 +216,8 @@ def compare_tables(use_cs):
             Dictionary where the key is the proposal, and values are the
             missing data.
     '''
+
+    ensure_no_pending()
 
     if use_cs:
         existing = tally_cs()
@@ -278,6 +281,49 @@ def request_missing(prop_dict, pkl_it, run_labor):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
+def check_for_pending():
+    MYUSER = "jotaylor"
+    status_url = "http://archive.stsci.edu/cgi-bin/reqstat?reqnum=={0}".format(MYUSER)
+    
+    tries = 5
+    while tries > 0:
+        try:
+            urllines = urllib.urlopen(status_url).readlines()
+        except IOError:
+            print("Something went wrong connecting to {0}.".format(status_url))
+            tries -= 1
+            time.sleep(30)
+            badness = True
+        else:
+            tries = -100
+            for line in urllines:
+                mystr = "of these requests are still RUNNING"
+                if mystr in line:
+                    num_requests = [x.split(mystr) for x in line.split()][0][0]
+                    assert (num_requests.isdigit()), "A non-number was found in line {0}!".format(line)
+                    num = int(num_requests)
+                    badness = False
+                    break
+                else:
+                    badness = True
+
+    return num, badness, status_url
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+def ensure_no_pending():
+    num_requests, badness, status_url = check_for_pending()
+    while num_requests > 0:
+        assert (badness == False), "Something went wrong during requests, check {0}".format(status_url)
+        print("There are still requests pending from a previous COSMO run, waiting 5 minutes...")
+        time.sleep(300)
+        num_requests, badness, status_url = check_for_pending()
+    else:
+        print("All pending requests finished, moving on!")
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", dest="pkl_it", action="store_true", default=False,
