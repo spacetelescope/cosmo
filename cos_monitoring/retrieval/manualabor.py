@@ -133,6 +133,7 @@ def fix_perm(mydir):
     --------
         Nothing
     '''
+    
     user_id = 5026 # jotaylor's user ID
     for root, dirs, files in os.walk(mydir):
         # This expects the dirtree to be in the format /blah/blah/blah/12345
