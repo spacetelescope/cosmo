@@ -16,6 +16,7 @@ __date__ = "04-13-2016"
 __maintainer__ = "Jo Taylor"
 __email__ = "jotaylor@stsci.edu"
 
+import shlex
 import urllib
 import time
 import pickle
@@ -153,10 +154,13 @@ def connect_dadsops():
 
 def janky_connect(SETTINGS, query_string):
     # Connect to the database.
-    p = Popen("tsql -S%s -D%s -U%s -P%s -t'|||'" % (SETTINGS["server"], 
-              SETTINGS["database"], SETTINGS["username"], 
-              SETTINGS["password"]), shell=True, stdin=PIPE, stdout=PIPE,
-              stderr=PIPE, close_fds=True)
+    command_line = "tsql -S{0} -D{1} -U{2} -P{3} -t'|||'".format(SETTINGS["server"],SETTINGS["database"], SETTINGS["username"], SETTINGS["password"]) 
+    args = shlex.split(command_line)
+    p = Popen(args,
+              stdin=PIPE, 
+              stdout=PIPE,
+              stderr=PIPE, 
+              close_fds=True)
     (transmit, receive, err) = (p.stdin, p.stdout, p.stderr)
     transmit.write(query_string)
     transmit.close()
