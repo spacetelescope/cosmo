@@ -92,6 +92,7 @@ def make_csum(unzipped_raws):
     --------
         Nothing
     '''
+
     run_calcos = clobber_calcos(calcos.calcos)
     #logger.info("Creating CSUM files")
     if isinstance(unzipped_raws, basestring):
@@ -107,7 +108,14 @@ def make_csum(unzipped_raws):
                            create_csum_image=True, only_csum=True,
                            compress_csum=False)
             except Exception as e:
-                print(e)
+                if type(e).__name__ == "IOError" and \
+                   e.args[0] == "Empty or corrupt FITS file":
+                    print("The file is empty or corrupt: {0}".format(item))
+                    print("Deleting file")
+                    os.remove(item)
+                    pass
+                else:
+                    print(e)
                 #logger.exception("There was an error processing {}:".format(item))
                 pass
 
