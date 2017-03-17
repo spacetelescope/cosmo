@@ -30,6 +30,7 @@ import time
 import pdb
 import numpy as np
 import stat
+import subprocess
 from functools import partial
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -42,6 +43,20 @@ STAROUT = "*"*75+"\n"
 PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 PERM_872 = stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 BASE_DIR = "/grp/hst/cos2/smov_testing/"
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+def timefunc(func):
+    def wrapper(*args, **kw):
+        t1 = datetime.datetime.now()
+        result = func(*args, **kw)
+        t2 = datetime.datetime.now()
+
+        print("{0} executed in {1}".format(func.__name__, t2-t1))
+        
+        return result
+    return wrapper
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -69,7 +84,13 @@ def unzip_mistakes(zipped):
     for zfile in zipped:
         rootname = os.path.basename(zfile)[:9]
         dirname = os.path.dirname(zfile)
-        existence, calibrate= csum_existence(zfile)
+        existence, calibrate, badness= csum_existence(zfile)
+        if badness:
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("The file is empty or corrupt: {0}".format(item))
+            print("Deleting file")
+            os.remove(item)
+            continue
         if existence is False and calibrate is True:
             #chmod_recurs(dirname, PERM_755)
             files_to_unzip = glob.glob(zfile)
@@ -98,7 +119,13 @@ def make_csum(unzipped_raws):
     if isinstance(unzipped_raws, basestring):
         unzipped_raws = [unzipped_raws]
     for item in unzipped_raws:
-        existence, calibrate = csum_existence(item)
+        existence, calibrate, badness = csum_existence(item)
+        if badness:
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("The file is empty or corrupt: {0}".format(item))
+            print("Deleting file")
+            os.remove(item)
+            continue
         if existence is False and calibrate is True:
             dirname = os.path.dirname(item)
             os.chmod(dirname, PERM_755)
@@ -123,6 +150,7 @@ def make_csum(unzipped_raws):
 #------------------------------------------------------------------------------#
 
 #@log_function
+@timefunc
 def fix_perm(mydir):
     '''
     Walk through all directories in base directory and change the group ids
@@ -192,6 +220,13 @@ def chmod_recurs_prl(perm, item):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
+@timefunc
+def chmod_recurs_sp(rootdir, perm):
+    subprocess.check_call(["chmod", "-R", perm, rootdir])
+     
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
 #@log_function
 def csum_existence(filename):
     '''
@@ -218,6 +253,10 @@ def csum_existence(filename):
         exptype = None
         existence = True
         calibrate = False
+    except Exception as e:
+        if type(e).__name__ == "IOError" and \
+           e.args[0] == "Empty or corrupt FITS file":
+            return False, False, True
     # If getting one header keyword, getval is faster than opening.
     # The more you know.
     if exptype != "ACQ/PEAKD" and exptype != "ACQ/PEAKXD":
@@ -232,7 +271,7 @@ def csum_existence(filename):
         calibrate = False
         existence = False
 
-    return existence, calibrate
+    return existence, calibrate, False
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -323,6 +362,7 @@ def send_email():
 #------------------------------------------------------------------------------#
 
 #@log_function
+@timefunc
 def parallelize(myfunc, mylist):
     '''
     Parallelize a function. Be a good samaritan and CHECK the current usage
@@ -376,6 +416,7 @@ def parallelize(myfunc, mylist):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
+@timefunc
 def check_disk_space():
     '''
     Determine how much free space there is in BASE_DIR
@@ -394,15 +435,15 @@ def check_disk_space():
     free_gb = (statvfs.f_frsize * statvfs.f_bfree) / 1e9
     if free_gb < 200:
         print("WARNING: There are {0}GB left on disk".format(free_gb))
-        csums_to_zip = glob.glob(os.path.join(BASE_DIR, "*", "*csum*.fits"))
-        if not csums_to_zip:
+        unzipped_csums = glob.glob(os.path.join(BASE_DIR, "*", "*csum*.fits"))
+        if not unzipped_csums:
             print("WARNING: Disk space is running very low, no csums to zip") 
         else:
             print("Zipping csums to save space...")
             if prl:
-                parallelize(compress_files, csums_to_zip)
+                parallelize(compress_files, unzipped_csums)
             else:
-                compress_files(csums_to_zip)
+                compress_files(unzipped_csums)
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -489,6 +530,7 @@ def handle_nullfiles(nullfiles):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
+@timefunc
 def work_laboriously(prl):
     '''
     Run all the functions in the correct order.
@@ -504,14 +546,15 @@ def work_laboriously(prl):
     '''
 
     print("Starting at {0}...\n".format(datetime.datetime.now()))
-#    all_dirs = [x[0] for x in os.walk(BASE_DIR)
-    if prl:
-        all_dirs = glob.glob(os.path.join(BASE_DIR, "*"))
-        all_files = glob.glob(os.path.join(BASE_DIR, "*", "*"))
-        chmod_func = partial(chmod_recurs_prl, PERM_755)
-        parallelize(chmod_func, all_dirs+all_files)
-    else:
-        chmod_recurs(BASE_DIR, PERM_755)
+    print("Changing permissions of {0} to 755".format(BASE_DIR))
+#    chmod_recurs_sp(BASE_DIR, "755")
+#    if prl:
+#        all_dirs = glob.glob(os.path.join(BASE_DIR, "*"))
+#        all_files = glob.glob(os.path.join(BASE_DIR, "*", "*"))
+#        chmod_func = partial(chmod_recurs_prl, PERM_755)
+#        parallelize(chmod_func, all_dirs+all_files)
+#    else:
+#        chmod_recurs(BASE_DIR, PERM_755)
 
     nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*")) 
     if nullfiles:
@@ -521,34 +564,43 @@ def work_laboriously(prl):
     zipped = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*gz")) + \
              glob.glob(os.path.join(BASE_DIR, "*", "*rawaccum*gz")) + \
              glob.glob(os.path.join(BASE_DIR, "*", "*rawacq*gz"))
-    if zipped:
-        print("Checking for mistakenly zipped files...")
-        if prl:
-            parallelize(unzip_mistakes, zipped)
-        else:
-            unzip_mistakes(zipped)
+#    if zipped:
+#        print("Checking for mistakenly zipped files...")
+#        if prl:
+#            parallelize(unzip_mistakes, zipped)
+#        else:
+#            unzip_mistakes(zipped)
 
     unzipped_raws_ab = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*fits")) + \
                    glob.glob(os.path.join(BASE_DIR, "*", "*rawacq.fits"))
     unzipped_raws = only_one_seg(unzipped_raws_ab)
+    
+    # Zip any unzipped CSUMs to save space.
+    unzipped_csums = glob.glob(os.path.join(BASE_DIR, "*", "*csum*.fits"))
+    if unzipped_csums:
+        print("Zipping {0} unzipped CSUM(s)...".format(len(unzipped_csums)))
+        if prl:
+            parallelize(compress_files, unzipped_csums)
+        else:
+            compress_files(unzipped_csums)
     
     max_files = 300
     if unzipped_raws:
         if len(unzipped_raws) > max_files:
             num_files = 0
             while num_files < len(unzipped_raws):
-                num_files += max_files
                 print("There are too many raw files, calibrating in chunks of {0}".format(str(max_files)))
                 if prl:
-                    parallelize(make_csum, unzipped_raws[num_files-max_files:num_files])
+                    parallelize(make_csum, unzipped_raws[num_files:num_files+max_files])
                 else:
-                    make_csum(unzipped_raws)
-                csums_to_zip = glob.glob(os.path.join(BASE_DIR, "*", "*csum*.fits"))
+                    make_csum(unzipped_raws[num_files:num_files+max_files])
+                num_files += max_files
+                unzipped_csums = glob.glob(os.path.join(BASE_DIR, "*", "*csum*.fits"))
                 print("Zipping csums now...")
                 if prl:
-                    parallelize(compress_files, csums_to_zip)
+                    parallelize(compress_files, unzipped_csums)
                 else:
-                    compress_files(csums_to_zip)
+                    compress_files(unzipped_csums)
         else:
             print("Calibrating raw files")
             if prl:
@@ -564,9 +616,10 @@ def work_laboriously(prl):
         else:
             compress_files(all_unzipped)
 
-    print("Fixing permissions")
+    print("Changing permissions of {0} to 872".format(BASE_DIR))
     fix_perm(BASE_DIR)
-    chmod_recurs(BASE_DIR, PERM_872)
+    chmod_recurs_sp(BASE_DIR, "872")
+#    chmod_recurs(BASE_DIR, PERM_872)
 
     print("\nFinished at {0}.".format(datetime.datetime.now()))
 #------------------------------------------------------------------------------#
@@ -578,7 +631,8 @@ if __name__ == "__main__":
                         default=False, help="Parallellize functions")
     args = parser.parse_args()
     prl = args.prl
-    try:
-        work_laboriously(prl)
-    except Exception as e:
-        print(Exception, e)
+    work_laboriously(prl)
+#    try:
+#        work_laboriously(prl)
+#    except Exception as e:
+#        print(Exception, e)
