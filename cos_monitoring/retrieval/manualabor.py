@@ -86,9 +86,10 @@ def unzip_mistakes(zipped):
         dirname = os.path.dirname(zfile)
         existence, calibrate, badness= csum_existence(zfile)
         if badness:
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("="*72 + "\n" + "="*72)
             print("The file is empty or corrupt: {0}".format(item))
             print("Deleting file")
+            print("="*72 + "\n" + "="*72)
             os.remove(item)
             continue
         if existence is False and calibrate is True:
@@ -121,9 +122,10 @@ def make_csum(unzipped_raws):
     for item in unzipped_raws:
         existence, calibrate, badness = csum_existence(item)
         if badness:
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("="*72 + "\n" + "="*72)
             print("The file is empty or corrupt: {0}".format(item))
             print("Deleting file")
+            print("="*72 + "\n" + "="*72)
             os.remove(item)
             continue
         if existence is False and calibrate is True:
@@ -137,8 +139,10 @@ def make_csum(unzipped_raws):
             except Exception as e:
                 if type(e).__name__ == "IOError" and \
                    e.args[0] == "Empty or corrupt FITS file":
+                    print("="*72 + "\n" + "="*72)
                     print("The file is empty or corrupt: {0}".format(item))
                     print("Deleting file")
+                    print("="*72 + "\n" + "="*72)
                     os.remove(item)
                     pass
                 else:
@@ -547,7 +551,8 @@ def work_laboriously(prl):
 
     print("Starting at {0}...\n".format(datetime.datetime.now()))
     print("Changing permissions of {0} to 755".format(BASE_DIR))
-#    chmod_recurs_sp(BASE_DIR, "755")
+    chmod_recurs_sp(BASE_DIR, "755")
+
 #    if prl:
 #        all_dirs = glob.glob(os.path.join(BASE_DIR, "*"))
 #        all_files = glob.glob(os.path.join(BASE_DIR, "*", "*"))
@@ -558,18 +563,18 @@ def work_laboriously(prl):
 
     nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*")) 
     if nullfiles:
-        print("Handling NULL datasets...")
+        print("Handling {0} NULL datasets...".format(len(nullfiles)))
         handle_nullfiles(nullfiles) 
     # using glob is faster than using os.walk
     zipped = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*gz")) + \
              glob.glob(os.path.join(BASE_DIR, "*", "*rawaccum*gz")) + \
              glob.glob(os.path.join(BASE_DIR, "*", "*rawacq*gz"))
-#    if zipped:
-#        print("Checking for mistakenly zipped files...")
-#        if prl:
-#            parallelize(unzip_mistakes, zipped)
-#        else:
-#            unzip_mistakes(zipped)
+    if zipped:
+        print("Checking for mistakenly zipped files...")
+        if prl:
+            parallelize(unzip_mistakes, zipped)
+        else:
+            unzip_mistakes(zipped)
 
     unzipped_raws_ab = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*fits")) + \
                    glob.glob(os.path.join(BASE_DIR, "*", "*rawacq.fits"))
@@ -589,28 +594,28 @@ def work_laboriously(prl):
         if len(unzipped_raws) > max_files:
             num_files = 0
             while num_files < len(unzipped_raws):
-                print("There are too many raw files, calibrating in chunks of {0}".format(str(max_files)))
+                print("There are {0} raw files, calibrating {1}:{2}".format(len(unzipped_raws), num_files, num_files+max_files))
                 if prl:
                     parallelize(make_csum, unzipped_raws[num_files:num_files+max_files])
                 else:
                     make_csum(unzipped_raws[num_files:num_files+max_files])
-                num_files += max_files
                 unzipped_csums = glob.glob(os.path.join(BASE_DIR, "*", "*csum*.fits"))
-                print("Zipping csums now...")
+                print("Zipping {0} unzipped CSUM(s)...".format(len(unzipped_csums)))
                 if prl:
                     parallelize(compress_files, unzipped_csums)
                 else:
                     compress_files(unzipped_csums)
+                num_files += max_files
         else:
-            print("Calibrating raw files")
+            print("There are {0} raw files, calibrating {1}:{0}".format(len(unzipped_raws), num_files))
             if prl:
-                parallelize(make_csum, unzipped_raws)
+                parallelize(make_csum, unzipped_raws[num_files:])
             else:
-                make_csum(unzipped_raws)
+                make_csum(unzipped_raws[num_files:])
 
     all_unzipped = glob.glob(os.path.join(BASE_DIR, "*", "*fits"))
     if all_unzipped:
-        print("Zipping uncompressed files")
+        print("Zipping {0} uncompressed files...".format(len(all_unzipped)))
         if prl:
             parallelize(compress_files, all_unzipped)
         else:
