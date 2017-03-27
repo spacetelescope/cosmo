@@ -193,6 +193,7 @@ def exit_handler():
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
+
 atexit.register(exit_handler)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -224,4 +225,4 @@ if __name__ == "__main__":
     for key in to_retrieve.keys():
         prop_dict[to_retrieve[key]].append(key)
 
-    run_all_retrievals(prop_dict=prop_dict, pkl_file=None, run_labor=False)
+    run_all_retrievals(prop_dict=prop_dict, pkl_file=None, run_labor=False, prl=True)
