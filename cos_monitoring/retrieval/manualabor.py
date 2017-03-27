@@ -583,7 +583,7 @@ def work_laboriously(prl):
     '''
 
     # First, change permissions of the base directory so we can modify files.
-    print("Starting at {0}...\n".format(datetime.datetime.now()))
+    print("Beginning manualabor in {0} at {1}...\n".format(BASE_DIR, datetime.datetime.now()))
     print("Changing permissions of {0} to 755".format(BASE_DIR))
 #    chmod_recurs_sp(BASE_DIR, "755")
     chmod(BASE_DIR, PERM_755, None, True)
@@ -624,8 +624,8 @@ def work_laboriously(prl):
     # ensure that disk space is not filled. 
     max_files = 300
     if unzipped_raws:
+        num_files = 0
         if len(unzipped_raws) > max_files:
-            num_files = 0
             while num_files < len(unzipped_raws):
                 print("There are {0} raw files, calibrating {1}:{2}".format(len(unzipped_raws), num_files, num_files+max_files))
                 if prl:
@@ -668,7 +668,7 @@ def work_laboriously(prl):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--p", dest="prl", action="store_true",
+    parser.add_argument("--prl", dest="prl", action="store_true",
                         default=False, help="Parallellize functions")
     args = parser.parse_args()
 
