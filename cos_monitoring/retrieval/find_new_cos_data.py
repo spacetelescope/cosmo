@@ -382,4 +382,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     prop_dict = compare_tables(args.use_cs)
-    request_missing(prop_dict, args.pkl_it, args.run_labor)
+    request_missing(prop_dict, args.pkl_it, args.run_labor, args.prl)
