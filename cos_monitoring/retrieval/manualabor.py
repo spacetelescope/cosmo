@@ -48,6 +48,10 @@ BASE_DIR = "/grp/hst/cos2/smov_testing/"
 #------------------------------------------------------------------------------#
 
 def timefunc(func):
+    '''
+    Decorator to time functions. 
+    '''
+
     def wrapper(*args, **kw):
         t1 = datetime.datetime.now()
         result = func(*args, **kw)
@@ -155,7 +159,7 @@ def make_csum(unzipped_raws):
 
 #@log_function
 @timefunc
-def fix_perm(mydir):
+def chgrp(mydir):
     '''
     Walk through all directories in base directory and change the group ids
     to reflect the type of COS data (calbration, GTO, or GO).
@@ -199,7 +203,7 @@ def chmod_recurs(dirname, perm):
     Parameters:
         dirname : string
             A string of the directory name to edit.
-        perm : int
+        perm : int (octal)
             An integer corresponding to the permission bit settings.
 
     Returns:
@@ -219,6 +223,19 @@ def chmod_recurs(dirname, perm):
 #------------------------------------------------------------------------------#
 
 def chmod_recurs_prl(perm, item):
+    '''
+    Edit permissions in parallel.
+    
+    Parameters:
+        perm : int (octal)
+            An integer corresponding to the permission bit settings.
+        item : string
+            A string of the directory/file name to edit.
+
+    Returns:
+        Nothing
+    '''
+    
     os.chmod(item, perm)
 
 #------------------------------------------------------------------------------#
@@ -247,6 +264,8 @@ def csum_existence(filename):
             A boolean specifying if csums exist or not.
         calibrate : bool
             A boolean, True if the dataset should not be calibrated. 
+        badness : bool
+            A boolen, True if the dataset should be deleted (if corrupt or empty) 
     '''
 
     rootname = os.path.basename(filename)[:9]
@@ -549,23 +568,19 @@ def work_laboriously(prl):
         Nothing
     '''
 
+    # First, change permissions of the base directory so we can modify files.
     print("Starting at {0}...\n".format(datetime.datetime.now()))
     print("Changing permissions of {0} to 755".format(BASE_DIR))
     chmod_recurs_sp(BASE_DIR, "755")
 
-#    if prl:
-#        all_dirs = glob.glob(os.path.join(BASE_DIR, "*"))
-#        all_files = glob.glob(os.path.join(BASE_DIR, "*", "*"))
-#        chmod_func = partial(chmod_recurs_prl, PERM_755)
-#        parallelize(chmod_func, all_dirs+all_files)
-#    else:
-#        chmod_recurs(BASE_DIR, PERM_755)
-
+    # Delete any files with program ID = NULL that are not COS files.
     nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*")) 
     if nullfiles:
         print("Handling {0} NULL datasets...".format(len(nullfiles)))
         handle_nullfiles(nullfiles) 
-    # using glob is faster than using os.walk
+    
+    # Get a list of all zipped files and unzip that need to be processed.
+    # Using glob is faster than using os.walk
     zipped = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*gz")) + \
              glob.glob(os.path.join(BASE_DIR, "*", "*rawaccum*gz")) + \
              glob.glob(os.path.join(BASE_DIR, "*", "*rawacq*gz"))
@@ -576,6 +591,7 @@ def work_laboriously(prl):
         else:
             unzip_mistakes(zipped)
 
+    # Get a list of all unzipped raw files and get a single segment if applicable.
     unzipped_raws_ab = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*fits")) + \
                    glob.glob(os.path.join(BASE_DIR, "*", "*rawacq.fits"))
     unzipped_raws = only_one_seg(unzipped_raws_ab)
@@ -588,7 +604,9 @@ def work_laboriously(prl):
             parallelize(compress_files, unzipped_csums)
         else:
             compress_files(unzipped_csums)
-    
+   
+    # Loop through unzipped files and calibrate (and zip) in chunks of 300 to 
+    # ensure that disk space is not filled. 
     max_files = 300
     if unzipped_raws:
         if len(unzipped_raws) > max_files:
@@ -613,6 +631,7 @@ def work_laboriously(prl):
             else:
                 make_csum(unzipped_raws[num_files:])
 
+    # Zip all unzipped files.
     all_unzipped = glob.glob(os.path.join(BASE_DIR, "*", "*fits"))
     if all_unzipped:
         print("Zipping {0} uncompressed files...".format(len(all_unzipped)))
@@ -621,12 +640,13 @@ def work_laboriously(prl):
         else:
             compress_files(all_unzipped)
 
+    # Change permissions back to protect data.
     print("Changing permissions of {0} to 872".format(BASE_DIR))
-    fix_perm(BASE_DIR)
+    chgrp(BASE_DIR)
     chmod_recurs_sp(BASE_DIR, "872")
-#    chmod_recurs(BASE_DIR, PERM_872)
 
     print("\nFinished at {0}.".format(datetime.datetime.now()))
+
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
@@ -637,7 +657,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
     prl = args.prl
     work_laboriously(prl)
-#    try:
-#        work_laboriously(prl)
-#    except Exception as e:
-#        print(Exception, e)
