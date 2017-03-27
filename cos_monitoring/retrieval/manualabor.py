@@ -37,6 +37,7 @@ from email.mime.multipart import MIMEMultipart
 
 from .ProgramGroups import *
 from .dec_calcos import clobber_calcos
+from .hack_chmod import chmod
 
 LINEOUT = "#"*75+"\n"
 STAROUT = "*"*75+"\n"
@@ -243,6 +244,19 @@ def chmod_recurs_prl(perm, item):
 
 @timefunc
 def chmod_recurs_sp(rootdir, perm):
+    '''
+    Edit permissions on a directory and all files in that directory.
+
+    Parameters:
+        perm : int (octal)
+            An integer corresponding to the permission bit settings.
+        rootdir : string
+            A string of the directory name to edit.
+
+    Returns:
+        Nothing
+    '''
+
     subprocess.check_call(["chmod", "-R", perm, rootdir])
      
 #------------------------------------------------------------------------------#
@@ -265,7 +279,7 @@ def csum_existence(filename):
         calibrate : bool
             A boolean, True if the dataset should not be calibrated. 
         badness : bool
-            A boolen, True if the dataset should be deleted (if corrupt or empty) 
+            A boolean, True if the dataset should be deleted (if corrupt or empty) 
     '''
 
     rootname = os.path.basename(filename)[:9]
@@ -571,7 +585,8 @@ def work_laboriously(prl):
     # First, change permissions of the base directory so we can modify files.
     print("Starting at {0}...\n".format(datetime.datetime.now()))
     print("Changing permissions of {0} to 755".format(BASE_DIR))
-    chmod_recurs_sp(BASE_DIR, "755")
+#    chmod_recurs_sp(BASE_DIR, "755")
+    chmod(BASE_DIR, PERM_755, None, True)
 
     # Delete any files with program ID = NULL that are not COS files.
     nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*")) 
@@ -643,7 +658,8 @@ def work_laboriously(prl):
     # Change permissions back to protect data.
     print("Changing permissions of {0} to 872".format(BASE_DIR))
     chgrp(BASE_DIR)
-    chmod_recurs_sp(BASE_DIR, "872")
+#    chmod_recurs_sp(BASE_DIR, "872")
+    chmod(BASE_DIR, PERM_872, None, True)
 
     print("\nFinished at {0}.".format(datetime.datetime.now()))
 
@@ -652,8 +668,9 @@ def work_laboriously(prl):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-p", dest="prl", action="store_true",
+    parser.add_argument("--p", dest="prl", action="store_true",
                         default=False, help="Parallellize functions")
     args = parser.parse_args()
+
     prl = args.prl
     work_laboriously(prl)
