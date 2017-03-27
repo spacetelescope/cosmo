@@ -8,4 +8,4 @@ COSMO (COS MOnitoring) is a backend database that is structured specifically for
 # Build status
 Documentation: [![Documentation Status](https://readthedocs.org/projects/cosmo/badge/?version=latest)](http://cosmo.readthedocs.io/en/latest/?badge=latest)
 
-Unit Tests: [![Build Status](https://travis-ci.org/justincely/cos_monitoring.svg?branch=master)](https://travis-ci.org/justincely/cos_monitoring)
+Unit Tests: [![Build Status](https://travis-ci.org/spacetelescope/cosmo.svg?branch=master)](https://travis-ci.org/justincely/cos_monitoring)
