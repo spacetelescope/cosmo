@@ -194,7 +194,7 @@ def exit_handler():
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-atexit.register(exit_handler)
+#atexit.register(exit_handler)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # This is a required argument. To input multiple arguments, they must be
@@ -225,4 +225,4 @@ if __name__ == "__main__":
     for key in to_retrieve.keys():
         prop_dict[to_retrieve[key]].append(key)
 
-    run_all_retrievals(prop_dict=prop_dict, pkl_file=None, run_labor=False, prl=True)
+    run_all_retrievals(prop_dict=prop_dict, pkl_file=None, run_labor=False, prl=False)
