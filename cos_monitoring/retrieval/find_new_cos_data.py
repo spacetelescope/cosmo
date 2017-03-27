@@ -29,13 +29,14 @@ from subprocess import Popen, PIPE
 
 from ..database.db_tables import load_connection
 from .request_data import run_all_retrievals
-
+from .manualabor import work_laboriously
+ 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def connect_cosdb():
     '''
-    Connect to the COS database on greendev and store lists of all files.
+    Connect to the COS database on greendev and get a list of all files.
 
     Parameters:
     -----------
@@ -43,12 +44,8 @@ def connect_cosdb():
 
     Returns:
     --------
-        nullsmov : list
-            All rootnames of files where ASN_ID = NONE.
-        asnsmov : list
-            All ASN_IDs for files where ASN_ID is not NONE.
-        jitsmov : list
-            All rootnames of jitter files.
+        all_smov : list
+            All rootnames of all files.
     '''
 
     # Open the configuration file for the COS database connection (MYSQL).
@@ -87,14 +84,8 @@ def connect_dadsops():
 
     Returns:
     --------
-        jitmast : dictionary
-            Dictionary where the keys are rootnames of jitter files and the
-            values are the corresponding proposal IDs.
-        sciencemast : dictionary
-            Dictionary where the keys are rootnames of all COS files and the
-            values are the corresponding proposal IDs.
-        ccimast : dictionary
-            Dictionary where the keys are rootnames of CCI files and the
+        all_mast : dictionary
+            Dictionary where the keys are rootnames of files and the
             values are the corresponding proposal IDs.
     '''
 
@@ -118,6 +109,7 @@ def connect_dadsops():
     all_cos = janky_connect(SETTINGS, query0) 
     all_l = janky_connect(SETTINGS, query1)
     all_mast_res = all_cos + all_l
+    
     # Store results as dictionaries (we need dataset name and proposal ID).
     # Don't get Podfiles (LZ*)
     all_mast = {row[0]:row[1] for row in all_mast_res if not row[0].startswith("LZ_")}
@@ -139,21 +131,30 @@ def connect_dadsops():
             else:
                 all_mast.pop(key, None)
 
-#    SETTINGS["database"] = "dadsops_rep"
-#    for item in badfiles:
-#        q = "SELECT DISTINCT ads_generation_date FROM archive_data_set_all WHERE ads_data_set_name = '{0}'\ngo".format(item)
-#        d = janky_connect(SETTINGS, q)
-#        import datetime
-#        mydate = datetime.datetime.strptime(d[0][:11],"%b %d %Y")
-#        if mydate > datetime.datetime(2009,05,30):
-#            print(item,d) 
     return all_mast
         
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def janky_connect(SETTINGS, query_string):
-    # Connect to the database.
+    '''
+    Connecting to the MAST database is near impossible using SQLAlchemy. 
+    Instead, connect through a subprocess call.
+
+    Parameters:
+    -----------
+        SETTINGS : dictionary
+            The connection settings necessary to connect to a database.
+        query_string : str
+            SQL query text.
+
+    Returns:
+    --------
+        result : list
+            List where each index is a list consisting of [rootname, PID]] 
+
+    '''
+    # Connect to the MAST database through tsql.
     command_line = "tsql -S{0} -D{1} -U{2} -P{3} -t'|||'".format(SETTINGS["server"],SETTINGS["database"], SETTINGS["username"], SETTINGS["password"]) 
     args = shlex.split(command_line)
     p = Popen(args,
@@ -251,7 +252,7 @@ def compare_tables(use_cs):
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
-def request_missing(prop_dict, pkl_it, run_labor):
+def request_missing(prop_dict, pkl_it, run_labor, prl):
     '''
     Call request_data to Retrieve missing datasets.
 
@@ -260,32 +261,56 @@ def request_missing(prop_dict, pkl_it, run_labor):
         prop_dict : dictionary
             Dictionary where the key is the proposal, and values are the
             missing data.
-            
         pkl_it : Boolean
             True if output should be saved to pickle file.
-
         run_labor : Boolean
             True if manualabor should be run after retrieving data.
+        prl : Boolean
+            Switch for running functions in parallel
 
     Returns:
     --------
         Nothing
     '''
-    print("Data missing for {0} programs".format(len(prop_dict.keys())))
-    if pkl_it:
-        pkl_file = "filestoretrieve.p"
-        pickle.dump(prop_dict, open(pkl_file, "wb"))
-        cwd = os.getcwd()
-        print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
-        run_all_retrievals(prop_dict=None, pkl_file=pkl_file, run_labor=run_labor)
+    if len(prop_dict.keys()) == 0:
+        print("There are no missing datasets")
+        if run_labor:
+            work_laboriously(prl)
     else:
-        print("Retrieving data now...")
-        run_all_retrievals(prop_dict=prop_dict, pkl_file=None, run_labor=run_labor)
+        print("Data missing for {0} programs".format(len(prop_dict.keys())))
+        if pkl_it:
+            pkl_file = "filestoretrieve.p"
+            pickle.dump(prop_dict, open(pkl_file, "wb"))
+            cwd = os.getcwd()
+            print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
+            run_all_retrievals(prop_dict=None, pkl_file=pkl_file, run_labor=run_labor, prl=prl)
+        else:
+            print("Retrieving data now...")
+            run_all_retrievals(prop_dict=prop_dict, pkl_file=None, run_labor=run_labor, prl=prl)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def check_for_pending():
+    '''
+    Check the appropriate URL and get the relevant information about pending
+    requests.
+
+    Parameters:
+    -----------
+        None
+
+    Returns:
+    --------
+        num : int
+            Number of pending archive requests (can be zero)
+        badness : Bool
+            True if something went wrong with an archive request 
+            (e.g. status=KILLED) 
+        status_url : str
+            URL to check for requests
+    '''
+
     MYUSER = "jotaylor"
     status_url = "http://archive.stsci.edu/cgi-bin/reqstat?reqnum=={0}".format(MYUSER)
     
@@ -317,6 +342,19 @@ def check_for_pending():
 #-----------------------------------------------------------------------------#
 
 def ensure_no_pending():
+    '''
+    Check for any pending archive requests, and if there are any, wait until
+    they finish.
+
+    Parameters:
+    -----------
+        None
+
+    Returns: 
+    --------
+        Nothing.
+
+    '''
     num_requests, badness, status_url = check_for_pending()
     while num_requests > 0:
         assert (badness == False), "Something went wrong during requests, check {0}".format(status_url)
@@ -328,16 +366,19 @@ def ensure_no_pending():
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", dest="pkl_it", action="store_true", default=False,
                         help="Save output to pickle file")
-    parser.add_argument("-cs", dest="use_cs", action="store_true",
+    parser.add_argument("--cs", dest="use_cs", action="store_true",
                         default=False, 
                         help="Find missing data comparing to central store, not DB") 
-    parser.add_argument("-labor", dest="run_labor", action="store_false",
+    parser.add_argument("--labor", dest="run_labor", action="store_false",
                         default=True, 
-                        help="Do not run manualabor after retrieving data.") 
+                        help="Switch to turn off manualabor after retrieving data.") 
+    parser.add_argument("--prl", dest="prl", action="store_true",
+                        default=False, help="Parallellize functions")
     args = parser.parse_args()
 
     prop_dict = compare_tables(args.use_cs)
