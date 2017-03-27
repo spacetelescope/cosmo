@@ -16,6 +16,7 @@ __date__ = "04-13-2016"
 __maintainer__ = "Jo Taylor"
 __email__ = "jotaylor@stsci.edu"
 
+import argparse
 import re
 import pickle
 import os
@@ -172,6 +173,7 @@ def retrieve_data(dest_dir, datasets):
             print("Unsuccesful request for {0}".format(item))
             print("Continuing to next dataset.")
             pass 
+    
     return tracking_ids
 
 #-----------------------------------------------------------------------------#
@@ -263,6 +265,23 @@ def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
 #-----------------------------------------------------------------------------#
 
 def check_data_retrieval(all_tracking_ids):
+    '''
+    Given a list of request IDs, check the retrieval status.
+
+    Parameters:
+    -----------
+        all_tracking_ids : list
+            Running tally of all tracking IDs for all propsals retrieved
+            to date.
+    
+    Returns:
+    --------
+        counter : list
+            Each value in the list describes the completion status of a request. 
+        not_yet_retrieved : list
+            IDs of all requests that have not yet completed. 
+    '''
+
     counter = []
     for tracking_id in all_tracking_ids:
         status,badness = check_id_status(tracking_id)
@@ -271,15 +290,16 @@ def check_data_retrieval(all_tracking_ids):
             print("!"*70)
             print("RUH ROH!!! Request {0} was killed or cannot be connected!".format(tracking_id))
             counter.append(badness)
-    current_retrieved = [all_tracking_ids[i] for i in 
+    not_yet_retrieved = [all_tracking_ids[i] for i in 
                          xrange(len(counter)) if not counter[i]]
 
-    return counter, current_retrieved
+    return counter, not_yet_retrieved
+
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 #@log_function
-def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
+def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True, prl=True):
     '''
     Open the pickle file containing a dictionary of all missing COS data
     to be retrieved. It is set up to handle all situations (if run daily=few
@@ -297,6 +317,8 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
     Paramaters:
         pkl_file : string
             Name of pickle file with data to be retrieved.
+        prl : Boolean
+            Switch for running functions in parallel
 
     Returns:
         Nothing
@@ -319,11 +341,11 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
         counter = []
         num_ids = len(all_tracking_ids)
         while sum(counter) < len(all_tracking_ids):
-            counter,current_retrieved = check_data_retrieval(all_tracking_ids)
+            counter,not_yet_retrieved = check_data_retrieval(all_tracking_ids)
             if sum(counter) < len(all_tracking_ids):
                 print(datetime.now())
                 print("Data not yet delivered for {0}. Checking again in " 
-                      "5 minutes".format(current_retrieved))
+                      "5 minutes".format(not_yet_retrieved))
                 time.sleep(350)
         else:
             print(end_msg.format(len(prop_dict_keys)))
@@ -336,7 +358,7 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
         if pend > century:
             century += 50 # should be 50
             print("Pausing retrieval to calibrate and zip current data")
-            work_laboriously(prl=True)
+            work_laboriously(prl)
         # For each proposal (prop) in the current grouping (total number
         # of programs split up for manageability), retrieve data for it.
         for prop in prop_dict_keys[pstart:pend]:
@@ -358,12 +380,12 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
                     print("!"*70)
                     print("RUH ROH!!! Request {0} was killed or cannot be connected!".format(tracking_id))
                     counter.append(badness)
-            current_retrieved = [all_tracking_ids[i] for i in 
+            not_yet_retrieved = [all_tracking_ids[i] for i in 
                                  xrange(len(counter)) if not counter[i]]
             if sum(counter) < (num_ids - int_num):
                 print(datetime.now())
                 print("Data not yet delivered for {0}. Checking again in " 
-                      "5 minutes".format(current_retrieved))
+                      "5 minutes".format(not_yet_retrieved))
                 time.sleep(350)
         # When total# - int_num programs have been retrieved, add int_num more
         # to queue.
@@ -384,14 +406,17 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True):
             print(end_msg)
     if run_labor:
         print("Beginning manual labor now...")
-        work_laboriously(prl=True)
+        work_laboriously(prl)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--prl", dest="prl", action="store_true",
+                        default=False, help="Parallellize functions")
+    args = parser.parse_args()
+    prl = args.prl
+    
     pkl_file = "filestoretrieve.p"
-    try:
-        run_all_retrievals(prop_dict=None, pkl_file=pkl_file, run_labor=True)
-    except Exception as e:
-        print(Exception, e)
+    run_all_retrievals(prop_dict=None, pkl_file=pkl_file, run_labor=True, prl=args.prl)
