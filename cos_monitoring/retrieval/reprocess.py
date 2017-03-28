@@ -89,7 +89,7 @@ def handle_datasets(rootname):
             prop = janky_connect(SETTINGS, query1)
             if not prop:
                 prop = "NULL"
-        for i in xrange(len(root_datasets)):
+        for i in range(len(root_datasets)):
             root_datasets[i][1] = prop
     
     return root_datasets
@@ -200,6 +200,10 @@ if __name__ == "__main__":
     # This is a required argument. To input multiple arguments, they must be
     # SPACE separated, not comma separated.
     parser.add_argument("data", nargs="+",  help="Reprocess programs or datasets")
+    parser.add_argument("--prl", dest="prl", action="store_true",
+                        default=False, help="Switch to arallellize manualabor")
+    parser.add_argument("--labor", dest="run_labor", action="store_true",
+                        default=False, help="Switch to run manualabor")
     args = parser.parse_args()
 
     data = parse_input(args.data)
@@ -220,9 +224,9 @@ if __name__ == "__main__":
 
     to_retrieve = { (row[0]):(row[1] if row[1]=="CCI" else int(row[1])) for row in all_data}
     prop_keys = list(set(to_retrieve.values()))
-    prop_vals = [[] for x in xrange(len(prop_keys))]
+    prop_vals = [[] for x in range(len(prop_keys))]
     prop_dict = dict(zip(prop_keys, prop_vals))
     for key in to_retrieve.keys():
         prop_dict[to_retrieve[key]].append(key)
 
-    run_all_retrievals(prop_dict=prop_dict, pkl_file=None, run_labor=False, prl=False)
+    run_all_retrievals(prop_dict=prop_dict, pkl_file=None, run_labor=args.run_labor, prl=args.prl)
