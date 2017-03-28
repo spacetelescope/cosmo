@@ -3,7 +3,7 @@ from __future__ import print_function, absolute_import, division
 '''
 Re-request and process COS data to keep products up to date.
 '''
-
+import atexit
 import argparse
 import yaml
 import os
@@ -76,7 +76,7 @@ def handle_datasets(rootname):
     "archive_data_set_all WHERE ads_data_set_name "\
     "LIKE '{0}%'\ngo".format(str(rootname))
     root_datasets = janky_connect(SETTINGS, query0)
-
+    
     # If data do not have a PID in dadsops_rep, look at opus_rep
     if root_datasets[0][1] == "NULL":
         if root_datasets[0][0].startswith("L_"):
@@ -89,7 +89,7 @@ def handle_datasets(rootname):
             prop = janky_connect(SETTINGS, query1)
             if not prop:
                 prop = "NULL"
-        for i in range(len(root_datasets)):
+        for i in xrange(len(root_datasets)):
             root_datasets[i][1] = prop
     
     return root_datasets
@@ -185,6 +185,16 @@ def is_proposal(mystring):
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
+
+def exit_handler():
+    print("The script is crashing for an unknown reason!")
+    import pickle
+    pickle.dump({"badness": 10000}, open("crash.p", "wb"))
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+#atexit.register(exit_handler)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # This is a required argument. To input multiple arguments, they must be
@@ -215,4 +225,4 @@ if __name__ == "__main__":
     for key in to_retrieve.keys():
         prop_dict[to_retrieve[key]].append(key)
 
-    run_all_retrievals(prop_dict=prop_dict)
+    run_all_retrievals(prop_dict=prop_dict, pkl_file=None, run_labor=False, prl=False)

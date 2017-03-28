@@ -16,11 +16,12 @@ __date__ = "04-13-2016"
 __maintainer__ = "Jo Taylor"
 __email__ = "jotaylor@stsci.edu"
 
+import shlex
+import urllib
 import time
 import pickle
 import os
 import yaml
-import pdb
 import argparse
 import glob
 from sqlalchemy import text
@@ -28,13 +29,14 @@ from subprocess import Popen, PIPE
 
 from ..database.db_tables import load_connection
 from .request_data import run_all_retrievals
-
+from .manualabor import work_laboriously
+ 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def connect_cosdb():
     '''
-    Connect to the COS database on greendev and store lists of all files.
+    Connect to the COS database on greendev and get a list of all files.
 
     Parameters:
     -----------
@@ -42,12 +44,8 @@ def connect_cosdb():
 
     Returns:
     --------
-        nullsmov : list
-            All rootnames of files where ASN_ID = NONE.
-        asnsmov : list
-            All ASN_IDs for files where ASN_ID is not NONE.
-        jitsmov : list
-            All rootnames of jitter files.
+        all_smov : list
+            All rootnames of all files.
     '''
 
     # Open the configuration file for the COS database connection (MYSQL).
@@ -86,14 +84,8 @@ def connect_dadsops():
 
     Returns:
     --------
-        jitmast : dictionary
-            Dictionary where the keys are rootnames of jitter files and the
-            values are the corresponding proposal IDs.
-        sciencemast : dictionary
-            Dictionary where the keys are rootnames of all COS files and the
-            values are the corresponding proposal IDs.
-        ccimast : dictionary
-            Dictionary where the keys are rootnames of CCI files and the
+        all_mast : dictionary
+            Dictionary where the keys are rootnames of files and the
             values are the corresponding proposal IDs.
     '''
 
@@ -117,6 +109,7 @@ def connect_dadsops():
     all_cos = janky_connect(SETTINGS, query0) 
     all_l = janky_connect(SETTINGS, query1)
     all_mast_res = all_cos + all_l
+    
     # Store results as dictionaries (we need dataset name and proposal ID).
     # Don't get Podfiles (LZ*)
     all_mast = {row[0]:row[1] for row in all_mast_res if not row[0].startswith("LZ_")}
@@ -138,25 +131,37 @@ def connect_dadsops():
             else:
                 all_mast.pop(key, None)
 
-#    SETTINGS["database"] = "dadsops_rep"
-#    for item in badfiles:
-#        q = "SELECT DISTINCT ads_generation_date FROM archive_data_set_all WHERE ads_data_set_name = '{0}'\ngo".format(item)
-#        d = janky_connect(SETTINGS, q)
-#        import datetime
-#        mydate = datetime.datetime.strptime(d[0][:11],"%b %d %Y")
-#        if mydate > datetime.datetime(2009,05,30):
-#            print(item,d) 
     return all_mast
         
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def janky_connect(SETTINGS, query_string):
-    # Connect to the database.
-    p = Popen("tsql -S%s -D%s -U%s -P%s -t'|||'" % (SETTINGS["server"], 
-              SETTINGS["database"], SETTINGS["username"], 
-              SETTINGS["password"]), shell=True, stdin=PIPE, stdout=PIPE,
-              stderr=PIPE, close_fds=True)
+    '''
+    Connecting to the MAST database is near impossible using SQLAlchemy. 
+    Instead, connect through a subprocess call.
+
+    Parameters:
+    -----------
+        SETTINGS : dictionary
+            The connection settings necessary to connect to a database.
+        query_string : str
+            SQL query text.
+
+    Returns:
+    --------
+        result : list
+            List where each index is a list consisting of [rootname, PID]] 
+
+    '''
+    # Connect to the MAST database through tsql.
+    command_line = "tsql -S{0} -D{1} -U{2} -P{3} -t'|||'".format(SETTINGS["server"],SETTINGS["database"], SETTINGS["username"], SETTINGS["password"]) 
+    args = shlex.split(command_line)
+    p = Popen(args,
+              stdin=PIPE, 
+              stdout=PIPE,
+              stderr=PIPE, 
+              close_fds=True)
     (transmit, receive, err) = (p.stdin, p.stdout, p.stderr)
     transmit.write(query_string)
     transmit.close()
@@ -164,7 +169,7 @@ def janky_connect(SETTINGS, query_string):
     receive.close()
     error_report = err.readlines()
     err.close()
-
+         
     badness = ["locale", "charset", "1>", "affected"]
     result = [x.strip().split("|||") if "|||" in x else x.strip() 
               for x in query_result if not any(y in x for y in badness)]
@@ -199,23 +204,30 @@ def tally_cs():
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def compare_tables(pkl_it):
+def compare_tables(use_cs):
     '''
     Compare the set of all files currently in the COS repository to the list
-    all files currently ingested into MAST. Retrieve missing datasets.
+    all files currently ingested into MAST.
 
     Parameters:
     -----------
-        pkl_it : Boolean
-            True if output should be saved to pickle file.
+        use_cs : Bool
+            Switch to find missing data comparing what is currently on 
+            central store, as opposed to using the COSMO database.
 
     Returns:
     --------
-        Nothing
+        prop_dict : dictionary
+            Dictionary where the key is the proposal, and values are the
+            missing data.
     '''
 
-#    existing = connect_cosdb()
-    existing = tally_cs()
+    ensure_no_pending()
+
+    if use_cs:
+        existing = tally_cs()
+    else:
+        existing = connect_cosdb()
     mast = connect_dadsops()
     print("Finding missing COS data...")
 
@@ -235,17 +247,122 @@ def compare_tables(pkl_it):
     prop_dict = dict(zip(prop_keys, prop_vals))
     for i in xrange(len(missing_names)):
         prop_dict[missing_props[i]].append(missing_names[i])
+    
+    return prop_dict
 
-    print("Data missing for {0} programs".format(len(prop_keys)))
-    if pkl_it:
-        pkl_file = "filestoretrieve.p"
-        pickle.dump(prop_dict, open(pkl_file, "wb"))
-        cwd = os.getcwd()
-        print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
-        run_all_retrievals(pkl_file=pkl_file)
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+def request_missing(prop_dict, pkl_it, run_labor, prl):
+    '''
+    Call request_data to Retrieve missing datasets.
+
+    Parameters:
+    -----------
+        prop_dict : dictionary
+            Dictionary where the key is the proposal, and values are the
+            missing data.
+        pkl_it : Boolean
+            True if output should be saved to pickle file.
+        run_labor : Boolean
+            True if manualabor should be run after retrieving data.
+        prl : Boolean
+            Switch for running functions in parallel
+
+    Returns:
+    --------
+        Nothing
+    '''
+    if len(prop_dict.keys()) == 0:
+        print("There are no missing datasets")
+        if run_labor:
+            work_laboriously(prl)
     else:
-        print("Retrieving data now...")
-        run_all_retrievals(prop_dict=prop_dict)
+        print("Data missing for {0} programs".format(len(prop_dict.keys())))
+        if pkl_it:
+            pkl_file = "filestoretrieve.p"
+            pickle.dump(prop_dict, open(pkl_file, "wb"))
+            cwd = os.getcwd()
+            print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
+            run_all_retrievals(prop_dict=None, pkl_file=pkl_file, run_labor=run_labor, prl=prl)
+        else:
+            print("Retrieving data now...")
+            run_all_retrievals(prop_dict=prop_dict, pkl_file=None, run_labor=run_labor, prl=prl)
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+def check_for_pending():
+    '''
+    Check the appropriate URL and get the relevant information about pending
+    requests.
+
+    Parameters:
+    -----------
+        None
+
+    Returns:
+    --------
+        num : int
+            Number of pending archive requests (can be zero)
+        badness : Bool
+            True if something went wrong with an archive request 
+            (e.g. status=KILLED) 
+        status_url : str
+            URL to check for requests
+    '''
+
+    MYUSER = "jotaylor"
+    status_url = "http://archive.stsci.edu/cgi-bin/reqstat?reqnum=={0}".format(MYUSER)
+    
+    tries = 5
+    while tries > 0:
+        try:
+            urllines = urllib.urlopen(status_url).readlines()
+        except IOError:
+            print("Something went wrong connecting to {0}.".format(status_url))
+            tries -= 1
+            time.sleep(30)
+            badness = True
+        else:
+            tries = -100
+            for line in urllines:
+                mystr = "of these requests are still RUNNING"
+                if mystr in line:
+                    num_requests = [x.split(mystr) for x in line.split()][0][0]
+                    assert (num_requests.isdigit()), "A non-number was found in line {0}!".format(line)
+                    num = int(num_requests)
+                    badness = False
+                    break
+                else:
+                    badness = True
+
+    return num, badness, status_url
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+def ensure_no_pending():
+    '''
+    Check for any pending archive requests, and if there are any, wait until
+    they finish.
+
+    Parameters:
+    -----------
+        None
+
+    Returns: 
+    --------
+        Nothing.
+
+    '''
+    num_requests, badness, status_url = check_for_pending()
+    while num_requests > 0:
+        assert (badness == False), "Something went wrong during requests, check {0}".format(status_url)
+        print("There are still requests pending from a previous COSMO run, waiting 5 minutes...")
+        time.sleep(300)
+        num_requests, badness, status_url = check_for_pending()
+    else:
+        print("All pending requests finished, moving on!")
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -254,6 +371,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", dest="pkl_it", action="store_true", default=False,
                         help="Save output to pickle file")
+    parser.add_argument("--cs", dest="use_cs", action="store_true",
+                        default=False, 
+                        help="Find missing data comparing to central store, not DB") 
+    parser.add_argument("--labor", dest="run_labor", action="store_false",
+                        default=True, 
+                        help="Switch to turn off manualabor after retrieving data.") 
+    parser.add_argument("--prl", dest="prl", action="store_true",
+                        default=False, help="Parallellize functions")
     args = parser.parse_args()
 
-    compare_tables(args.pkl_it)
+    prop_dict = compare_tables(args.use_cs)
+    request_missing(prop_dict, args.pkl_it, args.run_labor, args.prl)

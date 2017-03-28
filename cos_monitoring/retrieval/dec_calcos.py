@@ -82,4 +82,6 @@ def clobber_calcos(func):
                 print("CalCOS will now calibrate {}...".format(asntable))
                 print("="*72 + "\n" + "="*72)
                 func(*args, **kwargs)
+            else:
+                raise e
     return wrapper
