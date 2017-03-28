@@ -43,7 +43,7 @@ LINEOUT = "#"*75+"\n"
 STAROUT = "*"*75+"\n"
 PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 PERM_872 = stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
-BASE_DIR = "/grp/hst/cos2/smov_testing/"
+BASE_DIR = "/grp/hst/cos2/smov_testing"
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -84,7 +84,7 @@ def unzip_mistakes(zipped):
         Nothing
     '''
 
-    if isinstance(zipped, basestring):
+    if isinstance(zipped, str):
         zipped = [zipped]
     for zfile in zipped:
         rootname = os.path.basename(zfile)[:9]
@@ -122,7 +122,7 @@ def make_csum(unzipped_raws):
 
     run_calcos = clobber_calcos(calcos.calcos)
     #logger.info("Creating CSUM files")
-    if isinstance(unzipped_raws, basestring):
+    if isinstance(unzipped_raws, str):
         unzipped_raws = [unzipped_raws]
     for item in unzipped_raws:
         existence, calibrate, badness = csum_existence(item)
@@ -328,7 +328,7 @@ def compress_files(uz_files):
         Nothing
     '''
 
-    if isinstance(uz_files, basestring):
+    if isinstance(uz_files, str):
         uz_files = [uz_files]
     for uz_item in uz_files:
         z_item = uz_item + ".gz"
@@ -427,7 +427,7 @@ def parallelize(myfunc, mylist):
     # Split list into multiple lists if it's large.
     maxnum = 25
     if len(mylist) > maxnum:
-        metalist = [mylist[i:i+maxnum] for i in xrange(0, len(mylist), maxnum)]
+        metalist = [mylist[i:i+maxnum] for i in range(0, len(mylist), maxnum)]
     else:
         metalist = [mylist]
     for onelist in metalist:
@@ -504,13 +504,13 @@ def only_one_seg(uz_files):
     
     bad_inds = []
     uz_files_1seg = []
-    for i in xrange(len(uz_files)):
+    for i in range(len(uz_files)):
         if i not in bad_inds:
             if "rawtag.fits" in uz_files[i] or "rawacq.fits" in uz_files[i]: # NUV/acq files
                 uz_files_1seg.append(uz_files[i])
                 continue
             segs = ["_a.fits", "_b.fits"]
-            for j in xrange(len(segs)):
+            for j in range(len(segs)):
                 if segs[j] in uz_files[i]:
                     other_seg = uz_files[i].replace(segs[j], segs[j-1])
                     if other_seg in uz_files:
@@ -627,7 +627,7 @@ def work_laboriously(prl):
         num_files = 0
         if len(unzipped_raws) > max_files:
             while num_files < len(unzipped_raws):
-                print("There are {0} raw files, calibrating {1}:{2}".format(len(unzipped_raws), num_files, num_files+max_files))
+                print("There are {0} raw file(s), calibrating files {1}:{2}".format(len(unzipped_raws), num_files, num_files+max_files))
                 if prl:
                     parallelize(make_csum, unzipped_raws[num_files:num_files+max_files])
                 else:
@@ -640,7 +640,7 @@ def work_laboriously(prl):
                     compress_files(unzipped_csums)
                 num_files += max_files
         else:
-            print("There are {0} raw files, calibrating {1}:{0}".format(len(unzipped_raws), num_files))
+            print("There are {0} raw file(s), calibrating files {1}:{0}".format(len(unzipped_raws), num_files))
             if prl:
                 parallelize(make_csum, unzipped_raws[num_files:])
             else:

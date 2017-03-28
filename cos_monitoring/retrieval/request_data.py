@@ -24,7 +24,6 @@ import urllib
 import string
 from datetime import datetime
 import time
-import pdb
 import stat
 try:
     from http.client import HTTPSConnection
@@ -124,7 +123,7 @@ def submit_xml_request(xml_file):
     signer = SignStsciRequest()
     request_xml_str = signer.signRequest("{0}/.ssh/privkey.pem".format(home),
                                          xml_file)
-    params = urllib.urlencode({
+    params = urllib.parse.urlencode({
         "dadshost": "dmsops1.stsci.edu",
         "dadsport": 4703,
         "mission": "HST",
@@ -157,20 +156,19 @@ def retrieve_data(dest_dir, datasets):
             The tracking IDs for all submitted for a given program.
     '''
     dataset_lists = (datasets[i:i+MAX_RETRIEVAL]
-                     for i in xrange(0, len(datasets), MAX_RETRIEVAL))
+                     for i in range(0, len(datasets), MAX_RETRIEVAL))
     tracking_ids = []
     for item in dataset_lists:
         try:
             xml_file = build_xml_request(dest_dir, item)
-            result = submit_xml_request(xml_file)
-#            print(xml_file)
-#            print(result)
+            result0 = submit_xml_request(xml_file)
+            result = result0.decode("utf-8")
             tmp_id = re.search("("+MYUSER+"[0-9]{5})", result).group()
             tracking_ids.append(tmp_id)
         # If you can't get a ID, MAST is most likely down. 
         except AttributeError:
             print("Something is wrong on the MAST side...")
-            print("Unsuccesful request for {0}".format(item))
+            print("Unsuccessful request for {0}".format(item))
             print("Continuing to next dataset.")
             pass 
     
@@ -204,7 +202,8 @@ def check_id_status(tracking_id):
     tries = 5
     while tries > 0:
         try:
-            urllines = urllib.urlopen(status_url).readlines()
+            urllines0 = urllib.request.urlopen(status_url).readlines()
+            urllines = [x.decode("utf-8") for x in urllines0]
         except IOError:
             print("Something went wrong connecting to {0}.".format(status_url))
             tries -= 1
@@ -291,7 +290,7 @@ def check_data_retrieval(all_tracking_ids):
             print("RUH ROH!!! Request {0} was killed or cannot be connected!".format(tracking_id))
             counter.append(badness)
     not_yet_retrieved = [all_tracking_ids[i] for i in 
-                         xrange(len(counter)) if not counter[i]]
+                         range(len(counter)) if not counter[i]]
 
     return counter, not_yet_retrieved
 
@@ -381,7 +380,7 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True, prl=True):
                     print("RUH ROH!!! Request {0} was killed or cannot be connected!".format(tracking_id))
                     counter.append(badness)
             not_yet_retrieved = [all_tracking_ids[i] for i in 
-                                 xrange(len(counter)) if not counter[i]]
+                                 range(len(counter)) if not counter[i]]
             if sum(counter) < (num_ids - int_num):
                 print(datetime.now())
                 print("Data not yet delivered for {0}. Checking again in " 

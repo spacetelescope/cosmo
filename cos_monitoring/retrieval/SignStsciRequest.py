@@ -179,7 +179,7 @@ class SignStsciRequest:
         return signRequest(file, request, dtd, cgi)
      else:
         values = {'request' : request, 'privatekey' : open(file).read(), 'mission' : mission }
-        data = urlencode(values)
+        data = urlencode(values).encode("utf-8")
         req = Request(url=cgi, data=data)
         f = urlopen(req)
         return f.read()
