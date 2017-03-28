@@ -568,7 +568,7 @@ def handle_nullfiles(nullfiles):
 #------------------------------------------------------------------------------#
 
 @timefunc
-def work_laboriously(prl):
+def work_laboriously(prl, do_chmod):
     '''
     Run all the functions in the correct order.
 
@@ -670,7 +670,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--prl", dest="prl", action="store_true",
                         default=False, help="Parallellize functions")
+    parser.add_argument("--chmod", dest="no_chmod", action="store_False",
+                        default=True, help="Switch to turn off chmod")
     args = parser.parse_args()
 
     prl = args.prl
-    work_laboriously(prl)
+    work_laboriously(prl, do_chmod)

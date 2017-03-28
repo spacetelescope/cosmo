@@ -298,7 +298,7 @@ def check_data_retrieval(all_tracking_ids):
 #-----------------------------------------------------------------------------#
 
 #@log_function
-def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True, prl=True):
+def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True, prl=True, do_chmod=False):
     '''
     Open the pickle file containing a dictionary of all missing COS data
     to be retrieved. It is set up to handle all situations (if run daily=few
@@ -357,7 +357,7 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True, prl=True):
         if pend > century:
             century += 50 # should be 50
             print("Pausing retrieval to calibrate and zip current data")
-            work_laboriously(prl)
+            work_laboriously(prl, do_chmod)
         # For each proposal (prop) in the current grouping (total number
         # of programs split up for manageability), retrieve data for it.
         for prop in prop_dict_keys[pstart:pend]:
@@ -405,7 +405,7 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True, prl=True):
             print(end_msg)
     if run_labor:
         print("Beginning manual labor now...")
-        work_laboriously(prl)
+        work_laboriously(prl, do_chmod)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -414,8 +414,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--prl", dest="prl", action="store_true",
                         default=False, help="Parallellize functions")
+    parser.add_argument("--chmod", dest="do_chmod", action="store_true",
+                        default=True, help="Switch to turn on chmod")
     args = parser.parse_args()
     prl = args.prl
     
     pkl_file = "filestoretrieve.p"
-    run_all_retrievals(prop_dict=None, pkl_file=pkl_file, run_labor=True, prl=args.prl)
+    run_all_retrievals(prop_dict=None, pkl_file=pkl_file, run_labor=True, prl=args.prl, do_chmod=args.do_chmod)
