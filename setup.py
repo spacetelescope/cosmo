@@ -35,5 +35,6 @@ setup(
                         'scipy',
                         'fitsio',
                         'psutil',
-                        'beautifulsoup4']
+                        'beautifulsoup4',
+                        'pyfastcopy']
     )
