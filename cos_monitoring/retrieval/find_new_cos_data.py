@@ -163,12 +163,15 @@ def janky_connect(SETTINGS, query_string):
               stderr=PIPE, 
               close_fds=True)
     (transmit, receive, err) = (p.stdin, p.stdout, p.stderr)
-    transmit.write(query_string)
+    transmit.write(query_string.encode("utf-8"))
     transmit.close()
-    query_result = receive.readlines()
+    query_result0 = receive.readlines()
     receive.close()
-    error_report = err.readlines()
+    error_report0 = err.readlines()
     err.close()
+    
+    query_result = [x.decode("utf-8") for x in query_result0] 
+    error_report = [x.decode("utf-8") for x in error_report0] 
          
     badness = ["locale", "charset", "1>", "affected"]
     result = [x.strip().split("|||") if "|||" in x else x.strip() 
@@ -243,9 +246,9 @@ def compare_tables(use_cs):
     # odd files will have proposal ID = NULL though.
     missing_props = [int(mast[x]) if mast[x] not in ["CCI","NULL"] else mast[x] for x in missing_names]
     prop_keys = set(missing_props)
-    prop_vals = [[] for x in xrange(len(prop_keys))]
+    prop_vals = [[] for x in range(len(prop_keys))]
     prop_dict = dict(zip(prop_keys, prop_vals))
-    for i in xrange(len(missing_names)):
+    for i in range(len(missing_names)):
         prop_dict[missing_props[i]].append(missing_names[i])
     
     return prop_dict
