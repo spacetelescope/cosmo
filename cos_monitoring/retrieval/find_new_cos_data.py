@@ -24,12 +24,17 @@ import os
 import yaml
 import argparse
 import glob
+import pyfastcopy
+import shutil
 from sqlalchemy import text
 from subprocess import Popen, PIPE
 
 from ..database.db_tables import load_connection
 from .request_data import run_all_retrievals
 from .manualabor import work_laboriously
+
+CACHE = "/ifs/archive/ops/hst/public"
+BASE_DIR = "/grp/hst/cos2/smov_testing"
  
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -114,8 +119,8 @@ def connect_dadsops():
     # Don't get Podfiles (LZ*)
     all_mast = {row[0]:row[1] for row in all_mast_res if not row[0].startswith("LZ_")}
     badfiles = []
-    for key,val in all_mast.items():
-        if val == "NULL":
+    for key in list(all_mast):
+        if all_mast[key] == "NULL":
             if key.startswith("LF") or key.startswith("LN") or key.startswith("L_"):
                 all_mast[key] = "CCI"
             elif len(key) == 9:
@@ -225,8 +230,6 @@ def compare_tables(use_cs):
             missing data.
     '''
 
-    ensure_no_pending()
-
     if use_cs:
         existing = tally_cs()
     else:
@@ -255,7 +258,7 @@ def compare_tables(use_cs):
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
-def request_missing(prop_dict, pkl_it, run_labor, prl):
+def request_missing(prop_dict, pkl_it, run_labor, prl, do_chmod):
     '''
     Call request_data to Retrieve missing datasets.
 
@@ -275,21 +278,17 @@ def request_missing(prop_dict, pkl_it, run_labor, prl):
     --------
         Nothing
     '''
-    if len(prop_dict.keys()) == 0:
-        print("There are no missing datasets")
-        if run_labor:
-            work_laboriously(prl)
+   
+    print("Data missing for {0} programs".format(len(prop_dict.keys())))
+    if pkl_it:
+        pkl_file = "filestoretrieve.p"
+        pickle.dump(prop_dict, open(pkl_file, "wb"))
+        cwd = os.getcwd()
+        print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
+        run_all_retrievals(None, pkl_file, run_labor, prl, do_chmod)
     else:
-        print("Data missing for {0} programs".format(len(prop_dict.keys())))
-        if pkl_it:
-            pkl_file = "filestoretrieve.p"
-            pickle.dump(prop_dict, open(pkl_file, "wb"))
-            cwd = os.getcwd()
-            print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
-            run_all_retrievals(prop_dict=None, pkl_file=pkl_file, run_labor=run_labor, prl=prl)
-        else:
-            print("Retrieving data now...")
-            run_all_retrievals(prop_dict=prop_dict, pkl_file=None, run_labor=run_labor, prl=prl)
+        print("Retrieving data now...")
+        run_all_retrievals(prop_dict, None, run_labor, prl, do_chmod)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -320,7 +319,8 @@ def check_for_pending():
     tries = 5
     while tries > 0:
         try:
-            urllines = urllib.urlopen(status_url).readlines()
+            urllines0 = urllib.request.urlopen(status_url).readlines()
+            urllines = [x.decode("utf-8") for x in urllines0]
         except IOError:
             print("Something went wrong connecting to {0}.".format(status_url))
             tries -= 1
@@ -360,12 +360,68 @@ def ensure_no_pending():
     '''
     num_requests, badness, status_url = check_for_pending()
     while num_requests > 0:
+        print("There are still {0} requests pending from a previous COSMO run, waiting 5 minutes...".format(num_requests))
         assert (badness == False), "Something went wrong during requests, check {0}".format(status_url)
-        print("There are still requests pending from a previous COSMO run, waiting 5 minutes...")
         time.sleep(300)
         num_requests, badness, status_url = check_for_pending()
     else:
         print("All pending requests finished, moving on!")
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+def get_cache():
+    print("Tabulating list of all cache COS datasets (this may take several minutes)...")
+    cos_cache = glob.glob("/ifs/archive/ops/hst/public/l*/l*/*fits*")
+    cache_roots = [os.path.basename(x)[:9].upper() for x in cos_cache]
+
+    return cos_cache, cache_roots
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+def copy_cache(prop_dict, prl, do_chmod):
+    cos_cache, cache_roots = get_cache()
+    print("Checking to see if any missing data in local cache...")
+    total_copied = 0
+    for key in list(prop_dict):
+        if total_copied > 50:
+            work_laboriously(prl, do_chmod)
+            total_copied = 0
+        vals = prop_dict[key]
+        to_copy = [ cos_cache[cache_roots.index(x)] for x in vals if x in cache_roots ]
+        if to_copy:
+            total_copied += len(to_copy)
+            dest = os.path.join(BASE_DIR, str(key))
+            for cache_item in to_copy:
+                shutil.copyfile(cache_item, 
+                                os.path.join(dest, os.path.basename(cache_item)))
+            print("Copied {0} items from the cache to {1}".format(len(to_copy),
+                  dest))
+            new_vals = [x for x in vals if x not in cache_roots]
+            if not new_vals:
+                prop_dict.pop(key, None)
+            else:
+                prop_dict[key] = new_vals
+
+    return prop_dict
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+def copy_entire_cache(cos_cache):
+    prop_map = {}
+    for item in cos_cache:
+        filename = os.path.basename(item)
+        ippp = filename[:4]
+        if not ippp in prop_map.keys():
+            hdr0 = pf.getheader(item,0)
+            proposid = hdr0["proposid"]
+            prop_map[ippp] = proposid
+        else:
+            proposid = prop_map[ippp]
+        dest = os.path.join(BASE_DIR, proposid, filename)
+        shutil.copyfile(item, dest)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -382,7 +438,15 @@ if __name__ == "__main__":
                         help="Switch to turn off manualabor after retrieving data.") 
     parser.add_argument("--prl", dest="prl", action="store_true",
                         default=False, help="Parallellize functions")
+    parser.add_argument("--chmod", dest="do_chmod", action="store_true",
+                        default=True, help="Switch to turn on chmod")
     args = parser.parse_args()
 
-    prop_dict = compare_tables(args.use_cs)
-    request_missing(prop_dict, args.pkl_it, args.run_labor, args.prl)
+    prop_dict0 = compare_tables(args.use_cs)
+    if len(prop_dict0.keys()) == 0:
+        print("There are no missing datasets")
+        if args.run_labor:
+            work_laboriously(args.prl, args.do_chmod)
+    prop_dict1 = copy_cache(prop_dict0, args.prl, args.do_chmod)
+    ensure_no_pending()
+    request_missing(prop_dict1, args.pkl_it, args.run_labor, args.prl, args.do_chmod)
