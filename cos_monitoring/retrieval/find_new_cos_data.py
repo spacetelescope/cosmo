@@ -30,13 +30,9 @@ from sqlalchemy import text
 from subprocess import Popen, PIPE
 
 from ..database.db_tables import load_connection
-from .request_data import run_all_retrievals
-from .manualabor import work_laboriously
+from .manualabor import work_laboriously, chmod, PERM_755, PERM_872
+from .retrieval_info import BASE_DIR, CACHE
 
-SETTINGS = yaml.load("retrieval_info.yaml")
-BASE_DIR = SETTINGS["BASE_DIR"]
-CACHE = SETTINGS["CACHE"]
- 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
@@ -258,21 +254,15 @@ def compare_tables(use_cs):
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
-def request_missing(prop_dict, pkl_it, run_labor, prl, do_chmod):
+def pickle_missing(prop_dict):
     '''
-    Call request_data to Retrieve missing datasets.
+    Pickle the dictionary describing missing data.
 
     Parameters:
     -----------
         prop_dict : dictionary
             Dictionary where the key is the proposal, and values are the
             missing data.
-        pkl_it : Boolean
-            True if output should be saved to pickle file.
-        run_labor : Boolean
-            True if manualabor should be run after retrieving data.
-        prl : Boolean
-            Switch for running functions in parallel
 
     Returns:
     --------
@@ -280,15 +270,10 @@ def request_missing(prop_dict, pkl_it, run_labor, prl, do_chmod):
     '''
    
     print("Data missing for {0} programs".format(len(prop_dict.keys())))
-    if pkl_it:
-        pkl_file = "filestoretrieve.p"
-        pickle.dump(prop_dict, open(pkl_file, "wb"))
-        cwd = os.getcwd()
-        print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
-        run_all_retrievals(None, pkl_file, run_labor, prl, do_chmod)
-    else:
-        print("Retrieving data now...")
-        run_all_retrievals(prop_dict, None, run_labor, prl, do_chmod)
+    pkl_file = "filestoretrieve.p"
+    pickle.dump(prop_dict, open(pkl_file, "wb"))
+    cwd = os.getcwd()
+    print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -393,6 +378,8 @@ def copy_cache(prop_dict, prl, do_chmod):
         if to_copy:
             total_copied += len(to_copy)
             dest = os.path.join(BASE_DIR, str(key))
+            if do_chmod:
+                chmod(dest, PERM_755, None, True)
             for cache_item in to_copy:
                 shutil.copyfile(cache_item, 
                                 os.path.join(dest, os.path.basename(cache_item)))
@@ -404,6 +391,8 @@ def copy_cache(prop_dict, prl, do_chmod):
             else:
                 prop_dict[key] = new_vals
 
+    if do_chmod:
+        chmod(dest, PERM_872, None, True)
     return prop_dict
 
 #-----------------------------------------------------------------------------#
@@ -426,6 +415,21 @@ def copy_entire_cache(cos_cache):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
+def find_new_cos_data(pkl_it, use_cs, run_labor, prl, do_chmod):
+    prop_dict0 = compare_tables(use_cs)
+    if len(prop_dict0.keys()) == 0:
+        print("There are no missing datasets, running manualabor")
+        if run_labor:
+            work_laboriously(prl, do_chmod)
+    else:
+        prop_dict1 = copy_cache(prop_dict0, prl, do_chmod)
+        ensure_no_pending()
+        if pkl_it:
+            pickle_missing(prop_dict1)
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", dest="pkl_it", action="store_true", default=False,
@@ -436,17 +440,10 @@ if __name__ == "__main__":
     parser.add_argument("--labor", dest="run_labor", action="store_false",
                         default=True, 
                         help="Switch to turn off manualabor after retrieving data.") 
-    parser.add_argument("--prl", dest="prl", action="store_true",
-                        default=False, help="Parallellize functions")
-    parser.add_argument("--chmod", dest="do_chmod", action="store_true",
-                        default=True, help="Switch to turn on chmod")
+    parser.add_argument("--prl", dest="prl", action="store_false",
+                        default=True, help="Parallellize functions")
+    parser.add_argument("--chmod", dest="do_chmod", action="store_false",
+                        default=True, help="Switch to chmod directory or not")
     args = parser.parse_args()
 
-    prop_dict0 = compare_tables(args.use_cs)
-    if len(prop_dict0.keys()) == 0:
-        print("There are no missing datasets, running manualabor")
-        if args.run_labor:
-            work_laboriously(args.prl, args.do_chmod)
-    prop_dict1 = copy_cache(prop_dict0, args.prl, args.do_chmod)
-    ensure_no_pending()
-    request_missing(prop_dict1, args.pkl_it, args.run_labor, args.prl, args.do_chmod)
+    find_new_cos_data(args.pkl_it, args.use_cs, args.run_labor, args.prl, args.do_chmod)
