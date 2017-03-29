@@ -20,7 +20,7 @@ setup(
                                         'cm_ingest=cos_monitoring.database:ingest_all',
                                         'cm_monitors=cos_monitoring.database:run_all_monitors',
                                         'create_master_csv=scripts.create_master_csv:main',
-                                        'find_new_cos_data=cos_monitoring.retrieval.find_new_cos_data:compare_tables',
+                                        'cosmo_retrieval=cos_monitoring.retrieval.run_cosmo_retrieval',
                                         'cm_reports=cos_monitoring.database.report:query_all',
                                         'cm_delete=cos_monitoring.database.database:cm_delete',
                                         'cm_describe=cos_monitoring.database.database:cm_describe',
