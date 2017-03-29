@@ -25,6 +25,7 @@ import string
 from datetime import datetime
 import time
 import stat
+import yaml
 try:
     from http.client import HTTPSConnection
 except ImportError:
@@ -33,6 +34,7 @@ except ImportError:
 from .manualabor import work_laboriously
 from .SignStsciRequest import SignStsciRequest
 from .logging_dec import log_function
+from .retrieval_info import BASE_DIR, CACHE
 
 MAX_RETRIEVAL = 20
 MYUSER = "jotaylor"
@@ -57,8 +59,6 @@ REQUEST_TEMPLATE = string.Template('\
       </include> \n \
     </body> \n \
   </distributionRequest> \n' )
-SETTINGS = yaml.load("retrieval_info.yaml")
-BASE_DIR = SETTINGS["BASE_DIR"]
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -299,7 +299,7 @@ def check_data_retrieval(all_tracking_ids):
 #-----------------------------------------------------------------------------#
 
 #@log_function
-def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True, prl=True, do_chmod=False):
+def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True, do_chmod=False):
     '''
     Open the pickle file containing a dictionary of all missing COS data
     to be retrieved. It is set up to handle all situations (if run daily=few
@@ -404,9 +404,6 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True, prl=True, 
             print(end_msg)
         else:
             print(end_msg)
-    if run_labor:
-        print("Beginning manual labor now...")
-        work_laboriously(prl, do_chmod)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -420,5 +417,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     prl = args.prl
     
-    pkl_file = "filestoretrieve.p"
-    run_all_retrievals(prop_dict=None, pkl_file=pkl_file, run_labor=True, prl=args.prl, do_chmod=args.do_chmod)
+    cwd = os.getcwd()
+    pkl_file = os.path.join(cwd,"filestoretrieve.p")
+    run_all_retrievals(prop_dict=None, pkl_file=pkl_file, prl=args.prl, do_chmod=args.do_chmod)
