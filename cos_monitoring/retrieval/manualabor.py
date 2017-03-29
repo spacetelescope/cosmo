@@ -43,7 +43,8 @@ LINEOUT = "#"*75+"\n"
 STAROUT = "*"*75+"\n"
 PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 PERM_872 = stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
-BASE_DIR = "/grp/hst/cos2/smov_testing"
+SETTINGS = yaml.load("retrieval_info.yaml")
+BASE_DIR = SETTINGS["BASE_DIR"]
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -584,9 +585,9 @@ def work_laboriously(prl, do_chmod):
 
     # First, change permissions of the base directory so we can modify files.
     print("Beginning manualabor in {0} at {1}...\n".format(BASE_DIR, datetime.datetime.now()))
-    print("Changing permissions of {0} to 755".format(BASE_DIR))
-#    chmod_recurs_sp(BASE_DIR, "755")
-    chmod(BASE_DIR, PERM_755, None, True)
+    if do_chmod: 
+        print("Opening permissions of {0}..".format(BASE_DIR))
+        chmod(BASE_DIR, PERM_755, None, True)
 
     # Delete any files with program ID = NULL that are not COS files.
     nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*")) 
@@ -658,8 +659,9 @@ def work_laboriously(prl, do_chmod):
     # Change permissions back to protect data.
     print("Changing permissions of {0} to 872".format(BASE_DIR))
     chgrp(BASE_DIR)
-#    chmod_recurs_sp(BASE_DIR, "872")
-    chmod(BASE_DIR, PERM_872, None, True)
+    if do_chmod:
+        print("Closing permissions of {0}..".format(BASE_DIR))
+        chmod(BASE_DIR, PERM_872, None, True)
 
     print("\nFinished at {0}.".format(datetime.datetime.now()))
 
@@ -670,9 +672,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--prl", dest="prl", action="store_true",
                         default=False, help="Parallellize functions")
-    parser.add_argument("--chmod", dest="no_chmod", action="store_False",
+    parser.add_argument("--chmod", dest="do_chmod", action="store_false",
                         default=True, help="Switch to turn off chmod")
     args = parser.parse_args()
 
-    prl = args.prl
-    work_laboriously(prl, do_chmod)
+    work_laboriously(args.prl, args.do_chmod)
