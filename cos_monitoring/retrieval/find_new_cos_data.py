@@ -444,7 +444,7 @@ if __name__ == "__main__":
 
     prop_dict0 = compare_tables(args.use_cs)
     if len(prop_dict0.keys()) == 0:
-        print("There are no missing datasets")
+        print("There are no missing datasets, running manualabor")
         if args.run_labor:
             work_laboriously(args.prl, args.do_chmod)
     prop_dict1 = copy_cache(prop_dict0, args.prl, args.do_chmod)
