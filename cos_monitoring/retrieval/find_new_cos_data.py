@@ -33,8 +33,9 @@ from ..database.db_tables import load_connection
 from .request_data import run_all_retrievals
 from .manualabor import work_laboriously
 
-CACHE = "/ifs/archive/ops/hst/public"
-BASE_DIR = "/grp/hst/cos2/smov_testing"
+SETTINGS = yaml.load("retrieval_info.yaml")
+BASE_DIR = SETTINGS["BASE_DIR"]
+CACHE = SETTINGS["CACHE"]
  
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -199,12 +200,11 @@ def tally_cs():
     Returns:
     --------
         smovfiles : list
-            A list of all fits files in /grp/hst/cos2/smov_testing
+            A list of all fits files in BASE_DIR
     '''
 
-    smovdir = "/grp/hst/cos2/smov_testing"
-    print ("Checking {0}...".format(smovdir))
-    allsmov = glob.glob(os.path.join(smovdir, "*", "*fits*"))
+    print ("Checking {0}...".format(BASE_DIR))
+    allsmov = glob.glob(os.path.join(BASE_DIR, "*", "*fits*"))
     smovfiles = [os.path.basename(x).split("_cci")[0].upper() if "cci" in x else os.path.basename(x).split("_")[0].upper() for x in allsmov]
     
     return smovfiles 

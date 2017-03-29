@@ -35,7 +35,6 @@ from .SignStsciRequest import SignStsciRequest
 from .logging_dec import log_function
 
 MAX_RETRIEVAL = 20
-BASE_DIR = "/grp/hst/cos2/smov_testing"
 MYUSER = "jotaylor"
 PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 REQUEST_TEMPLATE = string.Template('\
@@ -58,6 +57,8 @@ REQUEST_TEMPLATE = string.Template('\
       </include> \n \
     </body> \n \
   </distributionRequest> \n' )
+SETTINGS = yaml.load("retrieval_info.yaml")
+BASE_DIR = SETTINGS["BASE_DIR"]
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
