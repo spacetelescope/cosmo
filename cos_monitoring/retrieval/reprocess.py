@@ -232,4 +232,4 @@ if __name__ == "__main__":
         prop_dict[to_retrieve[key]].append(key)
 
     copy_cache(prop_dict, args.prl, args.do_chmod)
-    run_all_retrievals(prop_dict, None, args.run_labor, args.prl, args.do_chmod)
+    run_all_retrievals(prop_dict, None, args.prl, args.do_chmod)
