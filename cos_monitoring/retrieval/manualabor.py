@@ -443,7 +443,7 @@ def parallelize(myfunc, mylist):
         # If, after rounding, no cores are available, default to 1 to avoid
         # pooling with processes=0.
         if nprocs == 0:
-            nrpcos = 1
+            nprocs = 1
 #        print("Using {0} cores at {1}".format(nprocs, datetime.datetime.now()))
         pool = mp.Pool(processes=nprocs)
         pool.map(myfunc, onelist)
