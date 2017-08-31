@@ -365,35 +365,46 @@ def get_cache():
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def copy_cache(prop_dict, prl, do_chmod):
-    cos_cache, cache_roots = get_cache()
+def copy_cache2(prop_dict, prl, do_chmod):
     print("Checking to see if any missing data in local cache...")
     total_copied = 0
+    import pdb
+    pdb.set_trace()
     for key in list(prop_dict):
+# why is this here....
+#        if len(str(key)) != 5:
+#            continue
         if total_copied > 50:
-            work_laboriously(prl, do_chmod)
+            #work_laboriously(prl, do_chmod)
+            print("Would have worked laboriously")
             total_copied = 0
         vals = prop_dict[key]
-        to_copy = [ cos_cache[cache_roots.index(x)] for x in vals if x in cache_roots ]
+        to_copy = []
+        for root_up in vals:
+            root_lo = root_up.lower()
+            root_copy = glob.glob(os.path.join(CACHE, root_lo[:4], root_lo, "*fits*"))
+            # Check if the file exists in teh cache.
+            if root_copy:
+                to_copy += root_copy
+                prop_dict[key].remove(root_up)
+                print("Removed {0}".format(root_up))
+# waht about an else???
         if to_copy:
             total_copied += len(to_copy)
             dest = os.path.join(BASE_DIR, str(key))
-            if do_chmod:
-                chmod(dest, PERM_755, None, True)
+            if not os.path.isdir(dest):
+                os.mkdir(dest)
             for cache_item in to_copy:
-                shutil.copyfile(cache_item, 
-                                os.path.join(dest, os.path.basename(cache_item)))
+                # By importing pyfastcopy, shutil performance is automatically
+                # enhanced
+                shutil.copyfile(cache_item, os.path.join(dest, os.path.basename(cache_item)))
             print("Copied {0} items from the cache to {1}".format(len(to_copy),
                   dest))
-            new_vals = [x for x in vals if x not in cache_roots]
-            if not new_vals:
-                prop_dict.pop(key, None)
-            else:
-                prop_dict[key] = new_vals
-
-    if do_chmod:
-        chmod(dest, PERM_872, None, True)
-    return prop_dict
+# this shouldn't be needed
+#            if not prop_dict[key]:
+#                prop_dict.pop(key, None)
+#            pdb.set_trace()
+    pdb.set_trace()
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -410,6 +421,7 @@ def copy_entire_cache(cos_cache):
         else:
             proposid = prop_map[ippp]
         dest = os.path.join(BASE_DIR, proposid, filename)
+        # By importing pyfastcopy, shutil performance is automatically enhanced
         shutil.copyfile(item, dest)
 
 #-----------------------------------------------------------------------------#
@@ -418,11 +430,12 @@ def copy_entire_cache(cos_cache):
 def find_new_cos_data(pkl_it, use_cs, run_labor, prl, do_chmod):
     prop_dict0 = compare_tables(use_cs)
     if len(prop_dict0.keys()) == 0:
-        print("There are no missing datasets, running manualabor")
+        print("There are no missing datasets...")
         if run_labor:
+            print("Running manualabor")
             work_laboriously(prl, do_chmod)
     else:
-        prop_dict1 = copy_cache(prop_dict0, prl, do_chmod)
+        prop_dict1 = copy_cache2(prop_dict0, prl, do_chmod)
         ensure_no_pending()
         if pkl_it:
             pickle_missing(prop_dict1)
