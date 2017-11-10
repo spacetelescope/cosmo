@@ -361,7 +361,7 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True, do_chmod=False):
             work_laboriously(prl, do_chmod)
         # For each proposal (prop) in the current grouping (total number
         # of programs split up for manageability), retrieve data for it.
-        for prop in prop_dict_keys[pstart:pend]:
+        for prop in list(prop_dict_keys)[pstart:pend]:
             all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
         # This while loop keeps track of how many submitted programs in the 
         # current group (defined as from pstart:pend) have been entirely
