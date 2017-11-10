@@ -486,14 +486,13 @@ def copy_cache(missing_data, prl, do_chmod):
             missing data after copying any available data from the cache.
     """
 
-    print("Checking to see if any missing data in local cache...")
     total_copied = 0
     cos_cache, cache_roots = get_cache()
 
     for key in list(missing_data):
         if total_copied > 100:
-#            work_laboriously(prl, do_chmod)
-            print("Would have worked laboriously")
+            print("Running manualabor now...")
+            work_laboriously(prl, do_chmod)
             total_copied = 0
         retrieve_roots = missing_data[key]
         roots_in_cache = [x for x in retrieve_roots if x in cache_roots]
@@ -582,10 +581,11 @@ def find_new_cos_data(pkl_it, use_cs, run_labor, prl, do_chmod):
     if len(missing_data_priv.keys()) == 0 and len(missing_data_pub.keys()) == 0:
         print("There are no missing datasets...")
         if run_labor:
-            print("Running manualabor")
-#            work_laboriously(prl, do_chmod)
-            print("Would have worked laboriously")
+            print("Running manualabor now...")
+            work_laboriously(prl, do_chmod)
     elif missing_data_pub:
+        print("Some missing data are non-propietary.")
+        print("Checking to see if any missing data in local cache...")
         missing_data_pub_rem = copy_cache(missing_data_pub, prl, do_chmod)
         # Some nonstandard data isn't stored in the cache (e.g. MMD), so
         # check if any other public data needs to be retrieved.
@@ -598,6 +598,7 @@ def find_new_cos_data(pkl_it, use_cs, run_labor, prl, do_chmod):
                 else:
                     all_missing_data[k] = v
     else:
+        print("All missing data are proprietary, requesting from MAST...")
         all_missing_data = missing_data_priv
         
 # Not utilized for the moment, see Issue #22 on github.
