@@ -168,6 +168,8 @@ def retrieve_data(dest_dir, datasets):
             tracking_ids.append(tmp_id)
         # If you can't get a ID, MAST is most likely down. 
         except AttributeError:
+            import pdb
+            pdb.set_trace()
             print("Something is wrong on the MAST side...")
             print("Unsuccessful request for {0}".format(item))
             print("Continuing to next dataset.")
@@ -330,10 +332,9 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True, do_chmod=False):
     pstart = 0
     pend = 10 # should be 10
     int_num = 5 # should be 5
-    century = 50 # should be 50
+    century = 3000 # should be 50
     all_tracking_ids = []
     end_msg = "\nAll data from {0} programs were successfully "
-    
     # If less than pend programs were requested, do not enter while loop.
     if pend > len(prop_dict_keys):
         for prop in prop_dict_keys:
