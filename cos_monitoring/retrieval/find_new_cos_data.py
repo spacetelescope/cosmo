@@ -57,7 +57,7 @@ def connect_cosdb():
     with open(config_file, 'r') as f:
         SETTINGS = yaml.load(f)
 
-        print("Querying COS greendev database....")
+        print("Querying COS greendev database for existing data...")
         # Connect to the database.
         Session, engine = load_connection(SETTINGS['connection_string'])
         sci_files = list(engine.execute("SELECT DISTINCT rootname FROM files "
@@ -103,7 +103,7 @@ def connect_dadsops():
         SETTINGS = yaml.load(f)
 
     # Get all jitter, science (ASN), and CCI datasets.
-    print("Querying MAST dadsops_rep database....")
+    print("Querying MAST dadsops_rep database for all COS data...")
     query0 = "SELECT ads_data_set_name,ads_pep_id FROM "\
     "archive_data_set_all WHERE ads_instrument='cos' "\
     "AND ads_data_set_name NOT LIKE 'LZ%' AND "\
@@ -245,7 +245,7 @@ def tally_cs():
             A list of all fits files in BASE_DIR
     """
 
-    print ("Checking {0}...".format(BASE_DIR))
+    print ("Checking {0} for existing data...".format(BASE_DIR))
     allsmov = glob.glob(os.path.join(BASE_DIR, "*", "*fits*"))
     smovfiles = [os.path.basename(x).split("_cci")[0].upper() if "cci" in x 
                  else os.path.basename(x).split("_")[0].upper() 
@@ -279,7 +279,7 @@ def compare_tables(use_cs):
     else:
         existing = connect_cosdb()
     mast_priv, mast_pub = connect_dadsops()
-    print("Finding missing COS data...")
+    print("Checking to see if any missing COS data...")
 
     # To retrieve *ALL* COS data, uncomment the line below.
 #    missing_names = list(set(mast.keys() ))
@@ -336,7 +336,7 @@ def _determine_missing(in_dict, existing):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def pickle_missing(missing_data):
+def pickle_missing(missing_data, pkl_file=None):
     """
     Pickle the dictionary describing missing data.
 
@@ -345,6 +345,8 @@ def pickle_missing(missing_data):
         missing_data : dictionary
             Dictionary where the key is the proposal, and values are the
             missing data.
+        pkl_file : str
+            Name of output pickle file.
 
     Returns:
     --------
@@ -352,7 +354,8 @@ def pickle_missing(missing_data):
     """
    
     print("Data missing for {0} programs".format(len(missing_data.keys())))
-    pkl_file = "filestoretrieve.p"
+    if not pkl_file:
+        pkl_file = "filestoretrieve.p"
     pickle.dump(missing_data, open(pkl_file, "wb"))
     cwd = os.getcwd()
     print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
@@ -455,7 +458,7 @@ def get_cache():
     """
     
     print("Tabulating list of all cache COS datasets (this may take several minutes)...")
-    cos_cache = glob.glob(os.path.join(CACHE, "/l*/l*/*fits*"))
+    cos_cache = glob.glob(os.path.join(CACHE, "l*/l*/*fits*"))
     cache_roots = [os.path.basename(x)[:9].upper() for x in cos_cache]
 
     return np.array(cos_cache), np.array(cache_roots)
@@ -463,7 +466,7 @@ def get_cache():
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def copy_cache(missing_data, prl, do_chmod):
+def copy_cache(missing_data, run_labor, prl, do_chmod, testmode):
     """
     When there are missing public datasets, check to see if any of them can
     be copied from the COS cache in central store, which is faster than
@@ -474,6 +477,8 @@ def copy_cache(missing_data, prl, do_chmod):
         missing_data : dictionary
             Dictionary where each key is the proposal, and values are the
             missing data.
+        run_labor : Bool
+            Switch to run manualabor if necessary.
         prl : Bool
             Switch to run manualabor in parallel or not.
         do_chmod : Bool
@@ -486,20 +491,24 @@ def copy_cache(missing_data, prl, do_chmod):
             missing data after copying any available data from the cache.
     """
 
+    roots_to_copy = 0
     total_copied = 0
+    start_missing = len(missing_data.keys()) 
     cos_cache, cache_roots = get_cache()
 
     for key in list(missing_data):
-        if total_copied > 100:
-            print("Running manualabor now...")
-            work_laboriously(prl, do_chmod)
-            total_copied = 0
+        if roots_to_copy > 3000:
+            if run_labor:
+                print("Running manualabor now...")
+                work_laboriously(prl, do_chmod)
+            roots_to_copy = 0
         retrieve_roots = missing_data[key]
         roots_in_cache = [x for x in retrieve_roots if x in cache_roots]
         if roots_in_cache:
             dest = os.path.join(BASE_DIR, str(key))
             if not os.path.isdir(dest):
                 os.mkdir(dest)
+            roots_to_copy += len(roots_in_cache)
             total_copied += len(roots_in_cache)
             
             # Create a generator where each element is an array with all 
@@ -511,7 +520,8 @@ def copy_cache(missing_data, prl, do_chmod):
             # By importing pyfastcopy, shutil performance is automatically
             # enhanced
             for cache_item in to_copy:
-                shutil.copyfile(cache_item, os.path.join(dest, os.path.basename(cache_item)))
+                if testmode is False:
+                    shutil.copyfile(cache_item, os.path.join(dest, os.path.basename(cache_item)))
             print("Copied {0} items to {1}".format(len(to_copy), dest))
 
             updated_retrieve_roots = [x for x in retrieve_roots if x not in roots_in_cache]
@@ -519,6 +529,11 @@ def copy_cache(missing_data, prl, do_chmod):
                 missing_data.pop(key, "Something went terribly wrong, {0} isn't in dictionary".format(key))
             else:
                 missing_data[key] = updated_retrieve_roots
+
+    end_missing = len(missing_data.keys()) 
+    
+    print("\nCopied {} total roots from cache, {} complete PIDs".format(
+          total_copied, start_missing-end_missing))
 
     return missing_data
 
@@ -548,7 +563,8 @@ def copy_entire_cache(cos_cache):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def find_new_cos_data(pkl_it, use_cs, run_labor, prl, do_chmod):
+def find_new_cos_data(pkl_it, pkl_file, use_cs, run_labor, prl, do_chmod,
+                      testmode):
     """
     Workhorse function, determine what data already exist on disk/in the 
     greendev DB and determine if data are missing. Copy any data from local
@@ -558,15 +574,19 @@ def find_new_cos_data(pkl_it, use_cs, run_labor, prl, do_chmod):
     -----------
         pkl_it : Bool
             Switch to pickle final dictionary of data to requested from MAST.
+        pkl_file : str
+            Name of output pickle file.
         use_cs : 
             Switch to find missing data comparing what is currently on 
             central store, as opposed to using the COSMO database.
         run_labor : Bool
-            Switch to run manualabor if there are no datasets to retrieve.
+            Switch to run manualabor if necessary.
          prl : 
             Switch to run manualabor in parallel or not.
         do_chmod : Bool
             This will be deleted eventually. Switch to run chmod in manualabor.
+        testmode : Bool
+            Used purely for testing, some time-consuming steps will be skipped.
 
     Returns:
     --------
@@ -577,16 +597,21 @@ def find_new_cos_data(pkl_it, use_cs, run_labor, prl, do_chmod):
     """
 
     missing_data_priv, missing_data_pub = compare_tables(use_cs)
+    print("{} proprietary programs missing\n{} public programs missing".format(
+          len(missing_data_priv.keys()), len(missing_data_pub.keys())))
+# For right now, this is commented out because the idea is to run find_new_cos_data
+# to completion then separately run manualabor
 # Is this really necessary? vv
-    if len(missing_data_priv.keys()) == 0 and len(missing_data_pub.keys()) == 0:
-        print("There are no missing datasets...")
-        if run_labor:
-            print("Running manualabor now...")
-            work_laboriously(prl, do_chmod)
-    elif missing_data_pub:
+#    if len(missing_data_priv.keys()) == 0 and len(missing_data_pub.keys()) == 0:
+#        print("There are no missing datasets...")
+#        if run_labor:
+#            print("Running manualabor now...")
+#            work_laboriously(prl, do_chmod)
+    if missing_data_pub:
         print("Some missing data are non-propietary.")
         print("Checking to see if any missing data in local cache...")
-        missing_data_pub_rem = copy_cache(missing_data_pub, prl, do_chmod)
+        missing_data_pub_rem = copy_cache(missing_data_pub, run_labor, prl, do_chmod,
+                                          testmode)
         # Some nonstandard data isn't stored in the cache (e.g. MMD), so
         # check if any other public data needs to be retrieved.
         if missing_data_pub_rem:
@@ -598,14 +623,14 @@ def find_new_cos_data(pkl_it, use_cs, run_labor, prl, do_chmod):
                 else:
                     all_missing_data[k] = v
     else:
-        print("All missing data are proprietary, requesting from MAST...")
+        print("All missing data are proprietary.")
         all_missing_data = missing_data_priv
         
 # Not utilized for the moment, see Issue #22 on github.
 #    ensure_no_pending()
 
     if pkl_it:
-        pickle_missing(all_missing_data)
+        pickle_missing(all_missing_data, pkl_file)
 
     return all_missing_data
     
@@ -616,6 +641,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", dest="pkl_it", action="store_true", default=False,
                         help="Save output to pickle file")
+    parser.add_argument("--pklfile", dest="pkl_file", default=None,
+                        help="Name for output pickle file")
     parser.add_argument("--cs", dest="use_cs", action="store_true",
                         default=False, 
                         help="Find missing data comparing to central store, not DB") 
@@ -628,4 +655,5 @@ if __name__ == "__main__":
                         default=True, help="Switch to chmod directory or not")
     args = parser.parse_args()
 
-    find_new_cos_data(args.pkl_it, args.use_cs, args.run_labor, args.prl, args.do_chmod)
+    find_new_cos_data(args.pkl_it, args.pkl_file, args.use_cs, args.run_labor, 
+                      args.prl, args.do_chmod, False)
