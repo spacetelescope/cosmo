@@ -36,7 +36,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 from .ProgramGroups import *
-from .dec_calcos import clobber_calcos
+from .dec_calcos import clobber_calcos_csumgz
 from .hack_chmod import chmod
 from .retrieval_info import BASE_DIR, CACHE
 
@@ -120,7 +120,7 @@ def make_csum(unzipped_raws):
         Nothing
     '''
 
-    run_calcos = clobber_calcos(calcos.calcos)
+    run_calcos = clobber_calcos_csumgz(calcos.calcos)
     #logger.info("Creating CSUM files")
     if isinstance(unzipped_raws, str):
         unzipped_raws = [unzipped_raws]
@@ -183,16 +183,27 @@ def chgrp(mydir):
     for root, dirs, files in os.walk(mydir):
         # This expects the dirtree to be in the format /blah/blah/blah/12345
         pid = root.split("/")[-1]
-        if pid in smov_proposals or pid in calib_proposals:
-            grp_id = 6045 # gid for STSCI/cosstis group
-        elif pid in gto_proposals:
-            grp_id = 65546 # gid for STSCI/cosgto group
-        else:
-            grp_id = 65545 # gid for STSCI/cosgo group
-        os.chown(root, user_id, grp_id)
-        for filename in files:
-            os.chown(os.path.join(root, filename), user_id, grp_id)
+        try:
+            pid = int(pid)
+        except ValueError:
+            continue
+        try:
+            if pid in smov_proposals or pid in calib_proposals:
+                grp_id = 6045 # gid for STSCI/cosstis group
+            elif pid in gto_proposals:
+                grp_id = 65546 # gid for STSCI/cosgto group
+            else:
+                grp_id = 65545 # gid for STSCI/cosgo group
+            os.chown(root, user_id, grp_id)
+        except PermissionError as e:
+            print(repr(e))
 
+            for filename in files:
+                try:
+                    os.chown(os.path.join(root, filename), user_id, grp_id)
+                except PermissionError as e:
+                    nothing = True
+                    print(repr(e))
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
@@ -400,7 +411,7 @@ def send_email():
 
 #@log_function
 @timefunc
-def parallelize(myfunc, mylist):
+def parallelize(myfunc, mylist, check_usage=False):
     '''
     Parallelize a function. Be a good samaritan and CHECK the current usage
     of resources before determining number of processes to use. If usage
@@ -431,20 +442,24 @@ def parallelize(myfunc, mylist):
     else:
         metalist = [mylist]
     for onelist in metalist:
-        # Get load average of system and no. of hyper-threaded CPUs on current system.
-        loadavg = os.getloadavg()[0]
-        ncores = psutil.cpu_count()
-        # If too many cores are being used, wait 10 mins, and reasses.
-        while loadavg >= (ncores-1):
-            time.sleep(600)
+        if check_usage:
+            # Get load average of system and no. of hyper-threaded CPUs on current system.
+            loadavg = os.getloadavg()[0]
+            ncores = psutil.cpu_count()
+            # If too many cores are being used, wait 10 mins, and reasses.
+            while loadavg >= (ncores-1):
+                print("Too many cores in usage, waiting 10 minutes before continuing...")
+                time.sleep(600)
+            else:
+                avail = ncores - math.ceil(loadavg)
+                nprocs = int(np.floor(avail * playmean))
+            # If, after rounding, no cores are available, default to 1 to avoid
+            # pooling with processes=0.
+            if nprocs == 0:
+                nprocs = 1
+#            print("Using {0} cores at {1}".format(nprocs, datetime.datetime.now()))
         else:
-            avail = ncores - math.ceil(loadavg)
-            nprocs = int(np.floor(avail * playnice))
-        # If, after rounding, no cores are available, default to 1 to avoid
-        # pooling with processes=0.
-        if nprocs == 0:
-            nprocs = 1
-#        print("Using {0} cores at {1}".format(nprocs, datetime.datetime.now()))
+            nprocs = 15
         pool = mp.Pool(processes=nprocs)
         pool.map(myfunc, onelist)
         pool.close()
@@ -502,25 +517,17 @@ def only_one_seg(uz_files):
             (if applicable).
     '''
     
-    bad_inds = []
-    uz_files_1seg = []
-    for i in range(len(uz_files)):
-        if i not in bad_inds:
-            if "rawtag.fits" in uz_files[i] or "rawacq.fits" in uz_files[i]: # NUV/acq files
-                uz_files_1seg.append(uz_files[i])
-                continue
-            segs = ["_a.fits", "_b.fits"]
-            for j in range(len(segs)):
-                if segs[j] in uz_files[i]:
-                    other_seg = uz_files[i].replace(segs[j], segs[j-1])
-                    if other_seg in uz_files:
-                        bad_inds.append(uz_files.index(other_seg))
-                        uz_files_1seg.append(uz_files[i])
-                    else:
-                        uz_files_1seg.append(uz_files[i])
-
+    roots = [os.path.basename(x)[:9] for x in uz_files]
+    uniqinds = []
+    uniqroots = []
+    for i in range(len(roots)):
+        if roots[i] not in uniqroots:
+            uniqroots.append(roots[i])
+            uniqinds.append(i)
+    uz_files_1seg = [uz_files[j] for j in uniqinds]
+    
     return uz_files_1seg
-
+    
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
@@ -620,9 +627,9 @@ def work_laboriously(prl, do_chmod):
         else:
             compress_files(unzipped_csums)
    
-    # Loop through unzipped files and calibrate (and zip) in chunks of 300 to 
+    # Loop through unzipped files and calibrate (and zip) in chunks of 300? to 
     # ensure that disk space is not filled. 
-    max_files = 300
+    max_files = 3000
     if unzipped_raws:
         num_files = 0
         if len(unzipped_raws) > max_files:
@@ -656,7 +663,7 @@ def work_laboriously(prl, do_chmod):
             compress_files(all_unzipped)
 
     # Change permissions back to protect data.
-    print("Changing permissions of {0} to 872".format(BASE_DIR))
+    print("Changing group permissions of {0}...".format(BASE_DIR))
     chgrp(BASE_DIR)
     if do_chmod:
         print("Closing permissions of {0}..".format(BASE_DIR))
