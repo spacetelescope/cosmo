@@ -89,18 +89,41 @@ def unzip_mistakes(zipped):
     for zfile in zipped:
         rootname = os.path.basename(zfile)[:9]
         dirname = os.path.dirname(zfile)
-        existence, calibrate, badness= csum_existence(zfile)
-        if badness:
+        calibrate, badness= csum_existence(zfile)
+        if badness is True:
             print("="*72 + "\n" + "="*72)
             print("The file is empty or corrupt: {0}".format(item))
             print("Deleting file")
             print("="*72 + "\n" + "="*72)
             os.remove(item)
             continue
-        if existence is False and calibrate is True:
+        if calibrate is True:
             #chmod_recurs(dirname, PERM_755)
             files_to_unzip = glob.glob(zfile)
             uncompress_files(files_to_unzip)
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+def needs_processing(zipped):
+    if isinstance(zipped, str):
+        zipped = [zipped]
+    files_to_calibrate = []
+    for zfile in zipped:
+        rootname = os.path.basename(zfile)[:9]
+        dirname = os.path.dirname(zfile)
+        calibrate, badness= csum_existence(zfile)
+        if badness is True:
+            print("="*72 + "\n" + "="*72)
+            print("The file is empty or corrupt: {0}".format(item))
+            print("Deleting file")
+            print("="*72 + "\n" + "="*72)
+            os.remove(item)
+            continue
+        if calibrate is True:
+            files_to_calibrate.append(zfile)
+
+    return files_to_calibrate
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -125,35 +148,41 @@ def make_csum(unzipped_raws):
     if isinstance(unzipped_raws, str):
         unzipped_raws = [unzipped_raws]
     for item in unzipped_raws:
-        existence, calibrate, badness = csum_existence(item)
-        if badness:
-            print("="*72 + "\n" + "="*72)
-            print("The file is empty or corrupt: {0}".format(item))
-            print("Deleting file")
-            print("="*72 + "\n" + "="*72)
-            os.remove(item)
-            continue
-        if existence is False and calibrate is True:
-            dirname = os.path.dirname(item)
-            os.chmod(dirname, PERM_755)
-            os.chmod(item, PERM_755)
-            try:
-                run_calcos(item, outdir=dirname, verbosity=2,
-                           create_csum_image=True, only_csum=True,
-                           compress_csum=False)
-            except Exception as e:
-                if type(e).__name__ == "IOError" and \
-                   e.args[0] == "Empty or corrupt FITS file":
-                    print("="*72 + "\n" + "="*72)
-                    print("The file is empty or corrupt: {0}".format(item))
-                    print("Deleting file")
-                    print("="*72 + "\n" + "="*72)
-                    os.remove(item)
-                    pass
-                else:
-                    print(e)
-                #logger.exception("There was an error processing {}:".format(item))
+#        calibrate, badness = csum_existence(item)
+#        if badness:
+#            print("="*72 + "\n" + "="*72)
+#            print("The file is empty or corrupt: {0}".format(item))
+#            print("Deleting file")
+#            print("="*72 + "\n" + "="*72)
+#            os.remove(item)
+#            continue
+#        if calibrate is True:
+        dirname = os.path.dirname(item)
+        outdirec = os.path.join(dirname, "tmp_out")
+#        os.chmod(dirname, PERM_755)
+#        os.chmod(item, PERM_755)
+        try:
+            run_calcos(item, outdir=outdirec, verbosity=2,
+                       create_csum_image=True, only_csum=True,
+                       compress_csum=False)
+        except Exception as e:
+            if type(e).__name__ == "IOError" and \
+               e.args[0] == "Empty or corrupt FITS file":
+                print("="*72 + "\n" + "="*72)
+                print("The file is empty or corrupt: {0}".format(item))
+                print("Deleting file")
+                print("="*72 + "\n" + "="*72)
+                os.remove(item)
                 pass
+            else:
+                print(e)
+            #logger.exception("There was an error processing {}:".format(item))
+                pass
+        csums = glob.glob(os.path.join(outdir, "*csum*"))
+        if csums:
+            for csum in csums:
+                shutil.move(csum, dirname)
+        shutil.rmtree(outdirec)
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -285,41 +314,37 @@ def csum_existence(filename):
 
     Returns:
     --------
-        existence : bool
-            A boolean specifying if csums exist or not.
         calibrate : bool
-            A boolean, True if the dataset should not be calibrated. 
+            A boolean, True if the dataset should not be calibrated to create csums. 
         badness : bool
             A boolean, True if the dataset should be deleted (if corrupt or empty) 
     '''
 
     rootname = os.path.basename(filename)[:9]
     dirname = os.path.dirname(filename)
+    # If getting one header keyword, getval is faster than opening.
+    # The more you know.
     try:
         exptype = pf.getval(filename, "exptype")
     except KeyError:
-        exptype = None
-        existence = True
-        calibrate = False
+#        exptype = None
+        return False, False 
     except Exception as e:
         if type(e).__name__ == "IOError" and \
            e.args[0] == "Empty or corrupt FITS file":
-            return False, False, True
-    # If getting one header keyword, getval is faster than opening.
-    # The more you know.
+            return False, True
+    
     if exptype != "ACQ/PEAKD" and exptype != "ACQ/PEAKXD":
 #    if exptype == "ACQ/IMAGE":
-        calibrate = True
         csums = glob.glob(os.path.join(dirname,rootname+"*csum*"))
         if not csums:
-            existence = False
+            calibrate = True
         else:
-            existence = True
+            calibrate = True
     else:
         calibrate = False
-        existence = False
 
-    return existence, calibrate, False
+    return calibrate, False
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -601,59 +626,42 @@ def work_laboriously(prl, do_chmod):
         print("Handling {0} NULL datasets...".format(len(nullfiles)))
         handle_nullfiles(nullfiles) 
     
-    # Get a list of all zipped files and unzip that need to be processed.
-    # Using glob is faster than using os.walk
-    zipped = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*gz")) + \
-             glob.glob(os.path.join(BASE_DIR, "*", "*rawaccum*gz")) + \
-             glob.glob(os.path.join(BASE_DIR, "*", "*rawacq*gz"))
-    if zipped:
-        print("Checking for mistakenly zipped files...")
+    # Get a list of all unzipped files and zip them.
+    unzipped = glob.glob(os.path.join(BASE_DIR, "*", "*fits"))
+    print("Zipping {0} unzipped file(s)...".format(len(unzipped)))
+    if unzipped:
         if prl:
-            parallelize(unzip_mistakes, zipped)
+            parallelize(compress_files, unzipped)
         else:
-            unzip_mistakes(zipped)
+            compress_files(unzipped)
 
-    # Get a list of all unzipped raw files and get a single segment if applicable.
-    unzipped_raws_ab = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*fits")) + \
-                   glob.glob(os.path.join(BASE_DIR, "*", "*rawacq.fits"))
-    unzipped_raws = only_one_seg(unzipped_raws_ab)
-    
-    # Zip any unzipped CSUMs to save space.
-    unzipped_csums = glob.glob(os.path.join(BASE_DIR, "*", "*csum*.fits"))
-    if unzipped_csums:
-        print("Zipping {0} unzipped CSUM(s)...".format(len(unzipped_csums)))
-        if prl:
-            parallelize(compress_files, unzipped_csums)
-        else:
-            compress_files(unzipped_csums)
-   
-    # Loop through unzipped files and calibrate (and zip) in chunks of 300? to 
+    # When calibrating zipped raw files, you need to calibrate both segments 
+    # separately since calcos can't find the original 
+    zipped_raws = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*fits.gz")) + \
+                       glob.glob(os.path.join(BASE_DIR, "*", "*rawacq.fits.gz"))
+
+    to_calibrate = needs_processing(zipped_raws)    
+    # Loop through files and calibrate in chunks of 300? to 
     # ensure that disk space is not filled. 
     max_files = 3000
-    if unzipped_raws:
+    if to_calibrate:
         num_files = 0
-        if len(unzipped_raws) > max_files:
-            while num_files < len(unzipped_raws):
-                print("There are {0} raw file(s), calibrating files {1}:{2}".format(len(unzipped_raws), num_files, num_files+max_files))
+        if len(to_calibrate) > max_files:
+            while num_files < len(to_calibrate):
+                print("There are {0} file(s) to calibrate, calibrating files {1}:{2}".format(len(to_calibrate), num_files, num_files+max_files))
                 if prl:
-                    parallelize(make_csum, unzipped_raws[num_files:num_files+max_files])
+                    parallelize(make_csum, to_calibrate[num_files:num_files+max_files])
                 else:
-                    make_csum(unzipped_raws[num_files:num_files+max_files])
-                unzipped_csums = glob.glob(os.path.join(BASE_DIR, "*", "*csum*.fits"))
-                print("Zipping {0} unzipped CSUM(s)...".format(len(unzipped_csums)))
-                if prl:
-                    parallelize(compress_files, unzipped_csums)
-                else:
-                    compress_files(unzipped_csums)
+                    make_csum(to_calibrate[num_files:num_files+max_files])
                 num_files += max_files
         else:
-            print("There are {0} raw file(s), calibrating files {1}:{0}".format(len(unzipped_raws), num_files))
+            print("There are {0} file(s) to calibrate, calibrating all...".format(len(to_calibrate)))
             if prl:
-                parallelize(make_csum, unzipped_raws[num_files:])
+                parallelize(make_csum, to_calibrate[num_files:])
             else:
-                make_csum(unzipped_raws[num_files:])
+                make_csum(to_calibrate[num_files:])
 
-    # Zip all unzipped files.
+    # Check again for unzipped files.
     all_unzipped = glob.glob(os.path.join(BASE_DIR, "*", "*fits"))
     if all_unzipped:
         print("Zipping {0} uncompressed files...".format(len(all_unzipped)))
@@ -661,6 +669,13 @@ def work_laboriously(prl, do_chmod):
             parallelize(compress_files, all_unzipped)
         else:
             compress_files(all_unzipped)
+        
+    # Check for the temporary output directories used during calibration,
+    # and delete if present. 
+    tmp_dirs = glob.glob(os.path.join(BASE_DIR, "*", "tmp_out"))
+    if tmp_dirs:
+        for bad_dir in tmp_dirs:
+            shutil.rmtree(bad_dir)
 
     # Change permissions back to protect data.
     print("Changing group permissions of {0}...".format(BASE_DIR))
