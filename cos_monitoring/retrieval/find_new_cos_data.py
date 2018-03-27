@@ -32,7 +32,7 @@ from sqlalchemy import text
 from subprocess import Popen, PIPE
 
 from ..database.db_tables import load_connection
-from .manualabor import work_laboriously, chmod, PERM_755, PERM_872
+from .manualabor import work_laboriously, chmod, parallelize, PERM_755, PERM_872
 from .retrieval_info import BASE_DIR, CACHE
 
 #-----------------------------------------------------------------------------#
@@ -497,6 +497,9 @@ def copy_cache(missing_data, run_labor, prl, do_chmod, testmode):
     cos_cache, cache_roots = get_cache()
 
     for key in list(missing_data):
+# Assuming an average file size of 170MB, this comes to a total of 5TB for 30,000 datasets.
+# It is possible to completely retrieve all raw and product datasets and leave them
+# unzipped before running manualabor.
         if roots_to_copy > 3000:
             if run_labor:
                 print("Running manualabor now...")
