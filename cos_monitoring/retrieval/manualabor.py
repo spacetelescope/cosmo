@@ -14,6 +14,7 @@ __date__ = "04-13-2016"
 __maintainer__ = "Jo Taylor"
 
 # Import necessary packages.
+import sys
 import datetime
 import os
 import glob
@@ -434,9 +435,71 @@ def send_email():
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
+@timefunc
+def parallelize(func, iterable, funcargs=None, nprocs="check_usage"):
+    from multiprocessing import Queue, Process
+
+    if nprocs == "check_usage":
+        playnice = False
+        if playnice is True:
+            core_frac = 0.25
+        else:
+            core_frac = 0.5 
+        # Get load average of system and no. of hyper-threaded CPUs on current system.
+        loadavg = os.getloadavg()[0]
+        ncores = psutil.cpu_count()
+        # If too many cores are being used, wait 10 mins, and reasses.
+        while loadavg >= (ncores-1):
+            print("Too many cores in usage, waiting 10 minutes before continuing...")
+            time.sleep(600)
+        else:
+            avail = ncores - math.ceil(loadavg)
+            nprocs = int(np.floor(avail * playmean))                       
+        # If, after rounding, no cores are available, default to 1 to avoid
+        # pooling with processes=0.
+        if nprocs == 0:
+            nprocs = 1
+
+    out_q = Queue()
+    chunksize = len(iterable)
+    procs = []
+    
+    if funcargs is not None:
+        if type(funcargs) is not tuple:
+            print("ERROR: Arguments for function {} need to be tuple, exiting".
+                  format(func))
+            sys.exit()
+
+    for i in range(nprocs):
+        if type(iterable) is dict:
+            subset = {k:iterable[k] for k in list(iterable.keys())[chunksize*i:chunksize*(i+1)]}
+        else:
+            subset = iterable[chunksize*i:chunksize*(i+1)]
+
+        if funcargs is not None:
+            inargs = (subset,) + funcargs + (out_q,)
+        else:
+            inargs = (subset, out_q)
+
+        p = Process(target=func, args=inargs)                  
+        procs.append(p)
+        p.start()
+
+    resultdict = {}
+    for i in range(nprocs):
+        resultdict.update(out_q.get())
+
+    for p in procs:
+        p.join()
+
+    return resultdict
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
 #@log_function
 @timefunc
-def parallelize(myfunc, mylist, check_usage=False):
+def parallelize2(myfunc, mylist, check_usage=False):
     '''
     Parallelize a function. Be a good samaritan and CHECK the current usage
     of resources before determining number of processes to use. If usage
@@ -579,8 +642,9 @@ def handle_nullfiles(nullfiles):
         try:
             instrument = hdr0["instrume"]
             try:
-                pid = str(hdr0["proposid"])
+                pid = hdr0["proposid"]
                 if pid > 0:
+                    pid = str(pid)
                     # These files have program IDs and should be moved.
                     if not os.path.exists(os.path.join(BASE_DIR, pid)):
                         os.mkdir(os.path.join(BASE_DIR, pid)) 
