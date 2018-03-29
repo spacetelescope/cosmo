@@ -104,12 +104,12 @@ def connect_dadsops():
 
     # Get all jitter, science (ASN), and CCI datasets.
     print("Querying MAST dadsops_rep database for all COS data...")
-    query0 = "SELECT ads_data_set_name,ads_pep_id FROM "\
+    query0 = "SELECT distinct ads_data_set_name,ads_pep_id FROM "\
     "archive_data_set_all WHERE ads_instrument='cos' "\
     "AND ads_data_set_name NOT LIKE 'LZ%' AND "\
     "ads_best_version='Y' AND ads_archive_class!='EDT'\ngo"
     # Some COS observations don't have ads_instrumnet=cos
-    query1 = "SELECT ads_data_set_name,ads_pep_id FROM "\
+    query1 = "SELECT distinct ads_data_set_name,ads_pep_id FROM "\
     "archive_data_set_all WHERE LEN(ads_data_set_name)=9 "\
     "AND ads_data_set_name LIKE 'L%' AND ads_instrument='cos' "\
     "AND ads_best_version='Y' and ads_archive_class!='EDT'\ngo"
@@ -120,8 +120,11 @@ def connect_dadsops():
     query0_pub = query0.split("\ngo")[0] + " and ads_release_date<='{0}'\ngo".format(utc_str)
     query1_pub = query1.split("\ngo")[0] + " and ads_release_date<='{0}'\ngo".format(utc_str)
 
-    all_cos_priv = janky_connect(SETTINGS, query0) 
-    all_l_priv = janky_connect(SETTINGS, query1)
+    query0_priv = query0.split("\ngo")[0] + " and ads_release_date>='{0}'\ngo".format(utc_str)
+    query1_priv = query1.split("\ngo")[0] + " and ads_release_date>='{0}'\ngo".format(utc_str)
+
+    all_cos_priv = janky_connect(SETTINGS, query0_priv) 
+    all_l_priv = janky_connect(SETTINGS, query1_priv)
     all_mast_sql_priv = all_cos_priv + all_l_priv
     
     all_cos_pub = janky_connect(SETTINGS, query0_pub) 
@@ -440,7 +443,7 @@ def ensure_no_pending():
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def get_cache():
+def tabulate_cache():
     """
     Determine all the datasets that are currently in the COS central store 
     cache. 
@@ -494,17 +497,17 @@ def copy_cache(missing_data, run_labor, prl, do_chmod, testmode):
     roots_to_copy = 0
     total_copied = 0
     start_missing = len(missing_data.keys()) 
-    cos_cache, cache_roots = get_cache()
+    cos_cache, cache_roots = tabulate_cache()
 
     for key in list(missing_data):
 # Assuming an average file size of 170MB, this comes to a total of 5TB for 30,000 datasets.
 # It is possible to completely retrieve all raw and product datasets and leave them
 # unzipped before running manualabor.
-        if roots_to_copy > 3000:
-            if run_labor:
-                print("Running manualabor now...")
-                work_laboriously(prl, do_chmod)
-            roots_to_copy = 0
+#        if roots_to_copy > 3000:
+#            if run_labor:
+#                print("Running manualabor now...")
+#                work_laboriously(prl, do_chmod)
+#            roots_to_copy = 0
         retrieve_roots = missing_data[key]
         roots_in_cache = [x for x in retrieve_roots if x in cache_roots]
         if roots_in_cache:
