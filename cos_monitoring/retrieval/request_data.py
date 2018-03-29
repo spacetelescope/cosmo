@@ -330,8 +330,8 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True, do_chmod=False):
         prop_dict = pickle.load(open(pkl_file, "rb"))
     prop_dict_keys = prop_dict.keys()
     pstart = 0
-    pend = 10 # should be 10
-    int_num = 5 # should be 5
+    pend = 20 # should be 10
+    int_num = 10 # should be 5
     century = 3000 # should be 50
     all_tracking_ids = []
     end_msg = "\nAll data from {0} programs were successfully "
@@ -356,10 +356,11 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True, do_chmod=False):
         
         # If there are more than N*50 programs to be retrieved, stop 
         # and calibrate and zip.
-        if pend > century:
-            century += 50 # should be 50
-            print("Pausing retrieval to calibrate and zip current data")
-            work_laboriously(prl, do_chmod)
+# See note in find_new_cos_data about total COS dataset sizes.
+#        if pend > century:
+#            century += 50 # should be 50
+#            print("Pausing retrieval to calibrate and zip current data")
+#            work_laboriously(prl, do_chmod)
         # For each proposal (prop) in the current grouping (total number
         # of programs split up for manageability), retrieve data for it.
         for prop in list(prop_dict_keys)[pstart:pend]:
