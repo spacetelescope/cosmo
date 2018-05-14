@@ -24,6 +24,7 @@ from astropy.io import fits as pf
 import calcos
 import smtplib
 import multiprocessing as mp
+from multiprocessing import Queue, Process, Pool
 import psutil
 import argparse
 import math
@@ -32,6 +33,7 @@ import pdb
 import numpy as np
 import stat
 import subprocess
+from collections import defaultdict
 from functools import partial
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -45,6 +47,7 @@ LINEOUT = "#"*75+"\n"
 STAROUT = "*"*75+"\n"
 PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 PERM_872 = stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
+CSUM_DIR = "tmp_out"
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -67,7 +70,38 @@ def timefunc(func):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
+def combine_2dicts(dict1, dict2):
+    combined = defaultdict(list)
+    for k,v in dict1.items():
+        if k in dict2:
+            combined[k] += list(set(v) | set(dict2[k]))
+        else:
+            combined[k] += list(v)
+    for k,v in dict2.items():
+        if k not in combined:
+            combined[k] += list(v)
+
+    return combined
+
+#def combine_2dicts(dict1, dict2):
+#    combined = defaultdict(list)
+#    incommon = list(set(dict1) & set(dict2))
+#    indict1 = list(set(dict1) - set(dict2))
+#    indict2 = list(set(dict2) - set(dict1))
+#    for k in incommon:
+#        combined[k] += list(set(dict1[k] + dict2[k]))
+#    for k in indict1:
+#        combined[k] += dict1[k]
+#    for k in indict2:
+#        combined[k] += dict2[k]
+#    return combined
+
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
 #@log_function
+@timefunc
 def unzip_mistakes(zipped):
     '''
     Occasionally, files will get zipped without having csums made.
@@ -106,13 +140,13 @@ def unzip_mistakes(zipped):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
+@timefunc
 def needs_processing(zipped):
     if isinstance(zipped, str):
         zipped = [zipped]
     files_to_calibrate = []
+    
     for zfile in zipped:
-        rootname = os.path.basename(zfile)[:9]
-        dirname = os.path.dirname(zfile)
         calibrate, badness= csum_existence(zfile)
         if badness is True:
             print("="*72 + "\n" + "="*72)
@@ -159,11 +193,16 @@ def make_csum(unzipped_raws):
 #            continue
 #        if calibrate is True:
         dirname = os.path.dirname(item)
-        outdirec = os.path.join(dirname, "tmp_out")
+        outdirec = os.path.join(dirname, CSUM_DIR)
+        if not os.path.exists(outdirec):
+            try:
+                os.mkdir(outdirec)
+            except FileExistsError:
+                pass
 #        os.chmod(dirname, PERM_755)
 #        os.chmod(item, PERM_755)
         try:
-            run_calcos(item, outdir=outdirec, verbosity=2,
+            run_calcos(item, outdir=outdirec, verbosity=0,
                        create_csum_image=True, only_csum=True,
                        compress_csum=False)
         except Exception as e:
@@ -179,11 +218,6 @@ def make_csum(unzipped_raws):
                 print(e)
             #logger.exception("There was an error processing {}:".format(item))
                 pass
-        csums = glob.glob(os.path.join(outdir, "*csum*"))
-        if csums:
-            for csum in csums:
-                shutil.move(csum, dirname)
-        shutil.rmtree(outdirec)
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -326,6 +360,13 @@ def csum_existence(filename):
     # If getting one header keyword, getval is faster than opening.
     # The more you know.
     try:
+        exptime = pf.getval(filename, "exptime", 1)
+        if exptime == 0:
+            return False, False
+    except:
+        pass
+
+    try:
         exptype = pf.getval(filename, "exptype")
     except KeyError:
 #        exptype = None
@@ -341,7 +382,7 @@ def csum_existence(filename):
         if not csums:
             calibrate = True
         else:
-            calibrate = True
+            calibrate = False
     else:
         calibrate = False
 
@@ -351,7 +392,7 @@ def csum_existence(filename):
 #------------------------------------------------------------------------------#
 
 #@log_function
-def compress_files(uz_files):
+def compress_files(uz_files, outdir=None, remove_orig=True, verbose=False):
     '''
     Compress unzipped files and delete original unzipped files.
 
@@ -359,6 +400,8 @@ def compress_files(uz_files):
     ----------
         uz_files : list or string
             Unzipped file(s) to zip
+        outdir : list or string
+            Directory to place zipped products.
 
     Returns:
     --------
@@ -367,15 +410,30 @@ def compress_files(uz_files):
 
     if isinstance(uz_files, str):
         uz_files = [uz_files]
-    for uz_item in uz_files:
-        z_item = uz_item + ".gz"
-        with open(uz_item, "rb") as f_in, gzip.open(z_item, "wb") as f_out:
+    
+    if outdir is None:
+        outdir = [os.path.dirname(x) for x in uz_files]
+    elif isinstance(outdir, str):
+        outdir = [outdir for x in uz_files]
+
+    outdir = [os.path.dirname(x) if not os.path.isdir(x) else x for x in outdir]
+    
+    if len(uz_files) != len(outdir):
+        print("ERROR: List uz_files needs to match length of list outdir, {} vs {}, exiting".
+              format(len(uz_files), len(outdir)))
+        sys.exit()
+
+    for i in range(len(uz_files)):
+        z_item = os.path.join(outdir[i], os.path.basename(uz_files[i]) + ".gz")
+        with open(uz_files[i], "rb") as f_in, gzip.open(z_item, "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
-            print("Compressing {} -> {}".format(uz_item, z_item))
-        if os.path.isfile(z_item):
-            os.remove(uz_item)
-        else:
-            print("Something went terribly wrong zipping {}".format(uz_item))
+            if verbose is True:
+                print("Compressing {} -> {}".format(uz_files[i], z_item))
+        if remove_orig is True:
+            if os.path.isfile(z_item):
+                os.remove(uz_files[i])
+            else:
+                print("Something went terribly wrong zipping {}".format(uz_files[i]))
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -435,10 +493,117 @@ def send_email():
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@timefunc
-def parallelize(func, iterable, funcargs=None, nprocs="check_usage"):
-    from multiprocessing import Queue, Process
+def check_usage(playnice=True):
+    """
+    Check current system resource usage, and adjust number of requested
+    processes accordingly.
 
+    Parameters:
+    -----------
+        playnice : Bool
+            If True, use only 25% of *available* cores. If False use 50%.
+
+    Returns:
+    --------
+        nprocs : int
+            Number of processes to use when multiprocessing.
+    """
+
+    # Are we feeling charitable or not?
+    if playnice is True:
+        core_frac = 0.25
+    else:
+        core_frac = 0.5 
+
+    # Get load average of system and no. of hyper-threaded CPUs on current system.
+    loadavg = os.getloadavg()[0] # number of CPUs in use
+    ncores = psutil.cpu_count() # number of CPUs available
+    
+    # If too many cores are being used, wait 5 mins, and reassess.
+    # Check if elapsed time > 15 mins- if so, just use 1 core.
+    too_long = 0
+    while loadavg >= (ncores-1):
+        print("Too many cores in usage, waiting 5 minutes before continuing...")
+        time.sleep(300)
+        too_long += 300
+        if too_long >= 900:
+            print("Continuing with one core...")
+            nprocs = 1
+            break
+    else:
+        avail = ncores - math.ceil(loadavg)
+        nprocs = int(np.floor(avail * core_frac))                       
+    
+    # If, after rounding, no cores are available, default to 1 to avoid
+    # pooling with processes=0.
+    if nprocs <= 0:
+        nprocs = 1
+
+    return nprocs
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+@timefunc
+def parallelize_new(func, iterable, nprocs, *args, **kwargs):
+    if nprocs == None:
+        nprocs = check_usage()
+
+    if type(iterable) is dict:
+        isdict = True 
+        func_args = [ ({k:v},) + args for k,v in iterable.items() ]
+    else:
+        isdict = False
+        func_args = [(iterable,) + args]
+
+    with Pool(processes=nprocs) as pool:
+        print("Starting the Pool with {} processes...".format(nprocs))
+        results = [pool.apply_async(func, fargs, kwargs) for fargs in func_args]
+
+        if results[0].get() is not None:
+            if isdict:
+                funcout = {}
+                for d in results:
+                    funcout.update(d.get())
+            else:
+                funcout = [item for innerlist in results for item in innerlist.get()]
+        else:
+            funcout = None
+
+    return funcout
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+@timefunc
+def parallelize_queue(func, iterable, funcargs=None, nprocs="check_usage", 
+                      keep_output=False):
+    """
+    Run a function in parallel with either multiple processes.
+
+    Parameters:
+    -----------
+        func : function
+            Function to be run in parallel.
+        iterable : list, array-like object, or dictionary 
+            The series of data that should be processed in parallel with 
+            function func.
+        funcargs : tuple
+            Additional arguments, if any, for the function func.
+        nprocs : int
+            Number of processes to use during multiprocessing.
+        keep_output : Bool
+            True if output from function func is to stored and returned.
+    
+    Returns:
+    --------
+        resultdict : dictionary
+            None if keep_output is False, otherwise a dictionary where each
+            key is a single input element from the series iterable, and the
+            value is the output from function func for that element. 
+    """
+
+    # Handle process usage checks.
     if nprocs == "check_usage":
         playnice = False
         if playnice is True:
@@ -448,50 +613,69 @@ def parallelize(func, iterable, funcargs=None, nprocs="check_usage"):
         # Get load average of system and no. of hyper-threaded CPUs on current system.
         loadavg = os.getloadavg()[0]
         ncores = psutil.cpu_count()
-        # If too many cores are being used, wait 10 mins, and reasses.
+        # If too many cores are being used, wait 10 mins, and reassess.
+        # Check if elapsed time > XX, if so, just use Y cores
         while loadavg >= (ncores-1):
             print("Too many cores in usage, waiting 10 minutes before continuing...")
             time.sleep(600)
         else:
             avail = ncores - math.ceil(loadavg)
-            nprocs = int(np.floor(avail * playmean))                       
+            nprocs = int(np.floor(avail * core_frac))                       
         # If, after rounding, no cores are available, default to 1 to avoid
         # pooling with processes=0.
-        if nprocs == 0:
+        if nprocs <= 0:
             nprocs = 1
 
-    out_q = Queue()
-    chunksize = len(iterable)
-    procs = []
-    
+    # If you want the output from the function being parallelized.
+    if keep_output:
+        out_q = Queue()
+    # If there are input arguments (besides iterable) to the function, they must
+    # be defined as a tuple for multiprocessing.
     if funcargs is not None:
         if type(funcargs) is not tuple:
             print("ERROR: Arguments for function {} need to be tuple, exiting".
                   format(func))
             sys.exit()
 
+    # Split the iterable up into chunks determined by the number of processes.
+    # what if the iterable is less than the number of nprocs?
+    chunksize = math.ceil(len(iterable) / nprocs)
+    procs = []
     for i in range(nprocs):
         if type(iterable) is dict:
+            # try using {k:v for k,v in list(iterable.items())...}
             subset = {k:iterable[k] for k in list(iterable.keys())[chunksize*i:chunksize*(i+1)]}
         else:
             subset = iterable[chunksize*i:chunksize*(i+1)]
-
+        # Multiprocessing requires a tuple as input, so if there are 
+        # additional input arguments, concatenate them.
         if funcargs is not None:
-            inargs = (subset,) + funcargs + (out_q,)
+            if keep_output:
+                inargs = (subset, out_q) + funcargs
+            else:
+                inargs = (subset,) + funcargs
         else:
-            inargs = (subset, out_q)
-
+            if keep_output:
+                inargs = (subset, out_q)
+            else:
+                inargs = (subset,)
+        # Create the process.
         p = Process(target=func, args=inargs)                  
         procs.append(p)
         p.start()
 
-    resultdict = {}
-    for i in range(nprocs):
-        resultdict.update(out_q.get())
+    # Collect the results into a dictionary, if desired.
+    if keep_output:
+        resultdict = {}
+        for i in range(nprocs):
+            resultdict.update(out_q.get())
+    else:
+        resultdict = None
 
+    # Wait for all worker processes to finish.
     for p in procs:
         p.join()
-
+    
     return resultdict
 
 #------------------------------------------------------------------------------#
@@ -499,7 +683,7 @@ def parallelize(func, iterable, funcargs=None, nprocs="check_usage"):
 
 #@log_function
 @timefunc
-def parallelize2(myfunc, mylist, check_usage=False):
+def parallelize(myfunc, mylist, check_usage=True):
     '''
     Parallelize a function. Be a good samaritan and CHECK the current usage
     of resources before determining number of processes to use. If usage
@@ -524,34 +708,36 @@ def parallelize2(myfunc, mylist, check_usage=False):
     playmean = 0.40
 
     # Split list into multiple lists if it's large.
-    maxnum = 25
-    if len(mylist) > maxnum:
-        metalist = [mylist[i:i+maxnum] for i in range(0, len(mylist), maxnum)]
-    else:
-        metalist = [mylist]
-    for onelist in metalist:
-        if check_usage:
-            # Get load average of system and no. of hyper-threaded CPUs on current system.
-            loadavg = os.getloadavg()[0]
-            ncores = psutil.cpu_count()
-            # If too many cores are being used, wait 10 mins, and reasses.
-            while loadavg >= (ncores-1):
-                print("Too many cores in usage, waiting 10 minutes before continuing...")
-                time.sleep(600)
-            else:
-                avail = ncores - math.ceil(loadavg)
-                nprocs = int(np.floor(avail * playmean))
-            # If, after rounding, no cores are available, default to 1 to avoid
-            # pooling with processes=0.
-            if nprocs == 0:
-                nprocs = 1
-#            print("Using {0} cores at {1}".format(nprocs, datetime.datetime.now()))
+    # I don't think this is necessary.
+#    maxnum = 25
+#    if len(mylist) > maxnum:
+#        metalist = [mylist[i:i+maxnum] for i in range(0, len(mylist), maxnum)]
+#    else:
+#        metalist = [mylist]
+#    for onelist in metalist:
+    if check_usage:
+        # Get load average of system and no. of hyper-threaded CPUs on current system.
+        loadavg = os.getloadavg()[0]
+        ncores = psutil.cpu_count()
+        # If too many cores are being used, wait 10 mins, and reasses.
+        while loadavg >= (ncores-1):
+            print("Too many cores in usage, waiting 10 minutes before continuing...")
+            time.sleep(600)
         else:
-            nprocs = 15
-        pool = mp.Pool(processes=nprocs)
-        pool.map(myfunc, onelist)
-        pool.close()
-        pool.join()
+            avail = ncores - math.ceil(loadavg)
+            nprocs = int(np.floor(avail * playmean))
+        # If, after rounding, no cores are available, default to 1 to avoid
+        # pooling with processes=0.
+        if nprocs == 0:
+            nprocs = 1
+    else:
+        nprocs = 10
+    
+    print("Starting the Pool with {} processes...".format(nprocs))
+    pool = mp.Pool(processes=nprocs)
+    pool.map(myfunc, mylist)
+    pool.close()
+    pool.join()
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -663,6 +849,35 @@ def handle_nullfiles(nullfiles):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
+def move_files(orig, dest):
+    if isinstance(orig, str):
+        orig = [orig]
+    if isinstance(dest, str):
+        dest = [dest]
+    for i in range(len(orig)):
+        shutil.move(orig[i], dest[i])
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+def remove_outdirs():
+    tmp_dirs = glob.glob(os.path.join(BASE_DIR, "*", CSUM_DIR))
+    if tmp_dirs:
+        for bad_dir in tmp_dirs:
+            shutil.rmtree(bad_dir)
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+def copy_outdirs():
+    csums = glob.glob(os.path.join(BASE_DIR, "*", CSUM_DIR, "*csum*"))
+    if csums:
+        dest_dirs = [os.path.dirname(x).strip(CSUM_DIR) for x in csums]
+        move_files(csums, dest_dirs)
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
 @timefunc
 def work_laboriously(prl, do_chmod):
     '''
@@ -677,6 +892,8 @@ def work_laboriously(prl, do_chmod):
     --------
         Nothing
     '''
+
+    remove_outdirs()
 
     # First, change permissions of the base directory so we can modify files.
     print("Beginning manualabor in {0} at {1}...\n".format(BASE_DIR, datetime.datetime.now()))
@@ -702,12 +919,15 @@ def work_laboriously(prl, do_chmod):
     # When calibrating zipped raw files, you need to calibrate both segments 
     # separately since calcos can't find the original 
     zipped_raws = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*fits.gz")) + \
-                       glob.glob(os.path.join(BASE_DIR, "*", "*rawacq.fits.gz"))
+                  glob.glob(os.path.join(BASE_DIR, "*", "*rawacq*.fits.gz")) + \
+                  glob.glob(os.path.join(BASE_DIR, "*", "*rawaccum*.fits.gz"))
 
+    print("Checking which raw files need to be calibrated...")
     to_calibrate = needs_processing(zipped_raws)    
+    
     # Loop through files and calibrate in chunks of 300? to 
     # ensure that disk space is not filled. 
-    max_files = 3000
+    max_files = 30000
     if to_calibrate:
         num_files = 0
         if len(to_calibrate) > max_files:
@@ -724,6 +944,7 @@ def work_laboriously(prl, do_chmod):
                 parallelize(make_csum, to_calibrate[num_files:])
             else:
                 make_csum(to_calibrate[num_files:])
+    copy_outdirs()
 
     # Check again for unzipped files.
     all_unzipped = glob.glob(os.path.join(BASE_DIR, "*", "*fits"))
@@ -736,17 +957,14 @@ def work_laboriously(prl, do_chmod):
         
     # Check for the temporary output directories used during calibration,
     # and delete if present. 
-    tmp_dirs = glob.glob(os.path.join(BASE_DIR, "*", "tmp_out"))
-    if tmp_dirs:
-        for bad_dir in tmp_dirs:
-            shutil.rmtree(bad_dir)
+    remove_outdirs()
 
     # Change permissions back to protect data.
-    print("Changing group permissions of {0}...".format(BASE_DIR))
-    chgrp(BASE_DIR)
     if do_chmod:
         print("Closing permissions of {0}..".format(BASE_DIR))
         chmod(BASE_DIR, PERM_872, None, True)
+        print("Changing group permissions of {0}...".format(BASE_DIR))
+        chgrp(BASE_DIR)
 
     print("\nFinished at {0}.".format(datetime.datetime.now()))
 
