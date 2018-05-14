@@ -156,6 +156,10 @@ def retrieve_data(dest_dir, datasets):
         tracking_ids : list
             The tracking IDs for all submitted for a given program.
     '''
+    if isinstance(datasets, str):
+        datasets = [datasets]
+    elif type(datasets) is not list:
+        datasets = datasets.tolist()
     dataset_lists = (datasets[i:i+MAX_RETRIEVAL]
                      for i in range(0, len(datasets), MAX_RETRIEVAL))
     tracking_ids = []
@@ -165,6 +169,8 @@ def retrieve_data(dest_dir, datasets):
             result0 = submit_xml_request(xml_file)
             result = result0.decode("utf-8")
             tmp_id = re.search("("+MYUSER+"[0-9]{5})", result).group()
+            if "FAILURE" in result:
+                print("Request {} for program {} failed.".format(tmp_id, dest_dir))
             tracking_ids.append(tmp_id)
         # If you can't get a ID, MAST is most likely down. 
         except AttributeError:
@@ -199,7 +205,6 @@ def check_id_status(tracking_id):
 
     done = False
     killed = False
-#    print tracking_id
     status_url = "http://archive.stsci.edu/cgi-bin/reqstat?reqnum=={0}".format(tracking_id)    
     # In case connection to URL is down.
     tries = 5
@@ -221,7 +226,9 @@ def check_id_status(tracking_id):
                         killed = False
                     elif "KILLED" in line:
                         killed = True
-
+                if "Request ID" in line and "was not found on the" in line:
+                    # e.g. Request ID: jotaylor05221 was not found on the dmsops1.stsci.edu server
+                    killed = True
     return done, killed
 
 #-----------------------------------------------------------------------------#
@@ -256,7 +263,7 @@ def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
         os.chmod(BASE_DIR, PERM_755)
         os.mkdir(prop_dir)
     os.chmod(prop_dir, PERM_755)
-    print("I am retrieving {0} dataset(s) for {1}".format(len(prop_dict[prop]),prop))
+    print("I am retrieving {0} association(s) for {1}".format(len(prop_dict[prop]),prop))
     ind_id = retrieve_data(prop_dir, prop_dict[prop])
     for item in ind_id:
         all_tracking_ids_tmp.append(item)
@@ -290,7 +297,7 @@ def check_data_retrieval(all_tracking_ids):
         counter.append(status)
         if badness:
             print("!"*70)
-            print("RUH ROH!!! Request {0} was killed or cannot be connected!".format(tracking_id))
+            print("RUH ROH!!! Request {0} was killed, cannot be connected, or did not yield any data!!!".format(tracking_id))
             counter.append(badness)
     not_yet_retrieved = [all_tracking_ids[i] for i in 
                          range(len(counter)) if not counter[i]]
@@ -334,7 +341,7 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True, do_chmod=False):
     int_num = 10 # should be 5
     century = 3000 # should be 50
     all_tracking_ids = []
-    end_msg = "\nAll data from {0} programs were successfully "
+    end_msg = "\nAll data from {0} programs were successfully delivered."
     # If less than pend programs were requested, do not enter while loop.
     if pend > len(prop_dict_keys):
         for prop in prop_dict_keys:
@@ -399,13 +406,12 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True, do_chmod=False):
     # When pend > total # of programs, it does not mean all have been
     # retrieved. Check, and retrieve if so.
     else:
-        "delivered. ".format(len(prop_dict_keys))
         if (len(prop_dict_keys) - (pend-int_num)) > 0:
-            for prop in prop_dict_keys[pend-int_num:]:
+            for prop in list(prop_dict_keys)[pend-int_num:]:
                 all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
-            print(end_msg)
+            print(end_msg.format(len(prop_dict_keys)))
         else:
-            print(end_msg)
+            print(end_msg.format(len(prop_dict_keys)))
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
