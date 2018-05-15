@@ -97,7 +97,7 @@ def get_all_mast_data():
     """
 
     # Get all jitter, science (ASN), and CCI datasets.
-    print("Querying MAST dadsops_rep database for all COS data...")
+    print("Querying MAST databases for all COS data...")
     query0 = "SELECT distinct ads_data_set_name,ads_pep_id FROM "\
     "archive_data_set_all WHERE ads_instrument='cos' "\
     "AND ads_data_set_name NOT LIKE 'LZ%' AND "\
@@ -170,29 +170,38 @@ def find_missing_exts(existing, existing_root):
             
     """
 
-    #query = "SELECT distinct afi_file_name, afi_data_set_name"\
-    query = "SELECT distinct afi_file_name, ads_pep_id"\
-    " FROM archive_files, archive_data_set_all WHERE"\
-    " ads_data_set_name=afi_data_set_name"\
-    " AND ads_best_version='y'"\
-    " AND ads_generation_date= afi_generation_date"\
-    " AND ads_archive_class=afi_archive_class"\
-    " AND ads_archive_class IN ('cal','asn')"\
-    " AND ads_data_set_name in {0}\ngo".format(tuple(existing_root))
-    
-    filenames = janky_connect(query)
-    expected_files_d = _sql_to_dict(filenames)
-    expected_files_s = set([row[0] for row in filenames])
-    existing_files_s = set([os.path.basename(x).strip(".gz") for x in existing])
-    missing_files_l = list(expected_files_s - existing_files_s)
+    # Split query into chunks of 10K to avoid running out of processer 
+    # resources.
+    chunksize= 10000
+    chunks = [existing_root[i:i+chunksize] for i in range(0, len(existing_root), chunksize)]
+   
+    missing_files_l = []
+    pids = [] 
+    for chunk in chunks:
+        query = "SELECT distinct afi_file_name, ads_pep_id"\
+        " FROM archive_files, archive_data_set_all WHERE"\
+        " ads_data_set_name=afi_data_set_name"\
+        " AND ads_best_version='y'"\
+        " AND ads_generation_date= afi_generation_date"\
+        " AND ads_archive_class=afi_archive_class"\
+        " AND ads_archive_class IN ('cal','asn')"\
+        " AND ads_data_set_name in {0}\ngo".format(tuple(chunk))
+   
+        filenames = janky_connect(query)
+        expected_files_d = _sql_to_dict(filenames)
+        expected_files_s = set([row[0] for row in filenames])
+        existing_files_s = set([os.path.basename(x).strip(".gz") for x in existing])
+        missing_files_l_chunk = list(expected_files_s - existing_files_s)
+        missing_files_l += missing_files_l_chunk
+        if len(missing_files_l_chunk) == 0:
+            continue
+        pids_chunk = [int(expected_files_d[x]) for x in missing_files_l_chunk]
+        pids += pids_chunk
 
     if len(missing_files_l) == 0:
         return None
-   
-    pids = [int(expected_files_d[x]) for x in missing_files_l]
     missing_files = _group_dict_by_pid(missing_files_l, pids)
     print("{} single extensions missing for {} programs that were already retrieved- this is probably because COSMO crashed in an earlier run.".format(len(missing_files_l), len(missing_files)))
-
     return missing_files
 
 #-----------------------------------------------------------------------------#
@@ -363,7 +372,6 @@ def find_missing_data(use_cs):
 
     print("Checking to see if any missing COS data...")
     missing_exts = find_missing_exts(existing, existing_root)
-
 
     mast_priv, mast_pub = get_all_mast_data()
 
@@ -656,7 +664,8 @@ def copy_cache(missing_data, missing_exts=None, prl=True):
         still_missing = missing_data
 
     if to_copy:
-        parallelize(copy_from_cache, to_copy)
+#        parallelize(copy_from_cache, to_copy)
+        copy_from_cache(to_copy)
         copy_from_cache(to_copy)
 
     return still_missing
