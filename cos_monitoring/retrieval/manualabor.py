@@ -29,7 +29,6 @@ import psutil
 import argparse
 import math
 import time
-import pdb
 import numpy as np
 import stat
 import subprocess
@@ -368,8 +367,7 @@ def csum_existence(filename):
 
     try:
         exptype = pf.getval(filename, "exptype")
-    except KeyError:
-#        exptype = None
+    except KeyError: #EXPTYPE = None
         return False, False 
     except Exception as e:
         if type(e).__name__ == "IOError" and \
@@ -377,8 +375,12 @@ def csum_existence(filename):
             return False, True
     
     if exptype != "ACQ/PEAKD" and exptype != "ACQ/PEAKXD":
-#    if exptype == "ACQ/IMAGE":
-        csums = glob.glob(os.path.join(dirname,rootname+"*csum*"))
+        if "_a.fits" in filename:
+            csums = glob.glob(os.path.join(dirname, rootname+"*csum_a*"))
+        elif "_b.fits" in filename:
+            csums = glob.glob(os.path.join(dirname, rootname+"*csum_b*"))
+        else:
+            csums = glob.glob(os.path.join(dirname, rootname+"*csum*"))
         if not csums:
             calibrate = True
         else:
