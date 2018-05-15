@@ -17,7 +17,6 @@ __maintainer__ = "Jo Taylor"
 __email__ = "jotaylor@stsci.edu"
 
 import datetime
-import shlex
 import urllib
 import time
 import pickle
@@ -28,11 +27,10 @@ import glob
 import pyfastcopy
 import shutil
 import numpy as np
-from sqlalchemy import text
 from subprocess import Popen, PIPE
 
 from ..database.db_tables import load_connection
-from .manualabor import work_laboriously, chmod, parallelize, combine_2dicts, compress_files, timefunc, PERM_755, PERM_872
+from .manualabor import parallelize, combine_2dicts, compress_files, timefunc
 from .retrieval_info import BASE_DIR, CACHE
 
 #-----------------------------------------------------------------------------#
@@ -658,7 +656,7 @@ def copy_from_cache(to_copy):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def copy_cache(missing_data, missing_exts=None):
+def copy_cache(missing_data, missing_exts=None, prl=True):
     """
     When there are missing public datasets, check to see if any of them can
     be copied from the COS cache in central store, which is faster than
@@ -672,8 +670,6 @@ def copy_cache(missing_data, missing_exts=None):
         missing_exts : dictionary
             Dictionary where each key is the proposal, and values are 
             missing single raw or product files from previous COSMO runs. 
-        testmode : Bool
-            If True, data will not actually be copied, to save time. 
         out_q : multiprocess.Queue object
             If not None, the output of this function will be passed to 
             the Queue object in order to be curated during multiprocessing. 
@@ -702,55 +698,11 @@ def copy_cache(missing_data, missing_exts=None):
         to_copy = to_copy_root
         still_missing = missing_data
 
-#    parallelize_queue(copy_from_cache, to_copy)
-#    test_dict = {k:to_copy[k] for k in list(to_copy.keys())[:10]}
     if to_copy:
-#        parallelize(copy_from_cache, to_copy)
+        parallelize(copy_from_cache, to_copy)
         copy_from_cache(to_copy)
 
     return still_missing
-
-#    for key in list(missing_data):
-#        retrieve_roots = missing_data[key]
-#        roots_in_cache = [x for x in retrieve_roots if x in cache_roots]
-#        if roots_in_cache:
-#            dest = os.path.join(BASE_DIR, str(key))
-#            if not os.path.isdir(dest):
-#                os.mkdir(dest)
-#            total_copied += len(roots_in_cache)
-#            
-#            # Create a generator where each element is an array with all 
-#            # file types that match each rootname. Then concatenate all these
-#            # individual arrays for ease of copying.
-#            to_copy = np.concatenate(tuple( (cos_cache[np.where(cache_roots == x)] 
-#                                           for x in roots_in_cache) ))
-#
-#            # By importing pyfastcopy, shutil performance is automatically
-#            # enhanced
-#            if testmode is False:
-#                compress_dest = [os.path.join(dest, os.path.basename(x)) for x in cache_item]
-#                compress_files(to_copy, compress_dest)
-#            print("Copied {0} items to {1}".format(len(to_copy), dest))
-#            
-##            for cache_item in to_copy:
-##                if testmode is False:
-##                    shutil.copyfile(cache_item, os.path.join(dest, os.path.basename(cache_item)))
-#
-#            updated_retrieve_roots = [x for x in retrieve_roots if x not in roots_in_cache]
-#            if not updated_retrieve_roots:
-#                missing_data.pop(key, "Something went terribly wrong, {0} isn't in dictionary".format(key))
-#            else:
-#                missing_data[key] = updated_retrieve_roots
-#
-#    end_missing = len(missing_data.keys()) 
-#    
-#    print("\nCopied {} total roots from cache, {} complete PIDs".format(
-#          total_copied, start_missing-end_missing))
-#
-#    if out_q is not None:
-#        out_q.put(missing_data)
-#    else:
-#        return missing_data
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -778,8 +730,7 @@ def copy_entire_cache(cos_cache):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def find_new_cos_data(pkl_it, pkl_file, use_cs, run_labor, prl, do_chmod,
-                      testmode):
+def find_new_cos_data(pkl_it, pkl_file, use_cs=False, prl=True):
     """
     Workhorse function, determine what data already exist on disk/in the 
     greendev DB and determine if data are missing. Copy any data from local
@@ -794,14 +745,8 @@ def find_new_cos_data(pkl_it, pkl_file, use_cs, run_labor, prl, do_chmod,
         use_cs : 
             Switch to find missing data comparing what is currently on 
             central store, as opposed to using the COSMO database.
-        run_labor : Bool
-            Switch to run manualabor if necessary.
          prl : 
             Switch to run manualabor in parallel or not.
-        do_chmod : Bool
-            This will be deleted eventually. Switch to run chmod in manualabor.
-        testmode : Bool
-            Used purely for testing, some time-consuming steps will be skipped.
 
     Returns:
     --------
@@ -814,14 +759,7 @@ def find_new_cos_data(pkl_it, pkl_file, use_cs, run_labor, prl, do_chmod,
     missing_data_priv, missing_data_pub, missing_exts = find_missing_data(use_cs)
     print("\t{} proprietary programs missing\n\t{} public programs missing".format(
           len(missing_data_priv.keys()), len(missing_data_pub.keys())))
-# For right now, this is commented out because the idea is to run find_new_cos_data
-# to completion then separately run manualabor
-# Is this really necessary? vv
-#    if len(missing_data_priv.keys()) == 0 and len(missing_data_pub.keys()) == 0:
-#        print("There are no missing datasets...")
-#        if run_labor:
-#            print("Running manualabor now...")
-#            work_laboriously(prl, do_chmod)
+    
     if missing_data_pub:
         print("Checking to see if any missing data in local cache...")
         missing_data_pub_rem = copy_cache(missing_data_pub, missing_exts)
@@ -859,14 +797,9 @@ if __name__ == "__main__":
     parser.add_argument("--cs", dest="use_cs", action="store_true",
                         default=False, 
                         help="Find missing data comparing to central store, not DB") 
-    parser.add_argument("--labor", dest="run_labor", action="store_false",
-                        default=True, 
-                        help="Switch to turn off manualabor after retrieving data.") 
     parser.add_argument("--prl", dest="prl", action="store_false",
                         default=True, help="Parallellize functions")
-    parser.add_argument("--chmod", dest="do_chmod", action="store_false",
-                        default=True, help="Switch to chmod directory or not")
     args = parser.parse_args()
 
-    find_new_cos_data(args.pkl_it, args.pkl_file, args.use_cs, args.run_labor, 
-                      args.prl, args.do_chmod, False)
+    find_new_cos_data(args.pkl_it, args.pkl_file, args.use_cs,
+                      args.prl, False)
