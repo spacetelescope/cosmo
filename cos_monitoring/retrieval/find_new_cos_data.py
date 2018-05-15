@@ -561,7 +561,7 @@ def tabulate_cache():
 #-----------------------------------------------------------------------------#
 
 @timefunc
-def find_missing_in_cache2(missing_dict, cache_a, cos_cache):
+def find_missing_in_cache(missing_dict, cache_a, cos_cache):
     total_copied = 0
     start_missing = len(missing_dict.keys()) 
     to_copy_d = {}
@@ -601,45 +601,6 @@ def find_missing_in_cache2(missing_dict, cache_a, cos_cache):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-@timefunc
-def find_missing_in_cache(missing_dict, cache_a, cos_cache):
-    total_copied = 0
-    start_missing = len(missing_dict.keys()) 
-    to_copy_d = {}
-    for key in list(missing_dict):
-        missing_files = missing_dict[key]
-        missing_in_cache = [x for x in missing_files if x in cache_a]
-        if len(missing_in_cache) == 0:
-            continue
-        total_copied += len(missing_in_cache)
-        
-        updated_missing = [x for x in missing_files if x not in missing_in_cache]
-        if not updated_missing:
-            missing_dict.pop(key, "Something went terribly wrong, {0} isn't in dictionary".format(key))
-        else:
-            missing_dict[key] = updated_missing
-    
-        # Create a generator where each element is an array with all 
-        # file types that match each missing dataset. Then concatenate all these
-        # individual arrays for ease of copying.
-        # Joe said this makes sense, so it's ok, right?
-        try:
-            to_copy = np.concatenate(tuple( (cos_cache[np.where(cache_a == x)] 
-                                   for x in missing_in_cache) ))
-        except ValueError:
-            print("RUH ROH!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        to_copy_d[key] = to_copy
-        
-    end_missing = len(missing_dict.keys()) 
-    
-    print("\tCopying {} total roots from cache, {} complete PIDs".format(
-          total_copied, start_missing-end_missing))
-
-    return missing_dict, to_copy_d
-
-#-----------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------#
-
 def copy_from_cache(to_copy):
     for pid, cache_files in to_copy.items():
         dest = os.path.join(BASE_DIR, str(pid))
@@ -650,7 +611,6 @@ def copy_from_cache(to_copy):
         # By importing pyfastcopy, shutil performance is automatically
         # enhanced
         compress_dest = dest
-        #compress_dest = [os.path.join(dest, os.path.basename(x)) for x in cache_files]
         compress_files(cache_files, outdir=compress_dest, remove_orig=False, verbose=True)
 
 #-----------------------------------------------------------------------------#
@@ -687,10 +647,7 @@ def copy_cache(missing_data, missing_exts=None, prl=True):
     
     if missing_exts is not None:
         print("looking at exts")
-#        missing_exts_subset = {k:missing_exts[k] for k in ['15128', '15075', '14674', '14526', '14604', '11533', '13875', '13520', '14874', '11484', '14247', '12302', '12486', '13436', '13527', '11625', '13635', '11482', '11503', '14085']}
- #       print(missing_exts_subset.keys())
-#        missing_exts, to_copy_exts = find_missing_in_cache(missing_exts_subset, cache_filenames, cos_cache)
-        missing_exts, to_copy_exts = find_missing_in_cache2(missing_exts, cache_filenames, cos_cache)
+        missing_exts, to_copy_exts = find_missing_in_cache(missing_exts, cache_filenames, cos_cache)
         to_copy = combine_2dicts(to_copy_root, to_copy_exts)
         missing_ext_roots = {k:list(set([dataset[:9].upper() for dataset in v])) for k,v in missing_exts.items()}
         still_missing = combine_2dicts(missing_data, missing_ext_roots)
