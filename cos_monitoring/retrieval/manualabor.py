@@ -159,64 +159,6 @@ def needs_processing(zipped):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-def make_csum(unzipped_raws):
-    '''
-    Calibrate raw files to produce csum files.
-
-    Parameters:
-    -----------
-        unzipped_raws : list or string
-            A list or string filenames that are unzipped to be calibrated.
-
-    Returns:
-    --------
-        Nothing
-    '''
-
-    run_calcos = clobber_calcos_csumgz(calcos.calcos)
-    #logger.info("Creating CSUM files")
-    if isinstance(unzipped_raws, str):
-        unzipped_raws = [unzipped_raws]
-    for item in unzipped_raws:
-#        calibrate, badness = csum_existence(item)
-#        if badness:
-#            print("="*72 + "\n" + "="*72)
-#            print("The file is empty or corrupt: {0}".format(item))
-#            print("Deleting file")
-#            print("="*72 + "\n" + "="*72)
-#            os.remove(item)
-#            continue
-#        if calibrate is True:
-        dirname = os.path.dirname(item)
-        outdirec = os.path.join(dirname, CSUM_DIR)
-        if not os.path.exists(outdirec):
-            try:
-                os.mkdir(outdirec)
-            except FileExistsError:
-                pass
-#        os.chmod(dirname, PERM_755)
-#        os.chmod(item, PERM_755)
-        try:
-            run_calcos(item, outdir=outdirec, verbosity=0,
-                       create_csum_image=True, only_csum=True,
-                       compress_csum=False)
-        except Exception as e:
-            if type(e).__name__ == "IOError" and \
-               e.args[0] == "Empty or corrupt FITS file":
-                print("="*72 + "\n" + "="*72)
-                print("The file is empty or corrupt: {0}".format(item))
-                print("Deleting file")
-                print("="*72 + "\n" + "="*72)
-                os.remove(item)
-                pass
-            else:
-                print(e)
-            #logger.exception("There was an error processing {}:".format(item))
-                pass
-
-#------------------------------------------------------------------------------#
-#------------------------------------------------------------------------------#
-
 @timefunc
 def chgrp(mydir):
     '''
@@ -870,44 +812,19 @@ def copy_outdirs():
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@timefunc
-def work_laboriously(prl, do_chmod):
-    '''
-    Run all the functions in the correct order.
-
-    Parameters:
-    -----------
-        prl : Boolean
-            Switch for running functions in parallel
-
-    Returns:
-    --------
-        Nothing
-    '''
-
-    remove_outdirs()
-
-    # First, change permissions of the base directory so we can modify files.
-    print("Beginning manualabor in {0} at {1}...\n".format(BASE_DIR, datetime.datetime.now()))
-    if do_chmod: 
-        print("Opening permissions of {0}..".format(BASE_DIR))
-        chmod(BASE_DIR, PERM_755, None, True)
-
-    # Delete any files with program ID = NULL that are not COS files.
-    nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*")) 
-    if nullfiles:
-        print("Handling {0} NULL datasets...".format(len(nullfiles)))
-        handle_nullfiles(nullfiles) 
-    
+def gzip_files(prl=True)
     # Get a list of all unzipped files and zip them.
     unzipped = glob.glob(os.path.join(BASE_DIR, "*", "*fits"))
-    print("Zipping {0} unzipped file(s)...".format(len(unzipped)))
-    if unzipped:
+    print("Zipping {0} unzipped file(s)...".format(len(unzipped)))                                     if unzipped:
         if prl:
             parallelize(compress_files, unzipped)
         else:
             compress_files(unzipped)
 
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+def get_unprocessed_data():
     # When calibrating zipped raw files, you need to calibrate both segments 
     # separately since calcos can't find the original 
     zipped_raws = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*fits.gz")) + \
@@ -915,60 +832,9 @@ def work_laboriously(prl, do_chmod):
                   glob.glob(os.path.join(BASE_DIR, "*", "*rawaccum*.fits.gz"))
 
     print("Checking which raw files need to be calibrated (this may take a while)...")
-    to_calibrate = needs_processing(zipped_raws)    
-    
-    # Loop through files and calibrate in chunks of 300? to 
-    # ensure that disk space is not filled. 
-    max_files = 30000
-    if to_calibrate:
-        num_files = 0
-        if len(to_calibrate) > max_files:
-            while num_files < len(to_calibrate):
-                print("There are {0} file(s) to calibrate, calibrating files {1}:{2}".format(len(to_calibrate), num_files, num_files+max_files))
-                if prl:
-                    parallelize(make_csum, to_calibrate[num_files:num_files+max_files])
-                else:
-                    make_csum(to_calibrate[num_files:num_files+max_files])
-                num_files += max_files
-        else:
-            print("There are {0} file(s) to calibrate, calibrating all...".format(len(to_calibrate)))
-            if prl:
-                parallelize(make_csum, to_calibrate[num_files:])
-            else:
-                make_csum(to_calibrate[num_files:])
-    copy_outdirs()
+    to_calibrate = needs_processing(zipped_raws)
 
-    # Check again for unzipped files.
-    all_unzipped = glob.glob(os.path.join(BASE_DIR, "*", "*fits"))
-    if all_unzipped:
-        print("Zipping {0} uncompressed files...".format(len(all_unzipped)))
-        if prl:
-            parallelize(compress_files, all_unzipped)
-        else:
-            compress_files(all_unzipped)
-        
-    # Check for the temporary output directories used during calibration,
-    # and delete if present. 
-    remove_outdirs()
-
-    # Change permissions back to protect data.
-    if do_chmod:
-        print("Closing permissions of {0}..".format(BASE_DIR))
-        chmod(BASE_DIR, PERM_872, None, True)
-        print("Changing group permissions of {0}...".format(BASE_DIR))
-        chgrp(BASE_DIR)
-
-    print("\nFinished at {0}.".format(datetime.datetime.now()))
+    return to_calibrate
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--prl", dest="prl", action="store_true",
-                        default=False, help="Parallellize functions")
-    parser.add_argument("--chmod", dest="do_chmod", action="store_false",
-                        default=True, help="Switch to turn off chmod")
-    args = parser.parse_args()
-
-    work_laboriously(args.prl, args.do_chmod)
