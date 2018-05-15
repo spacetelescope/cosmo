@@ -99,7 +99,6 @@ def combine_2dicts(dict1, dict2):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-#@log_function
 @timefunc
 def unzip_mistakes(zipped):
     '''
@@ -162,7 +161,6 @@ def needs_processing(zipped):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-#@log_function
 def make_csum(unzipped_raws):
     '''
     Calibrate raw files to produce csum files.
@@ -221,7 +219,6 @@ def make_csum(unzipped_raws):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-#@log_function
 @timefunc
 def chgrp(mydir):
     '''
@@ -267,10 +264,10 @@ def chgrp(mydir):
                 except PermissionError as e:
                     nothing = True
                     print(repr(e))
+
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-#@log_function
 def chmod_recurs(dirname, perm):
     '''
     Edit permissions on a directory and all files in that directory.
@@ -336,7 +333,6 @@ def chmod_recurs_sp(rootdir, perm):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-#@log_function
 def csum_existence(filename):
     '''
     Check for the existence of a CSUM for a given input dataset.
@@ -393,7 +389,6 @@ def csum_existence(filename):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-#@log_function
 def compress_files(uz_files, outdir=None, remove_orig=True, verbose=False):
     '''
     Compress unzipped files and delete original unzipped files.
@@ -440,7 +435,6 @@ def compress_files(uz_files, outdir=None, remove_orig=True, verbose=False):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-#@log_function
 def uncompress_files(z_files):
     '''
     Uncompress zipped files and delete original zipped files.
@@ -468,7 +462,6 @@ def uncompress_files(z_files):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-#@log_function
 def send_email():
     '''
     Send a confirmation email. Currently not used.
@@ -683,7 +676,6 @@ def parallelize_queue(func, iterable, funcargs=None, nprocs="check_usage",
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-#@log_function
 @timefunc
 def parallelize(myfunc, mylist, check_usage=True):
     '''
@@ -924,7 +916,7 @@ def work_laboriously(prl, do_chmod):
                   glob.glob(os.path.join(BASE_DIR, "*", "*rawacq*.fits.gz")) + \
                   glob.glob(os.path.join(BASE_DIR, "*", "*rawaccum*.fits.gz"))
 
-    print("Checking which raw files need to be calibrated...")
+    print("Checking which raw files need to be calibrated (this may take a while)...")
     to_calibrate = needs_processing(zipped_raws)    
     
     # Loop through files and calibrate in chunks of 300? to 
