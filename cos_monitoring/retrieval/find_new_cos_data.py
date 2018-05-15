@@ -573,7 +573,6 @@ def find_missing_in_cache(missing_dict, cache_a, cos_cache):
     total_copied = 0
     start_missing = len(missing_dict.keys()) 
     to_copy_d = {}
-    print("There are {} missing programs".format(len(missing_dict)))
     for key in list(missing_dict):
         missing_files = missing_dict[key]
         missing_in_cache = list(set(missing_files) & set(cache_a))
@@ -602,7 +601,7 @@ def find_missing_in_cache(missing_dict, cache_a, cos_cache):
         
     end_missing = len(missing_dict.keys()) 
     
-    print("\tCopying {} total roots from cache, {} complete PIDs".format(
+    print("Copying {} total roots from cache, {} complete PIDs".format(
           total_copied, start_missing-end_missing))
 
     return missing_dict, to_copy_d
@@ -612,14 +611,15 @@ def find_missing_in_cache(missing_dict, cache_a, cos_cache):
 def copy_from_cache(to_copy):
     for pid, cache_files in to_copy.items():
         dest = os.path.join(BASE_DIR, str(pid))
-        print("Copying {} files into {}".format(len(cache_files), dest))
+        print("\tCopying {} files from cache into {}".format(len(cache_files), dest))
         if not os.path.isdir(dest):
             os.mkdir(dest)
 
         # By importing pyfastcopy, shutil performance is automatically
         # enhanced
         compress_dest = dest
-        compress_files(cache_files, outdir=compress_dest, remove_orig=False, verbose=True)
+        compress_files(cache_files, outdir=compress_dest, remove_orig=False, 
+                       verbose=False)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
