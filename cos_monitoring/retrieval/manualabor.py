@@ -812,10 +812,11 @@ def copy_outdirs():
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-def gzip_files(prl=True)
+def gzip_files(prl=True):
     # Get a list of all unzipped files and zip them.
     unzipped = glob.glob(os.path.join(BASE_DIR, "*", "*fits"))
-    print("Zipping {0} unzipped file(s)...".format(len(unzipped)))                                     if unzipped:
+    print("Zipping {0} unzipped file(s)...".format(len(unzipped)))
+    if unzipped:
         if prl:
             parallelize(compress_files, unzipped)
         else:
