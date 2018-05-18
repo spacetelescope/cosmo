@@ -21,10 +21,10 @@ import argparse
 import stat
 
 from .dec_calcos import clobber_calcos_csumgz
-from .hack_chmod import chmod
 from .retrieval_info import BASE_DIR, CACHE
 from .manualabor import (handle_nullfiles, gzip_files, get_unprocessed_data, 
-    parallelize, copy_outdirs, remove_outdirs) 
+    parallelize, copy_outdirs, remove_outdirs, timefunc) 
+from .set_permissions import set_user_permissions, set_grpid
 
 PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 PERM_872 = stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
@@ -79,7 +79,7 @@ def make_csum(unzipped_raws):
 #------------------------------------------------------------------------------#
 
 @timefunc
-def calibrate_data(prl=True, do_chmod=False):
+def calibrate_data(prl=True, do_chmod=True):
     '''
     Run all the functions in the correct order.
 
@@ -98,8 +98,7 @@ def calibrate_data(prl=True, do_chmod=False):
     # First, change permissions of the base directory so we can modify files.
     print("Beginning calibration procedures at {}...\n".format(datetime.datetime.now()))
     if do_chmod: 
-        print("Opening permissions of {0}..".format(BASE_DIR))
-        chmod(BASE_DIR, PERM_755, None, True)
+        set_user_permissions(PERM_755, prl=prl)
 
     # Delete any files with program ID = NULL that are not COS files.
     nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*")) 
@@ -133,12 +132,11 @@ def calibrate_data(prl=True, do_chmod=False):
     # and delete if present. 
     remove_outdirs()
 
-    # Change permissions back to protect data.
-    if do_chmod:
-        print("Closing permissions of {0}..".format(BASE_DIR))
-        chmod(BASE_DIR, PERM_872, None, True)
-        print("Changing group permissions of {0}...".format(BASE_DIR))
-        chgrp(BASE_DIR)
+    # Change permissions back to protect data, and change group ID based on 
+    # proprietary status.
+    if do_chmod: 
+        set_user_permissions(PERM_872, prl=prl)
+        set_grpid(prl=prl)
 
     print("\nFinished at {0}.".format(datetime.datetime.now()))
 
