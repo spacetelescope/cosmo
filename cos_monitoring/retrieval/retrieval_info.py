@@ -1,3 +1,3 @@
-BASE_DIR = "/grp/hst/cos2/smov_testing"
+BASE_DIR = "/grp/hst/cos2/cosmo"
 CACHE = "/ifs/archive/ops/hst/public"
 TESTMODE = False
