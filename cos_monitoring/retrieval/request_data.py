@@ -31,7 +31,6 @@ try:
 except ImportError:
     from httplib import HTTPSConnection
 
-from .manualabor import work_laboriously
 from .SignStsciRequest import SignStsciRequest
 from .logging_dec import log_function
 from .retrieval_info import BASE_DIR, CACHE
