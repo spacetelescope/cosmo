@@ -16,7 +16,7 @@ __date__ = "04-13-2016"
 __maintainer__ = "Jo Taylor"
 __email__ = "jotaylor@stsci.edu"
 
-import datetime
+from datetime import datetime as dt
 import urllib
 import time
 import pickle
@@ -28,7 +28,8 @@ import pyfastcopy
 import shutil
 import numpy as np
 from subprocess import Popen, PIPE
-
+from collections import defaultdict
+ 
 from ..database.db_tables import load_connection
 from .manualabor import parallelize, combine_2dicts, compress_files, timefunc
 from .retrieval_info import BASE_DIR, CACHE
@@ -109,7 +110,7 @@ def get_all_mast_data():
     "AND ads_best_version='Y' and ads_archive_class!='EDT'\ngo"
 
     # Now expand on the previous queries by only selecting non-propietary data.
-    utc_dt = datetime.datetime.utcnow()
+    utc_dt = dt.utcnow()
     utc_str = utc_dt.strftime("%b %d %Y %I:%M:%S%p")
     query0_pub = query0.split("\ngo")[0] + " and ads_release_date<='{0}'\ngo".format(utc_str)
     query1_pub = query1.split("\ngo")[0] + " and ads_release_date<='{0}'\ngo".format(utc_str)
@@ -185,7 +186,7 @@ def find_missing_exts(existing, existing_root):
         " AND ads_generation_date= afi_generation_date"\
         " AND ads_archive_class=afi_archive_class"\
         " AND ads_archive_class IN ('cal','asn')"\
-        " AND ads_data_set_name in {0}\ngo".format(tuple(chunk))
+        " AND ads_data_set_name IN {0}\ngo".format(tuple(chunk))
    
         filenames = janky_connect(query)
         expected_files_d = _sql_to_dict(filenames)
@@ -319,7 +320,7 @@ def janky_connect(query_string, database=None):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def tally_cs():
+def tally_cs(mydir=BASE_DIR, uniq_roots=True):
     """
     For testing purposes, tabulate all files in central store 
     (/grp/hst/cos2/smov_testing/) and request all missing datasets.
@@ -334,15 +335,18 @@ def tally_cs():
             A list of all fits files in BASE_DIR
     """
 
-    print ("Checking {0} for existing data...".format(BASE_DIR))
-    allsmov = glob.glob(os.path.join(BASE_DIR, "*", "*fits*"))
-    smovfiles = [os.path.basename(x).split("_cci")[0].upper() if "cci" in x 
-                 else os.path.basename(x).split("_")[0].upper() 
-                 for x in allsmov]
+    print ("Checking {0} for existing data...".format(mydir))
+    allsmov = glob.glob(os.path.join(mydir, "*", "*fits*"))
+    smovfilenames = [os.path.basename(x) for x in allsmov]
+    smovroots = [x.split("_cci")[0].upper() if "cci" in x 
+                 else x.split("_")[0].upper() 
+                 for x in smovfilenames]
     
-    smovroots = list(set(smovfiles))
+    if uniq_roots:
+        return allsmov, smovfilenames, list(set(smovfiles))
+    else:
+        return allsmov, smovfilenames, smovroots
 
-    return allsmov, smovroots
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -366,7 +370,7 @@ def find_missing_data(use_cs):
     """
 
     if use_cs:
-        existing, existing_root = tally_cs()
+        existing, existing_filenames, existing_root = tally_cs()
     else:
         existing_root = connect_cosdb()
 
@@ -692,6 +696,83 @@ def copy_entire_cache(cos_cache):
         dest = os.path.join(BASE_DIR, proposid, filename)
         # By importing pyfastcopy, shutil performance is automatically enhanced
         shutil.copyfile(item, dest)
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+def check_proprietary_status(rootnames):
+    '''
+    Given a series of rootnames, sort them by PID and proprietary status:
+    65545 for proprietary (gid for STSCI/cosgo group) and 6045 
+    (6045 # gid for STSCI/cosstis group) for public.
+
+    Parameters:
+    -----------
+        rootnames : array-like
+            Rootnames to query. 
+
+    Returns:
+    --------
+        release_dates : dict
+            A dictionary whose keys are 65545 for proprietary data, or
+            6045 for public data and whose values are dictionaries
+            ordered by PID and values are rootnames.
+    '''
+    chunksize = 10000
+    chunks = [rootnames[i:i+chunksize] for i in range(0, len(rootnames), chunksize)]
+    priv_id = 65545
+    pub_id = 6045
+
+    sql_results = []
+    for chunk in chunks:
+#        query = "SELECT DISTINCT afi_file_name, ads_release_date, ads_pep_id "\
+#        "FROM archive_files,archive_data_set_all "\
+#        "WHERE ads_data_set_name=afi_data_set_name "\
+#        "AND ads_best_version='Y' "\
+#        "AND ads_archive_class IN ('cal', 'asn') "\
+#        "AND ads_data_set_name IN {}\ngo".format(tuple(chunk))
+        query = "SELECT DISTINCT ads_data_set_name, ads_release_date, ads_pep_id "\
+        "FROM archive_data_set_all "\
+        "WHERE ads_best_version='Y' "\
+        "AND ads_archive_class IN ('cal', 'asn') "\
+        "AND ads_data_set_name IN {}\ngo".format(tuple(chunk))
+
+        results = janky_connect(query)
+        sql_results += results
+
+    print("Query finished.")
+    utc_dt = dt.utcnow()
+    utc_str = utc_dt.strftime("%b %d %Y %I:%M:%S%p")
+    
+    propr_status = []
+    filenames = []
+    for row in sql_results:
+        file_dt = dt.strptime(row[1], "%b %d %Y %I:%M:%S:%f%p")
+        if file_dt <= utc_dt:
+            propr_status.append(pub_id)
+        else:
+            propr_status.append(ppriv_idd)
+        filenames.append(row[0])
+    
+    return propr_status, filenames
+
+#    propr_status = {priv_id: [], pub_id: []}
+#    for row in sql_results:
+#        file_dt = dt.strptime(row[1], "%b %d %Y %I:%M:%S:%f%p")
+#        if file_dt <= utc_dt:
+#            propr_status[pub_id] += glob.glob(os.path.join(BASE_DIR, row[2], row[0].lower()+"*"))
+#        else:
+#            propr_status[priv_id] += glob.glob(os.path.join(BASE_DIR, row[2], row[0].lower()+"*"))
+
+#    release_dates = {priv_id: defaultdict(list), pub_id: defaultdict(list)}
+#    for row in sql_results:
+#        file_dt = dt.strptime(row[1], "%b %d %Y %I:%M:%S:%f%p")
+#        if file_dt <= utc_dt:
+#            release_dates[pub_id][int(row[2])].append(row[0])
+#        else:
+#            release_dates[priv_id][int(row[2])].append(row[0]) 
+#    return release_dates
+    
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
