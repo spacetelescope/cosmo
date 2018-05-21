@@ -36,6 +36,7 @@ from collections import defaultdict
 from functools import partial
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from itertools import islice
 
 from .ProgramGroups import *
 from .dec_calcos import clobber_calcos_csumgz
@@ -344,7 +345,7 @@ def compress_files(uz_files, outdir=None, remove_orig=True, verbose=False):
     --------
         Nothing
     '''
-
+    
     if isinstance(uz_files, str):
         uz_files = [uz_files]
     
@@ -389,8 +390,12 @@ def uncompress_files(z_files):
         Nothing
     '''
 
+    if isinstance(z_files, str):
+        z_files = [z_files]
+
     for z_item in z_files:
         uz_item = z_item.split(".gz")[0]
+        print("Uncompressing {} -> {}".format(z_item, uz_item))
         with gzip.open(z_item, "rb") as f_in, open(uz_item, "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
             print("Uncompressing {} -> {}".format(z_item, uz_item))
@@ -479,8 +484,72 @@ def check_usage(playnice=True):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
+def chunkify_d(d, chunksize):
+    it = iter(d)
+    chunks = []
+    for i in range(0, len(d), chunksize):
+        chunks.append({k:d[k] for k in islice(it, chunksize)})
+    
+    return chunks
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+def smart_chunks(nelems, nprocs):
+    if nelems <= 10*nprocs:
+        chunksize = math.floor(nelems/nprocs)
+    elif 10*nprocs < nelems <= 1000*nprocs:
+        chunksize = 10
+    else:
+        chunksize = 100
+
+    return chunksize
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
 @timefunc
-def parallelize_new(func, iterable, nprocs, *args, **kwargs):
+def parallelize(func, iterable, chunksize, nprocs, *args, **kwargs):
+    if nprocs == "check_usage":
+        nprocs = check_usage()
+
+    if chunksize == "smart":
+        chunksize = smart_chunks(len(iterable), nprocs)
+    
+    if type(iterable) is dict:
+        isdict = True 
+        chunks = chunkify_d(iterable, chunksize)
+    else:
+        isdict = False
+        chunks = [iterable[i:i+chunksize] for i in range(0, len(iterable), chunksize)]
+    print("Using chunksize={} for len()={}".format(chunksize, len(iterable)))
+    func_args = [(x,)+args for x in chunks]
+
+    funcout = None
+    import pdb
+    pdb.set_trace()
+    if len(iterable) == 0:
+        return funcout
+
+    with Pool(processes=nprocs) as pool:
+        print("Starting the Pool with {} processes...".format(nprocs))
+        results = [pool.apply_async(func, fargs, kwargs) for fargs in func_args]
+
+        if results[0].get() is not None:
+            if isdict:
+                funcout = {}
+                for d in results:
+                    funcout.update(d.get())
+            else:
+                funcout = [item for innerlist in results for item in innerlist.get()]
+    
+    return funcout
+
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
+@timefunc
+def parallelize_joe(func, iterable, nprocs, *args, **kwargs):
     if nprocs == None:
         nprocs = check_usage()
 
@@ -616,8 +685,11 @@ def parallelize_queue(func, iterable, funcargs=None, nprocs="check_usage",
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
+#------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+
 @timefunc
-def parallelize(myfunc, mylist, check_usage=True):
+def parallelize_orig(myfunc, mylist, check_usage=True):
     '''
     Parallelize a function. Be a good samaritan and CHECK the current usage
     of resources before determining number of processes to use. If usage
