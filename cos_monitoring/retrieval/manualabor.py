@@ -373,6 +373,8 @@ def compress_files(uz_files, outdir=None, remove_orig=True, verbose=False):
             else:
                 print("Something went terribly wrong zipping {}".format(uz_files[i]))
 
+    return uz_files
+
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 

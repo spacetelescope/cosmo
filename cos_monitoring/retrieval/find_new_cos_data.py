@@ -625,6 +625,8 @@ def copy_from_cache(to_copy):
         compress_files(cache_files, outdir=compress_dest, remove_orig=False, 
                        verbose=False)
 
+    return to_copy
+
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
