@@ -668,9 +668,7 @@ def copy_cache(missing_data, missing_exts=None, prl=True):
         still_missing = missing_data
 
     if to_copy:
-#        parallelize(copy_from_cache, to_copy)
-        copy_from_cache(to_copy)
-        copy_from_cache(to_copy)
+        parallelize(copy_from_cache, to_copy)
 
     return still_missing
 
