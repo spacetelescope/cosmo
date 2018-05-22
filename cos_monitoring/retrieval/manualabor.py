@@ -546,7 +546,7 @@ def parallelize(chunksize, nprocs, func, iterable, *args, **kwargs):
                 funcout = [item for innerlist in results for item in innerlist.get()]
     
     t2 = datetime.datetime.now()
-    print("parallelize({}) executed in {}".format(func.__name__, t2-t1))
+    print("\tparallelize({}) executed in {}".format(func.__name__, t2-t1))
 
     return funcout
 

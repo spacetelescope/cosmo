@@ -32,7 +32,6 @@ except ImportError:
     from httplib import HTTPSConnection
 
 from .SignStsciRequest import SignStsciRequest
-from .logging_dec import log_function
 from .retrieval_info import BASE_DIR, CACHE
 
 MAX_RETRIEVAL = 20
@@ -62,7 +61,6 @@ REQUEST_TEMPLATE = string.Template('\
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-#@log_function
 def build_xml_request(dest_dir, datasets):
     '''
     Build the xml request string.
@@ -104,7 +102,6 @@ def build_xml_request(dest_dir, datasets):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-#@log_function
 def submit_xml_request(xml_file):
     '''
     Submit the xml request to MAST.
@@ -139,7 +136,6 @@ def submit_xml_request(xml_file):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-#@log_function
 def retrieve_data(dest_dir, datasets):
     '''
     For a given list of datasets, submit an xml request to MAST
@@ -173,11 +169,9 @@ def retrieve_data(dest_dir, datasets):
             tracking_ids.append(tmp_id)
         # If you can't get a ID, MAST is most likely down. 
         except AttributeError:
-            import pdb
-            pdb.set_trace()
-            print("Something is wrong on the MAST side...")
-            print("Unsuccessful request for {0}".format(item))
-            print("Continuing to next dataset.")
+            print("\tSomething is wrong on the MAST side...")
+            print("\tUnsuccessful request for {} {}".format(dest_dir,item))
+            print("\tIgnoring this request and continuing to next.")
             pass 
     
     return tracking_ids
@@ -185,7 +179,6 @@ def retrieve_data(dest_dir, datasets):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-#@log_function
 def check_id_status(tracking_id):
     '''
     Check every 15 minutes to see if all submitted datasets have been
@@ -233,7 +226,6 @@ def check_id_status(tracking_id):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-#@log_function
 def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
     '''
     For a given proposal, determine path to put data.
@@ -262,7 +254,7 @@ def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
         os.chmod(BASE_DIR, PERM_755)
         os.mkdir(prop_dir)
     os.chmod(prop_dir, PERM_755)
-    print("I am retrieving {0} association(s) for {1}".format(len(prop_dict[prop]),prop))
+    print("Requesting {0} association(s) for {1}".format(len(prop_dict[prop]),prop))
     ind_id = retrieve_data(prop_dir, prop_dict[prop])
     for item in ind_id:
         all_tracking_ids_tmp.append(item)
@@ -306,7 +298,6 @@ def check_data_retrieval(all_tracking_ids):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-#@log_function
 def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True, do_chmod=False):
     '''
     Open the pickle file containing a dictionary of all missing COS data
