@@ -59,7 +59,7 @@ def make_csum(unzipped_raws):
             except FileExistsError:
                 pass
         try:
-            run_calcos(item, outdir=outdirec, #verbosity=0,
+            run_calcos(item, outdir=outdirec, verbosity=0,
                        create_csum_image=True, only_csum=True,
                        compress_csum=False)
         except Exception as e:
@@ -109,7 +109,7 @@ def calibrate_data(prl=True, do_chmod=True):
 
     # Get list of files that need to be processed.
     to_calibrate = get_unprocessed_data(prl)
-
+    
     # If there are files to calibrate, create csums for them.
     if to_calibrate:
         print("There are {0} file(s) to calibrate, beginning now.".format(len(to_calibrate)))
