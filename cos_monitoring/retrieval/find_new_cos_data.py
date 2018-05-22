@@ -374,7 +374,7 @@ def find_missing_data(use_cs):
     else:
         existing_root = connect_cosdb()
 
-    print("Checking to see if there is any missing COS data...")
+    print("Checking to see if there are any missing COS data...")
     missing_exts = find_missing_exts(existing, existing_root)
 
     mast_priv, mast_pub = get_all_mast_data()
@@ -822,9 +822,12 @@ def find_new_cos_data(pkl_it, pkl_file, use_cs=False, prl=True):
                     all_missing_data[k] = v
         else:
             all_missing_data = missing_data_priv
-    else:
+    elif missing_data_priv:
         print("All missing data are proprietary.")
         all_missing_data = missing_data_priv
+    else:
+        print("There are no missing data.")
+        all_missing_data = {}
         
 # Not utilized for the moment, see Issue #22 on github.
 #    ensure_no_pending()
