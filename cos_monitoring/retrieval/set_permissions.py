@@ -35,7 +35,7 @@ def set_user_permissions(perm, mydir=BASE_DIR, prl=True):
     all_files_dirs = glob.glob(os.path.join(mydir, "*")) + \
                      glob.glob(os.path.join(mydir, "*", "*"))
     if prl:
-        parallelize(chmod, all_files_dirs, perm)
+        parallelize("smart", "check_usage", chmod, all_files_dirs, perm)
     else:
         chmod(all_files_dirs, perm)
 
@@ -72,7 +72,7 @@ def set_grpid(mydir=BASE_DIR, prl=True):
             propr_status.append(pub_id)
 
     if prl:
-        parallelize(chgrp, existing, propr_status)
+        parallelize("smart", "check_usage", chgrp, existing, propr_status)
     else:
         chgrp(existing, propr_status)
 
