@@ -543,7 +543,6 @@ def ensure_no_pending():
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-@timefunc
 def tabulate_cache():
     """
     Determine all the datasets that are currently in the COS central store 
@@ -561,7 +560,7 @@ def tabulate_cache():
             The rootname of every datset in the cache. 
     """
     
-    print("Tabulating list of all cache COS datasets (this may take several minutes)...")
+    print("\tTabulating list of all cache COS datasets (this may take several minutes)...")
     cos_cache = glob.glob(os.path.join(CACHE, "l*/l*/*fits*"))
     cache_filenames = [os.path.basename(x) for x in cos_cache]
     cache_roots = [x[:9].upper() for x in cache_filenames]
@@ -571,7 +570,6 @@ def tabulate_cache():
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-@timefunc
 def find_missing_in_cache(missing_dict, cache_a, cos_cache):
     total_copied = 0
     start_missing = len(missing_dict.keys()) 
@@ -604,7 +602,7 @@ def find_missing_in_cache(missing_dict, cache_a, cos_cache):
         
     end_missing = len(missing_dict.keys()) 
     
-    print("\tCopying {} total roots from cache, {} complete PIDs".format(
+    print("\tCopying {} total root(s) from cache, {} complete PID(s)".format(
           total_copied, start_missing-end_missing))
 
     return missing_dict, to_copy_d
@@ -614,7 +612,7 @@ def find_missing_in_cache(missing_dict, cache_a, cos_cache):
 def copy_from_cache(to_copy):
     for pid, cache_files in to_copy.items():
         dest = os.path.join(BASE_DIR, str(pid))
-        print("\tCopying {} files from cache into {}".format(len(cache_files), dest))
+        print("\tCopying {} file(s) from cache into {}".format(len(cache_files), dest))
         if not os.path.isdir(dest):
             os.mkdir(dest)
 
@@ -724,12 +722,6 @@ def check_proprietary_status(rootnames):
 
     sql_results = []
     for chunk in chunks:
-#        query = "SELECT DISTINCT afi_file_name, ads_release_date, ads_pep_id "\
-#        "FROM archive_files,archive_data_set_all "\
-#        "WHERE ads_data_set_name=afi_data_set_name "\
-#        "AND ads_best_version='Y' "\
-#        "AND ads_archive_class IN ('cal', 'asn') "\
-#        "AND ads_data_set_name IN {}\ngo".format(tuple(chunk))
         query = "SELECT DISTINCT ads_data_set_name, ads_release_date, ads_pep_id "\
         "FROM archive_data_set_all "\
         "WHERE ads_best_version='Y' "\
@@ -755,27 +747,10 @@ def check_proprietary_status(rootnames):
     
     return propr_status, filenames
 
-#    propr_status = {priv_id: [], pub_id: []}
-#    for row in sql_results:
-#        file_dt = dt.strptime(row[1], "%b %d %Y %I:%M:%S:%f%p")
-#        if file_dt <= utc_dt:
-#            propr_status[pub_id] += glob.glob(os.path.join(BASE_DIR, row[2], row[0].lower()+"*"))
-#        else:
-#            propr_status[priv_id] += glob.glob(os.path.join(BASE_DIR, row[2], row[0].lower()+"*"))
-
-#    release_dates = {priv_id: defaultdict(list), pub_id: defaultdict(list)}
-#    for row in sql_results:
-#        file_dt = dt.strptime(row[1], "%b %d %Y %I:%M:%S:%f%p")
-#        if file_dt <= utc_dt:
-#            release_dates[pub_id][int(row[2])].append(row[0])
-#        else:
-#            release_dates[priv_id][int(row[2])].append(row[0]) 
-#    return release_dates
-    
-
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
+@timefunc
 def find_new_cos_data(pkl_it, pkl_file, use_cs=False, prl=True):
     """
     Workhorse function, determine what data already exist on disk/in the 
