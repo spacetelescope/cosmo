@@ -59,7 +59,7 @@ def make_csum(unzipped_raws):
             except FileExistsError:
                 pass
         try:
-            run_calcos(item, outdir=outdirec, verbosity=0,
+            run_calcos(item, outdir=outdirec, #verbosity=0,
                        create_csum_image=True, only_csum=True,
                        compress_csum=False)
         except Exception as e:
@@ -74,6 +74,8 @@ def make_csum(unzipped_raws):
             else:
                 print(e)
                 pass
+
+    return unzipped_raws
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -96,29 +98,25 @@ def calibrate_data(prl=True, do_chmod=True):
     remove_outdirs()
 
     # First, change permissions of the base directory so we can modify files.
-    print("Beginning calibration procedures at {}...\n".format(datetime.datetime.now()))
     if do_chmod: 
         set_user_permissions(PERM_755, prl=prl)
 
     # Delete any files with program ID = NULL that are not COS files.
-    nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*")) 
-    if nullfiles:
-        print("Handling {0} NULL datasets...".format(len(nullfiles)))
-        handle_nullfiles(nullfiles) 
+    handle_nullfiles() 
+    
     # Zip any unzipped files, if they exist.
     gzip_files(prl)
 
     # Get list of files that need to be processed.
-    to_calibrate = get_unprocessed_data()
+    to_calibrate = get_unprocessed_data(prl)
 
     # If there are files to calibrate, create csums for them.
     if to_calibrate:
         print("There are {0} file(s) to calibrate, beginning now.".format(len(to_calibrate)))
         if prl:
-            parallelize(make_csum, to_calibrate)
+            parallelize("smart", "check_usage", make_csum, to_calibrate)
         else:
             make_csum(to_calibrate)
-        num_files += max_files
     
     # Output csums are put in temporary output directories to avoid overwriting
     # intermediate products. Copy only the csums from these directories into 
