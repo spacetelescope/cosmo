@@ -20,7 +20,7 @@ import os
 import glob
 import shutil
 import gzip
-from astropy.io import fits as pf
+from astropy.io import fits
 import calcos
 import smtplib
 import multiprocessing as mp
@@ -137,7 +137,6 @@ def unzip_mistakes(zipped):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@timefunc
 def needs_processing(zipped):
     if isinstance(zipped, str):
         zipped = [zipped]
@@ -296,14 +295,14 @@ def csum_existence(filename):
     # If getting one header keyword, getval is faster than opening.
     # The more you know.
     try:
-        exptime = pf.getval(filename, "exptime", 1)
+        exptime = fits.getval(filename, "exptime", 1)
         if exptime == 0:
             return False, False
     except:
         pass
 
     try:
-        exptype = pf.getval(filename, "exptype")
+        exptype = fits.getval(filename, "exptype")
     except KeyError: #EXPTYPE = None
         return False, False 
     except Exception as e:
@@ -499,7 +498,7 @@ def chunkify_d(d, chunksize):
 
 def smart_chunks(nelems, nprocs):
     if nelems <= 10*nprocs:
-        chunksize = math.floor(nelems/nprocs)
+        chunksize = math.ceil(nelems/nprocs)
     elif 10*nprocs < nelems <= 1000*nprocs:
         chunksize = 10
     else:
@@ -510,31 +509,31 @@ def smart_chunks(nelems, nprocs):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-@timefunc
-def parallelize(func, iterable, chunksize, nprocs, *args, **kwargs):
+def parallelize(chunksize, nprocs, func, iterable, *args, **kwargs):
+    t1 = datetime.datetime.now()
+        
+    if len(iterable) == 0:
+        return funcout
+    
     if nprocs == "check_usage":
         nprocs = check_usage()
 
     if chunksize == "smart":
         chunksize = smart_chunks(len(iterable), nprocs)
     
-    if type(iterable) is dict:
+    if isinstance(iterable, dict):
         isdict = True 
         chunks = chunkify_d(iterable, chunksize)
     else:
         isdict = False
         chunks = [iterable[i:i+chunksize] for i in range(0, len(iterable), chunksize)]
-    print("Using chunksize={} for len()={}".format(chunksize, len(iterable)))
+    
     func_args = [(x,)+args for x in chunks]
 
     funcout = None
-    import pdb
-    pdb.set_trace()
-    if len(iterable) == 0:
-        return funcout
 
     with Pool(processes=nprocs) as pool:
-        print("Starting the Pool with {} processes...".format(nprocs))
+#        print("Starting the Pool for {} with {} processes...".format(func, nprocs))
         results = [pool.apply_async(func, fargs, kwargs) for fargs in func_args]
 
         if results[0].get() is not None:
@@ -545,6 +544,9 @@ def parallelize(func, iterable, chunksize, nprocs, *args, **kwargs):
             else:
                 funcout = [item for innerlist in results for item in innerlist.get()]
     
+    t2 = datetime.datetime.now()
+    print("parallelize({}) executed in {}".format(func, t2-t1))
+
     return funcout
 
 #------------------------------------------------------------------------------#
@@ -775,7 +777,7 @@ def check_disk_space():
         else:
             print("Zipping csums to save space...")
             if prl:
-                parallelize(compress_files, unzipped_csums)
+                parallelize("smart", "check_usage", compress_files, unzipped_csums)
             else:
                 compress_files(unzipped_csums)
 
@@ -813,7 +815,7 @@ def only_one_seg(uz_files):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-def handle_nullfiles(nullfiles):
+def handle_nullfiles():
     '''
     It can be difficult to tell if all files found by find_new_cos_data with
     program ID 'NULL' are actually COS files (e.g. reference files that start
@@ -830,8 +832,14 @@ def handle_nullfiles(nullfiles):
         None
     '''
 
+    nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*"))
+    if len(nullfiles) == 0:
+        return 
+    else:
+        print("Handling {0} NULL datasets...".format(len(nullfiles)))
+
     for item in nullfiles:
-        with pf.open(item) as hdulist:
+        with fits.open(item) as hdulist:
             hdr0 = hdulist[0].header
         try:
             instrument = hdr0["instrume"]
@@ -872,7 +880,10 @@ def remove_outdirs():
     tmp_dirs = glob.glob(os.path.join(BASE_DIR, "*", CSUM_DIR))
     if tmp_dirs:
         for bad_dir in tmp_dirs:
-            shutil.rmtree(bad_dir)
+            try:
+                shutil.rmtree(bad_dir)
+            except OSError:
+                pass
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -892,14 +903,14 @@ def gzip_files(prl=True):
     print("Zipping {0} unzipped file(s)...".format(len(unzipped)))
     if unzipped:
         if prl:
-            parallelize(compress_files, unzipped)
+            parallelize("smart", "check_usage", compress_files, unzipped)
         else:
             compress_files(unzipped)
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-def get_unprocessed_data():
+def get_unprocessed_data(prl=True):
     # When calibrating zipped raw files, you need to calibrate both segments 
     # separately since calcos can't find the original 
     zipped_raws = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*fits.gz")) + \
@@ -907,7 +918,11 @@ def get_unprocessed_data():
                   glob.glob(os.path.join(BASE_DIR, "*", "*rawaccum*.fits.gz"))
 
     print("Checking which raw files need to be calibrated (this may take a while)...")
-    to_calibrate = needs_processing(zipped_raws)
+    if zipped_raws:
+        if prl:
+            to_calibrate = parallelize("smart", "check_usage", needs_processing, zipped_raws)
+        else:
+            to_calibrate = needs_processing(zipped_raws)
 
     return to_calibrate
 
