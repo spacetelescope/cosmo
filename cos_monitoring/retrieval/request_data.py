@@ -335,12 +335,14 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True, do_chmod=False):
     if pkl_file:
         prop_dict = pickle.load(open(pkl_file, "rb"))
     prop_dict_keys = prop_dict.keys()
+    if len(prop_dict_keys) == 0:
+        return
+
     pstart = 0
     pend = 20 # should be 10
     int_num = 10 # should be 5
     century = 3000 # should be 50
     all_tracking_ids = []
-    end_msg = "\nAll data from {0} programs were successfully delivered."
     # If less than pend programs were requested, do not enter while loop.
     if pend > len(prop_dict_keys):
         for prop in prop_dict_keys:
@@ -354,8 +356,6 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True, do_chmod=False):
                 print("Data not yet delivered for {0}. Checking again in " 
                       "5 minutes".format(not_yet_retrieved))
                 time.sleep(350)
-        else:
-            print(end_msg.format(len(prop_dict_keys)))
     
     # While the number of processed programs is less than total programs
     while pend < len(prop_dict_keys): 
@@ -408,9 +408,8 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True, do_chmod=False):
         if (len(prop_dict_keys) - (pend-int_num)) > 0:
             for prop in list(prop_dict_keys)[pend-int_num:]:
                 all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
-            print(end_msg.format(len(prop_dict_keys)))
-        else:
-            print(end_msg.format(len(prop_dict_keys)))
+
+    print("All data from {} programs were successfully delivered.".format(len(prop_dict_keys)))
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
