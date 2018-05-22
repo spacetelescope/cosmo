@@ -309,8 +309,9 @@ def csum_existence(filename):
         if type(e).__name__ == "IOError" and \
            e.args[0] == "Empty or corrupt FITS file":
             return False, True
-    
-    if exptype != "ACQ/PEAKD" and exptype != "ACQ/PEAKXD":
+
+    bad_exptypes = ["ACQ/PEAKD", "ACQ/PEAKXD", "ACQ/SEARCH"] 
+    if exptype not in bad_exptypes: 
         if "_a.fits" in filename:
             csums = glob.glob(os.path.join(dirname, rootname+"*csum_a*"))
         elif "_b.fits" in filename:
@@ -545,7 +546,7 @@ def parallelize(chunksize, nprocs, func, iterable, *args, **kwargs):
                 funcout = [item for innerlist in results for item in innerlist.get()]
     
     t2 = datetime.datetime.now()
-    print("parallelize({}) executed in {}".format(func, t2-t1))
+    print("parallelize({}) executed in {}".format(func.__name__, t2-t1))
 
     return funcout
 
@@ -900,8 +901,8 @@ def copy_outdirs():
 def gzip_files(prl=True):
     # Get a list of all unzipped files and zip them.
     unzipped = glob.glob(os.path.join(BASE_DIR, "*", "*fits"))
-    print("Zipping {0} unzipped file(s)...".format(len(unzipped)))
     if unzipped:
+        print("Zipping {0} unzipped file(s)...".format(len(unzipped)))
         if prl:
             parallelize("smart", "check_usage", compress_files, unzipped)
         else:
