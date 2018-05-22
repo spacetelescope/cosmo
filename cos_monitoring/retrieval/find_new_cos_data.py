@@ -343,7 +343,7 @@ def tally_cs(mydir=BASE_DIR, uniq_roots=True):
                  for x in smovfilenames]
     
     if uniq_roots:
-        return allsmov, smovfilenames, list(set(smovfiles))
+        return allsmov, smovfilenames, list(set(smovroots))
     else:
         return allsmov, smovfilenames, smovroots
 
@@ -374,7 +374,7 @@ def find_missing_data(use_cs):
     else:
         existing_root = connect_cosdb()
 
-    print("Checking to see if any missing COS data...")
+    print("Checking to see if there is any missing COS data...")
     missing_exts = find_missing_exts(existing, existing_root)
 
     mast_priv, mast_pub = get_all_mast_data()
@@ -457,7 +457,6 @@ def pickle_missing(missing_data, pkl_file=None):
         Nothing
     """
    
-    print("Data missing for {0} programs".format(len(missing_data.keys())))
     if not pkl_file:
         pkl_file = "filestoretrieve.p"
     pickle.dump(missing_data, open(pkl_file, "wb"))
@@ -605,7 +604,7 @@ def find_missing_in_cache(missing_dict, cache_a, cos_cache):
         
     end_missing = len(missing_dict.keys()) 
     
-    print("Copying {} total roots from cache, {} complete PIDs".format(
+    print("\tCopying {} total roots from cache, {} complete PIDs".format(
           total_copied, start_missing-end_missing))
 
     return missing_dict, to_copy_d
@@ -670,7 +669,7 @@ def copy_cache(missing_data, missing_exts=None, prl=True):
         still_missing = missing_data
 
     if to_copy:
-        parallelize(copy_from_cache, to_copy)
+        parallelize("smart", "check_usage", copy_from_cache, to_copy)
 
     return still_missing
 
@@ -802,13 +801,14 @@ def find_new_cos_data(pkl_it, pkl_file, use_cs=False, prl=True):
             where each key is a PID and the value is a list of all missing 
             datasets for that PID.
     """
-
+    print("*"*72)
     missing_data_priv, missing_data_pub, missing_exts = find_missing_data(use_cs)
-    print("\t{} proprietary programs missing\n\t{} public programs missing".format(
-          len(missing_data_priv.keys()), len(missing_data_pub.keys())))
+    print("\t{} proprietary program(s) missing: {}\n\t{} public program(s) missing: {}".format(
+          len(missing_data_priv.keys()), list(missing_data_priv.keys()), 
+          len(missing_data_pub.keys()), list(missing_data_pub.keys()) ))
     
     if missing_data_pub:
-        print("Checking to see if any missing data in local cache...")
+        print("Checking to see if any missing public data is in local cache...")
         missing_data_pub_rem = copy_cache(missing_data_pub, missing_exts)
         # Some nonstandard data isn't stored in the cache (e.g. MMD), so
         # check if any other public data needs to be retrieved.
@@ -820,6 +820,8 @@ def find_new_cos_data(pkl_it, pkl_file, use_cs=False, prl=True):
                                                set(v))
                 else:
                     all_missing_data[k] = v
+        else:
+            all_missing_data = missing_data_priv
     else:
         print("All missing data are proprietary.")
         all_missing_data = missing_data_priv
