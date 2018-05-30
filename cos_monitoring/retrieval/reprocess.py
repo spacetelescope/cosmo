@@ -9,7 +9,7 @@ import yaml
 import os
 import pdb
 
-from .find_new_cos_data import janky_connect
+from .find_new_cos_data import janky_connect, copy_cache
 from .request_data import run_all_retrievals
 
 #-----------------------------------------------------------------------------#
@@ -204,6 +204,8 @@ if __name__ == "__main__":
                         default=False, help="Switch to arallellize manualabor")
     parser.add_argument("--labor", dest="run_labor", action="store_true",
                         default=False, help="Switch to run manualabor")
+    parser.add_argument("--chmod", dest="do_chmod", action="store_true",
+                        default=True, help="Switch to turn on chmod")
     args = parser.parse_args()
 
     data = parse_input(args.data)
@@ -229,4 +231,5 @@ if __name__ == "__main__":
     for key in to_retrieve.keys():
         prop_dict[to_retrieve[key]].append(key)
 
-    run_all_retrievals(prop_dict=prop_dict, pkl_file=None, run_labor=args.run_labor, prl=args.prl)
+    copy_cache(prop_dict, args.prl, args.do_chmod)
+    run_all_retrievals(prop_dict, None, args.prl, args.do_chmod)

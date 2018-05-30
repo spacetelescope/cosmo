@@ -25,17 +25,16 @@ import string
 from datetime import datetime
 import time
 import stat
+import yaml
 try:
     from http.client import HTTPSConnection
 except ImportError:
     from httplib import HTTPSConnection
 
-from .manualabor import work_laboriously
 from .SignStsciRequest import SignStsciRequest
-from .logging_dec import log_function
+from .retrieval_info import BASE_DIR, CACHE
 
 MAX_RETRIEVAL = 20
-BASE_DIR = "/grp/hst/cos2/smov_testing"
 MYUSER = "jotaylor"
 PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 REQUEST_TEMPLATE = string.Template('\
@@ -62,7 +61,6 @@ REQUEST_TEMPLATE = string.Template('\
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-#@log_function
 def build_xml_request(dest_dir, datasets):
     '''
     Build the xml request string.
@@ -104,7 +102,6 @@ def build_xml_request(dest_dir, datasets):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-#@log_function
 def submit_xml_request(xml_file):
     '''
     Submit the xml request to MAST.
@@ -139,7 +136,6 @@ def submit_xml_request(xml_file):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-#@log_function
 def retrieve_data(dest_dir, datasets):
     '''
     For a given list of datasets, submit an xml request to MAST
@@ -155,6 +151,10 @@ def retrieve_data(dest_dir, datasets):
         tracking_ids : list
             The tracking IDs for all submitted for a given program.
     '''
+    if isinstance(datasets, str):
+        datasets = [datasets]
+    elif type(datasets) is not list:
+        datasets = datasets.tolist()
     dataset_lists = (datasets[i:i+MAX_RETRIEVAL]
                      for i in range(0, len(datasets), MAX_RETRIEVAL))
     tracking_ids = []
@@ -164,12 +164,14 @@ def retrieve_data(dest_dir, datasets):
             result0 = submit_xml_request(xml_file)
             result = result0.decode("utf-8")
             tmp_id = re.search("("+MYUSER+"[0-9]{5})", result).group()
+            if "FAILURE" in result:
+                print("Request {} for program {} failed.".format(tmp_id, dest_dir))
             tracking_ids.append(tmp_id)
         # If you can't get a ID, MAST is most likely down. 
         except AttributeError:
-            print("Something is wrong on the MAST side...")
-            print("Unsuccessful request for {0}".format(item))
-            print("Continuing to next dataset.")
+            print("\tSomething is wrong on the MAST side...")
+            print("\tUnsuccessful request for {} {}".format(dest_dir,item))
+            print("\tIgnoring this request and continuing to next.")
             pass 
     
     return tracking_ids
@@ -177,7 +179,6 @@ def retrieve_data(dest_dir, datasets):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-#@log_function
 def check_id_status(tracking_id):
     '''
     Check every 15 minutes to see if all submitted datasets have been
@@ -196,7 +197,6 @@ def check_id_status(tracking_id):
 
     done = False
     killed = False
-#    print tracking_id
     status_url = "http://archive.stsci.edu/cgi-bin/reqstat?reqnum=={0}".format(tracking_id)    
     # In case connection to URL is down.
     tries = 5
@@ -218,13 +218,14 @@ def check_id_status(tracking_id):
                         killed = False
                     elif "KILLED" in line:
                         killed = True
-
+                if "Request ID" in line and "was not found on the" in line:
+                    # e.g. Request ID: jotaylor05221 was not found on the dmsops1.stsci.edu server
+                    killed = True
     return done, killed
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-#@log_function
 def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
     '''
     For a given proposal, determine path to put data.
@@ -253,7 +254,7 @@ def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
         os.chmod(BASE_DIR, PERM_755)
         os.mkdir(prop_dir)
     os.chmod(prop_dir, PERM_755)
-    print("I am retrieving {0} dataset(s) for {1}".format(len(prop_dict[prop]),prop))
+    print("Requesting {0} association(s) for {1}".format(len(prop_dict[prop]),prop))
     ind_id = retrieve_data(prop_dir, prop_dict[prop])
     for item in ind_id:
         all_tracking_ids_tmp.append(item)
@@ -287,7 +288,7 @@ def check_data_retrieval(all_tracking_ids):
         counter.append(status)
         if badness:
             print("!"*70)
-            print("RUH ROH!!! Request {0} was killed or cannot be connected!".format(tracking_id))
+            print("RUH ROH!!! Request {0} was killed, cannot be connected, or did not yield any data!!!".format(tracking_id))
             counter.append(badness)
     not_yet_retrieved = [all_tracking_ids[i] for i in 
                          range(len(counter)) if not counter[i]]
@@ -297,8 +298,7 @@ def check_data_retrieval(all_tracking_ids):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-#@log_function
-def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True, prl=True):
+def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True, do_chmod=False):
     '''
     Open the pickle file containing a dictionary of all missing COS data
     to be retrieved. It is set up to handle all situations (if run daily=few
@@ -326,13 +326,14 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True, prl=True):
     if pkl_file:
         prop_dict = pickle.load(open(pkl_file, "rb"))
     prop_dict_keys = prop_dict.keys()
+    if len(prop_dict_keys) == 0:
+        return
+
     pstart = 0
-    pend = 10 # should be 10
-    int_num = 5 # should be 5
-    century = 50 # should be 50
+    pend = 20 # should be 10
+    int_num = 10 # should be 5
+    century = 3000 # should be 50
     all_tracking_ids = []
-    end_msg = "\nAll data from {0} programs were successfully "
-    
     # If less than pend programs were requested, do not enter while loop.
     if pend > len(prop_dict_keys):
         for prop in prop_dict_keys:
@@ -346,21 +347,20 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True, prl=True):
                 print("Data not yet delivered for {0}. Checking again in " 
                       "5 minutes".format(not_yet_retrieved))
                 time.sleep(350)
-        else:
-            print(end_msg.format(len(prop_dict_keys)))
     
     # While the number of processed programs is less than total programs
     while pend < len(prop_dict_keys): 
         
         # If there are more than N*50 programs to be retrieved, stop 
         # and calibrate and zip.
-        if pend > century:
-            century += 50 # should be 50
-            print("Pausing retrieval to calibrate and zip current data")
-            work_laboriously(prl)
+# See note in find_new_cos_data about total COS dataset sizes.
+#        if pend > century:
+#            century += 50 # should be 50
+#            print("Pausing retrieval to calibrate and zip current data")
+#            work_laboriously(prl, do_chmod)
         # For each proposal (prop) in the current grouping (total number
         # of programs split up for manageability), retrieve data for it.
-        for prop in prop_dict_keys[pstart:pend]:
+        for prop in list(prop_dict_keys)[pstart:pend]:
             all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
         # This while loop keeps track of how many submitted programs in the 
         # current group (defined as from pstart:pend) have been entirely
@@ -396,16 +396,11 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, run_labor=True, prl=True):
     # When pend > total # of programs, it does not mean all have been
     # retrieved. Check, and retrieve if so.
     else:
-        "delivered. ".format(len(prop_dict_keys))
         if (len(prop_dict_keys) - (pend-int_num)) > 0:
-            for prop in prop_dict_keys[pend-int_num:]:
+            for prop in list(prop_dict_keys)[pend-int_num:]:
                 all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
-            print(end_msg)
-        else:
-            print(end_msg)
-    if run_labor:
-        print("Beginning manual labor now...")
-        work_laboriously(prl)
+
+    print("All data from {} programs were successfully delivered.".format(len(prop_dict_keys)))
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -414,8 +409,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--prl", dest="prl", action="store_true",
                         default=False, help="Parallellize functions")
+    parser.add_argument("--chmod", dest="do_chmod", action="store_true",
+                        default=True, help="Switch to turn on chmod")
     args = parser.parse_args()
     prl = args.prl
     
-    pkl_file = "filestoretrieve.p"
-    run_all_retrievals(prop_dict=None, pkl_file=pkl_file, run_labor=True, prl=args.prl)
+    cwd = os.getcwd()
+    pkl_file = os.path.join(cwd,"filestoretrieve.p")
+    run_all_retrievals(prop_dict=None, pkl_file=pkl_file, prl=args.prl, do_chmod=args.do_chmod)

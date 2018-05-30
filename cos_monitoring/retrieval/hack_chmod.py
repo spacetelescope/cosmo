@@ -87,9 +87,10 @@ def chmod(basepath, mode, filetype=None, recursive=False):
     assert(bool(filetype is None or isinstance(filetype, str)))
     assert(isinstance(recursive, bool))
 
-    if mode < 0 or mode > 0o1777:
+    if mode < 0 or mode > 0o7777:
         raise ValueError('Invalid mode: {0}'.format(oct(mode)))
 
+    print("Changing permissions on {0} to {1}".format(basepath, mode)) 
     if recursive:
         for path in find(basepath, filetype):
             os.chmod(path, mode)
