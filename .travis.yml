@@ -1,5 +1,7 @@
 language: python
 
+compiler: gcc
+
 # Setting sudo to false opts in to Travis-CI container-based builds.
 sudo: false
 
@@ -15,23 +17,29 @@ addons:
 os:
     - linux
 
-
-python:
-
-    - 2.7
-    - 3.4
-    - 3.5
-
 env:
     global:
         # SET DEFAULTS TO AVOID REPEATING IN MOST CASES
-        - SETUPTOOLS_VERSION=stable
-        - ASTROPY_VERSION=stable
-        - CONDA_INSTALL='conda install -c astropy-ci-extras --yes'
+        - CONDA_ARGS='--quiet'
+        - CONDA_INSTALL="conda install $CONDA_ARGS"
+        - CONDA_CREATE="conda create $CONDA_ARGS"
+        - CONDA_DEPS='astropy beautifulsoup4 calcos crds matplotlib nose numpy numpydoc psutil pyyaml scipy sqlalchemy'
+        - CONDA_DOC_DEPS="$CONDA_DEPS sphinx"
         - PIP_INSTALL='pip install'
-        - INSTALL_OPTIONAL=true
         - SETUP_CMD='test'
-        - NUMPY_VERSION=1.10
+
+matrix:
+  include:
+    - env: PYTHON_VERSION=2.7
+           ASTROPY_VERSION=2
+           CRDS_VERSION=6.0
+           NUMPY_VERSION=1.10
+
+    - env: PYTHON_VERSION=3.5
+           CRDS_VERSION=6.0
+
+    - env: PYTHON_VERSION=3.6
+           # CRDS 6.0 is not available for 3.6, use latest
 
 before_install:
 
@@ -40,46 +48,30 @@ before_install:
     - export PYTHONIOENCODING=UTF8
 
     # http://conda.pydata.org/docs/travis.html#the-travis-yml-file
-    - wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
+    - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
     - bash miniconda.sh -b -p $HOME/miniconda
     - export PATH="$HOME/miniconda/bin:$PATH"
     - hash -r
     - conda config --set always_yes yes --set changeps1 no
-    - conda update -q conda
+    - conda config --add channels http://ssb.stsci.edu/astroconda
+
+    # Brute update base packages
+    - conda update --all -q conda
     - conda info -a
 
     #CHECK INTERACTIVE MATPLOTLIB BACKENDS
     - export DISPLAY=:99.0
     - sh -e /etc/init.d/xvfb start
 
-
-
 install:
-    - conda create -c astropy-ci-extras --yes -n test python=$TRAVIS_PYTHON_VERSION
+    - if [[ -n $ASTROPY_VERSION ]]; then export AP_SELECT="astropy=$ASTROPY_VERSION"; fi
+    - if [[ -n $CRDS_VERSION ]]; then export CR_SELECT="crds=$CRDS_VERSION"; fi
+    - if [[ -n $NUMPY_VERSION ]]; then export NP_SELECT="numpy=$NUMPY_VERSION"; fi
+    - $CONDA_CREATE -n test python=$PYTHON_VERSION $AP_SELECT $NP_SELECT $CR_SELECT $CONDA_DEPS
     - source activate test
 
-    # ADD STSCI ASTROCONDA CHANNEL
-    - conda config --add channels http://ssb.stsci.edu/astroconda
-
-    # CORE DEPENDENCIES
-    - $CONDA_INSTALL -n test  numpy=$NUMPY_VERSION calcos crds=6.0
-
-    # ASTROPY
-    - $PIP_INSTALL git+http://github.com/astropy/astropy.git#egg=astropy
-    - $CONDA_INSTALL -n test numpy=$NUMPY_VERSION astropy
-
-
-    # OPTIONAL DEPENDENCIES
-    # Here you can add any dependencies your package may have. You can use
-    # conda for packages available through conda, or pip for any other
-    # packages. You should leave the `numpy=$NUMPY_VERSION` in the `conda`
-    # install since this ensures Numpy does not get automatically upgraded.
-    - $CONDA_INSTALL -n test numpy=$NUMPY_VERSION scipy matplotlib pyyaml sqlalchemy numpydoc beautifulsoup4 psutil
-
     # DOCUMENTATION DEPENDENCIES
-    # build_sphinx needs sphinx and matplotlib (for plot_directive).
-    - if [[ $SETUP_CMD == build_sphinx* ]]; then $CONDA_INSTALL -n test numpy=$NUMPY_VERSION Sphinx matplotlib; fi
-
+    - if [[ $SETUP_CMD == build_sphinx* ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION $CONDA_DOC_DEPS; fi
 
 script:
    - python setup.py install
