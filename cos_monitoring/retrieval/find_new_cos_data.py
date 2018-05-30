@@ -742,7 +742,7 @@ def check_proprietary_status(rootnames):
         if file_dt <= utc_dt:
             propr_status.append(pub_id)
         else:
-            propr_status.append(ppriv_idd)
+            propr_status.append(priv_id)
         filenames.append(row[0])
     
     return propr_status, filenames
