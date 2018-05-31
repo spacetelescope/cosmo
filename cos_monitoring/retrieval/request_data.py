@@ -251,9 +251,7 @@ def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
 
     prop_dir = os.path.join(BASE_DIR, str(prop))
     if not os.path.exists(prop_dir):
-        os.chmod(BASE_DIR, PERM_755)
         os.mkdir(prop_dir)
-    os.chmod(prop_dir, PERM_755)
     print("Requesting {0} association(s) for {1}".format(len(prop_dict[prop]),prop))
     ind_id = retrieve_data(prop_dir, prop_dict[prop])
     for item in ind_id:
@@ -298,7 +296,7 @@ def check_data_retrieval(all_tracking_ids):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True, do_chmod=False):
+def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True):
     '''
     Open the pickle file containing a dictionary of all missing COS data
     to be retrieved. It is set up to handle all situations (if run daily=few
@@ -407,13 +405,10 @@ def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True, do_chmod=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("pkl_file",
+                        help="Path of pickle file with files to retrieve.")
     parser.add_argument("--prl", dest="prl", action="store_true",
                         default=False, help="Parallellize functions")
-    parser.add_argument("--chmod", dest="do_chmod", action="store_true",
-                        default=True, help="Switch to turn on chmod")
     args = parser.parse_args()
-    prl = args.prl
     
-    cwd = os.getcwd()
-    pkl_file = os.path.join(cwd,"filestoretrieve.p")
-    run_all_retrievals(prop_dict=None, pkl_file=pkl_file, prl=args.prl, do_chmod=args.do_chmod)
+    run_all_retrievals(prop_dict=None, pkl_file=args.pkl_file, prl=args.prl)
