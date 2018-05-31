@@ -30,11 +30,6 @@ env:
 
 matrix:
   include:
-    - env: PYTHON_VERSION=2.7
-           ASTROPY_VERSION=2
-           CRDS_VERSION=6.0
-           NUMPY_VERSION=1.10
-
     - env: PYTHON_VERSION=3.5
            CRDS_VERSION=6.0
 

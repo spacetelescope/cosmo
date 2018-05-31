@@ -532,7 +532,6 @@ def parallelize(chunksize, nprocs, func, iterable, *args, **kwargs):
     func_args = [(x,)+args for x in chunks]
 
     funcout = None
-
     with Pool(processes=nprocs) as pool:
 #        print("Starting the Pool for {} with {} processes...".format(func, nprocs))
         results = [pool.apply_async(func, fargs, kwargs) for fargs in func_args]

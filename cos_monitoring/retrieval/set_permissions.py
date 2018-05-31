@@ -20,24 +20,38 @@ import subprocess
 from datetime import datetime as dt
 from collections import defaultdict
 import sys
+import glob
 
 from cos_monitoring.retrieval.retrieval_info import BASE_DIR
 from cos_monitoring.retrieval.manualabor import parallelize
 from cos_monitoring.retrieval.find_new_cos_data import tally_cs, check_proprietary_status
 
 PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
-PERM_872 = stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
+PERM_550 = stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
 #------------------------------------------------------------------------------#
 
 def set_user_permissions(perm, mydir=BASE_DIR, prl=True):
-    print("Opening permissions of {0}..".format(mydir))
-    all_files_dirs = glob.glob(os.path.join(mydir, "*")) + \
-                     glob.glob(os.path.join(mydir, "*", "*"))
-    if prl:
-        parallelize("smart", "check_usage", chmod, all_files_dirs, perm)
+    all_dirs = glob.glob(os.path.join(mydir, "*"))
+    all_files = glob.glob(os.path.join(mydir, "*", "*"))
+
+    if perm == "open":
+        print("Opening permissions of {}...".format(mydir))
+        perm_d = {x:PERM_755 for x in all_dirs+all_files}
+    elif perm == "close":
+        print("Closing permissions of {}...".format(mydir))
+        perm_d1 = {x:PERM_550 for x in all_files}
+        perm_d2 = {x:PERM_550|stat.S_ISVTX for x in all_dirs}
+        perm_d = {**perm_d1, **perm_d2}
     else:
-        chmod(all_files_dirs, perm)
+        if not isinstance(perm, int) or perm < 0 or perm > 0o7777:
+            raise ValueError('Invalid permission mode: {}'.format(oct(perm)))
+        perm_d = {x:perm for x in all_dirs+all_files}
+
+    if prl:
+        parallelize("smart", "check_usage", chmod, perm_d)
+    else:
+        chmod(perm_d)
 
 #------------------------------------------------------------------------------#
 
@@ -70,164 +84,36 @@ def set_grpid(mydir=BASE_DIR, prl=True):
             propr_status.append(propr_d[rootname])
         except:
             propr_status.append(pub_id)
+    propr_status_d = dict(zip(existing, propr_status))
+    all_dirs = glob.glob(os.path.join(mydir, "*"))
+    dir_perm_d = {x:pub_id for x in all_dirs}
+    perm_d = {**propr_status_d, **dir_perm_d}
 
+    print("Setting group IDs...")
     if prl:
-        parallelize("smart", "check_usage", chgrp, existing, propr_status)
+        parallelize("smart", "check_usage", chgrp, perm_d)
     else:
-        chgrp(existing, propr_status)
+        chgrp(perm_d)
 
     
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-def chgrp(files, gid):
+def chgrp(grp_perm):
     user_id = 5026 # jotaylor's user ID
-    
-    if isinstance(files, str):
-        files = [files]
-    else:
-        if isinstance(gid, str):
-            gid = [gid for x in range(len(files))]
+    for filename, gid in grp_perm.items():
+        os.chown(filename, user_id, gid)
 
-    if isinstance(gid, str):
-        gid = [gid]
-    assert len(files)==len(gid), "Length of files and gid must be equal"
-
-    for i in range(len(files)):
-        os.chown(files[i], gid[i])
-
-    return files
+    return grp_perm
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-def chgrp_programgroups(mydir):
-    '''
-    Walk through all directories in base directory and change the group ids
-    to reflect the type of COS data (calbration, GTO, or GO).
-    Group ids can be found by using the grp module, e.g.
-    > grp.getgrnam("STSCI\cosstis").gr_gid
-    User ids can be found using the pwd module e.g.
-    > pwd.getpwnam("jotaylor").pw_uid
+def chmod(file_perm):
+    for filename, fid in file_perm.items():
+        os.chmod(filename, fid)
 
-    Parameters:
-    -----------
-        mydir : string
-            The base directory to walk through.
-
-    Returns:
-    --------
-        Nothing
-    '''
-    
-    user_id = 5026 # jotaylor's user ID
-    for root, dirs, files in os.walk(mydir):
-        # This expects the dirtree to be in the format /blah/blah/blah/12345
-        pid = root.split("/")[-1]
-        try:
-            pid = int(pid)
-        except ValueError:
-            continue
-        try:
-            if pid in smov_proposals or pid in calib_proposals:
-                grp_id = 6045 # gid for STSCI/cosstis group
-            elif pid in gto_proposals:
-                grp_id = 65546 # gid for STSCI/cosgto group
-            else:
-                grp_id = 65545 # gid for STSCI/cosgo group
-            os.chown(root, user_id, grp_id)
-        except PermissionError as e:
-            print(repr(e))
-
-            for filename in files:
-                try:
-                    os.chown(os.path.join(root, filename), user_id, grp_id)
-                except PermissionError as e:
-                    nothing = True
-                    print(repr(e))
+    return file_perm
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
-
-def chmod(files, perm):
-    if isinstance(files, str):
-        files = [files]
-    else:
-        if isinstance(perm, str):
-            perm = [perm for x in range(len(files))]
-    if isinstance(perm, str):
-        perm = [perm]
-    assert len(files)==len(perm), "Length of files and gid must be equal"
-
-    for i in range(len(files)):
-        os.chmod(files[i], perm[i])
-
-    return files
-
-#------------------------------------------------------------------------------#
-#------------------------------------------------------------------------------#
-
-def chmod_recurs(dirname, perm):
-    '''
-    Edit permissions on a directory and all files in that directory.
-
-    Parameters:
-        dirname : string
-            A string of the directory name to edit.
-        perm : int (octal)
-            An integer corresponding to the permission bit settings.
-
-    Returns:
-        Nothing
-    '''
-
-    #[os.chmod(os.path.join(root, filename)) for root,dirs,files in os.walk(DIRECTORY) for filename in files]
-    # The above line works fine, but is confusing to read, and is only
-    # marginally faster than than an explicit for loop.
-    for root, dirs, files in os.walk(dirname):
-        os.chmod(root, perm)
-        if files:
-            for item in files:
-                os.chmod(os.path.join(root, item), perm)
-
-#------------------------------------------------------------------------------#
-#------------------------------------------------------------------------------#
-
-def chmod_recurs_prl(perm, item):
-    '''
-    Edit permissions in parallel.
-    
-    Parameters:
-        perm : int (octal)
-            An integer corresponding to the permission bit settings.
-        item : string
-            A string of the directory/file name to edit.
-
-    Returns:
-        Nothing
-    '''
-    
-    os.chmod(item, perm)
-
-#------------------------------------------------------------------------------#
-#------------------------------------------------------------------------------#
-
-def chmod_recurs_sp(rootdir, perm):
-    '''
-    Edit permissions on a directory and all files in that directory.
-
-    Parameters:
-        perm : int (octal)
-            An integer corresponding to the permission bit settings.
-        rootdir : string
-            A string of the directory name to edit.
-
-    Returns:
-        Nothing
-    '''
-
-    subprocess.check_call(["chmod", "-R", perm, rootdir])
-     
-#------------------------------------------------------------------------------#
-#------------------------------------------------------------------------------#
-
