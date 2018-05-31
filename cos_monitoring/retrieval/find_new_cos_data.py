@@ -731,7 +731,6 @@ def check_proprietary_status(rootnames):
         results = janky_connect(query)
         sql_results += results
 
-    print("Query finished.")
     utc_dt = dt.utcnow()
     utc_str = utc_dt.strftime("%b %d %Y %I:%M:%S%p")
     
