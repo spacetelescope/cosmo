@@ -32,11 +32,9 @@ except ImportError:
     from httplib import HTTPSConnection
 
 from .SignStsciRequest import SignStsciRequest
-from .retrieval_info import BASE_DIR, CACHE
+from .retrieval_info import BASE_DIR, CACHE, USERNAME
 
 MAX_RETRIEVAL = 20
-MYUSER = "jotaylor"
-PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 REQUEST_TEMPLATE = string.Template('\
 <?xml version=\"1.0\"?> \n \
 <!DOCTYPE distributionRequest SYSTEM \"http://dmswww.stsci.edu/dtd/sso/distribution.dtd\"> \n \
@@ -75,10 +73,10 @@ def build_xml_request(dest_dir, datasets):
         xml_request : string
             The xml request string.
     '''
-    archive_user = MYUSER
-    email = MYUSER + "@stsci.edu"
+    archive_user = USERNAME
+    email = USERNAME + "@stsci.edu"
     host = "plhstins1.stsci.edu"
-    ftp_user = MYUSER
+    ftp_user = USERNAME
     ftp_dir = dest_dir
     # Not currently using suffix dependence.
     suffix = "<suffix name=\"*\" />"
@@ -163,7 +161,7 @@ def retrieve_data(dest_dir, datasets):
             xml_file = build_xml_request(dest_dir, item)
             result0 = submit_xml_request(xml_file)
             result = result0.decode("utf-8")
-            tmp_id = re.search("("+MYUSER+"[0-9]{5})", result).group()
+            tmp_id = re.search("("+USERNAME+"[0-9]{5})", result).group()
             if "FAILURE" in result:
                 print("Request {} for program {} failed.".format(tmp_id, dest_dir))
             tracking_ids.append(tmp_id)

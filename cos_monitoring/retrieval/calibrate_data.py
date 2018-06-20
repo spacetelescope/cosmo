@@ -21,11 +21,9 @@ import argparse
 import stat
 
 from .dec_calcos import clobber_calcos_csumgz
-from .retrieval_info import BASE_DIR, CACHE
+from .retrieval_info import BASE_DIR, CACHE, PERM_755, PERM_872, CSUM_DIR
 from .manualabor import (handle_nullfiles, gzip_files, get_unprocessed_data, 
     parallelize, copy_outdirs, remove_outdirs, timefunc) 
-
-CSUM_DIR = "tmp_out"
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -78,7 +76,7 @@ def make_csum(unzipped_raws):
 #------------------------------------------------------------------------------#
 
 @timefunc
-def calibrate_data(prl=True):
+def calibrate_data(prl=True, open_perm=True, close_perm=True):
     '''
     Run all the functions in the correct order.
 
