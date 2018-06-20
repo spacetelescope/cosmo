@@ -1,5 +1,6 @@
 import stat
 
+USERNAME = "jotaylor"
 BASE_DIR = "/grp/hst/cos2/cosmo"
 CACHE = "/ifs/archive/ops/hst/public"
 PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
