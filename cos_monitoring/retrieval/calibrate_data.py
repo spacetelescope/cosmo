@@ -21,14 +21,10 @@ import argparse
 import stat
 
 from .dec_calcos import clobber_calcos_csumgz
-from .retrieval_info import BASE_DIR, CACHE
+from .retrieval_info import BASE_DIR, CACHE, PERM_755, PERM_872, CSUM_DIR
 from .manualabor import (handle_nullfiles, gzip_files, get_unprocessed_data, 
     parallelize, copy_outdirs, remove_outdirs, timefunc) 
 from .set_permissions import set_user_permissions, set_grpid
-
-PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
-PERM_872 = stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
-CSUM_DIR = "tmp_out"
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -81,7 +77,7 @@ def make_csum(unzipped_raws):
 #------------------------------------------------------------------------------#
 
 @timefunc
-def calibrate_data(prl=True, do_chmod=True):
+def calibrate_data(prl=True, open_perm=True, close_perm=True):
     '''
     Run all the functions in the correct order.
 
@@ -98,7 +94,7 @@ def calibrate_data(prl=True, do_chmod=True):
     remove_outdirs()
 
     # First, change permissions of the base directory so we can modify files.
-    if do_chmod: 
+    if open_perm: 
         set_user_permissions(PERM_755, prl=prl)
 
     # Delete any files with program ID = NULL that are not COS files.
@@ -132,7 +128,7 @@ def calibrate_data(prl=True, do_chmod=True):
 
     # Change permissions back to protect data, and change group ID based on 
     # proprietary status.
-    if do_chmod: 
+    if close_perm: 
         set_user_permissions(PERM_872, prl=prl)
         set_grpid(prl=prl)
 
