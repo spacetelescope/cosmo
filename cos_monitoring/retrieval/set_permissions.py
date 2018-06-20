@@ -21,6 +21,7 @@ from datetime import datetime as dt
 from collections import defaultdict
 import sys
 import glob 
+import pwd
 
 from cos_monitoring.retrieval.retrieval_info import BASE_DIR
 from cos_monitoring.retrieval.manualabor import parallelize
@@ -79,8 +80,8 @@ def set_grpid(mydir=BASE_DIR, prl=True):
 #------------------------------------------------------------------------------#
 
 def chgrp(files, gid):
-    user_id = 5026 # jotaylor's user ID
-    
+    user_id = pwd.getpwnam(USERNAME).pw_uid #5026 for jotaylor
+
     if isinstance(files, str):
         files = [files]
     else:
@@ -117,8 +118,8 @@ def chgrp_programgroups(mydir):
     --------
         Nothing
     '''
-    
-    user_id = 5026 # jotaylor's user ID
+
+    user_id = pwd.getpwnam(USERNAME).pw_uid #5026 for jotaylor
     for root, dirs, files in os.walk(mydir):
         # This expects the dirtree to be in the format /blah/blah/blah/12345
         pid = root.split("/")[-1]

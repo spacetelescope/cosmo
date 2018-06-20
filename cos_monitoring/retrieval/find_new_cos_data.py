@@ -32,7 +32,7 @@ from collections import defaultdict
  
 from ..database.db_tables import load_connection
 from .manualabor import parallelize, combine_2dicts, compress_files, timefunc
-from .retrieval_info import BASE_DIR, CACHE
+from .retrieval_info import BASE_DIR, CACHE, USERNAME
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -486,8 +486,7 @@ def check_for_pending():
             URL to check for requests
     """
 
-    MYUSER = "jotaylor"
-    status_url = "http://archive.stsci.edu/cgi-bin/reqstat?reqnum=={0}".format(MYUSER)
+    status_url = "http://archive.stsci.edu/cgi-bin/reqstat?reqnum=={0}".format(USERNAME)
     
     tries = 5
     while tries > 0:

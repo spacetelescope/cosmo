@@ -32,6 +32,7 @@ import time
 import numpy as np
 import stat
 import subprocess
+import pwd
 from collections import defaultdict
 from functools import partial
 from email.mime.text import MIMEText
@@ -40,7 +41,7 @@ from itertools import islice
 
 from .dec_calcos import clobber_calcos_csumgz
 from .hack_chmod import chmod
-from .retrieval_info import BASE_DIR, CACHE, CSUM_DIR
+from .retrieval_info import BASE_DIR, CACHE, CSUM_DIR, USERNAME
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -172,8 +173,8 @@ def chgrp(mydir):
     --------
         Nothing
     '''
-    
-    user_id = 5026 # jotaylor's user ID
+   
+    user_id = pwd.getpwnam(USERNAME).pw_uid #5026 for jotaylor
     for root, dirs, files in os.walk(mydir):
         # This expects the dirtree to be in the format /blah/blah/blah/12345
         pid = root.split("/")[-1]
@@ -418,12 +419,12 @@ def send_email():
 
     msg = MIMEMultipart()
     msg["Subject"] = "Testing"
-    msg["From"] = "jotaylor@stsci.edu"
-    msg["To"] = "jotaylor@stsci.edu"
+    msg["From"] = "{}@stsci.edu".format(USERNAME)
+    msg["To"] = "{}@stsci.edu".format(USENAME)
     msg.attach(MIMEText("Hello, the script is finished."))
     msg.attach(MIMEText("Testing line 2."))
     s = smtplib.SMTP("smtp.stsci.edu")
-    s.sendmail("jotaylor@stsci.edu",["jotaylor@stsci.edu"], msg.as_string())
+    s.sendmail("{}@stsci.edu".format(USERNAME),["{}@stsci.edu.".format(USERNAME)], msg.as_string())
     s.quit()
 
 #------------------------------------------------------------------------------#
