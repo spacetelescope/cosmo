@@ -38,14 +38,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from itertools import islice
 
-from .ProgramGroups import *
 from .dec_calcos import clobber_calcos_csumgz
 from .hack_chmod import chmod
-from .retrieval_info import BASE_DIR, CACHE
-
-PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
-PERM_872 = stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
-CSUM_DIR = "tmp_out"
+from .retrieval_info import BASE_DIR, CACHE, CSUM_DIR
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -130,7 +125,6 @@ def unzip_mistakes(zipped):
             os.remove(item)
             continue
         if calibrate is True:
-            #chmod_recurs(dirname, PERM_755)
             files_to_unzip = glob.glob(zfile)
             uncompress_files(files_to_unzip)
 
