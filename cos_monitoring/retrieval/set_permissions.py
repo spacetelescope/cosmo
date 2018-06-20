@@ -20,13 +20,11 @@ import subprocess
 from datetime import datetime as dt
 from collections import defaultdict
 import sys
+import glob 
 
 from cos_monitoring.retrieval.retrieval_info import BASE_DIR
 from cos_monitoring.retrieval.manualabor import parallelize
 from cos_monitoring.retrieval.find_new_cos_data import tally_cs, check_proprietary_status
-
-PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
-PERM_872 = stat.S_ISVTX | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
 #------------------------------------------------------------------------------#
 
