@@ -76,7 +76,7 @@ def make_csum(unzipped_raws):
 #------------------------------------------------------------------------------#
 
 @timefunc
-def calibrate_data(prl=True, open_perm=True, close_perm=True):
+def calibrate_data(prl=True):
     '''
     Run all the functions in the correct order.
 
