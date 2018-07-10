@@ -33,6 +33,7 @@ import numpy as np
 import stat
 import subprocess
 import pwd
+import socket
 from collections import defaultdict
 from functools import partial
 from email.mime.text import MIMEText
@@ -512,7 +513,10 @@ def parallelize(chunksize, nprocs, func, iterable, *args, **kwargs):
     if len(iterable) == 0:
         return funcout
     
-    if nprocs == "check_usage":
+    machine = socket.gethostname()
+    if machine == "plhstcos1.stsci.edu":
+        nprocs = psutil.cpu_count() - 1
+    elif nprocs == "check_usage":
         nprocs = check_usage()
 
     if chunksize == "smart":
