@@ -23,7 +23,7 @@ import sys
 import glob
 import pwd
 
-from cos_monitoring.retrieval.retrieval_info import BASE_DIR
+from cos_monitoring.retrieval.retrieval_info import BASE_DIR, PERM_755, PERM_550, USERNAME
 from cos_monitoring.retrieval.manualabor import parallelize
 from cos_monitoring.retrieval.find_new_cos_data import tally_cs, check_proprietary_status
 
