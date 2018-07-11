@@ -2,13 +2,11 @@
 from __future__ import print_function, absolute_import, division
 
 """
-This module compares what datasets are currently in
-/smov/cos/Data (by accessing the COS database) versus all datasets currently
-archived in MAST. All missing datasets will be requested and placed in
-the appropriate directory in /smov/cos/Data.
-
-Use:
-    This script is intended to be used in a cron job.
+Determine which datasets are currently in the COS 
+directory BASE_DIR by either directly looking on disk or by querying
+the COS-maintained database, greendev. Determine which datasets are
+currently archived in MAST. All datasets missing from BASE_DIR 
+will be requested.
 """
 
 __author__ = "Jo Taylor"
@@ -22,7 +20,6 @@ import time
 import pickle
 import os
 import yaml
-import argparse
 import glob
 import pyfastcopy
 import shutil
@@ -34,7 +31,6 @@ from ..database.db_tables import load_connection
 from .manualabor import parallelize, combine_2dicts, compress_files, timefunc
 from .retrieval_info import BASE_DIR, CACHE, USERNAME
 
-#-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def connect_cosdb():
@@ -76,7 +72,6 @@ def connect_cosdb():
         
         return all_smov
 
-#-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def get_all_mast_data():
@@ -132,7 +127,6 @@ def get_all_mast_data():
     return all_mast_priv, all_mast_pub
         
 #-----------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------#
 
 def get_pid(rootname):
     
@@ -146,7 +140,6 @@ def get_pid(rootname):
     else:
         return prop[0]
 
-#-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def find_missing_exts(existing, existing_root):
@@ -206,7 +199,6 @@ def find_missing_exts(existing, existing_root):
     return missing_files
 
 #-----------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------#
 
 def _sql_to_dict(sql_list, groupbykey=True):
     """
@@ -253,7 +245,6 @@ def _sql_to_dict(sql_list, groupbykey=True):
 
     return sql_dict
 
-#-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def janky_connect(query_string, database=None):
@@ -318,7 +309,6 @@ def janky_connect(query_string, database=None):
     return result
 
 #-----------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------#
 
 def tally_cs(mydir=BASE_DIR, uniq_roots=True):
     """
@@ -348,7 +338,6 @@ def tally_cs(mydir=BASE_DIR, uniq_roots=True):
         return allsmov, smovfilenames, smovroots
 
 
-#-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def find_missing_data(use_cs):
@@ -384,7 +373,6 @@ def find_missing_data(use_cs):
 
     return missing_data_priv, missing_data_pub, missing_exts
 
-#-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def _determine_missing(in_dict, existing_root):
@@ -422,7 +410,6 @@ def _determine_missing(in_dict, existing_root):
     return missing_data
 
 #-----------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------#
 
 def _group_dict_by_pid(filenames, pids):
     # Create dictionaries grouped by proposal ID, it is much easier
@@ -437,7 +424,6 @@ def _group_dict_by_pid(filenames, pids):
     
     return outd    
 
-#-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def pickle_missing(missing_data, pkl_file=None):
@@ -463,7 +449,6 @@ def pickle_missing(missing_data, pkl_file=None):
     cwd = os.getcwd()
     print("Missing data written to pickle file {0}".format(os.path.join(cwd,pkl_file)))
 
-#-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def check_for_pending():
@@ -514,7 +499,6 @@ def check_for_pending():
     return num, badness, status_url
 
 #-----------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------#
 
 def ensure_no_pending():
     """
@@ -539,7 +523,6 @@ def ensure_no_pending():
     else:
         print("All pending requests finished, moving on!")
 
-#-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def tabulate_cache():
@@ -566,7 +549,6 @@ def tabulate_cache():
 
     return np.array(cos_cache), np.array(cache_filenames), np.array(cache_roots)
 
-#-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def find_missing_in_cache(missing_dict, cache_a, cos_cache):
@@ -606,7 +588,6 @@ def find_missing_in_cache(missing_dict, cache_a, cos_cache):
 
     return missing_dict, to_copy_d
 #-----------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------#
 
 def copy_from_cache(to_copy):
     for pid, cache_files in to_copy.items():
@@ -623,7 +604,6 @@ def copy_from_cache(to_copy):
 
     return to_copy
 
-#-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def copy_cache(missing_data, missing_exts=None, prl=True):
@@ -670,30 +650,6 @@ def copy_cache(missing_data, missing_exts=None, prl=True):
 
     return still_missing
 
-#-----------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------#
-
-def copy_entire_cache(cos_cache):
-    """
-    In development. 
-    """
-    prop_map = {}
-    for item in cos_cache:
-        filename = os.path.basename(item)
-        ippp = filename[:4]
-        
-        if not ippp in prop_map.keys():
-            hdr0 = pf.getheader(item,0)
-            proposid = hdr0["proposid"]
-            prop_map[ippp] = proposid
-        else:
-            proposid = prop_map[ippp]
-        
-        dest = os.path.join(BASE_DIR, proposid, filename)
-        # By importing pyfastcopy, shutil performance is automatically enhanced
-        shutil.copyfile(item, dest)
-
-#-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 def check_proprietary_status(rootnames):
@@ -745,7 +701,6 @@ def check_proprietary_status(rootnames):
     
     return propr_status, filenames
 
-#-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
 @timefunc
@@ -811,20 +766,3 @@ def find_new_cos_data(pkl_it, pkl_file, use_cs=False, prl=True):
     return all_missing_data
     
 #-----------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------#
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-p", dest="pkl_it", action="store_true", default=False,
-                        help="Save output to pickle file")
-    parser.add_argument("--pklfile", dest="pkl_file", default=None,
-                        help="Name for output pickle file")
-    parser.add_argument("--cs", dest="use_cs", action="store_true",
-                        default=False, 
-                        help="Find missing data comparing to central store, not DB") 
-    parser.add_argument("--prl", dest="prl", action="store_false",
-                        default=True, help="Parallellize functions")
-    args = parser.parse_args()
-
-    find_new_cos_data(args.pkl_it, args.pkl_file, args.use_cs,
-                      args.prl, False)
