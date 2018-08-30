@@ -7,8 +7,8 @@ from cos_monitoring.retrieval.find_new_cos_data import find_new_cos_data
 from cos_monitoring.retrieval.calibrate_data import calibrate_data
 from cos_monitoring.retrieval.set_permissions import set_user_permissions, set_grpid
 
-now = datetime.datetime.now()
-pkl_file = "cosmo_{}.p".format(now.strftime("%Y%m%d_%M%S"))
+t1 = datetime.datetime.now()
+pkl_file = "cosmo_{}.p".format(t1.strftime("%Y%m%d_%M%S"))
 
 # First, change permissions of the base directory so we can modify files.
 set_user_permissions("open", prl=True)
@@ -23,3 +23,6 @@ calibrate_data(prl=True)
 # proprietary status.
 set_grpid(prl=True)
 set_user_permissions("close", prl=True) 
+
+t2 = datetime.datetime.now()
+print("executed in {}".format(t2-t1))
