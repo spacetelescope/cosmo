@@ -1,6 +1,7 @@
 # Misc
 *p
 *pkl
+*.idea
 
 #-- package config files
 configure.yaml
