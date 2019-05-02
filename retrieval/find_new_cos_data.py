@@ -30,51 +30,50 @@ import numpy as np
 from subprocess import Popen, PIPE
 from collections import defaultdict
  
-from ..database.db_tables import load_connection
 from .manualabor import parallelize, combine_2dicts, compress_files, timefunc
 from .retrieval_info import BASE_DIR, CACHE
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def connect_cosdb():
-    """
-    Connect to the COS team's database, cos_cci, on the server greendev to
-    determine which COS datasets are currently in the local repository.
-
-    Parameters:
-    -----------
-        None
-
-    Returns:
-    --------
-        all_smov : list
-            All rootnames of all files in the COS greendev database.
-    """
-
-    # Open the configuration file for the COS database connection (MYSQL).
-    config_file = os.path.join(os.environ['HOME'], "configure.yaml")
-    with open(config_file, 'r') as f:
-        SETTINGS = yaml.load(f)
-
-        print("Querying COS greendev database for existing data...")
-        # Connect to the database.
-        Session, engine = load_connection(SETTINGS['connection_string'])
-        sci_files = list(engine.execute("SELECT DISTINCT rootname FROM files "
-                                        "WHERE rootname IS NOT NULL;"))
-        cci_files = list(engine.execute("SELECT DISTINCT name FROM files "
-                                        "WHERE rootname IS NULL AND " 
-                                        "LEFT(name,1)='l';"))
-                                        
-        # Store SQLAlchemy results as lists
-        all_sci = [row["rootname"].upper() for row in sci_files]
-        all_cci = [row["name"].strip("_cci.fits.gz").upper() for row in cci_files]
-        all_smov = all_sci + all_cci
-        
-        # Close connection
-        engine.dispose()
-        
-        return all_smov
+# def connect_cosdb():
+#     """
+#     Connect to the COS team's database, cos_cci, on the server greendev to
+#     determine which COS datasets are currently in the local repository.
+#
+#     Parameters:
+#     -----------
+#         None
+#
+#     Returns:
+#     --------
+#         all_smov : list
+#             All rootnames of all files in the COS greendev database.
+#     """
+#
+#     # Open the configuration file for the COS database connection (MYSQL).
+#     config_file = os.path.join(os.environ['HOME'], "configure.yaml")
+#     with open(config_file, 'r') as f:
+#         SETTINGS = yaml.load(f)
+#
+#         print("Querying COS greendev database for existing data...")
+#         # Connect to the database.
+#         Session, engine = load_connection(SETTINGS['connection_string'])
+#         sci_files = list(engine.execute("SELECT DISTINCT rootname FROM files "
+#                                         "WHERE rootname IS NOT NULL;"))
+#         cci_files = list(engine.execute("SELECT DISTINCT name FROM files "
+#                                         "WHERE rootname IS NULL AND "
+#                                         "LEFT(name,1)='l';"))
+#
+#         # Store SQLAlchemy results as lists
+#         all_sci = [row["rootname"].upper() for row in sci_files]
+#         all_cci = [row["name"].strip("_cci.fits.gz").upper() for row in cci_files]
+#         all_smov = all_sci + all_cci
+#
+#         # Close connection
+#         engine.dispose()
+#
+#         return all_smov
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -351,7 +350,7 @@ def tally_cs(mydir=BASE_DIR, uniq_roots=True):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def find_missing_data(use_cs):
+def find_missing_data():
     """
     Compare the set of all files currently in the COS repository to the list
     all files currently ingested into MAST.
@@ -369,10 +368,7 @@ def find_missing_data(use_cs):
             missing data.
     """
 
-    if use_cs:
-        existing, existing_filenames, existing_root = tally_cs()
-    else:
-        existing_root = connect_cosdb()
+    existing, existing_filenames, existing_root = tally_cs()
 
     print("Checking to see if there are any missing COS data...")
     missing_exts = find_missing_exts(existing, existing_root)
@@ -674,25 +670,25 @@ def copy_cache(missing_data, missing_exts=None, prl=True):
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 
-def copy_entire_cache(cos_cache):
-    """
-    In development. 
-    """
-    prop_map = {}
-    for item in cos_cache:
-        filename = os.path.basename(item)
-        ippp = filename[:4]
-        
-        if not ippp in prop_map.keys():
-            hdr0 = pf.getheader(item,0)
-            proposid = hdr0["proposid"]
-            prop_map[ippp] = proposid
-        else:
-            proposid = prop_map[ippp]
-        
-        dest = os.path.join(BASE_DIR, proposid, filename)
-        # By importing pyfastcopy, shutil performance is automatically enhanced
-        shutil.copyfile(item, dest)
+# def copy_entire_cache(cos_cache):
+#     """
+#     In development.
+#     """
+#     prop_map = {}
+#     for item in cos_cache:
+#         filename = os.path.basename(item)
+#         ippp = filename[:4]
+#
+#         if not ippp in prop_map.keys():
+#             hdr0 = pf.getheader(item,0)
+#             proposid = hdr0["proposid"]
+#             prop_map[ippp] = proposid
+#         else:
+#             proposid = prop_map[ippp]
+#
+#         dest = os.path.join(BASE_DIR, proposid, filename)
+#         # By importing pyfastcopy, shutil performance is automatically enhanced
+#         shutil.copyfile(item, dest)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -750,7 +746,7 @@ def check_proprietary_status(rootnames):
 #-----------------------------------------------------------------------------#
 
 @timefunc
-def find_new_cos_data(pkl_it, pkl_file, use_cs=False, prl=True):
+def find_new_cos_data(pkl_it, pkl_file, prl=True):
     """
     Workhorse function, determine what data already exist on disk/in the 
     greendev DB and determine if data are missing. Copy any data from local
@@ -776,7 +772,7 @@ def find_new_cos_data(pkl_it, pkl_file, use_cs=False, prl=True):
             datasets for that PID.
     """
     print("*"*72)
-    missing_data_priv, missing_data_pub, missing_exts = find_missing_data(use_cs)
+    missing_data_priv, missing_data_pub, missing_exts = find_missing_data()
     print("\t{} proprietary program(s) missing: {}\n\t{} public program(s) missing: {}".format(
           len(missing_data_priv.keys()), list(missing_data_priv.keys()), 
           len(missing_data_pub.keys()), list(missing_data_pub.keys()) ))
@@ -820,9 +816,6 @@ if __name__ == "__main__":
                         help="Save output to pickle file")
     parser.add_argument("--pklfile", dest="pkl_file", default=None,
                         help="Name for output pickle file")
-    parser.add_argument("--cs", dest="use_cs", action="store_true",
-                        default=False, 
-                        help="Find missing data comparing to central store, not DB") 
     parser.add_argument("--prl", dest="prl", action="store_false",
                         default=True, help="Parallellize functions")
     args = parser.parse_args()

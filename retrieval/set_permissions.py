@@ -22,9 +22,9 @@ from collections import defaultdict
 import sys
 import glob
 
-from monitors.retrieval.retrieval_info import BASE_DIR
-from monitors.retrieval.manualabor import parallelize
-from monitors.retrieval.find_new_cos_data import tally_cs, check_proprietary_status
+from .retrieval_info import BASE_DIR
+from .manualabor import parallelize
+from .find_new_cos_data import tally_cs, check_proprietary_status
 
 PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 PERM_550 = stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP

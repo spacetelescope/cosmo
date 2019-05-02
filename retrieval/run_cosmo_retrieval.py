@@ -2,10 +2,10 @@
 
 import datetime
 
-from monitors.retrieval.request_data import run_all_retrievals
-from monitors.retrieval.find_new_cos_data import find_new_cos_data
-from monitors.retrieval.calibrate_data import calibrate_data
-from monitors.retrieval.set_permissions import set_user_permissions, set_grpid
+from .request_data import run_all_retrievals
+from .find_new_cos_data import find_new_cos_data
+from .calibrate_data import calibrate_data
+from .set_permissions import set_user_permissions, set_grpid
 
 now = datetime.datetime.now()
 pkl_file = "cosmo_{}.p".format(now.strftime("%Y%m%d_%M%S"))
