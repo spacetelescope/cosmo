@@ -1,7 +1,7 @@
 import numpy as np
 
 from monitorframe.monitor import BaseDataModel
-from cosmo.filesystem import FileFinder
+from cosmo.filesystem import FileDataFinder
 
 SOURCE = '/grp/hst/cos2/cosmo'
 
@@ -12,7 +12,7 @@ def dgestar_to_fgs(results):
 
 
 def get_acq_data(acq_keys, acq_extensions, spt_keys, spt_extensions, exptype):
-    finder = FileFinder(SOURCE, '*rawacq*', acq_keys, acq_extensions, spt_keys, spt_extensions, exptype)
+    finder = FileDataFinder(SOURCE, '*rawacq*', acq_keys, acq_extensions, spt_keys, spt_extensions, exptype)
     data_results = finder.data_from_files()
 
     if 'DGESTAR' in spt_keys:
