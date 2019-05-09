@@ -92,7 +92,7 @@ class FileData:
 
 @dask.delayed
 def get_file_data(fitsfile, keys, exts, exp_type=None, spt_keys=None, spt_exts=None, data_ext=None, data_keys=None):
-    with fits.open(fitsfile) as file:
+    with fits.open(fitsfile, memmap=False) as file:
         if exp_type and file[0].header['EXPTYPE'] != exp_type:
             return
 

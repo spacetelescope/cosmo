@@ -24,6 +24,7 @@ setup(
         'scipy',
         'pyfastcopy',
         'monitorframe',
-        'dask'
+        'dask',
+        'pandas'
     ]
 )
