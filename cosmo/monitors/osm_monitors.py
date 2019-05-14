@@ -14,8 +14,6 @@ class FUVADOSMShiftMonitor(BaseMonitor):
     data_model = OSMDataModel
     output = COS_MONITORING
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'OBSET_ID']
-    subplots = True
-    subplot_layout = (2, 1)
 
     def track(self):
         # TODO: Define interesting things to track
@@ -32,35 +30,18 @@ class FUVADOSMShiftMonitor(BaseMonitor):
 
         return start_time, lamp_time
 
-    def plot(self):  # TODO: Add A - B subplot
+    def plot(self):
         groups = self.filtered_data.groupby(['OPT_ELEM', 'CENWAVE'])
         lp4_move = datetime.datetime.strptime('2017-10-02', '%Y-%m-%d')
 
-        for i, group_info in enumerate(groups):
-            name, group = group_info
+        fp_symbols = {
+            1: 'circle',
+            2: 'cross',
+            3: 'triangle-up',
+            4: 'x'
+        }
 
-            start_time, lamp_time = self.compute_start_times(group)
-
-            self.figure.append_trace(
-                go.Scattergl(
-                    x=lamp_time.to_datetime(),
-                    y=group.SHIFT_DISP,
-                    name='-'.join([str(item) for item in name]),
-                    mode='markers',
-                    marker=dict(
-                        cmax=18,
-                        cmin=0,
-                        color=list(repeat(i, len(group))),
-                        colorscale='Viridis',
-                        symbol=group.FPPOS * 4,
-                        size=[
-                            10 if time > lp4_move and lp == 3 else 6
-                            for lp, time in zip(group.LIFE_ADJ, start_time.to_datetime())
-                        ]
-                    ),
-                    text=group.hover_text
-                ), 1, 1
-            )
+        traces = []
 
         segment_diff = []
         time = []
@@ -75,23 +56,51 @@ class FUVADOSMShiftMonitor(BaseMonitor):
                 hover_text.extend(group[group.SEGMENT == 'FUVA'].hover_text.values)
                 time.extend(lamp_time.to_datetime())
 
-        self.figure.append_trace(
+        traces.append(
             go.Scattergl(
                 x=time,
                 y=segment_diff,
                 name='FUVA - FUVB',
-                mode='lines+markers',
+                mode='markers',
                 text=hover_text,
-                xaxis='x'
-            ), 2, 1
+            )
         )
+
+        for i, group_info in enumerate(groups):
+            name, group = group_info
+
+            start_time, lamp_time = self.compute_start_times(group)
+
+            traces.append(
+                go.Scattergl(
+                    x=lamp_time.to_datetime(),
+                    y=group.SHIFT_DISP,
+                    name='-'.join([str(item) for item in name]),
+                    mode='markers',
+                    text=group.hover_text,
+                    xaxis='x',
+                    yaxis='y2',
+                    marker=dict(
+                        cmax=18,
+                        cmin=0,
+                        color=list(repeat(i, len(group))),
+                        colorscale='Viridis',
+                        symbol=[fp_symbols[fp] for fp in group.FPPOS],
+                        size=[
+                            10 if time > lp4_move and lp == 3 else 6
+                            for lp, time in zip(group.LIFE_ADJ, start_time.to_datetime())
+                        ]
+                    ),
+                )
+            )
 
         layout = go.Layout(
                 xaxis=dict(title='Datetime'),
-                yaxis=dict(title='AD Shift [pix]', anchor='x', domain=[0.3, 1]),
-                yaxis1=dict(title='Shift Difference A - B [pix]', anchor='x2', domain=[0, 0.18])
+                yaxis2=dict(title='AD Shift [pix]', anchor='x', domain=[0.3, 1]),
+                yaxis=dict(title='Shift Difference A - B [pix]', anchor='x2', domain=[0, 0.18])
             )
 
+        self.figure.add_traces(traces)
         self.figure['layout'].update(layout)
 
     def store_results(self):
