@@ -1,13 +1,11 @@
 import numpy as np
 import plotly.graph_objs as go
 
-from datetime import datetime
-from astropy.time import Time
 from itertools import repeat
-
 
 from monitorframe import BaseMonitor
 from .acq_data_models import AcqImageModel, AcqPeakdModel, AcqPeakxdModel
+from cosmo.monitor_helpers import fit_line, convert_day_of_year
 
 COS_MONITORING = '/grp/hst/cos2/monitoring'
 
@@ -57,8 +55,8 @@ class AcqImageSlewMonitor(BaseMonitor):
 
         fit_results = dict()
         for name, group in groups:
-            xline = np.poly1d(np.polyfit(group.EXPSTART, -group.ACQSLEWX, 1))
-            yline = np.poly1d(np.polyfit(group.EXPSTART, -group.ACQSLEWY, 1))
+            xline = fit_line(group.EXPSTART, -group.ACQSLEWX)
+            yline = fit_line(group.EXPSTART, -group.ACQSLEWY)
 
             fit_results[name] = (xline(group.EXPSTART), yline(group.EXPSTART), xline, yline)
 
@@ -286,21 +284,6 @@ class AcqImageV2V3Monitor(BaseMonitor):
         'GAIA guide stars': 2017.272
     }
 
-    @staticmethod
-    def convert_day_of_year(date, mjd=False):
-        t = datetime.strptime(str(date), '%Y.%j')
-
-        if mjd:
-            return Time(t, format='datetime').mjd
-
-        return t
-
-    @staticmethod
-    def line(x, y):
-        fit = np.poly1d(np.polyfit(x, y, 1))
-
-        return fit, fit(x)
-
     def filter_data(self):
 
         index = np.where(
@@ -326,12 +309,12 @@ class AcqImageV2V3Monitor(BaseMonitor):
             if name == 'F3':
                 continue
 
-            t_start = self.convert_day_of_year(self.break_points[name][-1][0], mjd=True)
+            t_start = convert_day_of_year(self.break_points[name][-1][0], mjd=True)
 
             df = self.filtered_data[self.filtered_data.EXPSTART >= t_start]
 
-            v2_line_fit = self.line(df.EXPSTART, df.V2SLEW)
-            v3_line_fit = self.line(df.EXPSTART, df.V3SLEW)
+            v2_line_fit = fit_line(df.EXPSTART, df.V2SLEW)
+            v3_line_fit = fit_line(df.EXPSTART, df.V3SLEW)
 
             last_updated_results[name] = (v2_line_fit, v3_line_fit)
 
@@ -351,7 +334,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
             for points in self.break_points[name]:
 
                 t_start, t_end = [
-                    self.convert_day_of_year(point, mjd=True) if not isinstance(point, str) else None
+                    convert_day_of_year(point, mjd=True) if not isinstance(point, str) else None
                     for point in points
                 ]
 
@@ -373,7 +356,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
                     cols.append(1)
                     cols.append(1)
 
-                    line_fit, fit = self.line(df.EXPSTART, -df[slew])
+                    line_fit, fit = fit_line(df.EXPSTART, -df[slew])
 
                     scatter = go.Scatter(
                         x=df.EXPSTART,
@@ -399,9 +382,9 @@ class AcqImageV2V3Monitor(BaseMonitor):
         lines = [
             {
                 'type': 'line',
-                'x0': self.convert_day_of_year(value, mjd=True),
+                'x0': convert_day_of_year(value, mjd=True),
                 'y0': self.figure['layout'][yaxis]['domain'][0],
-                'x1': self.convert_day_of_year(value, mjd=True),
+                'x1': convert_day_of_year(value, mjd=True),
                 'y1': self.figure['layout'][yaxis]['domain'][1],
                 'xref': xref,
                 'yref': 'paper',
