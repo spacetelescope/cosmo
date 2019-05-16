@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import datetime
 
-from astropy.time import Time
+from astropy.time import Time, TimeDelta
 
 
 def convert_day_of_year(date, mjd=False):
@@ -26,3 +26,11 @@ def explode_df(df, list_keywords):
     df1.index = idx
 
     return df1.join(df.drop(list_keywords, 1), how='left').reset_index(drop=True)
+
+
+def compute_lamp_on_times(df):
+    start_time = Time(df.EXPSTART, format='mjd')
+    lamp_dt = TimeDelta(df.TIME, format='sec')
+    lamp_time = start_time + lamp_dt
+
+    return start_time, lamp_time

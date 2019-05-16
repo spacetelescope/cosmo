@@ -2,9 +2,9 @@ import plotly.graph_objs as go
 import datetime
 
 from itertools import repeat
-from astropy.time import Time, TimeDelta
 
 from monitorframe import BaseMonitor
+from cosmo.monitor_helpers import compute_lamp_on_times
 from .osm_data_models import OSMDataModel
 
 COS_MONITORING = '/grp/hst/cos2/monitoring'
@@ -15,15 +15,7 @@ LP_MOVES = lp_moves = {
     }
 
 
-def compute_start_times(df):
-    start_time = Time(df.EXPSTART, format='mjd')
-    lamp_dt = TimeDelta(df.TIME, format='sec')
-    lamp_time = start_time + lamp_dt
-
-    return start_time, lamp_time
-
-
-def plot_fuv_osm_shift(df, shift):
+def plot_fuv_osm_shift_cenwaves(df, shift):
     groups = df.groupby(['OPT_ELEM', 'CENWAVE'])
 
     fp_symbols = {
@@ -41,7 +33,7 @@ def plot_fuv_osm_shift(df, shift):
     root_groups = df.groupby('ROOTNAME')
     for rootname, group in root_groups:
         if 'FUVA' in group.SEGMENT.values and 'FUVB' in group.SEGMENT.values:
-            _, lamp_time = compute_start_times(group[group.SEGMENT == 'FUVA'])
+            _, lamp_time = compute_lamp_on_times(group[group.SEGMENT == 'FUVA'])
 
             fuva, fuvb = group[group.SEGMENT == 'FUVA'], group[group.SEGMENT == 'FUVB']
 
@@ -56,13 +48,14 @@ def plot_fuv_osm_shift(df, shift):
             name='FUVA - FUVB',
             mode='markers',
             text=hover_text,
+            visible=False
         )
     )
 
     for i, group_info in enumerate(groups):
         name, group = group_info
 
-        start_time, lamp_time = compute_start_times(group)
+        start_time, lamp_time = compute_lamp_on_times(group)
 
         traces.append(
             go.Scattergl(
@@ -73,6 +66,7 @@ def plot_fuv_osm_shift(df, shift):
                 text=group.hover_text,
                 xaxis='x',
                 yaxis='y2',
+                visible=False,
                 marker=dict(
                     cmax=len(df.CENWAVE.unique()) - 1,
                     cmin=0,
@@ -96,10 +90,12 @@ def plot_fuv_osm_shift(df, shift):
     return traces, layout
 
 
-class FuvAdOsmShiftMonitor(BaseMonitor):
+class FuvOSmShiftMonitor(BaseMonitor):
     data_model = OSMDataModel
     output = COS_MONITORING
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID']
+
+    shift = None
 
     def track(self):
         # TODO: Define interesting things to track
@@ -109,7 +105,7 @@ class FuvAdOsmShiftMonitor(BaseMonitor):
         return self.data[self.data.DETECTOR == 'FUV']
 
     def plot(self):
-        traces, layout = plot_fuv_osm_shift(self.filtered_data, 'SHIFT_DISP')
+        traces, layout = plot_fuv_osm_shift_cenwaves(self.filtered_data, self.shift)
 
         trace_length = len(traces)
         all_visible = list(repeat(True, trace_length))
@@ -117,7 +113,7 @@ class FuvAdOsmShiftMonitor(BaseMonitor):
         fp_groups = self.filtered_data.groupby('FPPOS')
         fp_trace_lengths = {}
         for fp, group in fp_groups:
-            fp_traces, _ = plot_fuv_osm_shift(group, 'SHIFT_DISP')
+            fp_traces, _ = plot_fuv_osm_shift_cenwaves(group, 'SHIFT_DISP')
             traces.extend(fp_traces)
             all_visible.extend(list(repeat(False, len(fp_traces))))
             fp_trace_lengths[fp] = len(fp_traces)
@@ -127,6 +123,7 @@ class FuvAdOsmShiftMonitor(BaseMonitor):
 
         all_hidden = list(repeat(False, len(all_visible)))
 
+        # TODO: Find a better way to track which traces to turn "on" and "off". This is gross.
         fp1_visible = all_hidden.copy()
         fp2_visible = all_hidden.copy()
         fp3_visible = all_hidden.copy()
@@ -147,50 +144,22 @@ class FuvAdOsmShiftMonitor(BaseMonitor):
             trace_length + fp_trace_lengths[1] + fp_trace_lengths[2] + fp_trace_lengths[3]:
         ] = list(repeat(True, fp_trace_lengths[4]))
 
+        button_labels = ['All FPPOS', 'FPPOS 1', 'FPPOS 2', 'FPPOS 3', 'FPPOS 4']
+        vsibilities = [all_visible, fp1_visible, fp2_visible, fp3_visible, fp4_visible]
+        titles = [f'{self.name} All FPPOS'] + [f'{self.name} FPPOS {fp} Only' for fp in [1, 2, 3, 4]]
+
         updatemenues = [
             dict(
                 type='buttons',
                 buttons=[
                     dict(
-                        label='All FPPOS',
+                        label=label,
                         method='update',
                         args=[
-                            {'visible': all_visible},
-                            {'title': f'{self.name} All FPPOS'}
+                            {'visible': visibility},
+                            {'title': f'{self.name} {button_title}'}
                         ]
-                    ),
-                    dict(
-                        label='FPPOS 1',
-                        method='update',
-                        args=[
-                            {'visible': fp1_visible},
-                            {'title': f'{self.name} FPPOS 1 Only'}
-                        ]
-                    ),
-                    dict(
-                        label='FPPOS 2',
-                        method='update',
-                        args=[
-                            {'visible': fp2_visible},
-                            {'title': f'{self.name} FPPOS 2 Only'}
-                        ]
-                    ),
-                    dict(
-                        label='FPPOS 3',
-                        method='update',
-                        args=[
-                            {'visible': fp3_visible},
-                            {'title': f'{self.name} FPPOS 3 Only'}
-                        ]
-                    ),
-                    dict(
-                        label='FPPOS 4',
-                        method='update',
-                        args=[
-                            {'visible': fp4_visible},
-                            {'title': f'{self.name} FPPOS 4 Only'}
-                        ]
-                    )
+                    ) for label, visibility, button_title in zip(button_labels, vsibilities, titles)
                 ]
             )
         ]
@@ -216,24 +185,9 @@ class FuvAdOsmShiftMonitor(BaseMonitor):
         pass
 
 
-class FuvXdOsmShiftMonitor(BaseMonitor):
-    data_model = OSMDataModel
-    output = COS_MONITORING
-    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'OBSET_ID']
+class FuvAdOsmShiftMonitor(FuvOSmShiftMonitor):
+    shift = 'SHIFT_DISP'
 
-    def track(self):
-        # TODO: Define interesting things to track
-        pass
 
-    def filter_data(self):
-        return self.data[self.data.DETECTOR == 'FUV']
-
-    def plot(self):
-        traces, layout = plot_fuv_osm_shift(self.filtered_data, 'SHIFT_XDISP')
-
-        self.figure.add_traces(traces)
-        self.figure['layout'].update(layout)
-
-    def store_results(self):
-        # TODO: decide on how to store results and what needs to be stored
-        pass
+class FuvXdOsmShiftMonitor(FuvOSmShiftMonitor):
+    shift = 'SHIFT_XDISP'
