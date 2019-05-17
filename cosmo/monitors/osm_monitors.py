@@ -84,13 +84,13 @@ def plot_fuv_osm_shift_cenwaves(df, shift):
     layout = go.Layout(
         xaxis=dict(title='Datetime'),
         yaxis2=dict(title='Shift [pix]', anchor='x', domain=[0.3, 1], gridwidth=5),
-        yaxis=dict(title='Shift Difference A - B [pix]', anchor='x2', domain=[0, 0.18])
+        yaxis=dict(title='Shift (A - B) [pix]', anchor='x2', domain=[0, 0.18])
     )
 
     return traces, layout
 
 
-class FuvOSmShiftMonitor(BaseMonitor):
+class FuvOsmShiftMonitor(BaseMonitor):
     data_model = OSMDataModel
     output = COS_MONITORING
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID']
@@ -113,7 +113,7 @@ class FuvOSmShiftMonitor(BaseMonitor):
         fp_groups = self.filtered_data.groupby('FPPOS')
         fp_trace_lengths = {}
         for fp, group in fp_groups:
-            fp_traces, _ = plot_fuv_osm_shift_cenwaves(group, 'SHIFT_DISP')
+            fp_traces, _ = plot_fuv_osm_shift_cenwaves(group, self.shift)
             traces.extend(fp_traces)
             all_visible.extend(list(repeat(False, len(fp_traces))))
             fp_trace_lengths[fp] = len(fp_traces)
@@ -146,7 +146,7 @@ class FuvOSmShiftMonitor(BaseMonitor):
 
         button_labels = ['All FPPOS', 'FPPOS 1', 'FPPOS 2', 'FPPOS 3', 'FPPOS 4']
         vsibilities = [all_visible, fp1_visible, fp2_visible, fp3_visible, fp4_visible]
-        titles = [f'{self.name} All FPPOS'] + [f'{self.name} FPPOS {fp} Only' for fp in [1, 2, 3, 4]]
+        titles = [f'{self.name} All FPPOS'] + [f'{self.name} {label} Only' for label in button_labels[1:]]
 
         updatemenues = [
             dict(
@@ -157,7 +157,7 @@ class FuvOSmShiftMonitor(BaseMonitor):
                         method='update',
                         args=[
                             {'visible': visibility},
-                            {'title': f'{self.name} {button_title}'}
+                            {'title': button_title}
                         ]
                     ) for label, visibility, button_title in zip(button_labels, vsibilities, titles)
                 ]
@@ -185,9 +185,9 @@ class FuvOSmShiftMonitor(BaseMonitor):
         pass
 
 
-class FuvAdOsmShiftMonitor(FuvOSmShiftMonitor):
+class FuvAdOsmShiftMonitor(FuvOsmShiftMonitor):
     shift = 'SHIFT_DISP'
 
 
-class FuvXdOsmShiftMonitor(FuvOSmShiftMonitor):
+class FuvXdOsmShiftMonitor(FuvOsmShiftMonitor):
     shift = 'SHIFT_XDISP'
