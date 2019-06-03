@@ -211,3 +211,63 @@ class FuvOsmShift2Monitor(FuvOsmShiftMonitor):
 
     def find_outliers(self):
         return self.results.seg_diff.abs() > 5
+
+
+class NuvOsmShiftMonitor(BaseMonitor):
+    data_model = OSMDataModel
+    output = COS_MONITORING
+    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID']
+
+    shift = None
+
+    def filter_data(self):
+        return self.data[self.data.DETECTOR == 'NUV']
+
+    def plot(self):
+        groups = self.filtered_data.groupby(['OPT_ELEM', 'CENWAVE'])
+
+        traces = []
+        for i, group_info in enumerate(groups):
+            name, group = group_info
+
+            start_time, lamp_time = compute_lamp_on_times(group)
+
+            traces.append(
+                go.Scattergl(
+                    x=lamp_time.to_datetime(),
+                    y=group[self.shift],
+                    name='-'.join([str(item) for item in name]),
+                    mode='markers',
+                    text=group.hover_text,
+                    marker=dict(
+                        cmax=len(self.filtered_data.CENWAVE.unique()) - 1,
+                        cmin=0,
+                        color=list(repeat(i, len(group))),
+                        colorscale='Viridis',
+                    ),
+                )
+            )
+
+        layout = go.Layout(
+            xaxis=dict(title='Datetime'),
+            yaxis=dict(title='Shift [pix]', gridwidth=5),
+        )
+
+        self.figure.add_traces(traces)
+        self.figure['layout'].update(layout)
+
+    def store_results(self):
+        # TODO: decide on what results to store and how
+        pass
+
+    def track(self):
+        # TODO: decide on what to track
+        pass
+
+
+class NuvOsmShift1Monitor(NuvOsmShiftMonitor):
+    shift = 'SHIFT_DISP'
+
+
+class NuvOsmShift2Monitor(NuvOsmShiftMonitor):
+    shift = 'SHIFT_XDISP'
