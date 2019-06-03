@@ -1,5 +1,7 @@
 import plotly.graph_objs as go
 import datetime
+import pandas as pd
+import os
 
 from itertools import repeat
 
@@ -27,27 +29,15 @@ def plot_fuv_osm_shift_cenwaves(df, shift):
 
     traces = []
 
-    segment_diff = []
-    time = []
-    hover_text = []
-    root_groups = df.groupby('ROOTNAME')
-    for rootname, group in root_groups:
-        if 'FUVA' in group.SEGMENT.values and 'FUVB' in group.SEGMENT.values:
-            _, lamp_time = compute_lamp_on_times(group[group.SEGMENT == 'FUVA'])
-
-            fuva, fuvb = group[group.SEGMENT == 'FUVA'], group[group.SEGMENT == 'FUVB']
-
-            segment_diff.extend(fuva[shift].values - fuvb[shift].values)
-            hover_text.extend([item.hover_text + f'<br>CENWAVE    {item.CENWAVE}' for _, item in fuva.iterrows()])
-            time.extend(lamp_time.to_datetime())
+    seg_diff_results = compute_segment_diff(df, shift)
 
     traces.append(
         go.Scattergl(
-            x=time,
-            y=segment_diff,
+            x=seg_diff_results.lamp_time,
+            y=seg_diff_results.seg_diff,
             name='FUVA - FUVB',
             mode='markers',
-            text=hover_text,
+            text=seg_diff_results.hover_text,
             visible=False
         )
     )
@@ -90,6 +80,31 @@ def plot_fuv_osm_shift_cenwaves(df, shift):
     return traces, layout
 
 
+def compute_segment_diff(df, shift):
+    root_groups = df.groupby('ROOTNAME')
+
+    results_list = []
+    for rootname, group in root_groups:
+        if 'FUVA' in group.SEGMENT.values and 'FUVB' in group.SEGMENT.values:
+            _, lamp_time = compute_lamp_on_times(group[group.SEGMENT == 'FUVA'])
+
+            fuva, fuvb = group[group.SEGMENT == 'FUVA'], group[group.SEGMENT == 'FUVB']
+
+            diff_df = fuva.assign(seg_diff=fuva[shift].values - fuvb[shift].values).reset_index(drop=True)
+
+            diff_df['hover_text'] = [
+                item.hover_text + f'<br>CENWAVE    {item.CENWAVE}' for _, item in fuva.iterrows()
+            ]
+
+            diff_df['lamp_time'] = lamp_time.to_datetime()
+            diff_df.drop(columns=['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT', 'DETECTOR'], inplace=True)
+            results_list.append(diff_df)
+
+    results_df = pd.concat(results_list, ignore_index=True)
+
+    return results_df
+
+
 class FuvOsmShiftMonitor(BaseMonitor):
     data_model = OSMDataModel
     output = COS_MONITORING
@@ -98,8 +113,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
     shift = None
 
     def track(self):
-        # TODO: Define interesting things to track
-        pass
+        return compute_segment_diff(self.filtered_data, self.shift)
 
     def filter_data(self):
         return self.data[self.data.DETECTOR == 'FUV']
@@ -181,13 +195,19 @@ class FuvOsmShiftMonitor(BaseMonitor):
         self.figure['layout'].update({'shapes': lines, 'updatemenus': updatemenues})
 
     def store_results(self):
-        # TODO: decide on how to store results and what needs to be stored
-        pass
+        outliers = self.results[self.outliers]
+        outliers.to_csv(os.path.join(os.path.dirname(self.output), f'{self._filename}-outliers.csv'))
 
 
-class FuvAdOsmShiftMonitor(FuvOsmShiftMonitor):
+class FuvOsmShift1Monitor(FuvOsmShiftMonitor):
     shift = 'SHIFT_DISP'
 
+    def find_outliers(self):
+        return self.results.seg_diff.abs() > 10
 
-class FuvXdOsmShiftMonitor(FuvOsmShiftMonitor):
+
+class FuvOsmShift2Monitor(FuvOsmShiftMonitor):
     shift = 'SHIFT_XDISP'
+
+    def find_outliers(self):
+        return self.results.seg_diff.abs() > 5
