@@ -6,7 +6,7 @@ import os
 from itertools import repeat
 
 from monitorframe import BaseMonitor
-from cosmo.monitor_helpers import compute_lamp_on_times
+from cosmo.monitor_helpers import compute_absolute_time
 from .osm_data_models import OSMDataModel
 
 COS_MONITORING = '/grp/hst/cos2/monitoring'
@@ -50,7 +50,7 @@ def plot_fuv_osm_shift_cenwaves(df: pd.DataFrame, shift: str) -> [list, go.Layou
     for i, group_info in enumerate(groups):
         name, group = group_info
 
-        start_time, lamp_time = compute_lamp_on_times(group)
+        start_time, lamp_time = compute_absolute_time(group)
 
         traces.append(
             go.Scattergl(
@@ -93,7 +93,7 @@ def compute_segment_diff(df: pd.DataFrame, shift: str) -> pd.DataFrame:
     results_list = []
     for rootname, group in root_groups:
         if 'FUVA' in group.SEGMENT.values and 'FUVB' in group.SEGMENT.values:
-            _, lamp_time = compute_lamp_on_times(group[group.SEGMENT == 'FUVA'])  # absolute time calculated from FUVA
+            _, lamp_time = compute_absolute_time(group[group.SEGMENT == 'FUVA'])  # absolute time calculated from FUVA
 
             fuva, fuvb = group[group.SEGMENT == 'FUVA'], group[group.SEGMENT == 'FUVB']
 
@@ -266,7 +266,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
         for i, group_info in enumerate(groups):
             name, group = group_info
 
-            start_time, lamp_time = compute_lamp_on_times(group)
+            start_time, lamp_time = compute_absolute_time(group)
 
             traces.append(
                 go.Scattergl(
