@@ -10,6 +10,7 @@ from cosmo.monitor_helpers import fit_line, convert_day_of_year
 COS_MONITORING = '/grp/hst/cos2/monitoring'
 
 
+# TODO: Remove example monitors and finalize remaining ones.
 class AcqImageMonitor(BaseMonitor):
     """Simple example monitor."""
     data_model = AcqImageModel
@@ -43,6 +44,7 @@ class AcqImageMonitor(BaseMonitor):
 
 
 class AcqImageSlewMonitor(BaseMonitor):
+    """Example ACQIMAGE scatter plot monitor."""
     name = 'AcImage Slew Monitor'
     data_model = AcqImageModel
     subplots = True
@@ -51,18 +53,22 @@ class AcqImageSlewMonitor(BaseMonitor):
     labels = ['ROOTNAME', 'PROPOSID']
 
     def track(self):
+        """Track the fit and fit line of offset v time for each FGS."""
         groups = self.data.groupby('dom_fgs')
 
-        fit_results = dict()
+        fit_results = {}
         for name, group in groups:
-            xline = fit_line(group.EXPSTART, -group.ACQSLEWX)
-            yline = fit_line(group.EXPSTART, -group.ACQSLEWY)
+            xfit, xline = fit_line(group.EXPSTART, -group.ACQSLEWX)
+            yfit, yline = fit_line(group.EXPSTART, -group.ACQSLEWY)
 
-            fit_results[name] = (xline(group.EXPSTART), yline(group.EXPSTART), xline, yline)
+            fit_results[name] = (xline, yline, xfit, yfit)
 
         return groups, fit_results
 
     def plot(self):
+        """Plot offset (-slew) v time for the dispersion direction (top panel) and cross-dispersion direction (bottom
+        panel). Separate FGS by button option.
+        """
         groups, fit_results = self.results
 
         traces = []
@@ -109,9 +115,10 @@ class AcqImageSlewMonitor(BaseMonitor):
 
             traces.extend([x_scatter, y_scatter, xline_fit, yline_fit])
 
-            rows.extend([1, 2, 1, 2])
+            rows.extend([1, 2, 1, 2])  # Placement of the traces on the figure are in the order that they're created.
             cols.extend([1, 1, 1, 1])
 
+            # Iteratively create visibility settings
             for key in visibility.keys():
                 if key == name:
                     visibility[key].extend([True, True, True, True])
@@ -119,6 +126,7 @@ class AcqImageSlewMonitor(BaseMonitor):
                 else:
                     visibility[key].extend([False, False, False, False])
 
+        # Create FGS buttons
         updatemenus = [
             dict(
                 active=15,
@@ -135,6 +143,7 @@ class AcqImageSlewMonitor(BaseMonitor):
             ),
         ]
 
+        # Create layout
         layout = go.Layout(updatemenus=updatemenus, hovermode='closest')
 
         self.figure.add_traces(traces, rows=rows, cols=cols)
@@ -142,16 +151,19 @@ class AcqImageSlewMonitor(BaseMonitor):
 
 
 class AcqImageFGSMonitor(BaseMonitor):
+    """ACQIMAGE FGS monitor."""
     name = 'AcqImage FGS Monitor'
     data_model = AcqImageModel
     labels = ['ROOTNAME', 'PROPOSID']
     output = COS_MONITORING
 
     def track(self):
+        """Track the average offset (-slew) for x and y directions per FGS."""
         groups = self.data.groupby('dom_fgs')
         return groups, -groups.ACQSLEWX.mean(), -groups.ACQSLEWY.mean()
 
     def plot(self):
+        """Plot a scatter plot of y vs x offsets (-slews) per FGS. Separate FGS via button options."""
         groups, mean_x, mean_y = self.results
 
         average_text = {
@@ -178,6 +190,7 @@ class AcqImageFGSMonitor(BaseMonitor):
                 )
             )
 
+        # Add vertical line for the mean x offset and a horizontal line for the mean y offset
         lines = {
             fgs: [
                 {
@@ -209,6 +222,7 @@ class AcqImageFGSMonitor(BaseMonitor):
             for fgs in self.data.dom_fgs.unique()
         }
 
+        # Add FGS buttons
         updatemenus = [
             dict(
                 active=10,
@@ -241,6 +255,7 @@ class AcqImageFGSMonitor(BaseMonitor):
             ),
         ]
 
+        # Create layout
         layout = go.Layout(updatemenus=updatemenus, hovermode='closest')
 
         self.figure.add_traces(traces)
@@ -248,6 +263,7 @@ class AcqImageFGSMonitor(BaseMonitor):
 
 
 class AcqImageV2V3Monitor(BaseMonitor):
+    """V2V3 Offset Monitor."""
     name = 'V2V3 Offset Monitor'
     data_model = AcqImageModel
     labels = ['ROOTNAME', 'PROPOSID']
@@ -255,6 +271,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
     subplot_layout = (2, 1)
     output = COS_MONITORING
 
+    # Define break points for fitting lines; these correspond to important catalogue or FGS dates.
     break_points = {
         'F1': [
             ('start', 2011.172),
@@ -274,6 +291,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
         'F3': []  # No current break points for F3 yet
     }
 
+    # Define important events for vertical line placement.
     fgs_events = {
         'FGS realignment 1': 2011.172,
         'FGS2 turned on': 2011.206,
@@ -285,7 +303,9 @@ class AcqImageV2V3Monitor(BaseMonitor):
     }
 
     def filter_data(self):
-
+        """Filter ACQIMAGE data for V2V3 plot. These filter options attempt to weed out outliers that might result from
+        things besides FGS trends (such as bad coordinates).
+        """
         index = np.where(
             (self.data.OBSTYPE == 'IMAGING') &
             (self.data.NEVENTS >= 2000) &
@@ -302,9 +322,10 @@ class AcqImageV2V3Monitor(BaseMonitor):
         return filtered_df
 
     def track(self):
+        """Track the fit and fit-line for the period since the last FGS alignment."""
         groups = self.filtered_data.groupby('dom_fgs')
 
-        last_updated_results = dict()
+        last_updated_results = {}
         for name, group in groups:
             if name == 'F3':
                 continue
@@ -321,16 +342,22 @@ class AcqImageV2V3Monitor(BaseMonitor):
         return groups, last_updated_results
 
     def plot(self):
-        fgs_groups, _ = self.results
+        """Plot V2 and V3 offset (-slew) vs time per 'breakpoint' period and per FGS. Separate FGS via a button option.
+        V2 will be plotted in the top panel and V3 will be plotted in the bottom panel.
+        """
+        fgs_groups, _ = self.results  # retrive the groups already found in track.
 
-        traces = {'F1': [], 'F2': []}
+        # TODO: Refactor how traces are collected and visibility options for the buttons are created.
+        traces = {'F1': [], 'F2': []}  # store traces per fgs
         rows = []
         cols = []
         for name, group in fgs_groups:
 
+            # Skip FGS3; there are not enough datapoints for meaningful analysis
             if name == 'F3':
                 continue
 
+            # Plot offset v time per breakpoint
             for points in self.break_points[name]:
 
                 t_start, t_end = [
@@ -347,9 +374,10 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 else:
                     df = group.iloc[np.where((group.EXPSTART >= t_start) & (group.EXPSTART <= t_end))]
 
-                if df.empty:
+                if df.empty:  # Sometimes there may be no data; For exampel, FGS2 was not used for a while
                     continue
 
+                # Plot V2 and V3 offsets v time
                 for i, slew in enumerate(['V2SLEW', 'V3SLEW']):
                     rows.append(i + 1)
                     rows.append(i + 1)
@@ -379,6 +407,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
         self.figure.add_traces([item for sublist in traces.values() for item in sublist], rows=rows, cols=cols)
 
+        # Create vertical lines
         lines = [
             {
                 'type': 'line',
@@ -397,6 +426,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
         f1_visibility = list(repeat(True, len(traces['F1']))) + list(repeat(False, len(traces['F2'])))
         f2_visibility = list(repeat(False, len(traces['F1']))) + list(repeat(True, len(traces['F2'])))
 
+        # Create buttons
         updatemenus = [
             dict(
                 active=50,
@@ -421,26 +451,32 @@ class AcqImageV2V3Monitor(BaseMonitor):
             ),
         ]
 
+        # Create layout
         layout = go.Layout(updatemenus=updatemenus, hovermode='closest', shapes=lines)
+
         self.figure['layout'].update(layout)
 
     def store_results(self):
+        # TODO: define what results to store and how
         pass
 
 
 class AcqPeakdMonitor(BaseMonitor):
+    """ACQPEAKD monitor."""
     name = 'AcqPeakd Monitor'
     data_model = AcqPeakdModel
     labels = ['ROOTNAME', 'PROPOSID']
     output = COS_MONITORING
 
     def track(self):
+        """Track the standard deviation of the slew per FGS."""
         groups = self.data.groupby('dom_fgs')
         scatter = groups.ACQSLEWX.std()
 
         return groups, scatter
 
     def plot(self):
+        """Plot offset (-slew) v time per FGS. Separate FGS via button options. Color by LP-POS"""
         fgs_groups, std_results = self.results
 
         traces = []
@@ -472,6 +508,7 @@ class AcqPeakdMonitor(BaseMonitor):
         visibility = [np.roll([True, False, False], index) for index in range(len(fgs_labels))]
         title = 'AcqPeakd Slew vs Time'
 
+        # Create buttons
         updatemenus = [
             dict(
                 active=10,
@@ -488,24 +525,29 @@ class AcqPeakdMonitor(BaseMonitor):
             )
         ]
 
+        # Create layout
         layout = go.Layout(updatemenus=updatemenus, hovermode='closest')
+
         self.figure.add_traces(traces)
         self.figure['layout'].update(layout)
 
 
 class AcqPeakxdMonitor(BaseMonitor):
+    """ACQPEAKXD monitor."""
     name = 'AcqPeakxd Monitor'
     data_model = AcqPeakxdModel
     labels = ['ROOTNAME', 'PROPOSID']
     output = COS_MONITORING
 
     def track(self):
+        """Track the standard deviation of the slew per FGS."""
         groups = self.data.groupby('dom_fgs')
         scatter = groups.ACQSLEWY.std()
 
         return groups, scatter
 
     def plot(self):
+        """Plot offset (-slew) v time per FGS. Separate FGS via button options. Color by LP-POS"""
         fgs_groups, std_results = self.results
 
         traces = []
@@ -537,6 +579,7 @@ class AcqPeakxdMonitor(BaseMonitor):
         visibility = [np.roll([True, False, False], index) for index in range(len(fgs_labels))]
         title = 'AcqPeakxd Slew vs Time'
 
+        # Create buttons
         updatemenus = [
             dict(
                 active=10,
@@ -553,6 +596,8 @@ class AcqPeakxdMonitor(BaseMonitor):
             )
         ]
 
+        # Create layout
         layout = go.Layout(updatemenus=updatemenus, hovermode='closest')
+
         self.figure.add_traces(traces)
         self.figure['layout'].update(layout)
