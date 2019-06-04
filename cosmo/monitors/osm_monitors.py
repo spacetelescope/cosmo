@@ -4,6 +4,7 @@ import pandas as pd
 import os
 
 from itertools import repeat
+from typing import Tuple
 
 from monitorframe import BaseMonitor
 from cosmo.monitor_helpers import compute_absolute_time
@@ -17,7 +18,7 @@ LP_MOVES = lp_moves = {
     }
 
 
-def plot_fuv_osm_shift_cenwaves(df: pd.DataFrame, shift: str) -> [list, go.Layout]:
+def plot_fuv_osm_shift_cenwaves(df: pd.DataFrame, shift: str) -> Tuple[list, go.Layout]:
     """Plot shift v time and A-B v time by grating/cenwave"""
     groups = df.groupby(['OPT_ELEM', 'CENWAVE'])
 
