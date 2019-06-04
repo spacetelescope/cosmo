@@ -8,6 +8,7 @@ from cosmo.monitor_helpers import explode_df
 
 
 class OSMDataModel(BaseDataModel):
+    """Data model for all OSM Shift monitors."""
 
     def get_data(self):
         header_keys = (
@@ -18,6 +19,7 @@ class OSMDataModel(BaseDataModel):
         data_keys = ('TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT')
         data_extensions = (1, 1, 1, 1)
 
+        # Find data from lampflash files
         finder = FileDataFinder(
             FILES_SOURCE,
             '*lampflash*',
