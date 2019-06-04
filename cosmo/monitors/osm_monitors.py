@@ -17,9 +17,11 @@ LP_MOVES = lp_moves = {
     }
 
 
-def plot_fuv_osm_shift_cenwaves(df, shift):
+def plot_fuv_osm_shift_cenwaves(df: pd.DataFrame, shift: str) -> [list, go.Layout]:
+    """Plot shift v time and A-B v time by grating/cenwave"""
     groups = df.groupby(['OPT_ELEM', 'CENWAVE'])
 
+    # Set symbols for different FP-POS
     fp_symbols = {
         1: 'circle',
         2: 'cross',
@@ -29,8 +31,10 @@ def plot_fuv_osm_shift_cenwaves(df, shift):
 
     traces = []
 
+    # Compute A-B shift difference
     seg_diff_results = compute_segment_diff(df, shift)
 
+    # Plot A-B v time
     traces.append(
         go.Scattergl(
             x=seg_diff_results.lamp_time,
@@ -42,6 +46,7 @@ def plot_fuv_osm_shift_cenwaves(df, shift):
         )
     )
 
+    # Plot shfit v time per grating/cenwave group
     for i, group_info in enumerate(groups):
         name, group = group_info
 
@@ -66,11 +71,12 @@ def plot_fuv_osm_shift_cenwaves(df, shift):
                     size=[
                         10 if time > LP_MOVES[4] and lp == 3 else 6
                         for lp, time in zip(group.LIFE_ADJ, start_time.to_datetime())
-                    ]
+                    ]  # Set the size to distinguish exposures taken at LP3 after the move to LP4
                 ),
             )
         )
 
+    # Set layout; Link the x-axes; increase the horizontal gridline width for the shift v time plot
     layout = go.Layout(
         xaxis=dict(title='Datetime'),
         yaxis2=dict(title='Shift [pix]', anchor='x', domain=[0.3, 1], gridwidth=5),
@@ -80,23 +86,28 @@ def plot_fuv_osm_shift_cenwaves(df, shift):
     return traces, layout
 
 
-def compute_segment_diff(df, shift):
-    root_groups = df.groupby('ROOTNAME')
+def compute_segment_diff(df: pd.DataFrame, shift: str) -> pd.DataFrame:
+    """Compute the difference (A-B) in the shift measurement betwen segments."""
+    root_groups = df.groupby('ROOTNAME')  # group by rootname which may or may not have FUVA and FUVB shifts
 
     results_list = []
     for rootname, group in root_groups:
         if 'FUVA' in group.SEGMENT.values and 'FUVB' in group.SEGMENT.values:
-            _, lamp_time = compute_lamp_on_times(group[group.SEGMENT == 'FUVA'])
+            _, lamp_time = compute_lamp_on_times(group[group.SEGMENT == 'FUVA'])  # absolute time calculated from FUVA
 
             fuva, fuvb = group[group.SEGMENT == 'FUVA'], group[group.SEGMENT == 'FUVB']
 
+            # Use the FUVA dataframe to create a "results" dataframe
             diff_df = fuva.assign(seg_diff=fuva[shift].values - fuvb[shift].values).reset_index(drop=True)
 
+            # Add the cenwave to the hover text
             diff_df['hover_text'] = [
                 item.hover_text + f'<br>CENWAVE    {item.CENWAVE}' for _, item in fuva.iterrows()
             ]
 
             diff_df['lamp_time'] = lamp_time.to_datetime()
+
+            # Drop "segment specific" info
             diff_df.drop(columns=['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT', 'DETECTOR'], inplace=True)
             results_list.append(diff_df)
 
@@ -106,43 +117,55 @@ def compute_segment_diff(df, shift):
 
 
 class FuvOsmShiftMonitor(BaseMonitor):
+    """Abstracted FUV OSM Shift monitor. This monitor class is not meant to be used directly, but rather inhereted from
+    by specific Shift1 and Shift2 monitors (which share the same plots, but differ in which shift value is plotted and
+    how outliers are defined).
+    """
     data_model = OSMDataModel
     output = COS_MONITORING
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID']
 
-    shift = None
+    shift = None  # SHIFT_DISP or SHIFT_XDISP
 
     def track(self):
+        """Track the difference in shift, A-B"""
         return compute_segment_diff(self.filtered_data, self.shift)
 
     def filter_data(self):
+        """Filter on detector."""
         return self.data[self.data.DETECTOR == 'FUV']
 
     def plot(self):
+        """Plot shift v time and A-B v time per cenwave, and with each FP-POS separate by button options."""
+        # First set of layouts for the "All FPPOS" button
         traces, layout = plot_fuv_osm_shift_cenwaves(self.filtered_data, self.shift)
 
-        trace_length = len(traces)
-        all_visible = list(repeat(True, trace_length))
+        trace_length = len(traces)  # Number of traces in the first group
+        all_visible = list(repeat(True, trace_length))  # Visible option for the first group
 
         fp_groups = self.filtered_data.groupby('FPPOS')
-        fp_trace_lengths = {}
+        fp_trace_lengths = {}  # track the number of traces produced per fp; this differs between fp
         for fp, group in fp_groups:
             fp_traces, _ = plot_fuv_osm_shift_cenwaves(group, self.shift)
-            traces.extend(fp_traces)
-            all_visible.extend(list(repeat(False, len(fp_traces))))
+            traces.extend(fp_traces)  # Add new traces to the set
+            all_visible.extend(list(repeat(False, len(fp_traces))))  # Add new groups to the first
             fp_trace_lengths[fp] = len(fp_traces)
 
-        self.figure.add_traces(traces)
-        self.figure['layout'].update(layout)
+        self.figure.add_traces(traces)  # Add all traces
+        self.figure['layout'].update(layout)  # Add initial layout which determines how the subplots are configured
 
+        # Create a "baseline" where all traces are set to be inactive
         all_hidden = list(repeat(False, len(all_visible)))
 
         # TODO: Find a better way to track which traces to turn "on" and "off". This is gross.
+
+        # Create copies of the baseline to modify per fp
         fp1_visible = all_hidden.copy()
         fp2_visible = all_hidden.copy()
         fp3_visible = all_hidden.copy()
         fp4_visible = all_hidden.copy()
 
+        # For each fp, set the visibility to True for the appropriate number of traces in the appropriate position.
         fp1_visible[trace_length:trace_length + fp_trace_lengths[1]] = list(repeat(True, fp_trace_lengths[1]))
 
         fp2_visible[
@@ -162,6 +185,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
         vsibilities = [all_visible, fp1_visible, fp2_visible, fp3_visible, fp4_visible]
         titles = [f'{self.name} All FPPOS'] + [f'{self.name} {label} Only' for label in button_labels[1:]]
 
+        # Create the menu buttons
         updatemenues = [
             dict(
                 type='buttons',
@@ -178,6 +202,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
             )
         ]
 
+        # Create vertical lines for the LP moves
         lines = [
             {
                 'type': 'line',
@@ -195,37 +220,48 @@ class FuvOsmShiftMonitor(BaseMonitor):
         self.figure['layout'].update({'shapes': lines, 'updatemenus': updatemenues})
 
     def store_results(self):
+        """Store A-B outliers in a csv file."""
         outliers = self.results[self.outliers]
         outliers.to_csv(os.path.join(os.path.dirname(self.output), f'{self._filename}-outliers.csv'))
 
 
 class FuvOsmShift1Monitor(FuvOsmShiftMonitor):
-    shift = 'SHIFT_DISP'
+    """FUV OSM Shift1 (SHIFT_DISP) monitor."""
+    shift = 'SHIFT_DISP'  # shift1
 
     def find_outliers(self):
+        """Outliers for shift1 A-B are defined as any difference whose magnitude is greater than 10 pixels."""
         return self.results.seg_diff.abs() > 10
 
 
 class FuvOsmShift2Monitor(FuvOsmShiftMonitor):
-    shift = 'SHIFT_XDISP'
+    """FUV OSM Shift2 (SHIFT_XDISP) monitor."""
+    shift = 'SHIFT_XDISP'  # shift 2
 
     def find_outliers(self):
+        """Outliers for shift2 A-B are defined as any differenc whose magnitude is greater than 5 pixels"""
         return self.results.seg_diff.abs() > 5
 
 
 class NuvOsmShiftMonitor(BaseMonitor):
+    """Abstracted NUV OSM Shift monitor. This monitor class is not meant to be used directly, but rather inhereted from
+    by specific Shift1 and Shift2 monitors (which share the same plots, but differ in which shift value is plotted and
+    how outliers are defined)."""
     data_model = OSMDataModel
     output = COS_MONITORING
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID']
 
-    shift = None
+    shift = None  # SHIFT_DISP or SHIFT_XDISP
 
     def filter_data(self):
+        """Filter on detector."""
         return self.data[self.data.DETECTOR == 'NUV']
 
     def plot(self):
+        """Plot shift v time per grating/cenwave."""
         groups = self.filtered_data.groupby(['OPT_ELEM', 'CENWAVE'])
 
+        # Plot shift v time for each grating/cenwave
         traces = []
         for i, group_info in enumerate(groups):
             name, group = group_info
@@ -248,6 +284,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
                 )
             )
 
+        # Set layout
         layout = go.Layout(
             xaxis=dict(title='Datetime'),
             yaxis=dict(title='Shift [pix]', gridwidth=5),
@@ -266,8 +303,10 @@ class NuvOsmShiftMonitor(BaseMonitor):
 
 
 class NuvOsmShift1Monitor(NuvOsmShiftMonitor):
-    shift = 'SHIFT_DISP'
+    """NUV OSM Shift1 (SHIFT_DISP) monitor."""
+    shift = 'SHIFT_DISP'  # shift1
 
 
 class NuvOsmShift2Monitor(NuvOsmShiftMonitor):
-    shift = 'SHIFT_XDISP'
+    """NUV OSM Shift2 (SHIFT_XDISP) monitor."""
+    shift = 'SHIFT_XDISP'  # shift2
