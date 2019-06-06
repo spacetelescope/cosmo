@@ -15,8 +15,17 @@ def dgestar_to_fgs(results: List[dict]) -> None:
 def get_acq_data(acq_keys: tuple, acq_extensions: tuple, spt_keys: tuple, spt_extensions: tuple, exptype: str
                  ) -> List[dict]:
     """Get data from all rawacq files and their corresponding spts."""
-    finder = FileDataFinder(FILES_SOURCE, '*rawacq*', acq_keys, acq_extensions, spt_keys, spt_extensions, exptype)
-    data_results = finder.data_from_files()
+    finder = FileDataFinder(
+        FILES_SOURCE,
+        '*rawacq*',
+        acq_keys,
+        acq_extensions,
+        spt_keywords=spt_keys,
+        spt_extensions=spt_extensions,
+        exptype=exptype
+    )
+
+    data_results = finder.get_data_from_files()
 
     if 'DGESTAR' in spt_keys:
         dgestar_to_fgs(data_results)

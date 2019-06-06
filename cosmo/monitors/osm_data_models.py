@@ -29,6 +29,6 @@ class OSMDataModel(BaseDataModel):
             data_extensions=data_extensions
         )
 
-        df = pd.DataFrame(finder.data_from_files())
+        df = pd.DataFrame(finder.get_data_from_files())
 
         return explode_df(df, list(data_keys))

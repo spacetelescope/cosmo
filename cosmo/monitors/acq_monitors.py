@@ -261,6 +261,9 @@ class AcqImageFGSMonitor(BaseMonitor):
         self.figure.add_traces(traces)
         self.figure['layout'].update(layout)
 
+    def store_results(self):
+        pass
+
 
 class AcqImageV2V3Monitor(BaseMonitor):
     """V2V3 Offset Monitor."""
