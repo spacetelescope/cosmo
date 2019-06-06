@@ -46,15 +46,28 @@ def explode_df(df: pd.DataFrame, list_keywords: Union[list, tuple]) -> pd.DataFr
     return df1.join(df.drop(list_keywords, 1), how='left').reset_index(drop=True)
 
 
-def compute_absolute_time(df: pd.DataFrame) -> Tuple[Time, Time]:
+def compute_absolute_time(df: pd.DataFrame = None, expstart: float = None, time_array: Sequence = None) -> Tuple[Time, Time]:
     """Given a dataframe with EXPSTART keyword and a TIME column, compute the absolute time for the TIME column defined
     as EXPSTART + TIME[i] for each element, i in TIME.
     """
-    if 'EXPSTART' not in df or 'TIME' not in df:
-        raise KeyError('To compute the absolute time, EXPSTART and TIME must be present in the dataframe.')
+    if df is not None and (expstart is not None or time_array is not None):
+        raise ValueError('Can only input a dataframe or arrays, not both')
 
-    start_time = Time(df.EXPSTART, format='mjd')
-    lamp_dt = TimeDelta(df.TIME, format='sec')
-    lamp_time = start_time + lamp_dt
+    if df is not None:
+        if 'EXPSTART' not in df or 'TIME' not in df:
+            raise KeyError('To compute the absolute time, EXPSTART and TIME must be present in the dataframe.')
 
-    return start_time, lamp_time
+        start_time = Time(df.EXPSTART, format='mjd')
+        time_dt = TimeDelta(df.TIME, format='sec')
+        absolute_time = start_time + time_dt
+
+        return start_time, absolute_time
+
+    if (expstart is not None and time_array is None) or (expstart is None and time_array is not None):
+        raise ValueError('Include both expstart and time_array')
+
+    start_time = Time(expstart, format='mjd')
+    time_dt = TimeDelta(time_array, format='sec')
+    absolute_time = start_time + time_dt
+
+    return start_time, absolute_time

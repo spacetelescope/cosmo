@@ -90,13 +90,17 @@ class FileData:
 
     def get_spt_header_data(self):
         with fits.open(self.spt_file) as spt:
-            self.data.update({key: spt[ext].header[key] for key, ext in zip(self.spt_keys, self.spt_exts)})
+            for key, ext in zip(self.spt_keys, self.spt_exts):
+                self.data.update({key if key not in self.data else f'{key}_{ext}': spt[ext].header[key]})
 
     def get_header_data(self):
-        self.data.update({key: self.hdu[ext].header[key] for key, ext in zip(self.header_keys, self.header_exts)})
+        for key, ext in zip(self.header_keys, self.header_exts):
+            self.data.update({key if key not in self.data else f'{key}_{ext}': self.hdu[ext].header[key]})
 
     def get_table_data(self):
-        self.data.update({key: self.hdu[ext].data[key] for key, ext in zip(self.data_keys, self.data_exts)})
+        for key, ext in zip(self.data_keys, self.data_exts):
+            self.data.update({key if key not in self.data else f'{key}_{ext}': self.hdu[ext].data[key]})
+
 
 
 @dask.delayed
