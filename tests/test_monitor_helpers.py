@@ -3,7 +3,7 @@ import pandas as pd
 
 from datetime import datetime
 from astropy.time import Time
-from cosmo.monitor_helpers import convert_day_of_year, fit_line, explode_df, compute_absolute_time
+from cosmo.monitor_helpers import convert_day_of_year, fit_line, explode_df, AbsoluteTime
 
 
 class TestConvertDayofYear:
@@ -60,12 +60,61 @@ class TestExplodeDf:
         assert all(exploded.a == 1)
 
 
-class TestComputeAbsoluteTime:
+class TestAbsoluteTime:
 
     def test_fails_on_missing_keys(self):
         test_df = pd.DataFrame({'EXPSTART': [58484.0, 58485.0, 58486.0], })
 
         with pytest.raises(KeyError):
-            compute_absolute_time(test_df)
+            AbsoluteTime.from_df(test_df)
+
+    def test_fails_on_df_and_arrays(self):
+        test_df = pd.DataFrame({'EXPSTART': [58484.0, 58485.0, 58486.0], 'TIME': [1, 2, 3]})
+
+        test_expstart = test_time = [1, 2, 3]
+
+        with pytest.raises(ValueError):
+            AbsoluteTime(df=test_df, expstart=test_expstart, time_array=test_time)
+
+    def test_no_input(self):
+        with pytest.raises(ValueError):
+            AbsoluteTime()
+
+    def test_ingest_expstart_missing(self):
+        test_df = pd.DataFrame({'TIME': [1, 2, 3]})
+
+        with pytest.raises(KeyError):
+            AbsoluteTime(df=test_df)
+
+    def test_ingest_unspecified_time(self):
+        test_df = pd.DataFrame({'EXPSTART': [58484.0, 58485.0, 58486.0], 'some_other_time': [1, 2, 3]})
+
+        with pytest.raises(KeyError):
+            AbsoluteTime(df=test_df)
+
+    def test_specified_time(self):
+        test_df = pd.DataFrame({'EXPSTART': [58484.0, 58485.0, 58486.0], 'some_other_time': [1, 2, 3]})
+
+        AbsoluteTime(df=test_df, time_array_key='some_other_time')
+
+    def test_input_arrays(self):
+        test_expstart = test_time_array = [1, 2, 3]
+
+        AbsoluteTime(expstart=test_expstart, time_array=test_time_array)
+
+    def test_init_from_df(self):
+        test_df = pd.DataFrame({'EXPSTART': [58484.0, 58485.0, 58486.0], 'TIME': [1, 2, 3]})
+
+        AbsoluteTime.from_df(df=test_df)
+
+    def test_init_from_df_other_time(self):
+        test_df = pd.DataFrame({'EXPSTART': [58484.0, 58485.0, 58486.0], 'some_other_time': [1, 2, 3]})
+
+        AbsoluteTime.from_df(test_df, time_array_key='some_other_time')
+
+    def test_init_from_arrays(self):
+        test_expstart = test_time_array = [1, 2, 3]
+
+        AbsoluteTime.from_arrays(test_expstart, test_time_array)
 
 

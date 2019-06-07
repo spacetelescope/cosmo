@@ -153,7 +153,13 @@ class TestGetFileData:
             data_keys=('RAWX',)
         )
 
-    # def test_files_are_closed(self):
+    def test_files_are_closed(self):
+        # if the file is not closed, this will produce an error. However, different processes might have the file
+        # open and this wouldn't catch that
+        f = open(self.file)
+        f.close()
+
+        assert f.closed
 
     def test_compute_result(self):
         result = self.delayed_result.compute(scheduler='multiprocessing')

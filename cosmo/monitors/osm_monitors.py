@@ -7,7 +7,7 @@ from itertools import repeat
 from typing import Tuple
 
 from monitorframe import BaseMonitor
-from cosmo.monitor_helpers import compute_absolute_time
+from cosmo.monitor_helpers import AbsoluteTime
 from .osm_data_models import OSMDataModel
 
 COS_MONITORING = '/grp/hst/cos2/monitoring'
@@ -51,7 +51,8 @@ def plot_fuv_osm_shift_cenwaves(df: pd.DataFrame, shift: str) -> Tuple[list, go.
     for i, group_info in enumerate(groups):
         name, group = group_info
 
-        start_time, lamp_time = compute_absolute_time(group)
+        absolute_time = AbsoluteTime.from_df(group)
+        lamp_time = absolute_time.compute_absolute_time()
 
         traces.append(
             go.Scattergl(
@@ -71,7 +72,7 @@ def plot_fuv_osm_shift_cenwaves(df: pd.DataFrame, shift: str) -> Tuple[list, go.
                     symbol=[fp_symbols[fp] for fp in group.FPPOS],
                     size=[
                         10 if time > LP_MOVES[4] and lp == 3 else 6
-                        for lp, time in zip(group.LIFE_ADJ, start_time.to_datetime())
+                        for lp, time in zip(group.LIFE_ADJ, absolute_time.expstart_time.to_datetime())
                     ]  # Set the size to distinguish exposures taken at LP3 after the move to LP4
                 ),
             )
@@ -94,7 +95,8 @@ def compute_segment_diff(df: pd.DataFrame, shift: str) -> pd.DataFrame:
     results_list = []
     for rootname, group in root_groups:
         if 'FUVA' in group.SEGMENT.values and 'FUVB' in group.SEGMENT.values:
-            _, lamp_time = compute_absolute_time(group[group.SEGMENT == 'FUVA'])  # absolute time calculated from FUVA
+            # absolute time calculated from FUVA
+            lamp_time = AbsoluteTime.compute_from_df(group[group.SEGMENT == 'FUVA'])
 
             fuva, fuvb = group[group.SEGMENT == 'FUVA'], group[group.SEGMENT == 'FUVB']
 
@@ -267,7 +269,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
         for i, group_info in enumerate(groups):
             name, group = group_info
 
-            start_time, lamp_time = compute_absolute_time(group)
+            lamp_time = AbsoluteTime.compute_from_df(group)
 
             traces.append(
                 go.Scattergl(
