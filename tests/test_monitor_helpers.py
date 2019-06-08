@@ -2,7 +2,6 @@ import pytest
 import pandas as pd
 
 from datetime import datetime
-from astropy.time import Time
 from cosmo.monitor_helpers import convert_day_of_year, fit_line, explode_df, AbsoluteTime
 
 

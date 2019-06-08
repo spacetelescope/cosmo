@@ -7,7 +7,7 @@ from itertools import repeat
 from typing import Tuple
 
 from monitorframe import BaseMonitor
-from cosmo.monitor_helpers import AbsoluteTime
+from cosmo.monitor_helpers import AbsoluteTime, explode_df
 from .osm_data_models import OSMDataModel
 
 COS_MONITORING = '/grp/hst/cos2/monitoring'
@@ -136,7 +136,9 @@ class FuvOsmShiftMonitor(BaseMonitor):
 
     def filter_data(self):
         """Filter on detector."""
-        return self.data[self.data.DETECTOR == 'FUV']
+        exploded_data = explode_df(self.data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+
+        return exploded_data[exploded_data.DETECTOR == 'FUV']
 
     def plot(self):
         """Plot shift v time and A-B v time per cenwave, and with each FP-POS separate by button options."""
@@ -258,7 +260,9 @@ class NuvOsmShiftMonitor(BaseMonitor):
 
     def filter_data(self):
         """Filter on detector."""
-        return self.data[self.data.DETECTOR == 'NUV']
+        exploded_data = explode_df(self.data, ('TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'))
+
+        return exploded_data[self.data.DETECTOR == 'NUV']
 
     def plot(self):
         """Plot shift v time per grating/cenwave."""
