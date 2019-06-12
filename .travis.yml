@@ -50,10 +50,6 @@ before_install:
     - conda update --all -q conda
     - conda info -a
 
-    #CHECK INTERACTIVE MATPLOTLIB BACKENDS
-    - export DISPLAY=:99.0
-    - sh -e /etc/init.d/xvfb start
-
 install:
     - if [[ -n $ASTROPY_VERSION ]]; then export AP_SELECT="astropy=$ASTROPY_VERSION"; fi
     - if [[ -n $CRDS_VERSION ]]; then export CR_SELECT="crds=$CRDS_VERSION"; fi
