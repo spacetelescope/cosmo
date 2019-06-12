@@ -309,6 +309,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
         """Filter ACQIMAGE data for V2V3 plot. These filter options attempt to weed out outliers that might result from
         things besides FGS trends (such as bad coordinates).
         """
+        # Filters determined by the team. These options are meant to filter out most outliers to study FGS zero-point
+        # offsets and rate of change with time.
         index = np.where(
             (self.data.OBSTYPE == 'IMAGING') &
             (self.data.NEVENTS >= 2000) &
@@ -320,6 +322,9 @@ class AcqImageV2V3Monitor(BaseMonitor):
         )
 
         partially_filtered = self.data.iloc[index]
+
+        # Filter on LINENUM endswith 1 as this indicates that it was the first ACQIMAGE taken in the set (it's a good
+        # bet that this is the first ACQ, which you want to sample "blind pointings").
         filtered_df = partially_filtered[partially_filtered.LINENUM.str.endswith('1')]
 
         return filtered_df
@@ -330,13 +335,14 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
         last_updated_results = {}
         for name, group in groups:
-            if name == 'F3':
+            if name == 'F3':  # Skip F3; not enough data points for meaningful analysis for now.
                 continue
 
-            t_start = convert_day_of_year(self.break_points[name][-1][0], mjd=True)
+            t_start = convert_day_of_year(self.break_points[name][-1][0]).mjd  # Last update date
 
             df = self.filtered_data[self.filtered_data.EXPSTART >= t_start]
 
+            # Track V2V3 fit and fitline since the last update for each FGS
             v2_line_fit = fit_line(df.EXPSTART, df.V2SLEW)
             v3_line_fit = fit_line(df.EXPSTART, df.V3SLEW)
 
@@ -364,8 +370,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
             for points in self.break_points[name]:
 
                 t_start, t_end = [
-                    convert_day_of_year(point, mjd=True) if not isinstance(point, str) else None
-                    for point in points
+                    convert_day_of_year(point).mjd if not isinstance(point, str) else None for point in points
                 ]
 
                 if t_start is None:
@@ -389,7 +394,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
                     line_fit, fit = fit_line(df.EXPSTART, -df[slew])
 
-                    scatter = go.Scatter(
+                    scatter = go.Scatter(  # scatter plot
                         x=df.EXPSTART,
                         y=-df[slew],
                         name=slew,
@@ -398,7 +403,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
                         visible=False
                     )
 
-                    line = go.Scatter(
+                    line = go.Scatter(  # line-fit plot
                         x=df.EXPSTART,
                         y=fit,
                         name=f'Slope: {line_fit[1]:.5f}; Zero Point: {fit[0]:.3f}',
@@ -414,9 +419,9 @@ class AcqImageV2V3Monitor(BaseMonitor):
         lines = [
             {
                 'type': 'line',
-                'x0': convert_day_of_year(value, mjd=True),
+                'x0': convert_day_of_year(value).mjd,
                 'y0': self.figure['layout'][yaxis]['domain'][0],
-                'x1': convert_day_of_year(value, mjd=True),
+                'x1': convert_day_of_year(value).mjd,
                 'y1': self.figure['layout'][yaxis]['domain'][1],
                 'xref': xref,
                 'yref': 'paper',
@@ -464,6 +469,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
         pass
 
 
+# TODO: The ACQPEAKD and ACQPEAKXD monitors are pretty much the same. These could be refactored to use a
+#  "spectroscopic acq" baseclass rather than repeating the same thing twice. We'd need to also refactor the data models.
 class AcqPeakdMonitor(BaseMonitor):
     """ACQPEAKD monitor."""
     name = 'AcqPeakd Monitor'
@@ -480,11 +487,11 @@ class AcqPeakdMonitor(BaseMonitor):
 
     def plot(self):
         """Plot offset (-slew) v time per FGS. Separate FGS via button options. Color by LP-POS"""
-        fgs_groups, std_results = self.results
+        fgs_groups, std_results = self.results  # groups are stored in the results attribute since track returns them.
 
         traces = []
         for name, group in fgs_groups:
-            scatter = go.Scatter(
+            scatter = go.Scatter(  # Scatter plot
                 x=group.EXPSTART,
                 y=-group.ACQSLEWX,
                 mode='markers',
@@ -493,7 +500,7 @@ class AcqPeakdMonitor(BaseMonitor):
                 marker=dict(
                     color=group.LIFE_ADJ,
                     colorscale='Viridis',
-                    colorbar=dict(
+                    colorbar=dict(  # Color by LP and set labels to typical LP names
                         len=0.75,
                         tickmode='array',
                         nticks=len(group.LIFE_ADJ.unique()),
@@ -555,7 +562,7 @@ class AcqPeakxdMonitor(BaseMonitor):
 
         traces = []
         for name, group in fgs_groups:
-            scatter = go.Scatter(
+            scatter = go.Scatter(  # Scatter plot
                 x=group.EXPSTART,
                 y=-group.ACQSLEWY,
                 mode='markers',
@@ -564,7 +571,7 @@ class AcqPeakxdMonitor(BaseMonitor):
                 marker=dict(
                     color=group.LIFE_ADJ,
                     colorscale='Viridis',
-                    colorbar=dict(
+                    colorbar=dict(  # Color by LP and set the tick names to the typical LP names
                         len=0.75,
                         tickmode='array',
                         nticks=len(group.LIFE_ADJ.unique()),

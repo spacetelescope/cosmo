@@ -1,14 +1,14 @@
-import pandas as pd
 
 from monitorframe.monitor import BaseDataModel
 
 from cosmo.filesystem import FileDataFinder
 from cosmo import FILES_SOURCE
-from cosmo.monitor_helpers import explode_df
 
 
 class OSMDataModel(BaseDataModel):
     """Data model for all OSM Shift monitors."""
+    files_source = FILES_SOURCE
+    cosmo_layout = True
 
     def get_data(self):
         header_keys = (
@@ -21,14 +21,13 @@ class OSMDataModel(BaseDataModel):
 
         # Find data from lampflash files
         finder = FileDataFinder(
-            FILES_SOURCE,
+            self.files_source,
             '*lampflash*',
             header_keys,
             header_extensions,
-            data_keys=data_keys,
-            data_extensions=data_extensions
+            data_keywords=data_keys,
+            data_extensions=data_extensions,
+            cosmo_layout=self.cosmo_layout
         )
 
-        df = pd.DataFrame(finder.get_data_from_files())
-
-        return explode_df(df, list(data_keys))
+        return finder.get_data_from_files()
