@@ -18,6 +18,8 @@ LP_MOVES = lp_moves = {
     }
 
 
+# TODO: Find a better color scale for plotting cenwaves. Viridis doesn't have enough distinguishable colors, so some
+#  cenwaves have either the same color or similar enough that you can't tell the difference.
 def plot_fuv_osm_shift_cenwaves(df: pd.DataFrame, shift: str) -> Tuple[list, go.Layout]:
     """Plot shift v time and A-B v time by grating/cenwave"""
     groups = df.groupby(['OPT_ELEM', 'CENWAVE'])
@@ -64,8 +66,8 @@ def plot_fuv_osm_shift_cenwaves(df: pd.DataFrame, shift: str) -> Tuple[list, go.
                 xaxis='x',
                 yaxis='y2',
                 visible=False,
-                marker=dict(
-                    cmax=len(df.CENWAVE.unique()) - 1,
+                marker=dict(  # Color markers based on cenwave
+                    cmax=len(df.CENWAVE.unique()) - 1,  # Individual plots need to be on the same scale
                     cmin=0,
                     color=list(repeat(i, len(group))),
                     colorscale='Viridis',

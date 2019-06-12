@@ -25,10 +25,11 @@ def explode_df(df: pd.DataFrame, list_keywords: list) -> pd.DataFrame:
     dataframe to one row per array element. Each row in list_keywords must be the same length.
     """
     idx = df.index.repeat(df[list_keywords[0]].str.len())  # Repeat values based on the number of elements in the arrays
-    df1 = pd.concat([pd.DataFrame({x: np.concatenate(df[x].values)}) for x in list_keywords], axis=1)
-    df1.index = idx
+    unpacked = pd.concat([pd.DataFrame({x: np.concatenate(df[x].values)}) for x in list_keywords], axis=1)
+    unpacked.index = idx  # assigns repeated index to the unpacked dataframe, unpacked.
 
-    exploded = df1.join(df.drop(list_keywords, 1), how='left').reset_index(drop=True)
+    # Join unpacked df to the original df and drop the old columns
+    exploded = unpacked.join(df.drop(list_keywords, 1), how='left').reset_index(drop=True)
 
     if exploded.isna().values.any():  # If there are NaNs, then it didn't make sense to "explode" the input df
         raise ValueError('Elements in columns to be exploded are not the same length across rows.')
@@ -47,6 +48,7 @@ class ExposureAbsoluteTime:
         Optionally provide a time_array_key keyword if ingesting from a dataframe which contains a time array with a
         different name from 'TIME', or if the dataframe contains multiple 'time' columns.
         """
+        # If no input is given raise an error
         if df is None and expstart is None and time_array is None:
             raise TypeError('Computing and absolute time requires either a dataframe or set of arrays')
 
@@ -56,9 +58,11 @@ class ExposureAbsoluteTime:
         self.time_key = time_array_key
         self.expstart_time = None
 
+        # Check that expstart and time_array are used together
         if bool(self.expstart or self.time) and not (self.expstart and self.time):
             raise TypeError('expstart and time_array must be used together.')
 
+        # Ingest given dataframe if one is given and check that it's not used with arrays at the same time
         if self.df is not None:
             if bool(self.expstart or self.time):
                 raise ValueError('Cannot use a dataframe and arrays as input at the same time. Use one or the other.')
@@ -71,15 +75,15 @@ class ExposureAbsoluteTime:
         self.time = self.df[self.time_key] if self.time_key else self.df.TIME
 
     def compute_absolute_time(self, time_delta_format: str = 'sec') -> TimeDelta:
+        """Compute a time array relative to the exposure start time, EXPSTART to create an 'absolute' time."""
         self.expstart_time = Time(self.expstart, format='mjd')
         time_delta = TimeDelta(self.time, format=time_delta_format)
 
         return self.expstart_time + time_delta
 
     @classmethod
-    def compute_from_df(cls, df: pd.DataFrame, time_array_key: str = None,
-                        time_format: str = 'sec') -> TimeDelta:
-        """Compute the absolute time and """
+    def compute_from_df(cls, df: pd.DataFrame, time_array_key: str = None, time_format: str = 'sec') -> TimeDelta:
+        """Compute the absolute time from a dataframe."""
         instance = cls(df=df, time_array_key=time_array_key)
 
         return instance.compute_absolute_time(time_delta_format=time_format)
@@ -87,6 +91,7 @@ class ExposureAbsoluteTime:
     @classmethod
     def compute_from_arrays(cls, expstart: Union[Sequence, pd.Series], time_array: Union[Sequence, pd.Series],
                             time_format: str = 'sec') -> TimeDelta:
+        """Compute the absolute time from arrays."""
         instance = cls(expstart=expstart, time_array=time_array)
 
         return instance.compute_absolute_time(time_delta_format=time_format)

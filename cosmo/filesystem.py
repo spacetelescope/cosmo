@@ -4,7 +4,7 @@ import re
 
 from glob import glob
 from astropy.io import fits
-from typing import Sequence, Union
+from typing import Sequence, Union, List
 
 from cosmo import FILES_SOURCE
 # TODO: Add the ability to select files based on file creation date:
@@ -13,9 +13,11 @@ from cosmo import FILES_SOURCE
 
 
 class FileDataFinder:
+    """Class for finding and extracting data from COS fits files."""
     def __init__(self, source_dir: str, file_pattern: str, header_keywords: Sequence, header_extensions: Sequence,
                  spt_keywords: Sequence = None, spt_extensions: Sequence = None, data_keywords: Sequence = None,
                  data_extensions: Sequence = None, cosmo_layout: bool = True, exptype: str = None):
+        """Initialize and check the keywords/extension combinations."""
         self.source = source_dir
         self.search_pattern = file_pattern
         self.header_keywords = header_keywords
@@ -49,13 +51,13 @@ class FileDataFinder:
             if len(self.data_keywords) != len(self.data_extensions):
                 raise ValueError('data_keywords and data_extensions must be the same length.')
 
-    def get_data_from_files(self):
+    def get_data_from_files(self) -> List[dict]:
         """Retrieve specified data from all files that matched the file search pattern."""
         delayed_results = []
 
         for file in self.files:
             delayed_results.append(
-                get_file_data(
+                get_file_data(  # get_file_data is parallelized with dask and returns a Delayed
                     file,
                     self.header_keywords,
                     self.header_extensions,
@@ -80,24 +82,27 @@ class FileDataFinder:
         if not cosmo_layout:
             return glob(os.path.join(data_dir, file_pattern))
 
-        pattern = r'\d{5}'
+        pattern = r'\d{5}'  # Match subdirectories named with program ids.
         programs = os.listdir(data_dir)
 
+        # Glob files from all directories in parallel
         result = [
             dask.delayed(glob)(os.path.join(data_dir, program, file_pattern))
             for program in programs if re.match(pattern, program)
         ]
 
         results = dask.compute(result)[0]
-        results_as_list = [file for file_list in results for file in file_list]
+        results_as_list = [file for file_list in results for file in file_list]   # Unpack list of lists into one list
 
         return results_as_list
 
 
 class FileData:
+    """Class that represents a single file's data."""
     def __init__(self, filename: str, hdu: fits.HDUList, keys: Sequence, exts: Sequence,
                  spt_suffix: str = 'spt.fits.gz', spt_keys: Sequence = None, spt_exts: Sequence = None,
                  data_keys: Sequence = None, data_exts: Sequence = None):
+        """Initialize and create the possible corresponding spt file name."""
         self.filename = filename
         self.hdu = hdu
         self.header_keys = keys
@@ -110,7 +115,8 @@ class FileData:
         self.spt_file = self._create_spt_filename()
         self.data = {}
 
-    def _create_spt_filename(self):
+    def _create_spt_filename(self) -> Union[str, None]:
+        """Create an spt filename based on the input filename."""
         path, name = os.path.split(self.filename)
         spt_name = '_'.join([name.split('_')[0], self.spt_suffix])
         spt_file = os.path.join(path, spt_name)
@@ -121,13 +127,16 @@ class FileData:
         return
 
     def get_spt_header_data(self):
+        """Open the spt file and collect requested data."""
         with fits.open(self.spt_file) as spt:
             self.data.update({key: spt[ext].header[key] for key, ext in zip(self.spt_keys, self.spt_exts)})
 
     def get_header_data(self):
+        """Get header data."""
         self.data.update({key: self.hdu[ext].header[key] for key, ext in zip(self.header_keys, self.header_exts)})
 
     def get_table_data(self):
+        """Get table data."""
         self.data.update({key: self.hdu[ext].data[key] for key, ext in zip(self.data_keys, self.data_exts)})
 
 
@@ -137,7 +146,7 @@ def get_file_data(fitsfile: str, keys: Sequence, exts: Sequence, exp_type: Seque
                   data_keys: Sequence = None) -> Union[dict, None]:
     """Get specified data from a fitsfile and optionally its corresponding spt file."""
     with fits.open(fitsfile, memmap=False) as file:
-        if exp_type and file[0].header['EXPTYPE'] != exp_type:
+        if exp_type and file[0].header['EXPTYPE'] != exp_type:  # Filter out files that don't match the given exptype
             return
 
         filedata = FileData(
