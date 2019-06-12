@@ -7,7 +7,7 @@ from itertools import repeat
 from typing import Tuple
 
 from monitorframe import BaseMonitor
-from cosmo.monitor_helpers import AbsoluteTime, explode_df
+from cosmo.monitor_helpers import ExposureAbsoluteTime, explode_df
 from .osm_data_models import OSMDataModel
 
 COS_MONITORING = '/grp/hst/cos2/monitoring'
@@ -51,7 +51,7 @@ def plot_fuv_osm_shift_cenwaves(df: pd.DataFrame, shift: str) -> Tuple[list, go.
     for i, group_info in enumerate(groups):
         name, group = group_info
 
-        absolute_time = AbsoluteTime.from_df(group)
+        absolute_time = ExposureAbsoluteTime(df=group)
         lamp_time = absolute_time.compute_absolute_time()
 
         traces.append(
@@ -96,7 +96,7 @@ def compute_segment_diff(df: pd.DataFrame, shift: str) -> pd.DataFrame:
     for rootname, group in root_groups:
         if 'FUVA' in group.SEGMENT.values and 'FUVB' in group.SEGMENT.values:
             # absolute time calculated from FUVA
-            lamp_time = AbsoluteTime.compute_from_df(group[group.SEGMENT == 'FUVA'])
+            lamp_time = ExposureAbsoluteTime.compute_from_df(group[group.SEGMENT == 'FUVA'])
 
             fuva, fuvb = group[group.SEGMENT == 'FUVA'], group[group.SEGMENT == 'FUVB']
 
@@ -260,7 +260,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
 
     def filter_data(self):
         """Filter on detector."""
-        exploded_data = explode_df(self.data, ('TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'))
+        exploded_data = explode_df(self.data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
 
         return exploded_data[self.data.DETECTOR == 'NUV']
 
@@ -273,7 +273,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
         for i, group_info in enumerate(groups):
             name, group = group_info
 
-            lamp_time = AbsoluteTime.compute_from_df(group)
+            lamp_time = ExposureAbsoluteTime.compute_from_df(group)
 
             traces.append(
                 go.Scattergl(

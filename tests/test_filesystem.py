@@ -58,7 +58,7 @@ class TestFileDataFinder:
                 extensions,
                 spt_keywords=spt_keywords,
                 spt_extensions=spt_extensions,
-                data_keys=data_keys,
+                data_keywords=data_keys,
                 data_extensions=data_extensions
             )
 
@@ -66,7 +66,7 @@ class TestFileDataFinder:
     def test_fails_for_missing_extensions(self, source_dr, file_pattern, keywords, extensions, spt_keywords,
                                           spt_extensions, data_extensions, data_keys):
 
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             FileDataFinder(
                 source_dr,
                 file_pattern,
@@ -74,14 +74,14 @@ class TestFileDataFinder:
                 extensions,
                 spt_keywords=spt_keywords,
                 spt_extensions=spt_extensions,
-                data_keys=data_keys,
+                data_keywords=data_keys,
                 data_extensions=data_extensions
             )
 
     @pytest.mark.parametrize(*MISSING_KEYS)
     def test_fails_for_missing_keywords(self, source_dr, file_pattern, keywords, extensions, spt_keywords,
                                         spt_extensions, data_extensions, data_keys):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             FileDataFinder(
                 source_dr,
                 file_pattern,
@@ -89,7 +89,7 @@ class TestFileDataFinder:
                 extensions,
                 spt_keywords=spt_keywords,
                 spt_extensions=spt_extensions,
-                data_keys=data_keys,
+                data_keywords=data_keys,
                 data_extensions=data_extensions
             )
 
@@ -107,7 +107,16 @@ class TestFileData:
     def setup_class(cls):
         file = os.path.join(TEST_DATA, 'ldfd01vpq_rawtag_a.fits.gz')
         hdu = fits.open(file)
-        cls.file_data = FileData(file, hdu, ('ROOTNAME',), (0,), ('LQTDFINI',), (1,), (1,), ('RAWX',))
+        cls.file_data = FileData(
+            file,
+            hdu,
+            ('ROOTNAME',),
+            (0,),
+            spt_keys=('LQTDFINI',),
+            spt_exts=(1,),
+            data_keys=('RAWX',),
+            data_exts=(1,)
+        )
 
     # noinspection PyUnresolvedReferences
     @classmethod
@@ -149,8 +158,8 @@ class TestGetFileData:
             (0,),
             spt_keys=('LQTDFINI',),
             spt_exts=(1,),
-            data_ext=(1,),
-            data_keys=('RAWX',)
+            data_keys=('RAWX',),
+            data_exts=(1,)
         )
 
     def test_files_are_closed(self):

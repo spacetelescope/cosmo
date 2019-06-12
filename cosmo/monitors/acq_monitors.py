@@ -333,7 +333,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
             if name == 'F3':
                 continue
 
-            t_start = convert_day_of_year(self.break_points[name][-1][0], mjd=True)
+            t_start = convert_day_of_year(self.break_points[name][-1][0]).mjd
 
             df = self.filtered_data[self.filtered_data.EXPSTART >= t_start]
 
@@ -364,8 +364,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
             for points in self.break_points[name]:
 
                 t_start, t_end = [
-                    convert_day_of_year(point, mjd=True) if not isinstance(point, str) else None
-                    for point in points
+                    convert_day_of_year(point).mjd if not isinstance(point, str) else None for point in points
                 ]
 
                 if t_start is None:
@@ -414,9 +413,9 @@ class AcqImageV2V3Monitor(BaseMonitor):
         lines = [
             {
                 'type': 'line',
-                'x0': convert_day_of_year(value, mjd=True),
+                'x0': convert_day_of_year(value).mjd,
                 'y0': self.figure['layout'][yaxis]['domain'][0],
-                'x1': convert_day_of_year(value, mjd=True),
+                'x1': convert_day_of_year(value).mjd,
                 'y1': self.figure['layout'][yaxis]['domain'][1],
                 'xref': xref,
                 'yref': 'paper',

@@ -25,7 +25,7 @@ class OSMDataModel(BaseDataModel):
             '*lampflash*',
             header_keys,
             header_extensions,
-            data_keys=data_keys,
+            data_keywords=data_keys,
             data_extensions=data_extensions,
             cosmo_layout=self.cosmo_layout
         )
