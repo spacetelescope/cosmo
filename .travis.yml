@@ -62,6 +62,7 @@ install:
     - if [[ $SETUP_CMD == build_sphinx* ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION $CONDA_DOC_DEPS; fi
 
     - $PIP_INSTALL codecov
+    - $PIP_INSTALL pytest-cov
 
 script:
    - python setup.py install
