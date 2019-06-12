@@ -65,7 +65,7 @@ install:
 
 script:
    - python setup.py install
-   - pytest
+   - pytest --cov=./
 
 after_success:
   - codecov
