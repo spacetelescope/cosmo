@@ -25,6 +25,7 @@ setup(
         'pyfastcopy',
         'monitorframe',
         'dask',
-        'pandas'
+        'pandas',
+        'pytest'
     ]
 )

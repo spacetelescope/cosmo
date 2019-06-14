@@ -50,10 +50,6 @@ before_install:
     - conda update --all -q conda
     - conda info -a
 
-    #CHECK INTERACTIVE MATPLOTLIB BACKENDS
-    - export DISPLAY=:99.0
-    - sh -e /etc/init.d/xvfb start
-
 install:
     - if [[ -n $ASTROPY_VERSION ]]; then export AP_SELECT="astropy=$ASTROPY_VERSION"; fi
     - if [[ -n $CRDS_VERSION ]]; then export CR_SELECT="crds=$CRDS_VERSION"; fi
@@ -65,6 +61,12 @@ install:
     # DOCUMENTATION DEPENDENCIES
     - if [[ $SETUP_CMD == build_sphinx* ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION $CONDA_DOC_DEPS; fi
 
+    - $PIP_INSTALL codecov
+    - $PIP_INSTALL pytest-cov
+
 script:
    - python setup.py install
-   - nosetests
+   - pytest --cov=./
+
+after_success:
+  - codecov

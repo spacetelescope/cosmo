@@ -66,3 +66,6 @@ target/
 
 # Pycharm
 *idea
+
+# pytest
+*pytest_cache

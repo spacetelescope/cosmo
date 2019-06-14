@@ -12,11 +12,21 @@ def dgestar_to_fgs(results: List[dict]) -> None:
         item.update({'dom_fgs': item['DGESTAR'][-2:]})  # The dominant guide star key is the last 2 values in the string
 
 
-def get_acq_data(acq_keys: tuple, acq_extensions: tuple, spt_keys: tuple, spt_extensions: tuple, exptype: str
-                 ) -> List[dict]:
+def get_acq_data(data_dir: str, acq_keys: tuple, acq_extensions: tuple, spt_keys: tuple, spt_extensions: tuple,
+                 exptype: str, cosmo_layout: bool) -> List[dict]:
     """Get data from all rawacq files and their corresponding spts."""
-    finder = FileDataFinder(FILES_SOURCE, '*rawacq*', acq_keys, acq_extensions, spt_keys, spt_extensions, exptype)
-    data_results = finder.data_from_files()
+    finder = FileDataFinder(
+        data_dir,
+        '*rawacq*',
+        acq_keys,
+        acq_extensions,
+        spt_keywords=spt_keys,
+        spt_extensions=spt_extensions,
+        exptype=exptype,
+        cosmo_layout=cosmo_layout
+    )
+
+    data_results = finder.get_data_from_files()
 
     if 'DGESTAR' in spt_keys:
         dgestar_to_fgs(data_results)
@@ -26,30 +36,60 @@ def get_acq_data(acq_keys: tuple, acq_extensions: tuple, spt_keys: tuple, spt_ex
 
 class AcqPeakdModel(BaseDataModel):
     """Datamodel for the Acq Peakd Monitor."""
+    files_source = FILES_SOURCE
+    cosmo_layout = True
 
     def get_data(self):
+        # ACQ file header keys, extensions
         acq_keywords, acq_extensions = ('ACQSLEWX', 'EXPSTART', 'LIFE_ADJ', 'ROOTNAME', 'PROPOSID'), (0, 1, 0, 0, 0)
+
+        # SPT file header keys, extensions
         spt_keywords, spt_extensions = ('DGESTAR',), (0,)
 
-        data_results = get_acq_data(acq_keywords, acq_extensions, spt_keywords, spt_extensions, 'ACQ/PEAKD')
+        # Data collected as a list of dictionaries (row-oriented)
+        data_results = get_acq_data(
+            self.files_source,
+            acq_keywords,
+            acq_extensions,
+            spt_keywords,
+            spt_extensions,
+            'ACQ/PEAKD',
+            self.cosmo_layout
+        )
 
         return data_results
 
 
 class AcqPeakxdModel(BaseDataModel):
     """Datamodel for the Acq Peakxd Monitor."""
+    files_source = FILES_SOURCE
+    cosmo_layout = True
 
     def get_data(self):
+        # ACQ file header keys, extensions
         acq_keywords, acq_extensions = ('ACQSLEWY', 'EXPSTART', 'LIFE_ADJ', 'ROOTNAME', 'PROPOSID'), (0, 1, 0, 0, 0)
+
+        # SPT file header keys, extensions
         spt_keywords, spt_extensions = ('DGESTAR',), (0,)
 
-        data_results = get_acq_data(acq_keywords, acq_extensions, spt_keywords, spt_extensions, 'ACQ/PEAKXD')
+        # Data collected as a list of dictionaries (row-oriented)
+        data_results = get_acq_data(
+            self.files_source,
+            acq_keywords,
+            acq_extensions,
+            spt_keywords,
+            spt_extensions,
+            'ACQ/PEAKXD',
+            self.cosmo_layout
+        )
 
         return data_results
 
 
 class AcqImageModel(BaseDataModel):
     """Datamodel for the ACQIMAGE monitors and V2V3 monitor."""
+    files_source = FILES_SOURCE
+    cosmo_layout = True
 
     def get_data(self):
 
@@ -64,15 +104,26 @@ class AcqImageModel(BaseDataModel):
 
             return v2, v3
 
+        # ACQ keys, extensions
         acq_keywords = (
             'ACQSLEWX', 'ACQSLEWY', 'EXPSTART', 'ROOTNAME', 'PROPOSID', 'OBSTYPE', 'NEVENTS', 'SHUTTER', 'LAMPEVNT',
             'ACQSTAT', 'EXTENDED', 'LINENUM'
         )
         acq_extensions = (0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0)
 
+        # SPT keys, extensions
         spt_keywords, spt_extensions = ('DGESTAR',), (0,)
 
-        data_results = get_acq_data(acq_keywords, acq_extensions, spt_keywords, spt_extensions, 'ACQ/IMAGE')
+        # Data collected as a list of dictionaries (row-oriented)
+        data_results = get_acq_data(
+            self.files_source,
+            acq_keywords,
+            acq_extensions,
+            spt_keywords,
+            spt_extensions,
+            'ACQ/IMAGE',
+            self.cosmo_layout
+        )
 
         # Add v2 and v3 coordinate columns
         for item in data_results:
