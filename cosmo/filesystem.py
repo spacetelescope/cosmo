@@ -6,7 +6,10 @@ from glob import glob
 from astropy.io import fits
 from typing import Sequence, Union, List
 
-from cosmo import FILES_SOURCE
+from . import SETTINGS
+
+FILES_SOURCE = SETTINGS['filesystem']['source']
+
 # TODO: Add the ability to select files based on file creation date:
 # filestats = os.stat(<path>)
 # t = datetime.datetime.fromtimestamp(filestats.st_birthtime)

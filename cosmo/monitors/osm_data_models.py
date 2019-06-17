@@ -1,8 +1,9 @@
-
 from monitorframe.monitor import BaseDataModel
 
-from cosmo.filesystem import FileDataFinder
-from cosmo import FILES_SOURCE
+from ..filesystem import FileDataFinder
+from .. import SETTINGS
+
+FILES_SOURCE = SETTINGS['filesystem']['source']
 
 
 class OSMDataModel(BaseDataModel):

@@ -26,6 +26,7 @@ setup(
         'monitorframe',
         'dask',
         'pandas',
-        'pytest'
+        'pytest',
+        'yaml'
     ]
 )

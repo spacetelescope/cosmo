@@ -7,9 +7,10 @@ import pandas as pd
 from itertools import repeat
 from peewee import chunked
 
-from sms_db import SMSFileStats, SMSTable, DB
+from .sms_db import SMSFileStats, SMSTable, DB
+from .. import SETTINGS
 
-SMS_FILE_LOC = '/grp/hst/cos/Monitors/Reports/'
+SMS_FILE_LOC = SETTINGS['sms']['source']
 
 
 class SMSFile:

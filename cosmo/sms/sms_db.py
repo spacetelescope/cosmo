@@ -1,15 +1,18 @@
 from peewee import Model, TextField, IntegerField, FloatField, DateTimeField, ForeignKeyField
 from playhouse.sqlite_ext import SqliteExtDatabase
 
-DB = SqliteExtDatabase(
-    '/grp/hst/cos/Monitors/Reports/sms_ingest/sms.db',
-    pragmas={
-        'journal_mode': 'wal',
-        'foreign_keys': 1,
-        'ignore_check_constraints': 0,
-        'synchronous': 0
-    }
-)
+from .. import SETTINGS
+
+DB = SqliteExtDatabase(**SETTINGS['sms']['db_settings'])
+# DB = SqliteExtDatabase(
+#     '/grp/hst/cos/Monitors/Reports/sms_ingest/sms.db',
+#     pragmas={
+#         'journal_mode': 'wal',
+#         'foreign_keys': 1,
+#         'ignore_check_constraints': 0,
+#         'synchronous': 0
+#     }
+# )
 
 
 class BaseModel(Model):

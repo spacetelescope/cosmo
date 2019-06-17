@@ -2,8 +2,11 @@ import numpy as np
 
 from typing import List
 from monitorframe.monitor import BaseDataModel
-from cosmo import FILES_SOURCE
-from cosmo.filesystem import FileDataFinder
+
+from ..filesystem import FileDataFinder
+from .. import SETTINGS
+
+FILES_SOURCE = SETTINGS['filesystem']['source']
 
 
 def dgestar_to_fgs(results: List[dict]) -> None:
