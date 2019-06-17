@@ -27,6 +27,7 @@ setup(
         'dask',
         'pandas',
         'pytest',
-        'yaml'
+        'yaml',
+        'peewee'
     ]
 )

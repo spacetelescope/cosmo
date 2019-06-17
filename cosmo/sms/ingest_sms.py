@@ -3,9 +3,11 @@ import datetime
 import glob
 import re
 import pandas as pd
+import dask
 
 from itertools import repeat
 from peewee import chunked
+from typing import Union
 
 from .sms_db import SMSFileStats, SMSTable, DB
 from .. import SETTINGS
@@ -201,4 +203,34 @@ def cold_start(file_source: str = SMS_FILE_LOC):
     for sms in all_sms_data:
         sms.insert_to_db()
 
-# TODO: Add function for searching for recently added files for use in cronjob
+
+@dask.delayed
+def is_new(file: str, last_ingest: datetime.datetime, today: datetime.datetime) -> Union[str, None]:
+    """Determine if an sms file is considered 'new'. New is defined as any file that was added between the last
+    ingestion date and the current date.
+    """
+    filestats = os.stat(file)
+
+    # st_mtime = time of most recent modification. This gives us the date that the file was added to the directory, but
+    # also might be subject to error in the case of someone modifying these files somehow. They shouldn't be though..
+    file_birthday = datetime.datetime.fromtimestamp(filestats.st_mtime)
+
+    if last_ingest < file_birthday <= today:
+        return file
+
+    return
+
+
+def find_new_sms(source: str = SMS_FILE_LOC) -> list:
+    """Find new sms files."""
+    # Find the most recent ingest date from the database; This is inefficient, but the db is small enough that it
+    # doesn't matter.
+    most_recent = SMSFileStats.select().order_by(SMSFileStats.ingest_date.desc())[0].ingest_date
+    today = datetime.datetime.today()
+
+    # From the list of all sms files, find the ones that are "new"; again, inefficient, but the number of files is
+    # relatively small and none are being opened. Plus parallelizing with dask which might be overkill
+    all_sms = find_all_smsfiles(source)
+    new = [is_new(sms, most_recent, today) for sms in all_sms]
+
+    return [item for item in dask.compute(*new) if item is not None]
