@@ -3,6 +3,7 @@ import datetime
 import glob
 import re
 import pandas as pd
+import numpy as np
 
 from itertools import repeat
 from peewee import chunked
@@ -71,10 +72,6 @@ class SMSFile:
     def __init__(self, smsfile: str):
         self.datetime_format = '%Y-%m-%d %H:%M:%S'
         self.filename = smsfile
-
-        if not os.path.exists(self.filename):
-            raise OSError(f'{self.filename} does not seem to exist.')
-
         self._data = self.ingest_smsfile()
         self.ingest_date = datetime.datetime.today()
 
@@ -185,7 +182,7 @@ class SMSFile:
 
 
 class SMSFinder:
-    sms_pattern = r'\d{6}[a-z]\d{1}'
+    sms_pattern = r'\d{6}[a-z]\d{1}'  # TODO: determine if we also need to resolve "specially" named SMS files.
 
     def __init__(self, source: str = SMS_FILE_LOC):
         self.filesource = source
@@ -211,8 +208,11 @@ class SMSFinder:
         return self._grouped_results.get_group(True).smsfile.values
 
     @property
-    def old_sms(self):
-        return self._grouped_results.get_group(False).smsfile.values
+    def old_sms(self) -> np.ndarray:
+        try:
+            return self._grouped_results.get_group(False).smsfile.values
+        except KeyError:
+            return np.array([])
 
     @property
     def ingested_sms(self):
