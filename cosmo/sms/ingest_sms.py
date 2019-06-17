@@ -3,11 +3,9 @@ import datetime
 import glob
 import re
 import pandas as pd
-import dask
 
 from itertools import repeat
 from peewee import chunked
-from typing import Union
 
 from .sms_db import SMSFileStats, SMSTable, DB
 from .. import SETTINGS
@@ -186,51 +184,89 @@ class SMSFile:
                 SMSTable.insert_many(batch).execute()
 
 
-def find_all_smsfiles(source: str = SMS_FILE_LOC) -> list:
-    """Given a starting directory, find all SMS files."""
-    pattern = r'\d{6}[a-z]\d{1}'
+class SMSFinder:
+    sms_pattern = r'\d{6}[a-z]\d{1}'
 
-    return [file for file in glob.glob(os.path.join(source, '*')) if re.match(pattern, os.path.basename(file))]
+    def __init__(self, source: str = SMS_FILE_LOC):
+        self.filesource = source
+        if not os.path.exists(self.filesource):
+            raise OSError(f'source directory, {self.filesource} does not exist.')
+
+        self.today = datetime.datetime.today()
+
+        # Find the most recent ingest date from the database; This is inefficient, but the db is small enough that it
+        # doesn't matter.
+        self._currently_ingested = pd.DataFrame(list(SMSFileStats.select().dicts()))
+        self.last_ingest_date = self._currently_ingested.ingest_date.max()
+
+        self._all_sms_results = self.find_all()
+        self._grouped_results = self._all_sms_results.groupby('is_new')
+
+    @property
+    def all_sms(self):
+        return self._all_sms_results.smsfile
+
+    @property
+    def new_sms(self):
+        return self._grouped_results.get_group(True).smsfile.values
+
+    @property
+    def old_sms(self):
+        return self._grouped_results.get_group(False).smsfile.values
+
+    @property
+    def ingested_sms(self):
+        return self._currently_ingested.filename.values
+
+    def find_all(self) -> pd.DataFrame:
+        """Find all SMS files from the source directory. Determine if the file is 'new'."""
+        results = {'smsfile': [], 'is_new': []}
+
+        for file in glob.glob(os.path.join(self.filesource, '*')):
+            # There may be other files or directories in the sms source directory
+            if re.match(self.sms_pattern, os.path.basename(file)) and os.path.isfile(file):
+                results['smsfile'].append(file)
+                results['is_new'].append(self._is_new(file, self.last_ingest_date))
+
+        data = pd.DataFrame(results)
+
+        # Raise an error if no sms files were found. Otherwise this will break other stuff in an obscure way
+        if data.empty:
+            raise OSError('No SMS files were found in the source directory.')
+
+        return data
+
+    def _is_new(self, smsfile, last_ingest_date):
+        """Determine if an sms file is considered 'new'. New is defined as any file that was added between the last
+        ingestion date and the current date.
+        """
+        filestats = os.stat(smsfile)
+
+        # st_mtime = time of most recent modification. This gives us the date that the file was added to the directory,
+        # but also might be subject to error in the case of someone modifying these files somehow. They shouldn't be
+        # though..
+        file_birthday = datetime.datetime.fromtimestamp(filestats.st_mtime)
+
+        if last_ingest_date < file_birthday <= self.today:
+            return True
+
+        return False
 
 
-def cold_start(file_source: str = SMS_FILE_LOC):
-    """Collect and store data from all SMS files. Can only be executed if the database doesn't exist or if the tables
-    are empty.
+def ingest_sms_data(file_source: str = SMS_FILE_LOC, cold_start: bool = False):
+    """Add new sms data to the database. Defaults to finding and adding new files to the database. Cold start attempts
+    to add all sms data found to the database.
     """
+    sms_files = SMSFinder(file_source)  # Find the sms files
+
+    if cold_start:
+        sms_to_add = sms_files.all_sms
+
+    else:
+        sms_to_add = sms_files.new_sms
+
     # TODO: An error should be raised if a cold start is attempted on a populated database; Add an option to drop?
-    all_sms_data = [SMSFile(file) for file in find_all_smsfiles(file_source)]
+    all_sms_data = [SMSFile(file) for file in sms_to_add]
 
     for sms in all_sms_data:
         sms.insert_to_db()
-
-
-@dask.delayed
-def is_new(file: str, last_ingest: datetime.datetime, today: datetime.datetime) -> Union[str, None]:
-    """Determine if an sms file is considered 'new'. New is defined as any file that was added between the last
-    ingestion date and the current date.
-    """
-    filestats = os.stat(file)
-
-    # st_mtime = time of most recent modification. This gives us the date that the file was added to the directory, but
-    # also might be subject to error in the case of someone modifying these files somehow. They shouldn't be though..
-    file_birthday = datetime.datetime.fromtimestamp(filestats.st_mtime)
-
-    if last_ingest < file_birthday <= today:
-        return file
-
-    return
-
-
-def find_new_sms(source: str = SMS_FILE_LOC) -> list:
-    """Find new sms files."""
-    # Find the most recent ingest date from the database; This is inefficient, but the db is small enough that it
-    # doesn't matter.
-    most_recent = SMSFileStats.select().order_by(SMSFileStats.ingest_date.desc())[0].ingest_date
-    today = datetime.datetime.today()
-
-    # From the list of all sms files, find the ones that are "new"; again, inefficient, but the number of files is
-    # relatively small and none are being opened. Plus parallelizing with dask which might be overkill
-    all_sms = find_all_smsfiles(source)
-    new = [is_new(sms, most_recent, today) for sms in all_sms]
-
-    return [item for item in dask.compute(*new) if item is not None]
