@@ -27,6 +27,7 @@ env:
         - CONDA_DOC_DEPS="$CONDA_DEPS sphinx"
         - PIP_INSTALL='pip install'
         - SETUP_CMD='test'
+        - COSMO_CONFIG='./tests/cosmoconfig_test.yaml'
 
 matrix:
   include:
