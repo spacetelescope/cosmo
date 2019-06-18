@@ -67,7 +67,7 @@ install:
     - $PIP_INSTALL .
 
 script:
-   - pytest --cov=./
+   - coverage run -m pytest
 
 after_success:
   - codecov
