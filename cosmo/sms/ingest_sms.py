@@ -3,8 +3,8 @@ import datetime
 import glob
 import re
 import pandas as pd
-import numpy as np
 
+from typing import Union
 from itertools import repeat
 from peewee import chunked
 
@@ -15,33 +15,48 @@ SMS_FILE_LOC = SETTINGS['sms']['source']
 
 
 class SMSFile:
-    db = DB
-    rootname_pattern = r'l[a-z0-9]{7}'  # String of 7 alpha-numeric characters after 'l'
-    propid_pattern = r'(?<=l[a-z0-9]{7} )\d{5}'  # String of 5 digits occurring after a rootname.
-    detector_pattern = r'(?<= )NUV|FUV(?= )'  # Either NUV or FUV
-    opmode_pattern = r'ACQ\/\S{5,6}|TIME\-TAG|ACCUM'  # ACQ followed by 5 or 6 characters or TIME-TAG or ACCUM
-    exptime_pattern = r'(?<= )\d+\.\d{1}(?= )'  # Float with one decimal place followed and preceded by a space
-    expstart_pattern = r'\d{4}\.\d{3}:\d{2}:\d{2}:\d{2}'
+    """Class that encapsulates the SMS file data."""
+    _db = DB
+    patterns = {
+        'rootname': r'l[a-z0-9]{7}',  # String of 7 alpha-numeric characters after 'l'
+        'proposid': r'(?<=l[a-z0-9]{7} )\d{5}',  # String of 5 digits occurring after a rootname.
+        'detector': r'(?<= )NUV|FUV(?= )',  # Either NUV or FUV
+        'opmode': r'ACQ\/\S{5,6}|TIME\-TAG|ACCUM',  # ACQ followed by 5 or 6 characters or TIME-TAG or ACCUM
+        'exptime': r'(?<= )\d+\.\d{1}(?= )',  # Float with one decimal place followed and preceded by a space
+        'expstart': r'\d{4}\.\d{3}:\d{2}:\d{2}:\d{2}',
+        # fuvhvstate: After expstart, either 6 spaces, or HV+(3 or 4 characters) or 2 sets of 3 digits separated by
+        # '/' followed by a single space
+        'fuvhvstate': r'(?<=\d{4}\.\d{3}:\d{2}:\d{2}:\d{2} ) {6}|HV[a-zA-Z]{3,4}|\d{3}\/\d{3}(?= )',
+        # aperture: Tuple of (aperture, ap_pos or empty depending on format of the sms file)
+        'aperture': r'(PSA|BOA|WCA|FCA|RELATIVE|REL) (\w{1}|\s+)',
+        'osm': r'(NCM1|G130M|G140L|G160M|NCM1FLAT)\s+(-----|MIRRORA|MIRRORB|G\d{3}M|G\d{3}L)',  # tuple (osm1, osm2)
+        # cenwave_fp_t1_t2: Tuple of (cenwave, fpoffset, tsince1, tsince2)
+        'cenwave_fp_t1_t2': r'(?<= )(0|\d{4}|\d{3}) ( 0|-1|-2|-3| 1)\s+(\d{1,6})\s+(\d{1,6})'
+    }
 
-    # After expstart, either 6 spaces, or HV+(3 or 4 characters) or 2 sets of 3 digits separated by '/' followed
-    # by a single space
-    fuvhvstate_pattern = r'(?<=\d{4}\.\d{3}:\d{2}:\d{2}:\d{2} ) {6}|HV[a-zA-Z]{3,4}|\d{3}\/\d{3}(?= )'
+    # Keywords and dtypes for the sms_db table
+    table_keys = {
+        'rootname': str,
+        'proposid': int,
+        'detector': str,
+        'opmode': str,
+        'exptime': float,
+        'expstart': str,
+        'fuvhvstate': str,
+        'aperture': str,
+        'osm1pos': str,
+        'osm2pos': str,
+        'cenwave': int,
+        'fppos': int,
+        'tsinceosm1': float,
+        'tsinceosm2': float
+    }
 
-    # Tuple of (aperture, ap_pos or empty depending on format of the sms file)
-    aperture_pattern = r'(PSA|BOA|WCA|FCA|RELATIVE|REL) (\w{1}|\s+)'
-    osm_pattern = r'(NCM1|G130M|G140L|G160M|NCM1FLAT)\s+(-----|MIRRORA|MIRRORB|G\d{3}M|G\d{3}L)'  # tuple (osm1, osm2)
+    # Keys that should return a single item
+    single_value_keys = ['rootname', 'proposid', 'detector', 'opmode', 'exptime', 'expstart']
 
-    # Tuple of (cenwave, fpoffset, tsince1, tsince2)
-    cenwave_fp_t1_t2_pattern = r'(?<= )(0|\d{4}|\d{3}) ( 0|-1|-2|-3| 1)\s+(\d{1,6})\s+(\d{1,6})'
-
-    # Keywords for the sms_db table
-    table_keys = [
-        'rootname',
-        'proposid',
-        'detector',
-        'opmode',
-        'exptime',
-        'expstart',
+    # Keys that return a tuple of items
+    grouped_value_keys = [
         'fuvhvstate',
         'aperture',
         'osm1pos',
@@ -52,54 +67,20 @@ class SMSFile:
         'tsinceosm2'
     ]
 
-    dtypes = [
-        str,
-        int,
-        str,
-        str,
-        float,
-        str,
-        str,
-        str,
-        str,
-        str,
-        int,
-        int,
-        float,
-        float
-    ]
-
     def __init__(self, smsfile: str):
+        """Initialize and ingest the sms file data."""
         self.datetime_format = '%Y-%m-%d %H:%M:%S'
         self.filename = smsfile
         self._data = self.ingest_smsfile()
+        self.data = pd.DataFrame(self._data).astype(self.table_keys)
         self.ingest_date = datetime.datetime.today()
 
     @property
-    def single_value_patterns(self):
-        return [
-            self.rootname_pattern,
-            self.propid_pattern,
-            self.detector_pattern,
-            self.opmode_pattern,
-            self.exptime_pattern,
-            self.expstart_pattern,
-            self.fuvhvstate_pattern
-        ]
+    def single_value_patterns(self) -> dict:
+        """Return a dictionary subset of the patterns dictionary for patterns that return a single value."""
+        return {key: self.patterns[key] for key in self.single_value_keys}
 
-    @property
-    def single_value_keys(self):
-        return ['rootname', 'proposid', 'detector', 'opmode', 'exptime', 'expstart']
-
-    @property
-    def grouped_value_keys(self):
-        return ['fuvhvstate', 'aperture', 'osm1pos', 'osm2pos', 'cenwave', 'fppos', 'tsinceosm1', 'tsinceosm2']
-
-    @property
-    def data(self):
-        return pd.DataFrame(self._data).astype({key: dtype for key, dtype in zip(self.table_keys, self.dtypes)})
-
-    def ingest_smsfile(self):
+    def ingest_smsfile(self) -> dict:
         """Collect data from the SMS file."""
         data = {}
 
@@ -126,28 +107,29 @@ class SMSFile:
         data.update(
             {
                 key: re.findall(pattern, sms_string)
-                for key, pattern in zip(self.single_value_keys, self.single_value_patterns)
+                for key, pattern in self.single_value_patterns.items()
             }
         )
 
         # Ingest fuvhvstate since some values are empty
-        for item in re.findall(self.fuvhvstate_pattern, sms_string):
+        for item in re.findall(self.patterns['fuvhvstate'], sms_string):
             data['fuvhvstate'].append(item if item.strip() else 'N/A')
 
         # Ingest aperture matches
-        for item in re.findall(self.aperture_pattern, sms_string):
+        for item in re.findall(self.patterns['aperture'], sms_string):
             data['aperture'].append(' '.join(item).strip())
 
         # Ingest osm1 and osm2 positions
-        for item in re.findall(self.osm_pattern, sms_string):
+        for item in re.findall(self.patterns['osm'], sms_string):
             osm1pos, osm2pos = item
             data['osm1pos'].append(osm1pos)
-            data['osm2pos'].append(osm2pos if osm2pos.strip('-') else 'N/A')
+            data['osm2pos'].append(osm2pos if osm2pos.strip('-') else 'N/A')  # if osm2 isn't used, the value is -----
 
         # Ingest cenwave, fppos, tsinceosm1, and tsinceosm2
-        for item in re.findall(self.cenwave_fp_t1_t2_pattern, sms_string):
+        for item in re.findall(self.patterns['cenwave_fp_t1_t2'], sms_string):
             cenwave, fpoffset, tsinceosm1, tsinceosm2 = item
             fppos = int(fpoffset) + 3  # fpoffset is relative to the third position
+
             data['cenwave'].append(cenwave)
             # noinspection PyTypeChecker
             data['fppos'].append(fppos)
@@ -165,7 +147,7 @@ class SMSFile:
         if not SMSFileStats.table_exists():
             SMSFileStats.create_table()
 
-        with self.db.atomic():
+        with self._db.atomic():
             SMSFileStats.insert(
                 {'filename': self.filename, 'ingest_date': self.ingest_date.strftime(self.datetime_format)}
             ).execute()
@@ -176,12 +158,13 @@ class SMSFile:
         if not SMSTable.table_exists():
             SMSTable.create_table()
 
-        with self.db.atomic():
+        with self._db.atomic():
             for batch in chunked(row_oriented_data, 100):
                 SMSTable.insert_many(batch).execute()
 
 
 class SMSFinder:
+    """Class for finding sms files in the specified filesystem and the database."""
     sms_pattern = r'\d{6}[a-z]\d{1}'  # TODO: determine if we also need to resolve "specially" named SMS files.
 
     def __init__(self, source: str = SMS_FILE_LOC):
@@ -200,23 +183,30 @@ class SMSFinder:
         self._grouped_results = self._all_sms_results.groupby('is_new')
 
     @property
-    def all_sms(self):
+    def all_sms(self) -> pd.Series:
+        """Return all of the sms files that were found."""
         return self._all_sms_results.smsfile
 
     @property
-    def new_sms(self):
-        return self._grouped_results.get_group(True).smsfile.values
-
-    @property
-    def old_sms(self) -> np.ndarray:
+    def new_sms(self) -> Union[pd.Series, None]:
+        """Return only the sms files that were determined as new."""
         try:
-            return self._grouped_results.get_group(False).smsfile.values
+            return self._grouped_results.get_group(True).smsfile
         except KeyError:
-            return np.array([])
+            return
 
     @property
-    def ingested_sms(self):
-        return self._currently_ingested.filename.values
+    def old_sms(self) -> Union[pd.Series, None]:
+        """Return only the sms files there were not determined as new."""
+        try:
+            return self._grouped_results.get_group(False).smsfile
+        except KeyError:
+            return
+
+    @property
+    def ingested_sms(self) -> pd.Series:
+        """Return the files that have been ingested in the database."""
+        return self._currently_ingested.filename
 
     def find_all(self) -> pd.DataFrame:
         """Find all SMS files from the source directory. Determine if the file is 'new'."""
