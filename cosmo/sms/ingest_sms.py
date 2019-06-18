@@ -6,7 +6,7 @@ import pandas as pd
 
 from typing import Union
 from itertools import repeat
-from peewee import chunked, OperationalError
+from peewee import chunked, OperationalError, IntegrityError
 
 from .sms_db import SMSFileStats, SMSTable, DB
 from .. import SETTINGS
@@ -250,7 +250,9 @@ class SMSFinder:
         # though..
         file_birthday = datetime.datetime.fromtimestamp(filestats.st_mtime)
 
-        if last_ingest_date < file_birthday <= self.today:
+        # "New" files are defined as those that were copied to the SMS directory between the last ingest date and
+        # "today" (inclusive).
+        if last_ingest_date <= file_birthday <= self.today:
             return True
 
         return False
@@ -269,7 +271,14 @@ def ingest_sms_data(file_source: str = SMS_FILE_LOC, cold_start: bool = False):
         sms_to_add = sms_files.new_sms
 
     # TODO: An error should be raised if a cold start is attempted on a populated database; Add an option to drop?
-    all_sms_data = [SMSFile(file) for file in sms_to_add]
+    if sms_to_add is not None:
+        all_sms_data = [SMSFile(file) for file in sms_to_add]
 
-    for sms in all_sms_data:
-        sms.insert_to_db()
+        for sms in all_sms_data:
+            # Skip "new" files that are already in the database. This prevents SMS files from being added twice if
+            # they're accidentally modified, or if you try running ingest twice in one day
+            try:
+                sms.insert_to_db()
+
+            except IntegrityError:
+                continue
