@@ -6,7 +6,7 @@ import pandas as pd
 
 from typing import Union
 from itertools import repeat
-from peewee import chunked
+from peewee import chunked, OperationalError
 
 from .sms_db import SMSFileStats, SMSTable, DB
 from .. import SETTINGS
@@ -168,16 +168,24 @@ class SMSFinder:
     sms_pattern = r'\d{6}[a-z]\d{1}'  # TODO: determine if we also need to resolve "specially" named SMS files.
 
     def __init__(self, source: str = SMS_FILE_LOC):
+        self.today = datetime.datetime.today()
+        self._currently_ingested = None
+        self.last_ingest_date = self.today
+
         self.filesource = source
         if not os.path.exists(self.filesource):
             raise OSError(f'source directory, {self.filesource} does not exist.')
 
-        self.today = datetime.datetime.today()
-
         # Find the most recent ingest date from the database; This is inefficient, but the db is small enough that it
         # doesn't matter.
-        self._currently_ingested = pd.DataFrame(list(SMSFileStats.select().dicts()))
-        self.last_ingest_date = self._currently_ingested.ingest_date.max()
+
+        try:  # If the table doesn't exist, don't set _currently_ingested
+            self._currently_ingested = pd.DataFrame(list(SMSFileStats.select().dicts()))
+        except OperationalError:
+            pass
+
+        if self._currently_ingested is not None:
+            self.last_ingest_date = self._currently_ingested.ingest_date.max()
 
         self._all_sms_results = self.find_all()
         self._grouped_results = self._all_sms_results.groupby('is_new')
@@ -192,6 +200,7 @@ class SMSFinder:
         """Return only the sms files that were determined as new."""
         try:
             return self._grouped_results.get_group(True).smsfile
+
         except KeyError:
             return
 
@@ -200,13 +209,17 @@ class SMSFinder:
         """Return only the sms files there were not determined as new."""
         try:
             return self._grouped_results.get_group(False).smsfile
+
         except KeyError:
             return
 
     @property
-    def ingested_sms(self) -> pd.Series:
+    def ingested_sms(self) -> Union[pd.Series, None]:
         """Return the files that have been ingested in the database."""
-        return self._currently_ingested.filename
+        if self._currently_ingested is not None:
+            return self._currently_ingested.filename
+
+        return
 
     def find_all(self) -> pd.DataFrame:
         """Find all SMS files from the source directory. Determine if the file is 'new'."""

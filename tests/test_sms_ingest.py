@@ -35,6 +35,7 @@ class TestSMSFinder:
         # Initialize a test SMSFinder that always uses the same "today"
         cls.test_finder = SMSFinder(TEST_DATA)
         cls.test_finder.today = test_time  # set to the test "today"
+        cls.test_finder.last_ingest_date = test_time  # set the last ingest to test "today"
         cls.test_finder._all_sms_results = cls.test_finder.find_all()  # Find the files and determine which are new
 
     def test_found(self):
@@ -43,19 +44,25 @@ class TestSMSFinder:
 
     def test_new_sms(self):
         """Test that the sms files are correctly determined as new."""
-        # test files were all moved on the same day as the "test" day so they're all "new"
-        assert len(self.test_finder.new_sms) == 3
+        # test files were all moved on the same day as the "test" day and the last_ingest date is the same the move,
+        # so they're all old
+        assert self.test_finder.new_sms is None
 
     def test_old_sms(self):
         """Test that sms files are corrctly determined as old."""
-        # test files were all moved on the same day as the "test" day so they're all "new"
-        assert self.test_finder.old_sms is None
+        # test files were all moved on the same day as the "test" day and the last_ingest date is the same the move,
+        # so they're all old
+        assert len(self.test_finder.old_sms) == 3
 
     @pytest.mark.parametrize(*SMSFinder_BAD_PATHS)
     def test_fails_on_no_data(self, source):
         """Test that an error is raised if no files are found."""
         with pytest.raises(OSError):
             SMSFinder(source)
+
+    def test_no_dbtable(self):
+        """Test that if there is no table, ingested_sms is None."""
+        assert self.test_finder.ingested_sms is None
 
 
 class TestSMSFile:

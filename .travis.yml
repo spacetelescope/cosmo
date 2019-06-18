@@ -56,7 +56,7 @@ install:
     - if [[ -n $CRDS_VERSION ]]; then export CR_SELECT="crds=$CRDS_VERSION"; fi
     - if [[ -n $NUMPY_VERSION ]]; then export NP_SELECT="numpy=$NUMPY_VERSION"; fi
     - $CONDA_CREATE -n test python=$PYTHON_VERSION $AP_SELECT $NP_SELECT $CR_SELECT $CONDA_DEPS
-    - source activate test
+    - conda activate test
     - $PIP_INSTALL git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe
 
     # DOCUMENTATION DEPENDENCIES
@@ -64,9 +64,9 @@ install:
 
     - $PIP_INSTALL codecov
     - $PIP_INSTALL pytest-cov
+    - $PIP_INSTALL .
 
 script:
-   - python setup.py install
    - pytest --cov=./
 
 after_success:
