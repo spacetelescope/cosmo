@@ -2,12 +2,13 @@ import numpy as np
 import plotly.graph_objs as go
 
 from itertools import repeat
-
 from monitorframe import BaseMonitor
-from .acq_data_models import AcqImageModel, AcqPeakdModel, AcqPeakxdModel
-from cosmo.monitor_helpers import fit_line, convert_day_of_year
 
-COS_MONITORING = '/grp/hst/cos2/monitoring'
+from .acq_data_models import AcqImageModel, AcqPeakdModel, AcqPeakxdModel
+from ..monitor_helpers import fit_line, convert_day_of_year
+from .. import SETTINGS
+
+COS_MONITORING = SETTINGS['output']
 
 
 # TODO: Remove example monitors and finalize remaining ones.

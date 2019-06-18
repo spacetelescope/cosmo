@@ -1,5 +1,4 @@
 # Misc
-*p
 *pkl
 
 #-- package config files
@@ -55,9 +54,6 @@ coverage.xml
 *.mo
 *.pot
 
-# Django stuff:
-*.log
-
 # Sphinx documentation
 docs/_build/
 
@@ -69,3 +65,6 @@ target/
 
 # pytest
 *pytest_cache
+
+# Config
+*config.yaml

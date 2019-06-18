@@ -5,12 +5,13 @@ import os
 
 from itertools import repeat
 from typing import Tuple
-
 from monitorframe import BaseMonitor
-from cosmo.monitor_helpers import ExposureAbsoluteTime, explode_df
-from .osm_data_models import OSMDataModel
 
-COS_MONITORING = '/grp/hst/cos2/monitoring'
+from .osm_data_models import OSMDataModel
+from ..monitor_helpers import ExposureAbsoluteTime, explode_df
+from .. import SETTINGS
+
+COS_MONITORING = SETTINGS['output']
 
 LP_MOVES = lp_moves = {
         i + 2: datetime.datetime.strptime(date, '%Y-%m-%d')

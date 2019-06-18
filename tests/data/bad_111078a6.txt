@@ -1,0 +1,9 @@
+
+COS Exposure Report: SMS 111078A6
+
+Data                                                          Exposure Start    FUV    Mechanism Positions   Cent    Tsince Tsince       Lamp    STIMs      Flash
+Filename Prop  Target     PRG OB AL EX Conf Opmode    ExpTime yyyy.ddd:hh:mm:ss State  Aper OSM1     OSM2    Wave FP   OSM1   OSM2 Lamp  Curr    A   B  Dop # Dur T
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbmum1c5 12420 DARK       BMU M1 01 01 NUV  TIME-TAG   1330.0 2011.108:00:00:09        PSA  G130M    G185M      0  0  43209  43209                      NO
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbl205gi12315V-TW-HYABL2050101NUVACQ/PEAKXD16.02011.108:09:14:46PSANCM1G285M26760244141NO
