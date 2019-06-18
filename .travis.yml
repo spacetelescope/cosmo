@@ -23,7 +23,7 @@ env:
         - CONDA_ARGS='--quiet'
         - CONDA_INSTALL="conda install $CONDA_ARGS"
         - CONDA_CREATE="conda create $CONDA_ARGS"
-        - CONDA_DEPS='astropy pandas calcos crds pytest nose numpy numpydoc psutil pyyaml scipy dask yaml'
+        - CONDA_DEPS='astropy pandas calcos crds pytest nose numpy numpydoc psutil pyyaml scipy dask'
         - CONDA_DOC_DEPS="$CONDA_DEPS sphinx"
         - PIP_INSTALL='pip install'
         - SETUP_CMD='test'
