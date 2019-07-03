@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 
-from cosmo.monitors.osm_data_models import OSMDataModel
+from cosmo.monitors.osm_data_models import OSMShiftDataModel
 
 
 TEST_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
@@ -12,7 +12,7 @@ class TestOSMDataModel:
 
     @classmethod
     def setup_class(cls):
-        cls.test_osmdatamodel = OSMDataModel
+        cls.test_osmdatamodel = OSMShiftDataModel
         cls.test_osmdatamodel.files_source = TEST_DATA
         cls.test_osmdatamodel.cosmo_layout = False
 

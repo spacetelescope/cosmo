@@ -5,7 +5,7 @@ from cosmo.monitors.osm_shift_monitors import (
     plot_fuv_osm_shift_cenwaves, compute_segment_diff, FuvOsmShiftMonitor, FuvOsmShift1Monitor, FuvOsmShift2Monitor,
     NuvOsmShiftMonitor, NuvOsmShift1Monitor, NuvOsmShift2Monitor
 )
-from cosmo.monitors.osm_data_models import OSMDataModel
+from cosmo.monitors.osm_data_models import OSMShiftDataModel
 
 TEST_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
 
@@ -18,7 +18,7 @@ class TestFuvOsmShift1Monitor:
 
     @classmethod
     def setup_class(cls):
-        test_datamodel = OSMDataModel
+        test_datamodel = OSMShiftDataModel
         test_datamodel.files_source = TEST_DATA
         test_datamodel.cosmo_layout = False
 
