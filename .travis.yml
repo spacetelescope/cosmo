@@ -22,7 +22,7 @@ env:
         # SET DEFAULTS TO AVOID REPEATING IN MOST CASES
         - CONDA_ARGS='--quiet'
         - CONDA_INSTALL="conda install $CONDA_ARGS"
-        - CONDA_DEPS='stsci coverage'
+        - CONDA_DEPS='stsci coverage cloudpickle=1.1.1'
         - CONDA_DOC_DEPS="$CONDA_DEPS sphinx"
         - SETUP_CMD='test'
         - COSMO_CONFIG='./tests/cosmoconfig_test.yaml'
