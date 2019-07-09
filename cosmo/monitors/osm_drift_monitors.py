@@ -101,13 +101,18 @@ class OSMDriftMonitor(BaseMonitor):
                         ]
                     ) for label, visibility, axes in zip(
                         ['FUV', 'NUV'],
-                        [nuv_visible, fuv_visible],
+                        [fuv_visible, nuv_visible],
                         [
                             {
                                'xaxis': {'anchor': 'y', 'domain': [0.0, 1.0]},
                                'xaxis2': {'anchor': 'y2', 'domain': [0.0, 1.0]},
                                'yaxis': {'anchor': 'x', 'domain': [0.575, 1.0]},
                                'yaxis2': {'anchor': 'x2', 'domain': [0.0, 0.425]},
+                               'xaxis3': None,
+                               'xaxis4': None,
+                               'yaxis3': None,
+                               'yaxis4': None
+
                             },
                             {
                                 'xaxis': {'anchor': 'y', 'domain': [0.0, 0.45]},
@@ -125,7 +130,7 @@ class OSMDriftMonitor(BaseMonitor):
             )
         ]
 
-        layout = go.Layout(updatemenus=updatemenus,)
+        layout = go.Layout(updatemenus=updatemenus)
         go.Layout()
 
         self.figure.add_traces(traces)
