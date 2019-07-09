@@ -15,7 +15,7 @@ addons:
             - dvipng
 
 os:
-    - osx
+    - linux
 
 env:
     global:
