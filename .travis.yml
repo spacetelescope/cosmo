@@ -48,13 +48,10 @@ before_install:
     - conda config --add channels http://ssb.stsci.edu/astroconda
 
     # Brute update base packages
-    - conda update --all -q conda
+    - conda update -q conda
     - conda info -a
 
 install:
-    - if [[ -n $ASTROPY_VERSION ]]; then export AP_SELECT="astropy=$ASTROPY_VERSION"; fi
-    - if [[ -n $CRDS_VERSION ]]; then export CR_SELECT="crds=$CRDS_VERSION"; fi
-    - if [[ -n $NUMPY_VERSION ]]; then export NP_SELECT="numpy=$NUMPY_VERSION"; fi
     - $CONDA_CREATE -n test python=$TRAVIS_PYTHON_VERSION $AP_SELECT $NP_SELECT $CR_SELECT $CONDA_DEPS
     - source activate test
     - $PIP_INSTALL git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe
