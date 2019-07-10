@@ -14,33 +14,60 @@ class OSMDriftMonitor(BaseMonitor):
     output = COS_MONITORING
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'OPT_ELEM']
 
+    detector = None
+    subplots = True
+
     def track(self):
         """Track the drift for Shift1 and Shift2."""
-        exploded = explode_df(self.data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+        # Calculate the relative shift for AD and XD
+        self.filtered_data['REL_SHIFT_DISP'] = self.filtered_data.apply(
+            lambda x: x.SHIFT_DISP - x.SHIFT_DISP[0] if len(x.SHIFT_DISP) else x.SHIFT_DISP, axis=1
+        )
+
+        self.filtered_data['REL_SHIFT_XDISP'] = self.filtered_data.apply(
+            lambda x: x.SHIFT_XDISP - x.SHIFT_XDISP[0] if len(x.SHIFT_XDISP) else x.SHIFT_XDISP, axis=1
+        )
+
+        # Expand the dataframe
+        exploded = explode_df(
+            self.filtered_data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT', 'REL_SHIFT_DISP', 'REL_SHIFT_XDISP']
+        )
+
         exploded = exploded.assign(
-            SHIFT1_DRIFT=lambda x: x.SHIFT_DISP / x.TIME,
-            SHIFT2_DRIFT=lambda x: x.SHIFT_XDISP / x.TIME,
+            SHIFT1_DRIFT=lambda x: x.REL_SHIFT_DISP / x.TIME,
+            SHIFT2_DRIFT=lambda x: x.REL_SHIFT_XDISP / x.TIME,
             REL_TSINCEOSM1=lambda x: x.TIME + x.TSINCEOSM1,
-            REL_TSINCEOSM2=lambda x: x.TIME + x.TSINCEOSM2
+            REL_TSINCEOSM2=lambda x: x.TIME + x.TSINCEOSM2,
         )
 
         return exploded
 
-    def plot(self):
-        fuv, nuv = self.results[self.results.DETECTOR == 'FUV'], self.results[self.results.DETECTOR == 'NUV']
+    def filter_data(self):
+        return self.data[self.data.DETECTOR == self.detector].reset_index(drop=True)
 
-        fuv_traces = [
-            go.Scattergl(
-                x=fuv.REL_TSINCEOSM1,
-                y=fuv[y],
+    def store_results(self):
+        # TODO: define what to store and how
+        pass
+
+
+class FUVOSMDriftMonitor(OSMDriftMonitor):
+    detector = 'FUV'
+    subplot_layout = (2, 1)
+
+    def plot(self):
+        locations = [(1, 1), (2, 1)]
+        ynames = ['SHIFT1_DRIFT', 'SHIFT2_DRIFT']
+        titles = ['OSM1 SHIFT1', 'OSM1 SHIFT2']
+
+        for y, name, axes in zip(ynames, titles, locations):
+            trace = go.Scattergl(
+                x=self.results.REL_TSINCEOSM1,
+                y=self.results[y],
                 mode='markers',
-                visible=False,
                 name=name,
-                text=fuv.hover_text,
-                xaxis=axes[0],
-                yaxis=axes[1],
+                text=self.results.hover_text,
                 marker=dict(
-                    color=fuv.EXPSTART,
+                    color=self.results.EXPSTART,
                     colorscale='Viridis',
                     showscale=True,
                     colorbar=dict(
@@ -49,24 +76,37 @@ class OSMDriftMonitor(BaseMonitor):
                     ),
                 ),
             )
-            for y, name, axes in zip(
-                ['SHIFT1_DRIFT', 'SHIFT2_DRIFT'],
-                ['OSM1 SHIFT1', 'OSM1 SHIFT2'],
-                [('x', 'y'), ('x2', 'y2')]
-            )
-        ]
 
-        nuv_traces = [
-            go.Scattergl(
-                x=nuv[x],
-                y=nuv[y],
+            self.figure.append_trace(trace, *axes)
+
+        layout = go.Layout(
+            title=f'{self.detector} {self.name}',
+            xaxis=dict(title='Time since last OSM1 move [s]'),
+            xaxis2=dict(title='Time since last OSM1 move [s]'),
+            yaxis=dict(title='SHIFT1 drift rate [pixels/sec]'),
+            yaxis2=dict(title='SHIFT2 drift rate [pixels/sec]')
+        )
+
+        self.figure['layout'].update(layout)
+
+
+class NUVOSMDriftMonitor(OSMDriftMonitor):
+    detector = 'NUV'
+    subplot_layout = (2, 2)
+
+    def plot(self):
+        xnames = ['REL_TSINCEOSM1', 'REL_TSINCEOSM1', 'REL_TSINCEOSM2', 'REL_TSINCEOSM2']
+        ynames = ['SHIFT1_DRIFT', 'SHIFT2_DRIFT', 'SHIFT1_DRIFT', 'SHIFT2_DRIFT']
+        locations = [(1, 1), (2, 1), (1, 2), (2, 2)]
+
+        for x, y, axes in zip(xnames, ynames, locations):
+            trace = go.Scattergl(
+                x=self.results[x],
+                y=self.results[y],
                 mode='markers',
-                visible=False,
-                text=nuv.hover_text,
-                xaxis=axes[0],
-                yaxis=axes[1],
+                text=self.results.hover_text,
                 marker=dict(
-                    color=nuv.EXPSTART,
+                    color=self.results.EXPSTART,
                     colorscale='Viridis',
                     showscale=True,
                     colorbar=dict(
@@ -75,67 +115,19 @@ class OSMDriftMonitor(BaseMonitor):
                     )
                 ),
             )
-            for x, y, axes in zip(
-                ['REL_TSINCEOSM1', 'REL_TSINCEOSM1', 'REL_TSINCEOSM2', 'REL_TSINCEOSM2'],
-                ['SHIFT1_DRIFT', 'SHIFT2_DRIFT', 'SHIFT1_DRIFT', 'SHIFT2_DRIFT'],
-                [('x', 'y'), ('x2', 'y2'), ('x3', 'y3'), ('x4', 'y4')]
-            )
-        ]
 
-        traces = fuv_traces + nuv_traces
+            self.figure.append_trace(trace, *axes)
 
-        fuv_visible = [True] * len(fuv_traces) + [False] * len(nuv_traces)
-        nuv_visible = [False] * len(fuv_traces) + [True] * len(nuv_traces)
+        layout = go.Layout(
+            title=f'{self.detector} {self.name}',
+            xaxis=dict(title='Time since last OSM1 move [s]'),
+            xaxis2=dict(title='Time since last OSM1 move [s]'),
+            xaxis3=dict(title='Time since last OSM2 move [s]'),
+            xaxis4=dict(title='Time since last OSM2 move [s]'),
+            yaxis=dict(title='SHIFT1 drift rate [pixels/sec]'),
+            yaxis2=dict(title='SHIFT2 drift rate [pixels/sec]'),
+            yaxis3=dict(title='SHIFT1 drift rate [pixels/sec]'),
+            yaxis4=dict(title='SHIFT2 drift rate [pixels/sec]')
+        )
 
-        updatemenus = [
-            dict(
-                active=-1,
-                type='buttons',
-                buttons=[
-                    dict(
-                        label=label,
-                        method='update',
-                        args=[
-                            {'visible': visibility},
-                            {'title': f'{label} {self.name}', **axes}
-                        ]
-                    ) for label, visibility, axes in zip(
-                        ['FUV', 'NUV'],
-                        [fuv_visible, nuv_visible],
-                        [
-                            {
-                               'xaxis': {'anchor': 'y', 'domain': [0.0, 1.0]},
-                               'xaxis2': {'anchor': 'y2', 'domain': [0.0, 1.0]},
-                               'yaxis': {'anchor': 'x', 'domain': [0.575, 1.0]},
-                               'yaxis2': {'anchor': 'x2', 'domain': [0.0, 0.425]},
-                               'xaxis3': None,
-                               'xaxis4': None,
-                               'yaxis3': None,
-                               'yaxis4': None
-
-                            },
-                            {
-                                'xaxis': {'anchor': 'y', 'domain': [0.0, 0.45]},
-                                'xaxis2': {'anchor': 'y2', 'domain': [0.55, 1.0]},
-                                'xaxis3': {'anchor': 'y3', 'domain': [0.0, 0.45]},
-                                'xaxis4': {'anchor': 'y4', 'domain': [0.55, 1.0]},
-                                'yaxis': {'anchor': 'x', 'domain': [0.575, 1.0]},
-                                'yaxis2': {'anchor': 'x2', 'domain': [0.575, 1.0]},
-                                'yaxis3': {'anchor': 'x3', 'domain': [0.0, 0.425]},
-                                'yaxis4': {'anchor': 'x4', 'domain': [0.0, 0.425]}
-                            }
-                        ]
-                    )
-                ]
-            )
-        ]
-
-        layout = go.Layout(updatemenus=updatemenus)
-        go.Layout()
-
-        self.figure.add_traces(traces)
         self.figure['layout'].update(layout)
-
-    def store_results(self):
-        # TODO: define what to store and how
-        pass
