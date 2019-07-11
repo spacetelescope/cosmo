@@ -40,6 +40,7 @@ class OSMShiftDataModel(BaseDataModel):
     cosmo_layout = True
 
     def get_data(self):
+        """Retrieve data."""
         return get_lampflash_data(self.files_source, self.cosmo_layout)
 
 
@@ -49,6 +50,8 @@ class OSMDriftDataModel(BaseDataModel):
     cosmo_layout = True
 
     def get_data(self):
+        """Retrieve data."""
+        # Get lampflash data from the files
         file_data = pd.DataFrame(get_lampflash_data(self.files_source, self.cosmo_layout))
 
         # Grab data from the SMSTable.
@@ -63,8 +66,8 @@ class OSMDriftDataModel(BaseDataModel):
         # Need to add the 'q' at the end of the rootname.. For some reason those are missing from the SMS rootnames
         sms_data.ROOTNAME += 'q'
 
-        # Combine the data from the files with the data from the SMS table with an inner merge between the two NOTE:
-        # This means that if a file does not have a corresponding entry in the SMSTable, it will not be in the
+        # Combine the data from the files with the data from the SMS table with an inner merge between the two.
+        # NOTE: this means that if a file does not have a corresponding entry in the SMSTable, it will not be in the
         # dataset used for monitoring.
         merged = pd.merge(file_data, sms_data, on='ROOTNAME')
 
