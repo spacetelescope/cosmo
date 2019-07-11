@@ -1,5 +1,5 @@
 language: python
-python: "3.6"
+python: "3.7"
 
 compiler: gcc
 
@@ -22,7 +22,7 @@ env:
         # SET DEFAULTS TO AVOID REPEATING IN MOST CASES
         - CONDA_ARGS='--quiet'
         - CONDA_INSTALL="conda install $CONDA_ARGS"
-        - CONDA_DEPS='stsci coverage cloudpickle=1.1.1'
+        - CONDA_DEPS='stsci coverage'
         - CONDA_DOC_DEPS="$CONDA_DEPS sphinx"
         - SETUP_CMD='test'
         - COSMO_CONFIG='./tests/cosmoconfig_test.yaml'
@@ -46,9 +46,6 @@ install:
     # Create and activate the test environment
     - conda create $CONDA_ARGS -n test python=$TRAVIS_PYTHON_VERSION $AP_SELECT $NP_SELECT $CR_SELECT $CONDA_DEPS
     - source activate test
-
-    # Install the monitoring framework
-    - pip install git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe
 
     # DOCUMENTATION DEPENDENCIES
     - if [[ $SETUP_CMD == build_sphinx* ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION $CONDA_DOC_DEPS; fi
