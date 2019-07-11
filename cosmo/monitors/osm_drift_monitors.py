@@ -41,6 +41,9 @@ class OSMDriftMonitor(BaseMonitor):
             REL_TSINCEOSM2=lambda x: x.TIME + x.TSINCEOSM2,
         )
 
+        # Add SEGMENT to the hover text
+        exploded.hover_text = exploded.apply(lambda x: f'{x.SEGMENT}<br>' + x.hover_text, axis=1)
+
         return exploded
 
     def filter_data(self):
@@ -69,8 +72,11 @@ class FUVOSMDriftMonitor(OSMDriftMonitor):
                     mode='markers',
                     name=f'{grating} {name}',
                     text=group.hover_text,
+                    legendgroup=grating,
                     marker=dict(
                         color=group.EXPSTART,
+                        cmin=self.results.EXPSTART.min(),
+                        cmax=self.results.EXPSTART.max(),
                         colorscale='Viridis',
                         showscale=True,
                         colorbar=dict(
@@ -111,6 +117,7 @@ class NUVOSMDriftMonitor(OSMDriftMonitor):
                     mode='markers',
                     text=group.hover_text,
                     name=f'{grating} {name}',
+                    legendgroup=grating,
                     marker=dict(
                         color=group.EXPSTART,
                         cmin=self.results.EXPSTART.min(),
@@ -118,7 +125,9 @@ class NUVOSMDriftMonitor(OSMDriftMonitor):
                         colorscale='Viridis',
                         showscale=True,
                         colorbar=dict(  # TODO: Move the colorbar location down
-                            len=0.45,
+                            len=0.65,
+                            y=0,
+                            yanchor='bottom',
                             title='EXPSTART [mjd]'
                         )
                     ),
