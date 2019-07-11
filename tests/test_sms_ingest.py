@@ -53,21 +53,21 @@ class TestSMSFile:
     @pytest.mark.parametrize(*SMSFile_GOOD_DATA)
     def test_datatypes(self, file):
         correct_dtypes = {
-            'filename': object,
-            'rootname': object,
-            'proposid': int,
-            'detector': object,
-            'opmode': object,
-            'exptime': float,
-            'expstart': object,
-            'fuvhvstate': object,
-            'aperture': object,
-            'osm1pos': object,
-            'osm2pos': object,
-            'cenwave': int,
-            'fppos': int,
-            'tsinceosm1': float,
-            'tsinceosm2': float
+            'FILENAME': object,
+            'ROOTNAME': object,
+            'PROPOSID': int,
+            'DETECTOR': object,
+            'OPMODE': object,
+            'EXPTIME': float,
+            'EXPSTART': object,
+            'FUVHVSTATE': object,
+            'APERTURE': object,
+            'OSM1POS': object,
+            'OSM2POS': object,
+            'CENWAVE': int,
+            'FPPOS': int,
+            'TSINCEOSM1': float,
+            'TSINCEOSM2': float
         }
 
         sms = SMSFile(file)

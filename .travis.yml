@@ -1,4 +1,5 @@
 language: python
+python: "3.6"
 
 compiler: gcc
 
@@ -14,30 +15,23 @@ addons:
             - texlive-latex-extra
             - dvipng
 
-os:
-    - linux
+os: linux
 
 env:
     global:
         # SET DEFAULTS TO AVOID REPEATING IN MOST CASES
         - CONDA_ARGS='--quiet'
         - CONDA_INSTALL="conda install $CONDA_ARGS"
-        - CONDA_CREATE="conda create $CONDA_ARGS"
-        - CONDA_DEPS='astropy pandas calcos crds pytest nose numpy numpydoc psutil pyyaml scipy dask'
+        - CONDA_DEPS='stsci coverage cloudpickle=1.1.1'
         - CONDA_DOC_DEPS="$CONDA_DEPS sphinx"
-        - PIP_INSTALL='pip install'
         - SETUP_CMD='test'
         - COSMO_CONFIG='./tests/cosmoconfig_test.yaml'
 
-matrix:
-  include:
-    - env: PYTHON_VERSION=3.6
-
-before_install:
-
-    # USE UTF8 ENCODING. SHOULD BE DEFAULT, BUT THIS IS INSURANCE AGAINST
-    # FUTURE CHANGES
+install:
+    # USE UTF8 ENCODING. SHOULD BE DEFAULT, BUT THIS IS INSURANCE AGAINST FUTURE CHANGES
     - export PYTHONIOENCODING=UTF8
+
+    # Install conda
 
     # http://conda.pydata.org/docs/travis.html#the-travis-yml-file
     - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
@@ -46,28 +40,25 @@ before_install:
     - hash -r
     - conda config --set always_yes yes --set changeps1 no
     - conda config --add channels http://ssb.stsci.edu/astroconda
+    - conda update -q conda  # Brute update base packages
+    - conda info -a # Check the environment in case there are any issues
 
-    # Brute update base packages
-    - conda update --all -q conda
-    - conda info -a
-
-install:
-    - if [[ -n $ASTROPY_VERSION ]]; then export AP_SELECT="astropy=$ASTROPY_VERSION"; fi
-    - if [[ -n $CRDS_VERSION ]]; then export CR_SELECT="crds=$CRDS_VERSION"; fi
-    - if [[ -n $NUMPY_VERSION ]]; then export NP_SELECT="numpy=$NUMPY_VERSION"; fi
-    - $CONDA_CREATE -n test python=$PYTHON_VERSION $AP_SELECT $NP_SELECT $CR_SELECT $CONDA_DEPS
+    # Create and activate the test environment
+    - conda create $CONDA_ARGS -n test python=$TRAVIS_PYTHON_VERSION $AP_SELECT $NP_SELECT $CR_SELECT $CONDA_DEPS
     - source activate test
-    - $PIP_INSTALL git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe
+
+    # Install the monitoring framework
+    - pip install git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe
 
     # DOCUMENTATION DEPENDENCIES
     - if [[ $SETUP_CMD == build_sphinx* ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION $CONDA_DOC_DEPS; fi
 
-    - $PIP_INSTALL codecov
-    - $PIP_INSTALL pytest-cov
-    - $PIP_INSTALL .
+    # Codecov
+    - pip install codecov
 
-script:
-   - coverage run -m pytest
+    # Install package with pip
+    - pip install .
 
-after_success:
-  - codecov
+script: coverage run -m pytest
+
+after_success: codecov

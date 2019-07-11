@@ -13,24 +13,24 @@ class BaseModel(Model):
 
 
 class SMSFileStats(BaseModel):
-    filename = TextField(primary_key=True)
-    ingest_date = DateTimeField()
+    FILENAME = TextField(primary_key=True)
+    INGEST_DATE = DateTimeField()
 
 
 class SMSTable(BaseModel):
 
-    rootname = TextField()
-    filename = ForeignKeyField(SMSFileStats, backref='exposures')
-    proposid = IntegerField(verbose_name='proposal id')
-    detector = TextField()
-    opmode = TextField()
-    exptime = FloatField()
-    expstart = DateTimeField()
-    fuvhvstate = TextField(verbose_name='fuv hv state')
-    aperture = TextField()
-    osm1pos = TextField(verbose_name='OSM1 position')
-    osm2pos = TextField(verbose_name='OSM2 position')
-    cenwave = IntegerField()
-    fppos = IntegerField()
-    tsinceosm1 = FloatField(verbose_name='time since OSM1 move')
-    tsinceosm2 = FloatField(verbose_name='time since OSM2 move')
+    ROOTNAME = TextField()
+    FILENAME = ForeignKeyField(SMSFileStats, backref='exposures')
+    PROPOSID = IntegerField(verbose_name='proposal id')
+    DETECTOR = TextField()
+    OPMODE = TextField()
+    EXPTIME = FloatField()
+    EXPSTART = DateTimeField()
+    FUVHVSTATE = TextField(verbose_name='fuv hv state')
+    APERTURE = TextField()
+    OSM1POS = TextField(verbose_name='OSM1 position')
+    OSM2POS = TextField(verbose_name='OSM2 position')
+    CENWAVE = IntegerField()
+    FPPOS = IntegerField()
+    TSINCEOSM1 = FloatField(verbose_name='time since OSM1 move')
+    TSINCEOSM2 = FloatField(verbose_name='time since OSM2 move')

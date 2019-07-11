@@ -7,7 +7,7 @@ from itertools import repeat
 from typing import Tuple
 from monitorframe import BaseMonitor
 
-from .osm_data_models import OSMDataModel
+from .osm_data_models import OSMShiftDataModel
 from ..monitor_helpers import ExposureAbsoluteTime, explode_df
 from .. import SETTINGS
 
@@ -127,7 +127,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
     by specific Shift1 and Shift2 monitors (which share the same plots, but differ in which shift value is plotted and
     how outliers are defined).
     """
-    data_model = OSMDataModel
+    data_model = OSMShiftDataModel
     output = COS_MONITORING
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID']
 
@@ -255,7 +255,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
     """Abstracted NUV OSM Shift monitor. This monitor class is not meant to be used directly, but rather inhereted from
     by specific Shift1 and Shift2 monitors (which share the same plots, but differ in which shift value is plotted and
     how outliers are defined)."""
-    data_model = OSMDataModel
+    data_model = OSMShiftDataModel
     output = COS_MONITORING
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID']
 
