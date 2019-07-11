@@ -47,9 +47,6 @@ install:
     - conda create $CONDA_ARGS -n test python=$TRAVIS_PYTHON_VERSION $AP_SELECT $NP_SELECT $CR_SELECT $CONDA_DEPS
     - source activate test
 
-    # Install the monitoring framework
-    - pip install git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe
-
     # DOCUMENTATION DEPENDENCIES
     - if [[ $SETUP_CMD == build_sphinx* ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION $CONDA_DOC_DEPS; fi
 

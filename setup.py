@@ -24,11 +24,11 @@ setup(
         'plotly',
         'scipy',
         'pyfastcopy',
-        'monitorframe',
         'dask',
         'pandas',
         'pytest',
         'pyyaml',
-        'peewee'
+        'peewee',
+        'monitorframe @ git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe'
     ]
 )
