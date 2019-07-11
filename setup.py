@@ -14,6 +14,7 @@ setup(
         'Topic :: Scientific/Engineering :: Physics',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
+    python_requires='~=3.7',
     packages=find_packages(),
     requires=['numpy', 'scipy', 'astropy', 'matplotlib'],
     install_requires=[
