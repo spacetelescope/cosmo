@@ -25,3 +25,5 @@ has more information.
 Documentation: [![Documentation Status](https://readthedocs.org/projects/cosmo/badge/?version=latest)](http://cosmo.readthedocs.io/en/latest/?badge=latest)
 
 Unit Tests: [![Build Status](https://travis-ci.org/spacetelescope/cosmo.svg?branch=master)](https://travis-ci.org/justincely/cos_monitoring)
+
+Coverage: [![codecov](https://codecov.io/gh/spacetelescope/cosmo/branch/master/graph/badge.svg)](https://codecov.io/gh/TechnionYP5777/project-name)
