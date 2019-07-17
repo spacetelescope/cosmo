@@ -24,6 +24,9 @@ setup(
         'pytest',
         'pyyaml',
         'peewee',
+        'calcos',
+        'crds',
+        'numpydoc'
         'monitorframe @ git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe'
     ]
 )

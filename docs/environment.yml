@@ -2,12 +2,19 @@ name: cos_monitoring
 channels:
   - http://ssb.stsci.edu/astroconda
 dependencies:
-  - numpy==1.10.0
-  - matplotlib
-  - astropy>=1.0
-  - scipy==0.17.0
-  - crds>=6.0.0
+  - numpy>=1.11.1
+  - plotly
+  - astropy>=1.0.1
+  - scipy
+  - crds
   - calcos
   - numpydoc
   - pyyaml
-  - beautifulsoup4
+  - python>=3.7
+  - pytest
+  - setuptools
+  - pip
+  - pip:
+      - git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe
+      - peewee
+      - pyfastcopy
