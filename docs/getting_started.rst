@@ -23,7 +23,7 @@ Then install using pip::
     pip install .
 
 
-Settings with a configuration file
+Settings via a Configuration File
 ----------------------------------
 To manage configurations, COSMO uses a ``yaml`` configuration file.
 Create a yaml configuration file with the following format:
@@ -58,7 +58,7 @@ Once the file is ready, set it as an environment variable, ``COSMO_CONFIG``.
     the intended users.
     DON'T push it to GitHub!
 
-Running tests
+Running Tests
 -------------
 COSMO includes a suite of tests for the package.
 For developers, it's a good idea to execute these tests whenever there are changes to the code or environment.
@@ -70,3 +70,4 @@ If you're in the project directory, you can execute the tests with::
 For executing the tests with coverage (after ``coverage`` has been installed), use::
 
     coverage run -m pytest
+
