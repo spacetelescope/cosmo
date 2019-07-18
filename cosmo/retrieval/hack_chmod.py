@@ -4,20 +4,21 @@ from distutils.spawn import find_executable
 import os
 import subprocess
 
-'''
+"""
 A simple script written to mimic the functionality of 'chmod -R'. os.chmod is 
 time consuming when done recursively, this workaround provides even faster 
 computation than a simple subprocess call to 'chmod -R'.
 
-Written by Joe Hunkeler: https://gist.github.com/jhunkeler/7a7761d8ce0f66d36483d6a6038caa4d
+Written by Joe Hunkeler: 
+https://gist.github.com/jhunkeler/7a7761d8ce0f66d36483d6a6038caa4d
 and commented by Jo Taylor.
-'''
+"""
 
 
 def find(root='.', filetype=None):
-    ''' 
+    """
     Simple BSD/GNU find wrapper.
-    
+
     Parameters:
     -----------
         root : str
@@ -26,11 +27,11 @@ def find(root='.', filetype=None):
             "f" = traverse only files
             "d" = traverse only directories
             None = traverse both files and directories.
-    
+
     Returns:
     --------
-        Directory or filename to be modified.    
-    '''
+        Directory or filename to be modified.
+    """
 
     accepted_types = ['f', 'd']
     cmd = ['find', root]
@@ -61,9 +62,9 @@ def find(root='.', filetype=None):
 
 
 def chmod(basepath, mode, filetype=None, recursive=False):
-    ''' 
+    """
     Recursive-capable replacement for os.chmod.
-    
+
     Parameters:
     -----------
         basepath : str
@@ -76,11 +77,11 @@ def chmod(basepath, mode, filetype=None, recursive=False):
             None = traverse both files and directories.
         recursive : Bool
             Switch to change permissions recursively.
-            
+
     Returns:
-    -------- 
+    --------
         Nothing
-    '''
+    """
     
     assert(isinstance(basepath, str))
     assert(isinstance(mode, int))

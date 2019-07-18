@@ -1,5 +1,10 @@
+"""
+Modules for calcos decorators.
+"""
+
+
 def clobber_calcos(func):
-    '''
+    """
     This is a decorator to be used to clobber output files from calcos.
     If the output products already exist, they will be deleted and calcos
     re-run for the particular infile.
@@ -22,7 +27,7 @@ def clobber_calcos(func):
     --------
         wrapper : function
             A wrapper to the modified function.
-    '''
+    """
 
     __author__ = "Jo Taylor"
     __date__ = "02-25-2016"
@@ -86,8 +91,9 @@ def clobber_calcos(func):
                 raise e
     return wrapper
 
+
 def clobber_calcos_csumgz(func):
-    '''
+    """
     This is a decorator to be used to clobber output files from calcos.
     If the output products already exist, they will be deleted and calcos
     re-run for the particular infile.
@@ -110,7 +116,7 @@ def clobber_calcos_csumgz(func):
     --------
         wrapper : function
             A wrapper to the modified function.
-    '''
+    """
 
     __author__ = "Jo Taylor"
     __date__ = "02-25-2016"
@@ -158,7 +164,10 @@ def clobber_calcos_csumgz(func):
                 if not outdir:
                     outdir = "."
                 for item in f_to_remove:
-                    matching = glob.glob(os.path.join(outdir,item+"corrtag*fits*")) + glob.glob(os.path.join(outdir, item+"csum*fits*"))
+                    matching = glob.glob(os.path.join(outdir, item +
+                                                      "corrtag*fits*")) + \
+                               glob.glob(os.path.join(outdir,
+                                                      item+"csum*fits*"))
                     for match in matching:
                         ext = match.split("/")[-1].split("_")[1].split(".")[0]
                         if ext not in ["asn", "pha", "rawaccum", "rawacq",

@@ -5,8 +5,9 @@ import logging
 import inspect
 from functools import wraps
 
+
 def config_logging(logfile):
-    '''
+    """
     Define the logging configuration including the output file and
     logging level.
 
@@ -18,14 +19,15 @@ def config_logging(logfile):
     Returns:
     --------
         Nothing
-    '''
+    """
     logging.basicConfig(filename=logfile,
                         format='%(asctime)s %(levelname)s: %(message)s',
                         datefmt='%m/%d/%Y %H:%M:%S %p',
                         level=logging.WARNING)
 
+
 def log_function(func):
-    '''
+    """
     This is a decorator to be used to log modules and retain important
     information and errors.
 
@@ -48,7 +50,7 @@ def log_function(func):
     --------
         wrapper : function
             A wrapper to the modified function.
-    '''
+    """
     @wraps(func)
     def wrapper(*args, **kwargs):
         funcname = str(func.__name__)
@@ -60,6 +62,7 @@ def log_function(func):
             func(*args, **kwargs)
             logging.info("{0} completed successfully".format(funcname))
         except Exception as err:
-            logging.exception("Error in function {0}.{1}: ".format(modname,funcname))
+            logging.exception("Error in function {0}.{1}: ".format(modname,
+                                                                   funcname))
 
     return wrapper
