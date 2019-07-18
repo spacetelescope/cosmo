@@ -115,7 +115,7 @@ class FileData:
         self.data_exts = data_exts
         self.spt_suffix = spt_suffix
         self.spt_file = self._create_spt_filename()
-        self.data = {}
+        self.data = {'FILENAME': self.filename}
 
     def _create_spt_filename(self) -> Union[str, None]:
         """Create an spt filename based on the input filename."""
