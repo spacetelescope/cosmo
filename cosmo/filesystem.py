@@ -30,15 +30,14 @@ class FileDataFinder:
         self.data_keywords = data_keywords
         self.data_extensions = data_extensions
         self.exptype = exptype
-
-        cosmo_layout = cosmo_layout
+        self.cosmo_layout = cosmo_layout
 
         # Find data files
-        self.files = self.find_files(self.search_pattern, self.source, cosmo_layout=cosmo_layout)
+        self.files = self.find_files(self.search_pattern, self.source, cosmo_layout=self.cosmo_layout)
 
         # Check that all keywords/extensions have corresponding extensions/keywords and that they're the same length
         if len(self.header_keywords) != len(self.header_extensions):
-            raise ValueError('header_keywords and header_extensions must be the same lenght.')
+            raise ValueError('header_keywords and header_extensions must be the same length.')
 
         if bool(self.spt_keywords or self.spt_extensions):
             if not(self.spt_keywords and self.spt_extensions):
