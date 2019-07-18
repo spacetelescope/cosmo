@@ -507,30 +507,30 @@ def check_for_pending():
     return num, badness, status_url
 
 
-def ensure_no_pending():
-    """
-    Check for any pending archive requests, and if there are any, wait until
-    they finish.
-
-    Parameters:
-    -----------
-        None
-
-    Returns: 
-    --------
-        Nothing.
-
-    """
-    num_requests, badness, status_url = check_for_pending()
-    while num_requests > 0:
-        print("There are still {0} requests pending from a previous COSMO "
-              "run, waiting 5 minutes...".format(num_requests))
-        assert (badness,
-                f"Something went wrong during requests, check {status_url}")
-        time.sleep(300)
-        num_requests, badness, status_url = check_for_pending()
-    else:
-        print("All pending requests finished, moving on!")
+# def ensure_no_pending():
+#     """
+#     Check for any pending archive requests, and if there are any, wait until
+#     they finish.
+#
+#     Parameters:
+#     -----------
+#         None
+#
+#     Returns:
+#     --------
+#         Nothing.
+#
+#     """
+#     num_requests, badness, status_url = check_for_pending()
+#     while num_requests > 0:
+#         print("There are still {0} requests pending from a previous COSMO "
+#               "run, waiting 5 minutes...".format(num_requests))
+#         assert (badness,
+#                 f"Something went wrong during requests, check {status_url}")
+#         time.sleep(300)
+#         num_requests, badness, status_url = check_for_pending()
+#     else:
+#         print("All pending requests finished, moving on!")
 
 
 def tabulate_cache():

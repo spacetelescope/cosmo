@@ -7,9 +7,10 @@ setup(
     keywords=['astronomy'],
     classifiers=[
         'Programming Language :: Python :: 3',
-        'License :: BSD-3 :: Association of Universities for Research in Astronomy',
+        'License :: BSD-3 :: Association of Universities for Research in '
+        'Astronomy',
         'Operating System :: Linux'
-    ],
+        ],
     python_requires='~=3.7',  # 3.7 and higher, but not 4
     packages=find_packages(),
     install_requires=[
@@ -24,6 +25,7 @@ setup(
         'pytest',
         'pyyaml',
         'peewee',
-        'monitorframe @ git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe'
-    ]
-)
+        'monitorframe @ git+https://github.com/spacetelescope/monitor-'
+        'framework#egg=monitorframe'
+        ]
+    )
