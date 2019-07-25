@@ -25,7 +25,16 @@ setup(
         'pytest',
         'pyyaml',
         'peewee',
-        'monitorframe @ git+https://github.com/spacetelescope/monitor-'
-        'framework#egg=monitorframe'
-        ]
+        'monitorframe',
+        'tqdm'
+        # 'monitorframe @ git+https://github.com/spacetelescope/monitor-'
+        # 'framework#egg=monitorframe'
+        ],
+    dependency_links=[
+        'http://github.com/spacetelescope/monitor-framework/tarball/master#egg'
+        '=monitorframe'
+        ],
+    entry_points={
+        'console_scripts':
+            ['run_retrieval=cosmo.retrieval.run_cosmo_retrieval:retrieve']}
     )

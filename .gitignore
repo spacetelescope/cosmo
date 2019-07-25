@@ -68,3 +68,6 @@ target/
 
 # Config
 *config.yaml
+
+# Retrieval
+*.p

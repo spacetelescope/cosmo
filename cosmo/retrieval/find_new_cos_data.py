@@ -25,6 +25,7 @@ import argparse
 import glob
 import numpy as np
 from subprocess import Popen, PIPE
+from tqdm import tqdm
 
 from .. import SETTINGS
 from .manualabor import parallelize, combine_2dicts, compress_files, timefunc
@@ -36,55 +37,9 @@ USERNAME = SETTINGS["retrieval"]["username"]
 # --------------------------------------------------------------------------- #
 
 
-# def connect_cosdb():
-#     """
-#     Connect to the COS team's database, cos_cci, on the server greendev to
-#     determine which COS datasets are currently in the local repository.
-#
-#     Parameters:
-#     -----------
-#         None
-#
-#     Returns:
-#     --------
-#         all_smov : list
-#             All rootnames of all files in the COS greendev database.
-#     """
-#
-#     # Open the configuration file for the COS database connection (MYSQL).
-#     config_file = os.path.join(os.environ['HOME'], "configure.yaml")
-#     with open(config_file, 'r') as f:
-#         SETTINGS = yaml.load(f)
-#
-#         print("Querying COS greendev database for existing data...")
-#         # Connect to the database.
-#         Session, engine = load_connection(SETTINGS['connection_string'])
-#         sci_files = list(engine.execute("SELECT DISTINCT rootname FROM
-#         files "
-#                                         "WHERE rootname IS NOT NULL;"))
-#         cci_files = list(engine.execute("SELECT DISTINCT name FROM files "
-#                                         "WHERE rootname IS NULL AND "
-#                                         "LEFT(name,1)='l';"))
-#
-#         # Store SQLAlchemy results as lists
-#         all_sci = [row["rootname"].upper() for row in sci_files]
-#         all_cci = [row["name"].strip("_cci.fits.gz").upper() for row in
-#         cci_files]
-#         all_smov = all_sci + all_cci
-#
-#         # Close connection
-#         engine.dispose()
-#
-#         return all_smov
-
-
-def get_all_mast_data():
+def get_all_mast_data():  # IN USE
     """
     Connect to the MAST database on HARPO and store lists of all files.
-
-    Parameters:
-    -----------
-        None
 
     Returns:
     --------
@@ -102,13 +57,14 @@ def get_all_mast_data():
              "archive_data_set_all WHERE ads_instrument='cos' " \
              "AND ads_data_set_name NOT LIKE 'LZ%' AND " \
              "ads_best_version='Y' AND ads_archive_class!='EDT'\ngo"
-    # Some COS observations don't have ads_instrumnet=cos
+    # Some COS observations don't have ads_instrument=cos
     query1 = "SELECT distinct ads_data_set_name,ads_pep_id FROM " \
              "archive_data_set_all WHERE LEN(ads_data_set_name)=9 " \
              "AND ads_data_set_name LIKE 'L%' AND ads_instrument='cos' " \
              "AND ads_best_version='Y' and ads_archive_class!='EDT'\ngo"
 
-    # Now expand on the previous queries by only selecting non-propietary data.
+    # Now expand on the previous queries by only selecting non-proprietary
+    # data
     utc_dt = dt.utcnow()
     utc_str = utc_dt.strftime("%b %d %Y %I:%M:%S%p")
     query0_pub = query0.split("\ngo")[
@@ -123,12 +79,15 @@ def get_all_mast_data():
 
     all_cos_priv = janky_connect(query0_priv)
     all_l_priv = janky_connect(query1_priv)
+    # all COS data on MAST that is proprietary
     all_mast_sql_priv = all_cos_priv + all_l_priv
 
     all_cos_pub = janky_connect(query0_pub)
     all_l_pub = janky_connect(query1_pub)
+    # all COS data on MAST that is public
     all_mast_sql_pub = all_cos_pub + all_l_pub
 
+    # converting queries from SQL returned form into dictionaries
     all_mast_priv = _sql_to_dict(all_mast_sql_priv)
     all_mast_pub = _sql_to_dict(all_mast_sql_pub)
 
@@ -147,7 +106,7 @@ def get_pid(rootname):
         return prop[0]
 
 
-def find_missing_exts(existing, existing_root):
+def find_missing_exts(existing, existing_roots):  # IN USE
     """
     If something causes the code to crash mid-copy, some data products may
     not be copied. The only way to check is this to determine what the
@@ -156,28 +115,30 @@ def find_missing_exts(existing, existing_root):
 
     Parameters:
     -----------
-        existing : list
-            List of all existing files currently in COSMO, this includes
+    existing : list
+        List of all existing files currently in COSMO, this includes
             path name and filetype, e.g. 
-            /grp/hst/cos2/smov_testing/13974/lcqf15meq_counts.fits
-        existing_root : list
-            List of rootnames all existing files currently in COSMO.
+            /grp/hst/cos2/cosmo/13974/lcqf15meq_counts.fits
+    existing_roots : list
+        List of rootnames all existing files currently in COSMO.
 
     Returns:
     --------
-        missing_files : list
+    missing_files : list
+        List of files that are missing in COSMO as compared with the MAST
+        database. Returns None if there are no files missing.
             
     """
 
     # Split query into chunks of 10K to avoid running out of processor
     # resources.
     chunksize = 10000
-    chunks = [existing_root[i:i + chunksize] for i in
-              range(0, len(existing_root), chunksize)]
+    chunks = [existing_roots[i:i + chunksize] for i in
+              range(0, len(existing_roots), chunksize)]
 
     missing_files_l = []
     pids = []
-    for chunk in chunks:
+    for chunk in tqdm(chunks):
         query = "SELECT distinct afi_file_name, ads_pep_id" \
                 " FROM archive_files, archive_data_set_all WHERE" \
                 " ads_data_set_name=afi_data_set_name" \
@@ -187,20 +148,33 @@ def find_missing_exts(existing, existing_root):
                 " AND ads_archive_class IN ('cal','asn')" \
                 " AND ads_data_set_name IN {0}\ngo".format(tuple(chunk))
 
+        # connecting to the MAST database and finding all the files that
+        # match the query--that is, all files that are ones we want from
+        # COS, EVER
         filenames = janky_connect(query)
+        # SQL query from janky_connect will return a list of file names. we
+        # need this as a dictionary to be useable
         expected_files_d = _sql_to_dict(filenames)
+        # sorting the expected files
         expected_files_s = set([row[0] for row in filenames])
+        # sorting existing files passed to this function
         existing_files_s = set(
             [os.path.basename(x).strip(".gz") for x in existing])
+        # diff in expected files (all COS files we want, EVER), and ones we
+        # already have (in this chunk)
         missing_files_l_chunk = list(expected_files_s - existing_files_s)
+        # add the missing files from this chunk to the full list
         missing_files_l += missing_files_l_chunk
         if len(missing_files_l_chunk) == 0:
             continue
+        # collect the PIDs from the chunk
         pids_chunk = [int(expected_files_d[x]) for x in missing_files_l_chunk]
+        # add this chunk of PIDs to the full list
         pids += pids_chunk
 
     if len(missing_files_l) == 0:
         return None
+    # grouping the missing files into dictionaries by PID for requesting
     missing_files = _group_dict_by_pid(missing_files_l, pids)
     print("{} single extensions missing for {} programs that were already "
           "retrieved- this is probably because COSMO crashed in an earlier "
@@ -215,22 +189,22 @@ def _sql_to_dict(sql_list, groupbykey=True):
 
     Parameters:
     -----------
-        sql_list : list
-            SQL results from janky_connect() stored as a list.
-        groupbykey : Bool
-            If True, it will sort SQL 0th results by 1st results, e.g. group
-            [["ld5301rfq", "14736"], ["ld5301rtq", "14736"]] ->
-            {"14736": ["ld5301rfq", "ld5301rtq"]}
-            If False, it will simply turn results into dictionary, e.g.
-            [["ld5301rfq", "14736"], ["ld5301rtq", "14736"]] ->
-            {"ld5301rfq": "14736", "ld5301rtq": "14736"}. 
-            Note that, if False, PIDs will not be looked up, so NULL, MMD, CCI,
-            etc. programs will not have correct PIDs.
+    sql_list : list
+        SQL results from janky_connect() stored as a list.
+    groupbykey : Bool
+        If True, it will sort SQL 0th results by 1st results, e.g. group
+        [["ld5301rfq", "14736"], ["ld5301rtq", "14736"]] ->
+        {"14736": ["ld5301rfq", "ld5301rtq"]}
+        If False, it will simply turn results into dictionary, e.g.
+        [["ld5301rfq", "14736"], ["ld5301rtq", "14736"]] ->
+        {"ld5301rfq": "14736", "ld5301rtq": "14736"}.
+        Note that, if False, PIDs will not be looked up, so NULL, MMD, CCI,
+        etc. programs will not have correct PIDs.
 
     Returns:
     --------
-        sql_dict : dictionary
-            Dictionary of SQL results.
+    sql_dict : dictionary
+        Dictionary of SQL results.
     """
 
     # Store results as dictionaries. Don't get podfiles (LZ*)
@@ -257,19 +231,20 @@ def _sql_to_dict(sql_list, groupbykey=True):
 
 
 def janky_connect(query_string, database=SETTINGS["retrieval"]["database"]):
+    # IN USE
     """
     Connecting to the MAST database is near impossible using SQLAlchemy. 
     Instead, connect through a subprocess call.
 
     Parameters:
     -----------
-        query_string : str
-            SQL query text.
+    query_string : str
+        SQL query text.
 
     Returns:
     --------
-        result : list
-            List where each index is a list consisting of [rootname, PID]] 
+    result : list
+        List where each index is a list consisting of [rootname, PID]]
 
     """
 
@@ -290,18 +265,18 @@ def janky_connect(query_string, database=SETTINGS["retrieval"]["database"]):
     # "server"],SETTINGS["database"], SETTINGS["username"], SETTINGS[
     # "password"])
     # args = shlex.split(command_line)
-    args = ["tsql",
+    connection_args = ["tsql",
             "-S{}".format(SETTINGS["retrieval"]["server"]),
             "-D{}".format(database),
             "-U{}".format("stsci\\" + SETTINGS["retrieval"]["username"]),
             "-P{}".format(SETTINGS["retrieval"]["password"]),
             "-t|||"]
-    p = Popen(args,
+    pipe = Popen(connection_args,
               stdin=PIPE,
               stdout=PIPE,
               stderr=PIPE,
               close_fds=True)
-    (transmit, receive, err) = (p.stdin, p.stdout, p.stderr)
+    (transmit, receive, err) = (pipe.stdin, pipe.stdout, pipe.stderr)
     transmit.write(query_string.encode("utf-8"))
     transmit.close()
     query_result0 = receive.readlines()
@@ -326,12 +301,15 @@ def janky_connect(query_string, database=SETTINGS["retrieval"]["database"]):
 
 def tally_cs(mydir=BASE_DIR, uniq_roots=True):
     """
-    For testing purposes, tabulate all files in central store 
-    (/grp/hst/cos2/smov_testing/) and request all missing datasets.
+    Tabulate all files in BASE_DIR and request all missing data sets.
     
     Parameters:
     -----------
-        None
+    mydir : str, default=BASE_DIR
+        absolute path to filesystem to tabulate all files from.
+    uniq_roots: bool, default=True
+        flag to determine whether or not to only return unique rootnames.
+        default is to return unique rootnames only.
 
     Returns:
     --------
@@ -340,28 +318,23 @@ def tally_cs(mydir=BASE_DIR, uniq_roots=True):
     """
 
     print("Checking {0} for existing data...".format(mydir))
-    allsmov = glob.glob(os.path.join(mydir, "*", "*fits*"))
-    smovfilenames = [os.path.basename(x) for x in allsmov]
-    smovroots = [x.split("_cci")[0].upper() if "cci" in x
+    all_existing = glob.glob(os.path.join(mydir, "*", "*fits*"))
+    all_filenames = [os.path.basename(x) for x in tqdm(all_existing)]
+    all_rootnames = [x.split("_cci")[0].upper() if "cci" in x
                  else x.split("_")[0].upper()
-                 for x in smovfilenames]
+                 for x in tqdm(all_filenames)]
 
     if uniq_roots:
-        return allsmov, smovfilenames, list(set(smovroots))
+        unique_rootnames = list(set(all_rootnames))
+        return all_existing, all_filenames, unique_rootnames
     else:
-        return allsmov, smovfilenames, smovroots
+        return all_existing, all_filenames, all_rootnames
 
 
-def find_missing_data():
+def find_missing_data():  # IN USE
     """
     Compare the set of all files currently in the COS repository to the list
     all files currently ingested into MAST.
-
-    Parameters:
-    -----------
-        use_cs : Bool
-            Switch to find missing data comparing what is currently on 
-            central store, as opposed to using the COSMO database.
 
     Returns:
     --------
@@ -370,20 +343,23 @@ def find_missing_data():
             missing data.
     """
 
-    existing, existing_filenames, existing_root = tally_cs()
+    existing, existing_filenames, existing_roots = tally_cs()
 
     print("Checking to see if there are any missing COS data...")
-    missing_exts = find_missing_exts(existing, existing_root)
+    # determine any missing extensions from partially retrieved COS data sets
+    missing_exts = find_missing_exts(existing, existing_roots)
 
     mast_priv, mast_pub = get_all_mast_data()
 
-    missing_data_priv = _determine_missing(mast_priv, existing_root)
-    missing_data_pub = _determine_missing(mast_pub, existing_root)
+    # determine what missing data is public/proprietary by looking at what
+    # exists in COSMO vs what is in MAST
+    missing_data_priv = _determine_missing(mast_priv, existing_roots)
+    missing_data_pub = _determine_missing(mast_pub, existing_roots)
 
     return missing_data_priv, missing_data_pub, missing_exts
 
 
-def _determine_missing(in_dict, existing_root):
+def _determine_missing(in_dict, existing_root):  # IN USE
     """
     Given a dictionary describing all (public or proprietary) data and a 
     dictionary describing all the data already downloaded into central store,
@@ -418,13 +394,13 @@ def _determine_missing(in_dict, existing_root):
     return missing_data
 
 
-def _group_dict_by_pid(filenames, pids):
+def _group_dict_by_pid(filenames, pids):  # IN USE
     # Create dictionaries grouped by proposal ID, it is much easier
     # to retrieve them this way.
     # For most data, determine corresponding proposal ID. CCIs and some
     # odd files will have proposal ID = NULL though.
     keys = set(pids)
-    vals = [[] for x in range(len(keys))]
+    vals = [[] for x in range(len(keys))]  # TODO fix the syntax here
     outd = dict(zip(keys, vals))
     for i in range(len(filenames)):
         outd[pids[i]].append(filenames[i])
@@ -507,47 +483,25 @@ def check_for_pending():
     return num, badness, status_url
 
 
-# def ensure_no_pending():
-#     """
-#     Check for any pending archive requests, and if there are any, wait until
-#     they finish.
-#
-#     Parameters:
-#     -----------
-#         None
-#
-#     Returns:
-#     --------
-#         Nothing.
-#
-#     """
-#     num_requests, badness, status_url = check_for_pending()
-#     while num_requests > 0:
-#         print("There are still {0} requests pending from a previous COSMO "
-#               "run, waiting 5 minutes...".format(num_requests))
-#         assert (badness,
-#                 f"Something went wrong during requests, check {status_url}")
-#         time.sleep(300)
-#         num_requests, badness, status_url = check_for_pending()
-#     else:
-#         print("All pending requests finished, moving on!")
-
-
-def tabulate_cache():
+def tabulate_cache():  # IN USE
     """
-    Determine all the datasets that are currently in the COS central store 
+    Determine all the data sets that are currently in the COS central store
     cache. 
     
     Parameters:
     -----------
-        None
+    None
     
     Returns:
     --------
-        array : array
-            The full path of every dataset in the cache.
-        array : array
-            The rootname of every datset in the cache. 
+    array - cos_cache : array
+        The full path of every COS data set in the cache.
+
+    array - cache_filenames : array
+        Full filename of every COS data set in the cache.
+
+    array - cache_roots : array
+        The rootname of every COS data set in the cache.
     """
 
     print(
@@ -562,45 +516,82 @@ def tabulate_cache():
         cache_roots)
 
 
-def find_missing_in_cache(missing_dict, cache_a, cos_cache):
+def find_missing_in_cache(missing_dict, cache_roots, cos_cache):  # IN USE
+    """
+    Find as much missing data in the cache as possible. This is used to look
+    for public missing data only.
+
+    Parameters
+    ----------
+    missing_dict : dict
+        Dictionary of (public) missing data to look for. Keys are PIDs.
+
+    cache_roots : array
+        Rootnames of all COS data in cache.
+
+    cos_cache : array
+        Full path names for all COS data in cache.
+
+    Returns
+    -------
+    missing_dict : dict
+        Remaining PIDs as keys with list of files from that program that
+        were not found in the cache to copy.
+
+    to_copy_d: dict
+        PIDs as keys with list of files that are available to copy from the
+        cache.
+    """
     total_copied = 0
-    start_missing = len(missing_dict.keys())
+    start_missing = len(missing_dict.keys())  # initial number of missing PIDs
     to_copy_d = {}
     for key in list(missing_dict):
-        missing_files = missing_dict[key]
-        missing_in_cache = list(set(missing_files) & set(cache_a))
-        if len(missing_in_cache) == 0:
+        missing_files = missing_dict[key]  # missing files associated with PID
+        missing_in_cache = list(set(missing_files) & set(cache_roots))
+        # missing files that are in the cache
+        if len(missing_in_cache) == 0:  # if none of the missing files are
+            # in the cache, continue
             continue
         total_copied += len(missing_in_cache)
 
-        updated_missing = [x for x in missing_files if
-                           x not in missing_in_cache]
         updated_missing = list(set(missing_files) - set(missing_in_cache))
+        # update missing files list by removing files that were just
+        # determined to be in the cache
 
         if not updated_missing:
+            # if there is no difference in original missing list and new
+            # list based on searching for key = PID, this PID is misplaced
+            # and therefore is removed from the list of missing data sets
             missing_dict.pop(key,
                              "Something went terribly wrong, {0} isn't in "
                              "dictionary".format(
                                  key))
         else:
+            # if there are any remaining missing files associated with key =
+            # PID, set those in the missing dictionary
             missing_dict[key] = updated_missing
 
         # Create a generator where each element is an array with all 
-        # file types that match each missing dataset. Then concatenate all
-        # these
-        # individual arrays for ease of copying.
+        # file types that match each missing data set. Then concatenate all
+        # these individual arrays for ease of copying.
         # Joe said this makes sense, so it's ok, right?
         try:
-            to_copy = np.concatenate(tuple((cos_cache[np.where(cache_a == x)]
-                                            for x in missing_in_cache)))
+            # collect a tuple of all the files that are available to get from
+            # the cache for this key = PID
+            to_copy = np.concatenate(tuple((cos_cache
+                                            [np.where(cache_roots == x)] for
+                                            x in missing_in_cache)))
         except ValueError:
             print("RUH ROH!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        # set tuple associated with each PID that is the list of all
+        # available files to copy to that PID
         to_copy_d[key] = to_copy
 
+    # missing PIDs left over
     end_missing = len(missing_dict.keys())
 
-    print("\tCopying {} total root(s) from cache, {} complete PID(s)".format(
-        total_copied, start_missing - end_missing))
+    print("\tPreparing to copy {} total root(s) from cache, {} complete PID("
+          "s)".format(total_copied, start_missing - end_missing))
 
     return missing_dict, to_copy_d
 
@@ -623,10 +614,10 @@ def copy_from_cache(to_copy):
     return to_copy
 
 
-def copy_cache(missing_data, missing_exts=None, prl=True):
+def copy_cache(missing_data, missing_exts=None):  # IN USE
     """
     When there are missing public datasets, check to see if any of them can
-    be copied from the COS cache in central store, which is faster than
+    be copied from the hst public cache in central store, which is faster than
     requesting them from MAST. 
 
     Parameters:
@@ -654,10 +645,14 @@ def copy_cache(missing_data, missing_exts=None, prl=True):
                                                        cache_roots, cos_cache)
 
     if missing_exts is not None:
+        # specifically looking for any exts that might be missing from
+        # partially retrieved data sets
         print("looking at exts")
+        # find just the missing exts in the cache for the partial data sets
         missing_exts, to_copy_exts = find_missing_in_cache(missing_exts,
                                                            cache_filenames,
                                                            cos_cache)
+        # TODO here 3
         to_copy = combine_2dicts(to_copy_root, to_copy_exts)
         missing_ext_roots = {
             k: list(set([dataset[:9].upper() for dataset in v])) for k, v in
@@ -671,28 +666,6 @@ def copy_cache(missing_data, missing_exts=None, prl=True):
         parallelize("smart", "check_usage", copy_from_cache, to_copy)
 
     return still_missing
-
-
-# def copy_entire_cache(cos_cache):
-#     """
-#     In development.
-#     """
-#     prop_map = {}
-#     for item in cos_cache:
-#         filename = os.path.basename(item)
-#         ippp = filename[:4]
-#
-#         if not ippp in prop_map.keys():
-#             hdr0 = pf.getheader(item,0)
-#             proposid = hdr0["proposid"]
-#             prop_map[ippp] = proposid
-#         else:
-#             proposid = prop_map[ippp]
-#
-#         dest = os.path.join(BASE_DIR, proposid, filename)
-#         # By importing pyfastcopy, shutil performance is automatically
-#         enhanced
-#         shutil.copyfile(item, dest)
 
 
 def check_proprietary_status(rootnames):
@@ -748,7 +721,7 @@ def check_proprietary_status(rootnames):
 
 
 @timefunc
-def find_new_cos_data(pkl_it, pkl_file, prl=True):
+def find_new_cos_data(pkl_it, pkl_file):  # IN USE
     """
     Workhorse function, determine what data already exist on disk/in the 
     greendev DB and determine if data are missing. Copy any data from local
@@ -760,11 +733,6 @@ def find_new_cos_data(pkl_it, pkl_file, prl=True):
             Switch to pickle final dictionary of data to requested from MAST.
         pkl_file : str
             Name of output pickle file.
-        use_cs : 
-            Switch to find missing data comparing what is currently on 
-            central store, as opposed to using the COSMO database.
-         prl : 
-            Switch to run manualabor in parallel or not.
 
     Returns:
     --------
@@ -775,6 +743,7 @@ def find_new_cos_data(pkl_it, pkl_file, prl=True):
     """
     print("*" * 72)
     missing_data_priv, missing_data_pub, missing_exts = find_missing_data()
+
     print(
         "\t{} proprietary program(s) missing: {}\n\t{} public program(s) "
         "missing: {}".format(
@@ -782,9 +751,10 @@ def find_new_cos_data(pkl_it, pkl_file, prl=True):
             len(missing_data_pub.keys()), list(missing_data_pub.keys())))
 
     if missing_data_pub:
-        print(
-            "Checking to see if any missing public data is in local cache...")
+        print("Checking to see if any missing public data is in local "
+              "cache...")
         missing_data_pub_rem = copy_cache(missing_data_pub, missing_exts)
+        # TODO here
         # Some nonstandard data isn't stored in the cache (e.g. MMD), so
         # check if any other public data needs to be retrieved.
         if missing_data_pub_rem:
@@ -814,16 +784,16 @@ def find_new_cos_data(pkl_it, pkl_file, prl=True):
 
 
 if __name__ == "__main__":
+    """
+    In the event this module needs to be run individually, it can parse 
+    necessary arguments for find_new_cos_data().
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", dest="pkl_it", action="store_true",
                         default=False,
                         help="Save output to pickle file")
     parser.add_argument("--pklfile", dest="pkl_file", default=None,
                         help="Name for output pickle file")
-    parser.add_argument("--prl", dest="prl", action="store_false",
-                        default=True, help="Parallellize functions")
     args = parser.parse_args()
 
-    # TODO: what the heck is this line
-    find_new_cos_data(args.pkl_it, args.pkl_file, args.use_cs,
-                      args.prl, False)
+    find_new_cos_data(args.pkl_it, args.pkl_file)
