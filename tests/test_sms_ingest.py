@@ -3,9 +3,13 @@ import os
 
 from cosmo.sms import SMSFinder, SMSFile, SMSFileStats, SMSTable, ingest_sms_data, DB
 
-# TODO: Set up a test database to use during these tests
 TEST_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
 TEST_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test.db')
+TEST_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cosmoconfig_test.yaml')
+
+# Check to make sure that the test config file is being used. If not, don't run the tests
+if os.environ['COSMO_CONFIG'] != TEST_CONFIG:
+    raise TypeError('Tests should only be executed with the testing configuration file')
 
 SMSFinder_BAD_PATHS = (
     ('source',),
@@ -22,7 +26,6 @@ SMSFile_GOOD_DATA = (
         (os.path.join(TEST_DATA, test_file),) for test_file in ['111078a6.txt', '180147b1.txt', '180148a5.l-exp']
     ]
 )
-
 
 class TestIngestSmsData:
 
