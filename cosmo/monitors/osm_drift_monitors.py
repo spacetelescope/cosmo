@@ -1,6 +1,6 @@
 import plotly.graph_objs as go
 
-from monitorframe import BaseMonitor
+from monitorframe.monitor import BaseMonitor
 
 from .osm_data_models import OSMDriftDataModel
 from ..monitor_helpers import explode_df
@@ -20,20 +20,23 @@ class OSMDriftMonitor(BaseMonitor):
     detector = None
     subplots = True  # Both monitors will have subplots. The number and organization will depend on the detector.
 
+    def get_data(self):
+        return self.model.new_data[self.model.new_data.DETECTOR == self.detector].reset_index(drop=True)
+
     def track(self):
         """Track the drift for Shift1 and Shift2."""
         # Calculate the relative shift (relative to the first shift measurement for each set of flashes) for AD and XD
-        self.filtered_data['REL_SHIFT_DISP'] = self.filtered_data.apply(
+        self.data['REL_SHIFT_DISP'] = self.data.apply(
             lambda x: x.SHIFT_DISP - x.SHIFT_DISP[0] if len(x.SHIFT_DISP) else x.SHIFT_DISP, axis=1
         )
 
-        self.filtered_data['REL_SHIFT_XDISP'] = self.filtered_data.apply(
+        self.data['REL_SHIFT_XDISP'] = self.data.apply(
             lambda x: x.SHIFT_XDISP - x.SHIFT_XDISP[0] if len(x.SHIFT_XDISP) else x.SHIFT_XDISP, axis=1
         )
 
         # Expand the dataframe
         exploded = explode_df(
-            self.filtered_data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT', 'REL_SHIFT_DISP', 'REL_SHIFT_XDISP']
+            self.data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT', 'REL_SHIFT_DISP', 'REL_SHIFT_XDISP']
         )
 
         # Add drift columns and time since OSM move columns
@@ -112,7 +115,7 @@ class FUVOSMDriftMonitor(OSMDriftMonitor):
             yaxis2=dict(title='SHIFT2 drift rate [pixels/sec]')
         )
 
-        self.figure['layout'].update(layout)
+        self.figure.update_layout(layout)
 
 
 class NUVOSMDriftMonitor(OSMDriftMonitor):
@@ -176,4 +179,4 @@ class NUVOSMDriftMonitor(OSMDriftMonitor):
             yaxis4=dict(title='SHIFT2 drift rate [pixels/sec]')
         )
 
-        self.figure['layout'].update(layout)
+        self.figure.update_layout(layout)

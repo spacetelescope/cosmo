@@ -5,7 +5,7 @@ import os
 
 from itertools import repeat
 from typing import Tuple
-from monitorframe import BaseMonitor
+from monitorframe.monitor import BaseMonitor
 
 from .osm_data_models import OSMShiftDataModel
 from ..monitor_helpers import ExposureAbsoluteTime, explode_df
@@ -133,9 +133,14 @@ class FuvOsmShiftMonitor(BaseMonitor):
 
     shift = None  # SHIFT_DISP or SHIFT_XDISP
 
+    def get_data(self):
+        exploded_data = explode_df(self.model.new_data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+
+        return exploded_data[exploded_data.DETECTOR == 'FUV']
+
     def track(self):
         """Track the difference in shift, A-B"""
-        return compute_segment_diff(self.filtered_data, self.shift)
+        return compute_segment_diff(self.data, self.shift)
 
     def filter_data(self):
         """Filter on detector."""
@@ -146,12 +151,12 @@ class FuvOsmShiftMonitor(BaseMonitor):
     def plot(self):
         """Plot shift v time and A-B v time per cenwave, and with each FP-POS separate by button options."""
         # First set of layouts for the "All FPPOS" button
-        traces, layout = plot_fuv_osm_shift_cenwaves(self.filtered_data, self.shift)
+        traces, layout = plot_fuv_osm_shift_cenwaves(self.data, self.shift)
 
         trace_length = len(traces)  # Number of traces in the first group
         all_visible = list(repeat(True, trace_length))  # Visible option for the first group
 
-        fp_groups = self.filtered_data.groupby('FPPOS')
+        fp_groups = self.data.groupby('FPPOS')
         fp_trace_lengths = {}  # track the number of traces produced per fp; this differs between fp
         for fp, group in fp_groups:
             fp_traces, _ = plot_fuv_osm_shift_cenwaves(group, self.shift)
@@ -225,7 +230,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
             } for lp_time in LP_MOVES.values()
         ]
 
-        self.figure['layout'].update({'shapes': lines, 'updatemenus': updatemenues})
+        self.figure.update_layout({'shapes': lines, 'updatemenus': updatemenues})
 
     def store_results(self):
         """Store A-B outliers in a csv file."""
@@ -261,15 +266,15 @@ class NuvOsmShiftMonitor(BaseMonitor):
 
     shift = None  # SHIFT_DISP or SHIFT_XDISP
 
-    def filter_data(self):
+    def get_data(self):
         """Filter on detector."""
-        exploded_data = explode_df(self.data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+        exploded_data = explode_df(self.model.new_data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
 
         return exploded_data[self.data.DETECTOR == 'NUV']
 
     def plot(self):
         """Plot shift v time per grating/cenwave."""
-        groups = self.filtered_data.groupby(['OPT_ELEM', 'CENWAVE'])
+        groups = self.data.groupby(['OPT_ELEM', 'CENWAVE'])
 
         # Plot shift v time for each grating/cenwave
         traces = []
@@ -286,7 +291,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
                     mode='markers',
                     text=group.hover_text,
                     marker=dict(
-                        cmax=len(self.filtered_data.CENWAVE.unique()) - 1,
+                        cmax=len(self.data.CENWAVE.unique()) - 1,
                         cmin=0,
                         color=list(repeat(i, len(group))),
                         colorscale='Viridis',
@@ -301,7 +306,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
         )
 
         self.figure.add_traces(traces)
-        self.figure['layout'].update(layout)
+        self.figure.update_layout(layout)
 
     def store_results(self):
         # TODO: decide on what results to store and how

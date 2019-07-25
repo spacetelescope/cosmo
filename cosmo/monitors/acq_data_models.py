@@ -1,7 +1,7 @@
 import numpy as np
 
 from typing import List
-from monitorframe.monitor import BaseDataModel
+from monitorframe.datamodel import BaseDataModel
 
 from ..filesystem import FileDataFinder
 from .. import SETTINGS
@@ -42,7 +42,7 @@ class AcqPeakdModel(BaseDataModel):
     files_source = FILES_SOURCE
     cosmo_layout = True
 
-    def get_data(self):
+    def get_new_data(self):
         # ACQ file header keys, extensions
         acq_keywords, acq_extensions = ('ACQSLEWX', 'EXPSTART', 'LIFE_ADJ', 'ROOTNAME', 'PROPOSID'), (0, 1, 0, 0, 0)
 
@@ -68,7 +68,7 @@ class AcqPeakxdModel(BaseDataModel):
     files_source = FILES_SOURCE
     cosmo_layout = True
 
-    def get_data(self):
+    def get_new_data(self):
         # ACQ file header keys, extensions
         acq_keywords, acq_extensions = ('ACQSLEWY', 'EXPSTART', 'LIFE_ADJ', 'ROOTNAME', 'PROPOSID'), (0, 1, 0, 0, 0)
 
@@ -94,7 +94,7 @@ class AcqImageModel(BaseDataModel):
     files_source = FILES_SOURCE
     cosmo_layout = True
 
-    def get_data(self):
+    def get_new_data(self):
 
         def detector_to_v2v3(slewx, slewy):
             """Detector coordinates to V2/V3 coordinates."""
