@@ -74,16 +74,16 @@ class FUVOSMDriftMonitor(OSMDriftMonitor):
     def plot(self):
         """Plot the Drift rate (from SHIFT1 and SHIFT2) as a function of the time since the last OSM1 move."""
         locations = [(1, 1), (2, 1)]  # row and column positions for the plot
-        ynames = ['SHIFT1_DRIFT', 'SHIFT2_DRIFT']
+        y_names = ['SHIFT1_DRIFT', 'SHIFT2_DRIFT']
         titles = ['OSM1 SHIFT1', 'OSM1 SHIFT2']
 
         # Set the min and max for the scale so that each plot is plotted on the same scale
-        cmin = self.results.EXPSTART.min()
-        cmax = self.results.EXPSTART.max()
+        c_min = self.results.EXPSTART.min()
+        c_max = self.results.EXPSTART.max()
 
         # Plot drift v time per grating
         for grating, group in self.results.groupby('OPT_ELEM'):
-            for y, name, axes in zip(ynames, titles, locations):
+            for y, name, axes in zip(y_names, titles, locations):
                 trace = go.Scattergl(
                     x=group.REL_TSINCEOSM1,
                     y=group[y],
@@ -93,8 +93,8 @@ class FUVOSMDriftMonitor(OSMDriftMonitor):
                     legendgroup=grating,
                     marker=dict(
                         color=group.EXPSTART,
-                        cmin=cmin,
-                        cmax=cmax,
+                        cmin=c_min,
+                        cmax=c_max,
                         colorscale='Viridis',
                         showscale=True,
                         colorbar=dict(
@@ -129,19 +129,19 @@ class NUVOSMDriftMonitor(OSMDriftMonitor):
         """Plot drift rate (from SHIFT1 and SHIFT2) as a function of time since the last OSM1 move and the time since
         the last OSM2 move. NUV requires the movement of both OSM1 and OSM2, so both should be looked at.
         """
-        # Set up the different parameterizations for the four plots.
-        xnames = ['REL_TSINCEOSM1', 'REL_TSINCEOSM1', 'REL_TSINCEOSM2', 'REL_TSINCEOSM2']
-        ynames = ['SHIFT1_DRIFT', 'SHIFT2_DRIFT', 'SHIFT1_DRIFT', 'SHIFT2_DRIFT']
+        # Set up the different parametrization for the four plots.
+        x_names = ['REL_TSINCEOSM1', 'REL_TSINCEOSM1', 'REL_TSINCEOSM2', 'REL_TSINCEOSM2']
+        y_names = ['SHIFT1_DRIFT', 'SHIFT2_DRIFT', 'SHIFT1_DRIFT', 'SHIFT2_DRIFT']
         titles = ['OSM1 SHIFT1', 'OSM1 SHIFT2', 'OSM2 SHIFT1', 'OSM2 SHIFT2']
         locations = [(1, 1), (2, 1), (1, 2), (2, 2)]
 
         # Set the min and max for the scale so that each plot is plotted on the same scale
-        cmin = self.results.EXPSTART.min()
-        cmax = self.results.EXPSTART.max()
+        c_min = self.results.EXPSTART.min()
+        c_max = self.results.EXPSTART.max()
 
         # Plot drift v time for each grating
         for grating, group in self.results.groupby('OPT_ELEM'):
-            for x, y, axes, name in zip(xnames, ynames, locations, titles):
+            for x, y, axes, name in zip(x_names, y_names, locations, titles):
                 trace = go.Scattergl(
                     x=group[x],
                     y=group[y],
@@ -151,8 +151,8 @@ class NUVOSMDriftMonitor(OSMDriftMonitor):
                     legendgroup=grating,
                     marker=dict(
                         color=group.EXPSTART,
-                        cmin=cmin,
-                        cmax=cmax,
+                        cmin=c_min,
+                        cmax=c_max,
                         colorscale='Viridis',
                         showscale=True,
                         colorbar=dict(  # TODO: Move the colorbar location down

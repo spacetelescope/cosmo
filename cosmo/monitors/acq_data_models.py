@@ -96,11 +96,11 @@ class AcqImageModel(BaseDataModel):
 
     def get_new_data(self):
 
-        def detector_to_v2v3(slewx, slewy):
+        def detector_to_v2v3(slew_x, slew_y):
             """Detector coordinates to V2/V3 coordinates."""
             rotation_angle = np.radians(45.0)  # rotation angle in degrees converted to radians
-            x_conversion = slewx * np.cos(rotation_angle)
-            y_conversion = slewy * np.sin(rotation_angle)
+            x_conversion = slew_x * np.cos(rotation_angle)
+            y_conversion = slew_y * np.sin(rotation_angle)
 
             v2 = x_conversion + y_conversion
             v3 = x_conversion - y_conversion

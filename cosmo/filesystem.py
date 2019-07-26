@@ -10,10 +10,6 @@ from . import SETTINGS
 
 FILES_SOURCE = SETTINGS['filesystem']['source']
 
-# TODO: Add the ability to select files based on file creation date:
-# filestats = os.stat(<path>)
-# t = datetime.datetime.fromtimestamp(filestats.st_birthtime)
-
 
 class FileDataFinder:
     """Class for finding and extracting data from COS fits files."""
@@ -151,7 +147,7 @@ def get_file_data(fitsfile: str, keys: Sequence, exts: Sequence, exp_type: Seque
         if exp_type and file[0].header['EXPTYPE'] != exp_type:  # Filter out files that don't match the given exptype
             return
 
-        filedata = FileData(
+        file_data = FileData(
             fitsfile,
             file,
             keys,
@@ -162,12 +158,12 @@ def get_file_data(fitsfile: str, keys: Sequence, exts: Sequence, exp_type: Seque
             data_exts=data_exts
         )
 
-        filedata.get_header_data()
+        file_data.get_header_data()
 
         if data_keys:
-            filedata.get_table_data()
+            file_data.get_table_data()
 
     if spt_keys:
-        filedata.get_spt_header_data()
+        file_data.get_spt_header_data()
 
-    return filedata.data
+    return file_data.data

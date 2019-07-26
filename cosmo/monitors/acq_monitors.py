@@ -65,10 +65,10 @@ class AcqImageSlewMonitor(BaseMonitor):
 
         fit_results = {}
         for name, group in groups:
-            xfit, xline = fit_line(group.EXPSTART, -group.ACQSLEWX)
-            yfit, yline = fit_line(group.EXPSTART, -group.ACQSLEWY)
+            x_fit, x_line = fit_line(group.EXPSTART, -group.ACQSLEWX)
+            y_fit, y_line = fit_line(group.EXPSTART, -group.ACQSLEWY)
 
-            fit_results[name] = (xline, yline, xfit, yfit)
+            fit_results[name] = (x_line, y_line, x_fit, y_fit)
 
         return groups, fit_results
 
@@ -83,7 +83,7 @@ class AcqImageSlewMonitor(BaseMonitor):
         cols = []
         visibility = {key: [] for key in groups.groups.keys()}
         for name, group in groups:
-            xline, yline, xfit, yfit = fit_results[name]
+            x_line, y_line, x_fit, y_fit = fit_results[name]
 
             x_scatter = go.Scatter(
                 x=group.EXPSTART,
@@ -104,23 +104,23 @@ class AcqImageSlewMonitor(BaseMonitor):
                 visible=False
             )
 
-            xline_fit = go.Scatter(
+            x_line_fit = go.Scatter(
                 x=group.EXPSTART,
-                y=xline,
+                y=x_line,
                 mode='lines',
-                name=f'Fit:\nslope: {xfit[1]:.5f}\nintercept: {xfit[0]:.3f}',
+                name=f'Fit:\nslope: {x_fit[1]:.5f}\nintercept: {x_fit[0]:.3f}',
                 visible=False
             )
 
-            yline_fit = go.Scatter(
+            y_line_fit = go.Scatter(
                 x=group.EXPSTART,
-                y=yline,
+                y=y_line,
                 mode='lines',
-                name=f'Fit:\nslope: {yfit[1]:.5f}\nintercept: {yfit[0]:.3f}',
+                name=f'Fit:\nslope: {y_fit[1]:.5f}\nintercept: {y_fit[0]:.3f}',
                 visible=False
             )
 
-            traces.extend([x_scatter, y_scatter, xline_fit, yline_fit])
+            traces.extend([x_scatter, y_scatter, x_line_fit, y_line_fit])
 
             rows.extend([1, 2, 1, 2])  # Placement of the traces on the figure are in the order that they're created.
             cols.extend([1, 1, 1, 1])
@@ -353,7 +353,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
             df = self.data[self.data.EXPSTART >= t_start]
 
-            # Track V2V3 fit and fitline since the last update for each FGS
+            # Track V2V3 fit and fit-line since the last update for each FGS
             v2_line_fit = fit_line(df.EXPSTART, df.V2SLEW)
             v3_line_fit = fit_line(df.EXPSTART, df.V3SLEW)
 
@@ -430,16 +430,16 @@ class AcqImageV2V3Monitor(BaseMonitor):
             {
                 'type': 'line',
                 'x0': convert_day_of_year(value).to_datetime(),
-                'y0': self.figure['layout'][yaxis]['domain'][0],
+                'y0': self.figure['layout'][y_axis]['domain'][0],
                 'x1': convert_day_of_year(value).to_datetime(),
-                'y1': self.figure['layout'][yaxis]['domain'][1],
+                'y1': self.figure['layout'][y_axis]['domain'][1],
                 'xref': xref,
                 'yref': 'paper',
                 'line': {
                     'width': 3,
                 },
                 'name': key
-            } for key, value in self.fgs_events.items() for xref, yaxis in zip(['x1', 'x2'], ['yaxis1', 'yaxis2'])
+            } for key, value in self.fgs_events.items() for xref, y_axis in zip(['x1', 'x2'], ['yaxis1', 'yaxis2'])
         ]
 
         annotations = [

@@ -50,7 +50,7 @@ def plot_fuv_osm_shift_cenwaves(df: pd.DataFrame, shift: str) -> Tuple[list, go.
         )
     )
 
-    # Plot shfit v time per grating/cenwave group
+    # Plot shift v time per grating/cenwave group
     for i, group_info in enumerate(groups):
         name, group = group_info
 
@@ -81,7 +81,7 @@ def plot_fuv_osm_shift_cenwaves(df: pd.DataFrame, shift: str) -> Tuple[list, go.
             )
         )
 
-    # Set layout; Link the x-axes; increase the horizontal gridline width for the shift v time plot
+    # Set layout; Link the x-axes; increase the horizontal grid-line width for the shift v time plot
     layout = go.Layout(
         xaxis=dict(title='Datetime'),
         yaxis2=dict(title='Shift [pix]', anchor='x', domain=[0.3, 1], gridwidth=5),
@@ -92,7 +92,7 @@ def plot_fuv_osm_shift_cenwaves(df: pd.DataFrame, shift: str) -> Tuple[list, go.
 
 
 def compute_segment_diff(df: pd.DataFrame, shift: str) -> pd.DataFrame:
-    """Compute the difference (A-B) in the shift measurement betwen segments."""
+    """Compute the difference (A-B) in the shift measurement between segments."""
     root_groups = df.groupby('ROOTNAME')  # group by rootname which may or may not have FUVA and FUVB shifts
 
     results_list = []
@@ -123,7 +123,7 @@ def compute_segment_diff(df: pd.DataFrame, shift: str) -> pd.DataFrame:
 
 
 class FuvOsmShiftMonitor(BaseMonitor):
-    """Abstracted FUV OSM Shift monitor. This monitor class is not meant to be used directly, but rather inhereted from
+    """Abstracted FUV OSM Shift monitor. This monitor class is not meant to be used directly, but rather inherited from
     by specific Shift1 and Shift2 monitors (which share the same plots, but differ in which shift value is plotted and
     how outliers are defined).
     """
@@ -195,11 +195,11 @@ class FuvOsmShiftMonitor(BaseMonitor):
         ] = list(repeat(True, fp_trace_lengths[4]))
 
         button_labels = ['All FPPOS', 'FPPOS 1', 'FPPOS 2', 'FPPOS 3', 'FPPOS 4']
-        vsibilities = [all_visible, fp1_visible, fp2_visible, fp3_visible, fp4_visible]
+        visibilities = [all_visible, fp1_visible, fp2_visible, fp3_visible, fp4_visible]
         titles = [f'{self.name} All FPPOS'] + [f'{self.name} {label} Only' for label in button_labels[1:]]
 
         # Create the menu buttons
-        updatemenues = [
+        updatemenus = [
             dict(
                 type='buttons',
                 buttons=[
@@ -210,7 +210,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
                             {'visible': visibility},
                             {'title': button_title}
                         ]
-                    ) for label, visibility, button_title in zip(button_labels, vsibilities, titles)
+                    ) for label, visibility, button_title in zip(button_labels, visibilities, titles)
                 ]
             )
         ]
@@ -230,7 +230,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
             } for lp_time in LP_MOVES.values()
         ]
 
-        self.figure.update_layout({'shapes': lines, 'updatemenus': updatemenues})
+        self.figure.update_layout({'shapes': lines, 'updatemenus': updatemenus})
 
     def store_results(self):
         """Store A-B outliers in a csv file."""
@@ -252,12 +252,12 @@ class FuvOsmShift2Monitor(FuvOsmShiftMonitor):
     shift = 'SHIFT_XDISP'  # shift 2
 
     def find_outliers(self):
-        """Outliers for shift2 A-B are defined as any differenc whose magnitude is greater than 5 pixels"""
+        """Outliers for shift2 A-B are defined as any difference whose magnitude is greater than 5 pixels."""
         return self.results.seg_diff.abs() > 5
 
 
 class NuvOsmShiftMonitor(BaseMonitor):
-    """Abstracted NUV OSM Shift monitor. This monitor class is not meant to be used directly, but rather inhereted from
+    """Abstracted NUV OSM Shift monitor. This monitor class is not meant to be used directly, but rather inherited from
     by specific Shift1 and Shift2 monitors (which share the same plots, but differ in which shift value is plotted and
     how outliers are defined)."""
     data_model = OSMShiftDataModel
