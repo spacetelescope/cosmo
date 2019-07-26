@@ -287,18 +287,18 @@ class AcqImageV2V3Monitor(BaseMonitor):
     # Define break points for fitting lines; these correspond to important catalogue or FGS dates.
     break_points = {
         'F1': [
-            ('start', 2011.172),
+            (None, 2011.172),
             (2011.172, 2013.205),  # FGS realignment
             (2013.205, 2014.055),  # FGS realignment
-            (2014.055, 'end')  # SIAF update
+            (2014.055, None)  # SIAF update
         ],
 
         'F2': [
-            ('start', 2011.172),
+            (None, 2011.172),
             (2011.206, 2013.205),  # FGS2 turned back on + FGS realignment
             (2013.205, 2014.055),  # FGS realignment
             (2014.055, 2015.327),  # SIAF update
-            (2016.123, 'end')
+            (2016.123, None)
         ],
 
         'F3': []  # No current break points for F3 yet
@@ -361,76 +361,69 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
         return groups, last_updated_results
 
+    def _create_traces(self, df, slew, n_breakpoints, rows, cols):
+        """Create V2V3 traces for the monitor figure."""
+        time = Time(df.EXPSTART, format='mjd')
+        dt = time - time[0]
+        line_fit, fit = fit_line(dt.sec, -df[slew])
+
+        scatter = go.Scatter(  # scatter plot
+            x=time.to_datetime(),
+            y=-df[slew],
+            mode='markers',
+            hovertext=df.hover_text,
+            visible=False,
+            legendgroup=f'Group {n_breakpoints + 1}',
+            name=f'{slew.strip("SLEW")} Group {n_breakpoints + 1}'
+        )
+
+        line = go.Scatter(  # line-fit plot
+            x=time.to_datetime(),
+            y=fit,
+            name=(
+                f'Slope: {line_fit[1] * 3.154e+7:.4f} arcsec/year<br>Zero Point: {fit[0]:.3f} arcsec'
+            ),
+            visible=False,
+            legendgroup=f'Group {n_breakpoints + 1}'
+        )
+
+        self.figure.add_traces([scatter, line], rows=rows, cols=cols)
+
     def plot(self):
         """Plot V2 and V3 offset (-slew) vs time per 'breakpoint' period and per FGS. Separate FGS via a button option.
         V2 will be plotted in the top panel and V3 will be plotted in the bottom panel.
         """
-        fgs_groups, _ = self.results  # retrive the groups already found in track.
+        fgs_groups, _ = self.results  # retrieve the groups already found in track.
 
-        # TODO: Refactor how traces are collected and visibility options for the buttons are created.
-        traces = {'F1': [], 'F2': []}  # store traces per fgs
-        rows = []
-        cols = []
         for name, group in fgs_groups:
-
-            # Skip FGS3; there are not enough datapoints for meaningful analysis
+            # Skip FGS3; there are not enough data-points for meaningful analysis
             if name == 'F3':
                 continue
 
-            # Plot offset v time per breakpoint
+            # Filter dataframe by time per breakpoint
             for n_breaks, points in enumerate(self.break_points[name]):
-
-                t_start, t_end = [
-                    convert_day_of_year(point).mjd if not isinstance(point, str) else None for point in points
-                ]
+                t_start, t_end = points
 
                 if t_start is None:
-                    df = group[group.EXPSTART <= t_end]
+                    df = group[group.EXPSTART <= convert_day_of_year(t_end).mjd]
 
                 elif t_end is None:
-                    df = group[group.EXPSTART >= t_start]
+                    df = group[group.EXPSTART >= convert_day_of_year(t_start).mjd]
 
                 else:
-                    df = group.iloc[np.where((group.EXPSTART >= t_start) & (group.EXPSTART <= t_end))]
+                    df = group.iloc[
+                        np.where(
+                            (group.EXPSTART >= convert_day_of_year(t_start).mjd) &
+                            (group.EXPSTART <= convert_day_of_year(t_end).mjd)
+                        )
+                    ]
 
-                if df.empty:  # Sometimes there may be no data; For exampel, FGS2 was not used for a while
+                if df.empty:  # Sometimes there may be no data; For example, FGS2 was not used for a while
                     continue
 
                 # Plot V2 and V3 offsets v time
                 for i, slew in enumerate(['V2SLEW', 'V3SLEW']):
-                    rows.append(i + 1)
-                    rows.append(i + 1)
-                    cols.append(1)
-                    cols.append(1)
-
-                    time = Time(df.EXPSTART, format='mjd')
-                    dt = time - time[0]
-                    line_fit, fit = fit_line(dt.sec, -df[slew])
-
-                    scatter = go.Scatter(  # scatter plot
-                        x=time.to_datetime(),
-                        y=-df[slew],
-                        mode='markers',
-                        hovertext=df.hover_text,
-                        visible=False,
-                        legendgroup=f'Group {n_breaks + 1}',
-                        name=f'{slew.strip("SLEW")} Group {n_breaks + 1}'
-                    )
-
-                    line = go.Scatter(  # line-fit plot
-                        x=time.to_datetime(),
-                        y=fit,
-                        name=(
-                            f'Slope: {line_fit[1] * 3.154e+7:.4f} arcsec/year<br>Zero Point: {fit[0]:.3f} arcsec'
-                        ),
-                        visible=False,
-                        legendgroup=f'Group {n_breaks + 1}'
-                    )
-
-                    traces[name].append(scatter)
-                    traces[name].append(line)
-
-        self.figure.add_traces([item for sublist in traces.values() for item in sublist], rows=rows, cols=cols)
+                    self._create_traces(df, slew, n_breaks, rows=[i+1] * 2, cols=[1] * 2)
 
         # Create vertical lines
         lines = [
@@ -463,20 +456,29 @@ class AcqImageV2V3Monitor(BaseMonitor):
             for xref, yaxis in zip(['x1', 'x2'], ['yaxis1', 'yaxis2'])
         ]
 
-        f1_visibility = list(repeat(True, len(traces['F1']))) + list(repeat(False, len(traces['F2'])))
-        f2_visibility = list(repeat(False, len(traces['F1']))) + list(repeat(True, len(traces['F2'])))
+        # Create visibility toggles for buttons
+        n_f1_traces = len(self.break_points['F1']) * 4  # There are four traces plotted per breakpoint
+        n_f2_traces = len(self.break_points['F2']) * 4
+
+        # F1 traces are created first, so the order for the list of traces is f1 traces then f2 traces
+        f1_visibility = list(repeat(True, n_f1_traces)) + list(repeat(False, n_f2_traces))
+        f2_visibility = list(repeat(False, n_f1_traces)) + list(repeat(True, n_f2_traces))
 
         # Create buttons
         updatemenus = [
-            dict(
-                active=50,
+            go.layout.Updatemenu(
+                active=-1,
                 buttons=[
                     dict(
                         label='FGS1',
                         method='update',
                         args=[
                             {'visible': f1_visibility},
-                            {'title': 'FGS1 V2V3 Slew vs Time'}
+                            {
+                                'title': 'FGS1 V2V3 Slew vs Time',
+                                'annotations': annotations,
+                                'shapes': lines
+                            }
                         ]
                     ),
                     dict(
@@ -484,7 +486,11 @@ class AcqImageV2V3Monitor(BaseMonitor):
                         method='update',
                         args=[
                             {'visible': f2_visibility},
-                            {'title': 'FGS2 V2V3 Slew vs Time'}
+                            {
+                                'title': 'FGS2 V2V3 Slew vs Time',
+                                'annotations': annotations,
+                                'shapes': lines
+                            }
                         ]
                     ),
                 ]
@@ -494,9 +500,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
         # Create layout
         layout = go.Layout(
             updatemenus=updatemenus,
-            annotations=annotations,
             hovermode='closest',
-            shapes=lines,
             xaxis=dict(title='Datetime'),
             xaxis2=dict(title='Datetime'),
             yaxis=dict(title='V2 Offset (-Slew) [arcseconds]'),
