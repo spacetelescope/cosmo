@@ -285,6 +285,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
     output = COS_MONITORING
 
     # Define break points for fitting lines; these correspond to important catalogue or FGS dates.
+    # TODO Refactor this info into a better, more concise data structure
     break_points = {
         'F1': [
             (None, 2011.172),
@@ -294,8 +295,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
         ],
 
         'F2': [
-            (None, 2011.172),
-            (2011.206, 2013.205),  # FGS2 turned back on + FGS realignment
+            (None, 2013.205),  # FGS2 turned back on + FGS realignment
             (2013.205, 2014.055),  # FGS realignment
             (2014.055, 2015.327),  # SIAF update
             (2016.123, None)
@@ -312,8 +312,12 @@ class AcqImageV2V3Monitor(BaseMonitor):
         'SIAF Update': 2014.055,
         'FGS2 Deactivated': 2015.327,
         'FGS2 Reactivated': 2016.123,
-        'GAIA Guide Stars': 2017.272
+        'GAIA Guide Stars': 2017.272,
     }
+
+    #
+    fgs1_breaks = ['FGS Realignment 1', 'FGS Realignment 2', 'SIAF Update']
+    fgs2_breaks = ['FGS Realignment 2', 'SIAF Update', 'FGS2 Deactivated', 'FGS2 Reactivated']
 
     def get_data(self):
         """Filter ACQIMAGE data for V2V3 plot. These filter options attempt to weed out outliers that might result from
@@ -385,10 +389,28 @@ class AcqImageV2V3Monitor(BaseMonitor):
                     f'{fit[0]:.3f}<br>'
                 ),
                 visible=False,
-                legendgroup=f'Group {breakpoint_index + 1}'
+                legendgroup=f'Group {breakpoint_index + 1}',
+                line=dict(width=4)
             )
 
             self.figure.add_traces([scatter, line], rows=[i+1] * 2, cols=[1] * 2)
+
+    def _create_breakpoint_lines(self, fgs_breakpoint_list):
+        return [
+            {
+                'type': 'line',
+                'x0': convert_day_of_year(self.fgs_events[key]).to_datetime(),
+                'y0': self.figure['layout'][y_axis]['domain'][0],
+                'x1': convert_day_of_year(self.fgs_events[key]).to_datetime(),
+                'y1': self.figure['layout'][y_axis]['domain'][1],
+                'xref': xref,
+                'yref': 'paper',
+                'line': {
+                    'width': 3,
+                    'color': 'red'
+                },
+            } for key in fgs_breakpoint_list for xref, y_axis in zip(['x1', 'x2'], ['yaxis1', 'yaxis2'])
+        ]
 
     def plot(self):
         """Plot V2 and V3 offset (-slew) vs time per 'breakpoint' period and per FGS. Separate FGS via a button option.
@@ -398,7 +420,6 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
         traces_per_fgs = {'F1': 0, 'F2': 0, 'F3': 0}
         for name, group in fgs_groups:
-            # Skip FGS3; there are not enough data-points for meaningful analysis
             if name == 'F3':
                 traces_per_fgs[name] += 4
                 self._create_traces(group, 0)
@@ -445,6 +466,10 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 'name': key
             } for key, value in self.fgs_events.items() for xref, y_axis in zip(['x1', 'x2'], ['yaxis1', 'yaxis2'])
         ]
+
+        # Create vertical lines that are a different style for breakpoints (per FGS)
+        fgs1_breaks = self._create_breakpoint_lines(self.fgs1_breaks)
+        fgs2_breaks = self._create_breakpoint_lines(self.fgs2_breaks)
 
         annotations = [
             {
@@ -493,7 +518,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
                             {
                                 'title': f'FGS1 {self.name}',
                                 'annotations': annotations,
-                                'shapes': lines
+                                'shapes': lines + fgs1_breaks
                             }
                         ]
                     ),
@@ -505,7 +530,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
                             {
                                 'title': f'FGS2 {self.name}',
                                 'annotations': annotations,
-                                'shapes': lines
+                                'shapes': lines + fgs2_breaks
                             }
                         ]
                     ),
