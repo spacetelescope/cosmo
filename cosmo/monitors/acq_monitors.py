@@ -381,8 +381,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 x=time.to_datetime(),
                 y=fit,
                 name=(
-                    f'Slope: {line_fit[1]:.4f} arcsec/year<br>Zero Point: {fit[0]:.3f}<br>'
-                    f'(at time of the first data point after the breakpoint)'
+                    f'Slope: {line_fit[1]:.4f} arcsec/year<br>Offset (from fit) at time of first data point: '
+                    f'{fit[0]:.3f}<br>'
                 ),
                 visible=False,
                 legendgroup=f'Group {breakpoint_index + 1}'
