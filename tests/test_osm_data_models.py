@@ -15,7 +15,7 @@ if os.environ['COSMO_CONFIG'] != TEST_CONFIG:
 class TestOSMDataModel:
 
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls):  # TODO: Refactor to use fixtures instead of setup/teardown class methods
         cls.test_osmdatamodel = OSMShiftDataModel
         cls.test_osmdatamodel.files_source = TEST_DATA
         cls.test_osmdatamodel.cosmo_layout = False

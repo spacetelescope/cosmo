@@ -407,7 +407,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 'yref': 'paper',
                 'line': {
                     'width': 3,
-                    'color': 'red'
+                    'color': 'lightsteelblue',
+                    'dash': 'dash'
                 },
             } for key in fgs_breakpoint_list for xref, y_axis in zip(['x1', 'x2'], ['yaxis1', 'yaxis2'])
         ]

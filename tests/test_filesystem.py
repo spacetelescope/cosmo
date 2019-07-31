@@ -106,7 +106,7 @@ class TestFileDataFinder:
         assert len(file_data) == 4
 
 
-class TestFileData:
+class TestFileData:  # TODO: Refactor to use fixtures instead of setup/teardown class methods
 
     @classmethod
     def setup_class(cls):
@@ -151,7 +151,7 @@ class TestFileData:
         assert isinstance(self.file_data.data['RAWX'],  np.ndarray)
 
 
-class TestGetFileData:
+class TestGetFileData:  # TODO: Refactor to use fixtures instead of setup/teardown class methods
 
     @classmethod
     def setup_class(cls):
