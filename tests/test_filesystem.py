@@ -7,6 +7,11 @@ from astropy.io import fits
 from cosmo.filesystem import get_file_data, FileData, FileDataFinder
 
 TEST_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
+TEST_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cosmoconfig_test.yaml')
+
+# Check to make sure that the test config file is being used. If not, don't run the tests
+if os.path.abspath(os.environ['COSMO_CONFIG']) != TEST_CONFIG:
+    raise TypeError('Tests should only be executed with the testing configuration file')
 
 ARGS = (
     'source_dr',
@@ -101,7 +106,7 @@ class TestFileDataFinder:
         assert len(file_data) == 4
 
 
-class TestFileData:
+class TestFileData:  # TODO: Refactor to use fixtures instead of setup/teardown class methods
 
     @classmethod
     def setup_class(cls):
@@ -146,7 +151,7 @@ class TestFileData:
         assert isinstance(self.file_data.data['RAWX'],  np.ndarray)
 
 
-class TestGetFileData:
+class TestGetFileData:  # TODO: Refactor to use fixtures instead of setup/teardown class methods
 
     @classmethod
     def setup_class(cls):

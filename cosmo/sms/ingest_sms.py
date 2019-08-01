@@ -71,9 +71,10 @@ class SMSFile:
         """Initialize and ingest the sms file data."""
         self.datetime_format = '%Y-%m-%d %H:%M:%S'
         self.filename = smsfile
-        self._data = self.ingest_smsfile()
-        self.data = pd.DataFrame(self._data).astype(self.table_keys)
         self.ingest_date = datetime.datetime.today()
+
+        self._data = self.ingest_smsfile()
+        self.data: pd.DataFrame = pd.DataFrame(self._data).astype(self.table_keys)
 
     @property
     def single_value_patterns(self) -> dict:

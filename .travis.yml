@@ -1,3 +1,4 @@
+dist: xenial
 language: python
 python: "3.7"
 
@@ -25,7 +26,8 @@ env:
         - CONDA_DEPS='stsci coverage'
         - CONDA_DOC_DEPS="$CONDA_DEPS sphinx"
         - SETUP_CMD='test'
-        - COSMO_CONFIG='./tests/cosmoconfig_test.yaml'
+        - COSMO_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
+        - MONITOR_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
 
 install:
     # USE UTF8 ENCODING. SHOULD BE DEFAULT, BUT THIS IS INSURANCE AGAINST FUTURE CHANGES

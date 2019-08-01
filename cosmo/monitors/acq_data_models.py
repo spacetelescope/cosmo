@@ -1,7 +1,7 @@
 import numpy as np
 
 from typing import List
-from monitorframe.monitor import BaseDataModel
+from monitorframe.datamodel import BaseDataModel
 
 from ..filesystem import FileDataFinder
 from .. import SETTINGS
@@ -42,7 +42,7 @@ class AcqPeakdModel(BaseDataModel):
     files_source = FILES_SOURCE
     cosmo_layout = True
 
-    def get_data(self):
+    def get_new_data(self):
         # ACQ file header keys, extensions
         acq_keywords, acq_extensions = ('ACQSLEWX', 'EXPSTART', 'LIFE_ADJ', 'ROOTNAME', 'PROPOSID'), (0, 1, 0, 0, 0)
 
@@ -68,7 +68,7 @@ class AcqPeakxdModel(BaseDataModel):
     files_source = FILES_SOURCE
     cosmo_layout = True
 
-    def get_data(self):
+    def get_new_data(self):
         # ACQ file header keys, extensions
         acq_keywords, acq_extensions = ('ACQSLEWY', 'EXPSTART', 'LIFE_ADJ', 'ROOTNAME', 'PROPOSID'), (0, 1, 0, 0, 0)
 
@@ -94,13 +94,13 @@ class AcqImageModel(BaseDataModel):
     files_source = FILES_SOURCE
     cosmo_layout = True
 
-    def get_data(self):
+    def get_new_data(self):
 
-        def detector_to_v2v3(slewx, slewy):
+        def detector_to_v2v3(slew_x, slew_y):
             """Detector coordinates to V2/V3 coordinates."""
             rotation_angle = np.radians(45.0)  # rotation angle in degrees converted to radians
-            x_conversion = slewx * np.cos(rotation_angle)
-            y_conversion = slewy * np.sin(rotation_angle)
+            x_conversion = slew_x * np.cos(rotation_angle)
+            y_conversion = slew_y * np.sin(rotation_angle)
 
             v2 = x_conversion + y_conversion
             v3 = x_conversion - y_conversion

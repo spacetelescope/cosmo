@@ -10,10 +10,6 @@ from . import SETTINGS
 
 FILES_SOURCE = SETTINGS['filesystem']['source']
 
-# TODO: Add the ability to select files based on file creation date:
-# filestats = os.stat(<path>)
-# t = datetime.datetime.fromtimestamp(filestats.st_birthtime)
-
 
 class FileDataFinder:
     """Class for finding and extracting data from COS fits files."""
@@ -30,15 +26,14 @@ class FileDataFinder:
         self.data_keywords = data_keywords
         self.data_extensions = data_extensions
         self.exptype = exptype
-
-        cosmo_layout = cosmo_layout
+        self.cosmo_layout = cosmo_layout
 
         # Find data files
-        self.files = self.find_files(self.search_pattern, self.source, cosmo_layout=cosmo_layout)
+        self.files = self.find_files(self.search_pattern, self.source, cosmo_layout=self.cosmo_layout)
 
         # Check that all keywords/extensions have corresponding extensions/keywords and that they're the same length
         if len(self.header_keywords) != len(self.header_extensions):
-            raise ValueError('header_keywords and header_extensions must be the same lenght.')
+            raise ValueError('header_keywords and header_extensions must be the same length.')
 
         if bool(self.spt_keywords or self.spt_extensions):
             if not(self.spt_keywords and self.spt_extensions):
@@ -116,7 +111,7 @@ class FileData:
         self.data_exts = data_exts
         self.spt_suffix = spt_suffix
         self.spt_file = self._create_spt_filename()
-        self.data = {}
+        self.data = {'FILENAME': self.filename}
 
     def _create_spt_filename(self) -> Union[str, None]:
         """Create an spt filename based on the input filename."""
@@ -152,7 +147,7 @@ def get_file_data(fitsfile: str, keys: Sequence, exts: Sequence, exp_type: Seque
         if exp_type and file[0].header['EXPTYPE'] != exp_type:  # Filter out files that don't match the given exptype
             return
 
-        filedata = FileData(
+        file_data = FileData(
             fitsfile,
             file,
             keys,
@@ -163,12 +158,12 @@ def get_file_data(fitsfile: str, keys: Sequence, exts: Sequence, exp_type: Seque
             data_exts=data_exts
         )
 
-        filedata.get_header_data()
+        file_data.get_header_data()
 
         if data_keys:
-            filedata.get_table_data()
+            file_data.get_table_data()
 
     if spt_keys:
-        filedata.get_spt_header_data()
+        file_data.get_spt_header_data()
 
-    return filedata.data
+    return file_data.data

@@ -16,7 +16,7 @@ setup(
         'setuptools',
         'numpy>=1.11.1',
         'astropy>=1.0.1',
-        'plotly',
+        'plotly>=4.0.0',
         'scipy',
         'pyfastcopy',
         'dask',

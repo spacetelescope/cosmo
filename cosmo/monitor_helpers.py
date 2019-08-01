@@ -44,7 +44,7 @@ class ExposureAbsoluteTime:
     """
     def __init__(self, df: pd.DataFrame = None, expstart: Union[Sequence, pd.Series] = None,
                  time_array: Union[Sequence, pd.Series] = None, time_array_key: str = None):
-        """Initalize AbsoluteTime from a dataframe or arrays.
+        """Initialize AbsoluteTime from a dataframe or arrays.
         Optionally provide a time_array_key keyword if ingesting from a dataframe which contains a time array with a
         different name from 'TIME', or if the dataframe contains multiple 'time' columns.
         """
