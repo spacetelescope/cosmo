@@ -67,10 +67,12 @@ class SMSFile:
         'TSINCEOSM2'
     ]
 
-    def __init__(self, smsfile: str):
+    def __init__(self, smsfile: str, file_id: str, version: str):
         """Initialize and ingest the sms file data."""
         self.datetime_format = '%Y-%m-%d %H:%M:%S'
         self.filename = smsfile
+        self.file_id = file_id
+        self.version = version
         self.ingest_date = datetime.datetime.today()
 
         self._data = self.ingest_smsfile()
@@ -138,20 +140,36 @@ class SMSFile:
             data['TSINCEOSM2'].append(tsinceosm2)
 
         # Add the filename
-        data.update({'FILENAME': list(repeat(self.filename, len(data['ROOTNAME'])))})
+        data.update({'FILEID': list(repeat(self.file_id, len(data['ROOTNAME'])))})
 
         return data
 
     def insert_to_db(self):
         """Insert ingested SMS data into the database tables."""
+        is_update = False
+        new_record = {
+            'FILEID': self.file_id,
+            'VERSION': self.version,
+            'FILENAME': self.filename,
+            'INGEST_DATE': self.ingest_date.strftime(self.datetime_format)
+        }
+
         # Insert into the file stats table
         if not SMSFileStats.table_exists():
             SMSFileStats.create_table()
 
         with self._db.atomic():
-            SMSFileStats.insert(
-                {'FILENAME': self.filename, 'INGEST_DATE': self.ingest_date.strftime(self.datetime_format)}
-            ).execute()
+            try:
+                SMSFileStats.insert(new_record).execute()
+
+            except IntegrityError:  # Check to see if the existing info should be updated
+                existing = SMSFileStats.get_by_id(self.file_id)
+
+                if self.version <= existing.VERSION:
+                    return   # Nothing new, so don't do anything
+
+                existing.update(new_record)
+                is_update = True
 
         # Insert data into sms data table
         row_oriented_data = self.data.to_dict(orient='row')
@@ -161,16 +179,20 @@ class SMSFile:
 
         with self._db.atomic():
             for batch in chunked(row_oriented_data, 100):
-                SMSTable.insert_many(batch).execute()
+                if is_update:  # If the sms data needs to be updated, replace the existing records
+                    SMSTable.replace_many(batch).execute()
+
+                else:
+                    SMSTable.insert_many(batch).execute()
 
 
 class SMSFinder:
     """Class for finding sms files in the specified filesystem and the database."""
-    sms_pattern = r'\d{6}[a-z]\d{1}'  # TODO: determine if we also need to resolve "specially" named SMS files.
+    sms_pattern = r'\A\d{6}[a-z]\d{1}'
 
     def __init__(self, source: str = SMS_FILE_LOC):
         self.today = datetime.datetime.today()
-        self._currently_ingested = None
+        self.currently_ingested = None
         self.last_ingest_date = self.today
 
         self.filesource = source
@@ -181,26 +203,18 @@ class SMSFinder:
         # doesn't matter.
 
         try:  # If the table doesn't exist, don't set _currently_ingested
-            self._currently_ingested = pd.DataFrame(list(SMSFileStats.select().dicts()))
+            self.currently_ingested = pd.DataFrame(list(SMSFileStats.select().dicts()))
         except OperationalError:
             pass
 
-        if self._currently_ingested is not None:
-            self.last_ingest_date = self._currently_ingested.INGEST_DATE.max()
-
-        self._all_sms_results = self.find_all()
-        self._grouped_results = self._all_sms_results.groupby('is_new')
-
-    @property
-    def all_sms(self) -> pd.Series:
-        """Return all of the sms files that were found."""
-        return self._all_sms_results.smsfile
+        self.all_sms = self.find_all()
+        self._grouped_results = self.all_sms.groupby('is_new')
 
     @property
     def new_sms(self) -> Union[pd.Series, None]:
         """Return only the sms files that were determined as new."""
         try:
-            return self._grouped_results.get_group(True).smsfile
+            return self._grouped_results.get_group(True)
 
         except KeyError:
             return
@@ -209,30 +223,37 @@ class SMSFinder:
     def old_sms(self) -> Union[pd.Series, None]:
         """Return only the sms files there were not determined as new."""
         try:
-            return self._grouped_results.get_group(False).smsfile
+            return self._grouped_results.get_group(False)
 
         except KeyError:
             return
 
-    @property
-    def ingested_sms(self) -> Union[pd.Series, None]:
-        """Return the files that have been ingested in the database."""
-        if self._currently_ingested is not None:
-            return self._currently_ingested.FILENAME
-
-        return
-
     def find_all(self) -> pd.DataFrame:
         """Find all SMS files from the source directory. Determine if the file is 'new'."""
-        results = {'smsfile': [], 'is_new': []}
+        results = {'smsfile': [], 'is_new': [], 'file_id': [], 'version': []}
 
         for file in glob.glob(os.path.join(self.filesource, '*')):
             # There may be other files or directories in the sms source directory
-            if re.match(self.sms_pattern, os.path.basename(file)) and os.path.isfile(file):
+            match = re.findall(self.sms_pattern, os.path.basename(file))
+            if match and os.path.isfile(file) and file.endswith('.txt'):
+                name = match[0]  # findall returns a list. There should only be one match per file
+                file_id = name[:-2]
+                version = name[-2:]
+
+                results['version'].append(version)
+                results['file_id'].append(file_id)
                 results['smsfile'].append(file)
-                results['is_new'].append(self._is_new(file, self.last_ingest_date))
+                results['is_new'].append(self._is_new(file))
 
         data = pd.DataFrame(results)
+
+        # Filter the dataframe for the most recent version of the files per file id
+        data = data.iloc[
+            [
+                index for _, group in data.groupby('file_id')
+                for index in group[group.version == group.version.max()].index.values
+            ]
+        ].reset_index(drop=True)
 
         # Raise an error if no sms files were found. Otherwise this will break other stuff in an obscure way
         if data.empty:
@@ -240,23 +261,13 @@ class SMSFinder:
 
         return data
 
-    def _is_new(self, smsfile, last_ingest_date):
-        """Determine if an sms file is considered 'new'. New is defined as any file that was added between the last
-        ingestion date and the current date.
+    def _is_new(self, smsfile):
+        """Determine if an sms file is considered 'new'. New is defined as any file that is not in the database
         """
-        filestats = os.stat(smsfile)
+        if self.currently_ingested is not None:
+            return smsfile in self.currently_ingested.FILENAME
 
-        # st_mtime = time of most recent modification. This gives us the date that the file was added to the directory,
-        # but also might be subject to error in the case of someone modifying these files somehow. They shouldn't be
-        # though..
-        file_birthday = datetime.datetime.fromtimestamp(filestats.st_mtime)
-
-        # "New" files are defined as those that were copied to the SMS directory between the last ingest date and
-        # "today" (inclusive).
-        if last_ingest_date <= file_birthday <= self.today:
-            return True
-
-        return False
+        return True  # If there are no ingested files, they're all new
 
 
 def ingest_sms_data(file_source: str = SMS_FILE_LOC, cold_start: bool = False):
@@ -271,15 +282,7 @@ def ingest_sms_data(file_source: str = SMS_FILE_LOC, cold_start: bool = False):
     else:
         sms_to_add = sms_files.new_sms
 
-    # TODO: An error should be raised if a cold start is attempted on a populated database; Add an option to drop?
     if sms_to_add is not None:
-        all_sms_data = [SMSFile(file) for file in sms_to_add]
-
-        for sms in all_sms_data:
-            # Skip "new" files that are already in the database. This prevents SMS files from being added twice if
-            # they're accidentally modified, or if you try running ingest twice in one day
-            try:
-                sms.insert_to_db()
-
-            except IntegrityError:
-                continue
+        for _, sms in sms_to_add.iterrows():
+            smsfile = SMSFile(sms.smsfile, sms.file_id, sms.version)
+            smsfile.insert_to_db()
