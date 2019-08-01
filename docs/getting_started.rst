@@ -51,6 +51,34 @@ For more information on sqlite pragma statements, see `this <https://www.sqlite.
 
 Once the file is ready, set it as an environment variable, ``COSMO_CONFIG``.
 
+``monitorframe`` also requires a ``yaml`` configuration file with the following:
+
+.. code-block:: yaml
+
+    # Monitor data database
+    data:
+      db_settings:
+        database: ''
+        pragmas:
+          journal_mode: 'wal'
+          foreign_keys: 1
+          ignore_check_constraints: 0
+          synchronous: 0
+
+    # Monitor status and results database
+    results:
+      db_settings:
+        database: ''
+        pragmas:
+          journal_mode: 'wal'
+          foreign_keys: 1
+          ignore_check_constraints: 0
+          synchronous: 0
+
+This configuration file should be set to an environment variable called ``MONITOR_CONFIG``.
+
+You can store these configurations in the same file and have both of the environment variables point to the same file.
+
 .. warning::
 
     Use proper precautions around your configuration file.
