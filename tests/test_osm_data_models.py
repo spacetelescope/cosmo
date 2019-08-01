@@ -4,7 +4,6 @@ import numpy as np
 
 from cosmo.monitors.osm_data_models import OSMShiftDataModel
 
-
 TEST_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
 TEST_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cosmoconfig_test.yaml')
 
@@ -16,7 +15,7 @@ if os.environ['COSMO_CONFIG'] != TEST_CONFIG:
 class TestOSMDataModel:
 
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls):  # TODO: Refactor to use fixtures instead of setup/teardown class methods
         cls.test_osmdatamodel = OSMShiftDataModel
         cls.test_osmdatamodel.files_source = TEST_DATA
         cls.test_osmdatamodel.cosmo_layout = False
@@ -24,8 +23,8 @@ class TestOSMDataModel:
         cls.executed_model = cls.test_osmdatamodel()
 
     def test_data_collection(self):
-        assert isinstance(self.executed_model.data, pd.DataFrame)
-        assert len(self.executed_model.data) == 4
+        assert isinstance(self.executed_model.new_data, pd.DataFrame)
+        assert len(self.executed_model.new_data) == 4
 
     def test_content_collected(self):
         keys_that_should_be_there = (
@@ -37,10 +36,10 @@ class TestOSMDataModel:
         )
 
         for key in keys_that_should_be_there:
-            assert key in self.executed_model.data
+            assert key in self.executed_model.new_data
 
     def test_data_extension_data(self):
         data_extension_keys = ('TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT')
 
         for key in data_extension_keys:
-            assert isinstance(self.executed_model.data[key].values, np.ndarray)
+            assert isinstance(self.executed_model.new_data[key].values, np.ndarray)

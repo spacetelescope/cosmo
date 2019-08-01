@@ -19,7 +19,7 @@ if os.environ['COSMO_CONFIG'] != TEST_CONFIG:
 
 
 @pytest.mark.xfail(reason='Incomplete test data set causes these to break')
-class TestFuvOsmShift1Monitor:
+class TestFuvOsmShift1Monitor:  # TODO: Refactor to use fixtures instead of setup/teardown class methods
 
     @classmethod
     def setup_class(cls):

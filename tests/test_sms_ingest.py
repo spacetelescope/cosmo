@@ -89,7 +89,7 @@ class TestSMSFinder:
     """Tests for SMSFinder"""
 
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls):  # TODO: Refactor to use fixtures instead of setup/teardown class methods
         """Set up the tests with a 'test' instance of the SMSFinder."""
         ingest_sms_data(TEST_DATA, cold_start=True)  # ingest the files
         cls.test_finder = SMSFinder(TEST_DATA)  # Create a finder instance

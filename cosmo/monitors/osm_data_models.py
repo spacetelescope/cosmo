@@ -1,6 +1,6 @@
 import pandas as pd
 
-from monitorframe.monitor import BaseDataModel
+from monitorframe.datamodel import BaseDataModel
 from typing import List
 
 from ..sms import SMSTable
@@ -39,7 +39,7 @@ class OSMShiftDataModel(BaseDataModel):
     files_source = FILES_SOURCE
     cosmo_layout = True
 
-    def get_data(self):
+    def get_new_data(self):
         """Retrieve data."""
         return get_lampflash_data(self.files_source, self.cosmo_layout)
 
@@ -49,7 +49,7 @@ class OSMDriftDataModel(BaseDataModel):
     files_source = FILES_SOURCE
     cosmo_layout = True
 
-    def get_data(self):
+    def get_new_data(self):
         """Retrieve data."""
         # Get lampflash data from the files
         file_data = pd.DataFrame(get_lampflash_data(self.files_source, self.cosmo_layout))
