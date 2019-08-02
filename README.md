@@ -1,7 +1,7 @@
 # COSMO
 [![Build Status](https://travis-ci.org/spacetelescope/cosmo.svg?branch=master)](https://travis-ci.org/spacetelescope/cosmo)
 [![codecov](https://codecov.io/gh/spacetelescope/cosmo/branch/master/graph/badge.svg)](https://codecov.io/gh/spacetelescope/cosmo)
-[![Documentation Status](https://readthedocs.org/projects/cosmo/badge/?version=latest)](http://cosmo.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/cosmo/badge/?version=latest)](https://cosmo.readthedocs.io/en/latest/?badge=latest)
 
 COSMO (COS MOnitoring) is a software system that is built specifically for the Cosmic Origins Spectrograph (COS) 
 team at Space Telescope Science Institute (STScI). 
