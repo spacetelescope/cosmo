@@ -172,6 +172,7 @@ class SMSFile:
                 is_update = True
 
         # Insert data into sms data table
+        # TODO: Need to adjust so that if rootnames already exist, they're updated if they exist in a more recent file
         row_oriented_data = self.data.to_dict(orient='row')
 
         if not SMSTable.table_exists():
