@@ -25,7 +25,6 @@
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'numpydoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.viewcode'
 ]
