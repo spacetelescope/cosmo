@@ -188,6 +188,8 @@ class SMSFile:
                     ).execute()
 
 
+# TODO: Need to be able to find the l-exp files. Apparently those are created when the SMS code is executed manually
+#  and there may be a txt version and a l-exp version of the same file, but maybe not.
 class SMSFinder:
     """Class for finding sms files in the specified filesystem and the database."""
     sms_pattern = r'\A\d{6}[a-z]\d{1}'
@@ -230,14 +232,28 @@ class SMSFinder:
         except KeyError:
             return
 
+    @staticmethod
+    def _filter_l_exp_files(files_list):
+        """Filter l-exp files in the file list to eliminate those that also have a txt file copy."""
+        txt_files = [file for file in files_list if file.endswith('.txt')]
+        l_exp_files = [file for file in files_list if file.endswith('.l-exp')]
+
+        filtered_lexp = [file for file in l_exp_files if file.strip('.l-exp') + '.txt' not in txt_files]
+
+        return txt_files + filtered_lexp
+
     def find_all(self) -> pd.DataFrame:
         """Find all SMS files from the source directory. Determine if the file is 'new'."""
         results = {'smsfile': [], 'is_new': [], 'file_id': [], 'version': []}
+        all_files = glob.glob(os.path.join(self.filesource, '*'))
 
-        for file in glob.glob(os.path.join(self.filesource, '*')):
+        # Filter out l-exp files that have txt counterparts
+        reduced_files = self._filter_l_exp_files(all_files)
+
+        for file in reduced_files:
             # There may be other files or directories in the sms source directory
             match = re.findall(self.sms_pattern, os.path.basename(file))
-            if match and os.path.isfile(file) and file.endswith('.txt'):
+            if match and os.path.isfile(file):
                 name = match[0]  # findall returns a list. There should only be one match per file
                 file_id = name[:-2]
                 version = name[-2:]
@@ -266,10 +282,10 @@ class SMSFinder:
     def _is_new(self, smsfile):
         """Determine if an sms file is considered 'new'. New is defined as any file that is not in the database
         """
-        if self.currently_ingested is not None and not self.currently_ingested.empty:
-            return smsfile in self.currently_ingested.FILENAME
+        if self.currently_ingested is None or self.currently_ingested.empty:
+            return True  # If there are no ingested files, they're all new
 
-        return True  # If there are no ingested files, they're all new
+        return smsfile not in self.currently_ingested.FILENAME.values
 
 
 def ingest_sms_data(file_source: str = SMS_FILE_LOC, cold_start: bool = False):
@@ -279,7 +295,7 @@ def ingest_sms_data(file_source: str = SMS_FILE_LOC, cold_start: bool = False):
     sms_files = SMSFinder(file_source)  # Find the sms files
 
     if cold_start:
-        if SMSFileStats.table_exists() or SMSTable.table_exists():
+        if sms_files.currently_ingested is not None and not sms_files.currently_ingested.empty:
             raise TypeError('Cannot execute a cold start with populated SMS tables.')
 
         sms_to_add = sms_files.all_sms
