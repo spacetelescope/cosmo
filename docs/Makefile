@@ -46,13 +46,28 @@ help:
 	@echo "  linkcheck  to check all external links for integrity"
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
 
+rebuildclean:
+	rm -rf $(BUILDDIR)
+	rm -rf _sources
+	rm -rf _static
+	rm *html
+	rm *inv
+	rm *js
+
 clean:
-	rm -rf $(BUILDDIR)/*
+	rm -rf $(BUILDDIR)
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
+
+cosmodocs:
+	make rebuildclean
+	make html
+	mv -fv $(BUILDDIR)/html/* ./
+	make clean
+	git add .
 
 dirhtml:
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml
