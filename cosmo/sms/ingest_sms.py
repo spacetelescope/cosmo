@@ -6,7 +6,7 @@ import pandas as pd
 
 from typing import Union
 from itertools import repeat
-from peewee import chunked, OperationalError, IntegrityError
+from peewee import chunked, OperationalError, EXCLUDED
 
 from .sms_db import SMSFileStats, SMSTable, DB
 from .. import SETTINGS
@@ -146,7 +146,6 @@ class SMSFile:
 
     def insert_to_db(self):
         """Insert ingested SMS data into the database tables."""
-        is_update = False
         new_record = {
             'FILEID': self.file_id,
             'VERSION': self.version,
@@ -155,36 +154,38 @@ class SMSFile:
         }
 
         # Insert into the file stats table
-        if not SMSFileStats.table_exists():
-            SMSFileStats.create_table()
-
         with self._db.atomic():
-            try:
+            if not SMSFileStats.table_exists():
+                SMSFileStats.create_table()
                 SMSFileStats.insert(new_record).execute()
 
-            except IntegrityError:  # Check to see if the existing info should be updated
-                existing = SMSFileStats.get_by_id(self.file_id)
-
-                if self.version <= existing.VERSION:
-                    return   # Nothing new, so don't do anything
-
-                existing.update(new_record)
-                is_update = True
+            else:
+                SMSFileStats.insert(new_record).on_conflict(
+                    action='update',
+                    update=new_record,
+                    conflict_target=[SMSFileStats.FILEID],
+                    where=(EXCLUDED.VERSION <= SMSFileStats.VERSION)
+                ).execute()
 
         # Insert data into sms data table
-        # TODO: Need to adjust so that if rootnames already exist, they're updated if they exist in a more recent file
         row_oriented_data = self.data.to_dict(orient='row')
 
-        if not SMSTable.table_exists():
-            SMSTable.create_table()
-
         with self._db.atomic():
-            for batch in chunked(row_oriented_data, 100):
-                if is_update:  # If the sms data needs to be updated, replace the existing records
-                    SMSTable.replace_many(batch).execute()
+            if not SMSTable.table_exists():
+                SMSTable.create_table()
 
-                else:
+                for batch in chunked(row_oriented_data, 100):
                     SMSTable.insert_many(batch).execute()
+
+            else:
+                # For new data with an existing table, need to check whether or not new records are replacing old ones.
+                for row in row_oriented_data:
+                    SMSTable.insert(**row).on_conflict(
+                        action='update',
+                        update=row,
+                        conflict_target=[SMSTable.ROOTNAME],
+                        where=(EXCLUDED.FILEID_id >= SMSTable.FILEID_id)
+                    ).execute()
 
 
 class SMSFinder:
@@ -265,7 +266,7 @@ class SMSFinder:
     def _is_new(self, smsfile):
         """Determine if an sms file is considered 'new'. New is defined as any file that is not in the database
         """
-        if self.currently_ingested is not None:
+        if self.currently_ingested is not None and not self.currently_ingested.empty:
             return smsfile in self.currently_ingested.FILENAME
 
         return True  # If there are no ingested files, they're all new
@@ -278,6 +279,9 @@ def ingest_sms_data(file_source: str = SMS_FILE_LOC, cold_start: bool = False):
     sms_files = SMSFinder(file_source)  # Find the sms files
 
     if cold_start:
+        if SMSFileStats.table_exists() or SMSTable.table_exists():
+            raise TypeError('Cannot execute a cold start with populated SMS tables.')
+
         sms_to_add = sms_files.all_sms
 
     else:

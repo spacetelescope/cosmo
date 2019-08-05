@@ -57,6 +57,13 @@ class TestIngestSmsData:
         # Check that the tables were created
         assert SMSFileStats.table_exists() and SMSTable.table_exists()
 
+        # Of the 5 data sets, only 3 should be ingested since SMSFinder only looks for the most recent version of the
+        # files.
+        assert len(SMSFileStats.select()) == 3
+
+        with pytest.raises(TypeError):
+            ingest_sms_data(ingest_source, cold_start=True)
+
 
 class TestSMSFile:
 
@@ -105,23 +112,30 @@ class TestSMSFinder:  # TODO: Add tests for finding new versions of SMS files
 
     def test_found(self, test_finder):
         """Test that sms files are found correctly."""
-        assert len(test_finder.all_sms) == 2
+        assert len(test_finder.all_sms) == 3
 
     def test_sms_classification(self, test_finder):
         """Test that the sms files are correctly determined as new."""
-        test_finder = SMSFinder(TEST_DATA)
-
-        assert len(test_finder.new_sms) == 2  # All data is new if nothing is in the database
+        assert len(test_finder.new_sms) == 3  # All data is new if nothing is in the database
         assert test_finder.old_sms is None
 
         ingest_sms_data(TEST_DATA, cold_start=True)
         ingested_test_finder = SMSFinder(TEST_DATA)
 
         assert ingested_test_finder.new_sms is None  # All data was ingested
-        assert len(ingested_test_finder.currently_ingested) == 2
-        assert len(ingested_test_finder.old_sms) == 2
+        assert len(ingested_test_finder.currently_ingested) == 3
+        assert len(ingested_test_finder.old_sms) == 3
 
     def test_fails_on_no_data(self, bad_file_path):
         """Test that an error is raised if no files are found."""
         with pytest.raises(OSError):
             SMSFinder(bad_file_path)
+
+    def test_version_filter(self, test_finder):
+        """Test that the sms finder filters the files and only 'finds' the most recent version of the available SMS."""
+        # test SMS file set, 181137 includes three versions of the same SMS.
+        # The only file reported by SMSFinder should be the 'newest' version, c2.
+        testcase = test_finder.new_sms[test_finder.new_sms.file_id == '181137']
+
+        assert len(testcase) == 1
+        assert testcase.version.values[0] == 'c2'
