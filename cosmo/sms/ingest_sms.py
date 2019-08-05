@@ -164,7 +164,7 @@ class SMSFile:
                     action='update',
                     update=new_record,
                     conflict_target=[SMSFileStats.FILEID],
-                    where=(EXCLUDED.VERSION <= SMSFileStats.VERSION)
+                    where=(EXCLUDED.VERSION >= SMSFileStats.VERSION)
                 ).execute()
 
         # Insert data into sms data table
@@ -188,8 +188,6 @@ class SMSFile:
                     ).execute()
 
 
-# TODO: Need to be able to find the l-exp files. Apparently those are created when the SMS code is executed manually
-#  and there may be a txt version and a l-exp version of the same file, but maybe not.
 class SMSFinder:
     """Class for finding sms files in the specified filesystem and the database."""
     sms_pattern = r'\A\d{6}[a-z]\d{1}'
