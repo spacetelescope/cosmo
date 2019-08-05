@@ -107,7 +107,7 @@ class TestSMSFile:
         test_sms.insert_to_db()
 
 
-class TestSMSFinder:  # TODO: Add tests for finding new versions of SMS files
+class TestSMSFinder:
     """Tests for SMSFinder"""
 
     def test_found(self, test_finder):
