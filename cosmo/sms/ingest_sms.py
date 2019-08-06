@@ -190,7 +190,7 @@ class SMSFile:
 
 class SMSFinder:
     """Class for finding sms files in the specified filesystem and the database."""
-    sms_pattern = r'\A\d{6}[a-z]\d{1}'
+    sms_pattern = r'\A\d{6}[a-z]{1}[a-z0-9]{1}'
 
     def __init__(self, source: str = SMS_FILE_LOC):
         self.today = datetime.datetime.today()
