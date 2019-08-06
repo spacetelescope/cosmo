@@ -1,7 +1,7 @@
 import pytest
 import os
 
-from cosmo.sms import SMSFinder, SMSFile, SMSFileStats, SMSTable, ingest_sms_data
+from cosmo.sms import SMSFinder, SMSFile, SMSFileStats, SMSTable
 
 TEST_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
 
@@ -55,25 +55,6 @@ def test_finder():
 
     if SMSFileStats.table_exists():
         SMSFileStats.drop_table()
-
-
-class TestIngestSmsData:
-    """Test class that includes tests for ingesting SMS file data into the database."""
-
-    def test_cold_start(self, ingest_source):
-        """Test that ingest_sms_data executes successfully with cold_start enabled."""
-        ingest_sms_data(ingest_source, cold_start=True)
-
-        # Check that the tables were created
-        assert SMSFileStats.table_exists() and SMSTable.table_exists()
-
-        # Of the 5 data sets, only 3 should be ingested since SMSFinder only looks for the most recent version of the
-        # files.
-        assert len(SMSFileStats.select()) == 3
-
-        # An error should be raised if a cold start is attempted with a populated database
-        with pytest.raises(TypeError):
-            ingest_sms_data(ingest_source, cold_start=True)
 
 
 class TestSMSFile:
@@ -130,12 +111,21 @@ class TestSMSFinder:
         """Test that sms files are found correctly."""
         assert len(test_finder.all_sms) == 3
 
+    def test_ingest_files(self, test_finder):
+        """Test that sms files are ingested into the database correctly."""
+        test_finder.ingest_files()
+        assert len(list(SMSFileStats.select())) == 3  # check that files are actually ingested
+
+        # Check conflict resolution
+        test_finder.ingest_files()  # ingest the same files again
+        assert len(list(SMSFileStats.select())) == 3  # check that the same files are not ingested again
+
     def test_sms_classification(self, test_finder):
         """Test that the sms files are correctly determined as new."""
         assert len(test_finder.new_sms) == 3  # All data is new if nothing is in the database
         assert test_finder.old_sms is None
 
-        ingest_sms_data(TEST_DATA, cold_start=True)
+        test_finder.ingest_files()
         ingested_test_finder = SMSFinder(TEST_DATA)
 
         assert ingested_test_finder.new_sms is None  # All data was ingested
@@ -155,3 +145,5 @@ class TestSMSFinder:
 
         assert len(testcase) == 1
         assert testcase.version.values[0] == 'c2'
+
+

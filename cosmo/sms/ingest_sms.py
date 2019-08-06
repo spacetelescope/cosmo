@@ -285,23 +285,9 @@ class SMSFinder:
 
         return smsfile not in self.currently_ingested.FILENAME.values
 
-
-def ingest_sms_data(file_source: str = SMS_FILE_LOC, cold_start: bool = False):
-    """Add new sms data to the database. Defaults to finding and adding new files to the database. Cold start attempts
-    to add all sms data found to the database.
-    """
-    sms_files = SMSFinder(file_source)  # Find the sms files
-
-    if cold_start:
-        if sms_files.currently_ingested is not None and not sms_files.currently_ingested.empty:
-            raise TypeError('Cannot execute a cold start with populated SMS tables.')
-
-        sms_to_add = sms_files.all_sms
-
-    else:
-        sms_to_add = sms_files.new_sms
-
-    if sms_to_add is not None:
-        for _, sms in sms_to_add.iterrows():
-            smsfile = SMSFile(sms.smsfile, sms.file_id, sms.version)
-            smsfile.insert_to_db()
+    def ingest_files(self):
+        """Add new sms data to the database."""
+        if self.new_sms is not None:
+            for _, sms in self.new_sms.iterrows():
+                smsfile = SMSFile(sms.smsfile, sms.file_id, sms.version)
+                smsfile.insert_to_db()
