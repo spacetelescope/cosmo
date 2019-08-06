@@ -145,5 +145,3 @@ class TestSMSFinder:
 
         assert len(testcase) == 1
         assert testcase.version.values[0] == 'c2'
-
-
