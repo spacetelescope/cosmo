@@ -7,11 +7,6 @@ from astropy.io import fits
 from cosmo.filesystem import get_file_data, FileData, FileDataFinder
 
 TEST_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
-TEST_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cosmoconfig_test.yaml')
-
-# Check to make sure that the test config file is being used. If not, don't run the tests
-if os.path.abspath(os.environ['COSMO_CONFIG']) != TEST_CONFIG:
-    raise TypeError('Tests should only be executed with the testing configuration file')
 
 ARGS = (
     'source_dr',
@@ -106,85 +101,75 @@ class TestFileDataFinder:
         assert len(file_data) == 4
 
 
-class TestFileData:  # TODO: Refactor to use fixtures instead of setup/teardown class methods
+@pytest.fixture
+def testfile():
+    file = os.path.join(TEST_DATA, 'ldfd01vpq_rawtag_a.fits.gz')
+    hdu = fits.open(file)
+    testfile = FileData(
+        file,
+        hdu,
+        ('ROOTNAME',),
+        (0,),
+        spt_keys=('LQTDFINI',),
+        spt_exts=(1,),
+        data_keys=('RAWX',),
+        data_exts=(1,)
+    )
 
-    @classmethod
-    def setup_class(cls):
-        file = os.path.join(TEST_DATA, 'ldfd01vpq_rawtag_a.fits.gz')
-        hdu = fits.open(file)
-        cls.file_data = FileData(
-            file,
-            hdu,
-            ('ROOTNAME',),
-            (0,),
-            spt_keys=('LQTDFINI',),
-            spt_exts=(1,),
-            data_keys=('RAWX',),
-            data_exts=(1,)
-        )
+    yield testfile
 
-    # noinspection PyUnresolvedReferences
-    @classmethod
-    def teardown_class(cls):
-        cls.file_data.hdu.close()
-
-    def test_spt_name(self):
-        assert self.file_data.spt_file is not None
-        assert self.file_data.spt_file == os.path.join(TEST_DATA, 'ldfd01vpq_spt.fits.gz')
-
-    def test_get_spt_header_data(self):
-        self.file_data.get_spt_header_data()
-
-        assert 'LQTDFINI' in self.file_data.data.keys()
-        assert self.file_data.data['LQTDFINI'] == 'TDF Up'
-
-    def test_get_header_data(self):
-        self.file_data.get_header_data()
-
-        assert 'ROOTNAME' in self.file_data.data.keys()
-        assert self.file_data.data['ROOTNAME'] == 'ldfd01vpq'
-
-    def test_get_table_data(self):
-        self.file_data.get_table_data()
-
-        assert 'RAWX' in self.file_data.data.keys()
-        assert isinstance(self.file_data.data['RAWX'],  np.ndarray)
+    testfile.hdu.close()
 
 
-class TestGetFileData:  # TODO: Refactor to use fixtures instead of setup/teardown class methods
+class TestFileData:
 
-    @classmethod
-    def setup_class(cls):
-        cls.file = os.path.join(TEST_DATA, 'ldfd01vpq_rawtag_a.fits.gz')
+    def test_spt_name(self, testfile):
+        assert testfile.spt_file is not None
+        assert testfile.spt_file == os.path.join(TEST_DATA, 'ldfd01vpq_spt.fits.gz')
 
-        cls.delayed_result = get_file_data(
-            cls.file,
-            ('ROOTNAME',),
-            (0,),
-            spt_keys=('LQTDFINI',),
-            spt_exts=(1,),
-            data_keys=('RAWX',),
-            data_exts=(1,)
-        )
+    def test_get_spt_header_data(self, testfile):
+        testfile.get_spt_header_data()
 
-    def test_files_are_closed(self):
-        # if the file is not closed, this will produce an error. However, different processes might have the file
-        # open and this wouldn't catch that
-        f = open(self.file)
-        f.close()
+        assert 'LQTDFINI' in testfile.data.keys()
+        assert testfile.data['LQTDFINI'] == 'TDF Up'
 
-        assert f.closed
+    def test_get_header_data(self, testfile):
+        testfile.get_header_data()
 
-    def test_compute_result(self):
-        result = self.delayed_result.compute(scheduler='multiprocessing')
+        assert 'ROOTNAME' in testfile.data.keys()
+        assert testfile.data['ROOTNAME'] == 'ldfd01vpq'
+
+    def test_get_table_data(self, testfile):
+        testfile.get_table_data()
+
+        assert 'RAWX' in testfile.data.keys()
+        assert isinstance(testfile.data['RAWX'],  np.ndarray)
+
+
+@pytest.fixture
+def delayed_get_data():
+    file = os.path.join(TEST_DATA, 'ldfd01vpq_rawtag_a.fits.gz')
+
+    delayed_get_data = get_file_data(
+        file,
+        ('ROOTNAME',),
+        (0,),
+        spt_keys=('LQTDFINI',),
+        spt_exts=(1,),
+        data_keys=('RAWX',),
+        data_exts=(1,)
+    )
+
+    return delayed_get_data
+
+
+class TestGetFileData:
+
+    def test_compute_result(self, delayed_get_data):
+        result = delayed_get_data.compute(scheduler='multiprocessing')
 
         assert isinstance(result, dict)
         assert 'ROOTNAME' in result and 'LQTDFINI' in result and 'RAWX' in result
         assert result['ROOTNAME'] == 'ldfd01vpq'
         assert result['LQTDFINI'] == 'TDF Up'
         assert isinstance(result['RAWX'], np.ndarray)
-
-
-# class TestFindFiles:
-#
-#     def test

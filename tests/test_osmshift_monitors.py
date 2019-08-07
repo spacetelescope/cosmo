@@ -5,14 +5,10 @@ from cosmo.monitors.osm_shift_monitors import (
     plot_fuv_osm_shift_cenwaves, compute_segment_diff, FuvOsmShiftMonitor, FuvOsmShift1Monitor, FuvOsmShift2Monitor,
     NuvOsmShiftMonitor, NuvOsmShift1Monitor, NuvOsmShift2Monitor
 )
+
 from cosmo.monitors.osm_data_models import OSMShiftDataModel
 
 TEST_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
-TEST_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cosmoconfig_test.yaml')
-
-# Check to make sure that the test config file is being used. If not, don't run the tests
-if os.environ['COSMO_CONFIG'] != TEST_CONFIG:
-    raise TypeError('Tests should only be executed with the testing configuration file')
 
 # TODO: Need to define a better test data set that includes everything that we need: Both FUV segments, NUV Data,
 #  all acq types etc class
