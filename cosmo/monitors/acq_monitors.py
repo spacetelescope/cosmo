@@ -1,5 +1,6 @@
 import numpy as np
 import plotly.graph_objs as go
+import datetime
 
 from itertools import repeat
 from monitorframe.monitor import BaseMonitor
@@ -10,269 +11,6 @@ from ..monitor_helpers import fit_line, convert_day_of_year
 from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
-
-
-# TODO: Remove example monitors and finalize remaining ones.
-class AcqImageMonitor(BaseMonitor):
-    """Simple example monitor."""
-    data_model = AcqImageModel
-    labels = ['ROOTNAME', 'PROPOSID']
-    output = '/Users/jwhite/Desktop/test.html'
-
-    notification_settings = {
-        'active': True,
-        'username': 'jwhite',
-        'recipients': 'jwhite@stsci.edu'
-    }
-
-    plottype = 'scatter'
-    x = 'ACQSLEWX'
-    y = 'ACQSLEWY'
-    z = 'EXPSTART'
-
-    def get_data(self):
-        return self.model.new_data
-
-    def track(self):
-        """Return the magnitude of the slew offset."""
-        return np.sqrt(self.data.ACQSLEWX ** 2 + self.data.ACQSLEWY ** 2)
-
-    def find_outliers(self):
-        """Return mask defining outliers as acqs whose slew is greater than 2 arcseconds."""
-        return self.results >= 2
-
-    def set_notification(self):
-        return (
-            f'{np.count_nonzero(self.outliers)} AcqImages were found to have a total slew of greater than 2 arcseconds'
-        )
-
-
-class AcqImageSlewMonitor(BaseMonitor):
-    """Example ACQIMAGE scatter plot monitor."""
-    name = 'AcImage Slew Monitor'
-    data_model = AcqImageModel
-    subplots = True
-    subplot_layout = (2, 1)
-    output = COS_MONITORING
-    labels = ['ROOTNAME', 'PROPOSID']
-
-    def get_data(self):
-        return self.model.new_data
-
-    def track(self):
-        """Track the fit and fit line of offset v time for each FGS."""
-        groups = self.data.groupby('dom_fgs')
-
-        fit_results = {}
-        for name, group in groups:
-            x_fit, x_line = fit_line(group.EXPSTART, -group.ACQSLEWX)
-            y_fit, y_line = fit_line(group.EXPSTART, -group.ACQSLEWY)
-
-            fit_results[name] = (x_line, y_line, x_fit, y_fit)
-
-        return groups, fit_results
-
-    def plot(self):
-        """Plot offset (-slew) v time for the dispersion direction (top panel) and cross-dispersion direction (bottom
-        panel). Separate FGS by button option.
-        """
-        groups, fit_results = self.results
-
-        traces = []
-        rows = []
-        cols = []
-        visibility = {key: [] for key in groups.groups.keys()}
-        for name, group in groups:
-            x_line, y_line, x_fit, y_fit = fit_results[name]
-
-            x_scatter = go.Scatter(
-                x=group.EXPSTART,
-                y=-group.ACQSLEWX,
-                name=f'{name} Slew X',
-                mode='markers',
-                text=group.hover_text,
-                visible=False
-
-            )
-
-            y_scatter = go.Scatter(
-                x=group.EXPSTART,
-                y=-group.ACQSLEWY,
-                name=f'{name} Slew Y',
-                mode='markers',
-                text=group.hover_text,
-                visible=False
-            )
-
-            x_line_fit = go.Scatter(
-                x=group.EXPSTART,
-                y=x_line,
-                mode='lines',
-                name=f'Fit:\nslope: {x_fit[1]:.5f}\nintercept: {x_fit[0]:.3f}',
-                visible=False
-            )
-
-            y_line_fit = go.Scatter(
-                x=group.EXPSTART,
-                y=y_line,
-                mode='lines',
-                name=f'Fit:\nslope: {y_fit[1]:.5f}\nintercept: {y_fit[0]:.3f}',
-                visible=False
-            )
-
-            traces.extend([x_scatter, y_scatter, x_line_fit, y_line_fit])
-
-            rows.extend([1, 2, 1, 2])  # Placement of the traces on the figure are in the order that they're created.
-            cols.extend([1, 1, 1, 1])
-
-            # Iteratively create visibility settings
-            for key in visibility.keys():
-                if key == name:
-                    visibility[key].extend([True, True, True, True])
-
-                else:
-                    visibility[key].extend([False, False, False, False])
-
-        # Create FGS buttons
-        updatemenus = [
-            dict(
-                active=15,
-                buttons=[
-                    dict(
-                        label=label,
-                        method='update',
-                        args=[
-                            {'visible': visibility[fgs]},
-                            {'title': f'{label} Slew vs Time {self.date.date().isoformat()}'}
-                        ]
-                    ) for label, fgs in zip(['FGS1', 'FGS2', 'FGS3'], ['F1', 'F2', 'F3'])
-                ]
-            ),
-        ]
-
-        # Create layout
-        layout = go.Layout(updatemenus=updatemenus, hovermode='closest')
-
-        self.figure.add_traces(traces, rows=rows, cols=cols)
-        self.figure.update_layout(layout)
-
-
-class AcqImageFGSMonitor(BaseMonitor):
-    """ACQIMAGE FGS monitor."""
-    name = 'AcqImage FGS Monitor'
-    data_model = AcqImageModel
-    labels = ['ROOTNAME', 'PROPOSID']
-    output = COS_MONITORING
-
-    def get_data(self):
-        return self.model.new_data
-
-    def track(self):
-        """Track the average offset (-slew) for x and y directions per FGS."""
-        groups = self.data.groupby('dom_fgs')
-        return groups, -groups.ACQSLEWX.mean(), -groups.ACQSLEWY.mean()
-
-    def plot(self):
-        """Plot a scatter plot of y vs x offsets (-slews) per FGS. Separate FGS via button options."""
-        groups, mean_x, mean_y = self.results
-
-        average_text = {
-            fgs: f'<br>Mean offset in X: {mean_x[fgs]:.3f}<br>Mean offset in Y: {mean_y[fgs]:.3f}'
-            for fgs in self.data.dom_fgs.unique()
-        }
-
-        traces = []
-        for name, group in groups:
-            traces.append(
-                go.Scatter(
-                    x=-group.ACQSLEWX,
-                    y=-group.ACQSLEWY,
-                    mode='markers',
-                    marker=dict(
-                        color=group.EXPSTART,
-                        colorscale='Viridis',
-                        colorbar=dict(len=0.75),
-                        showscale=True,
-                    ),
-                    name=name,
-                    text=group.hover_text,
-                    visible=False
-                )
-            )
-
-        # Add vertical line for the mean x offset and a horizontal line for the mean y offset
-        lines = {
-            fgs: [
-                {
-                    'type': 'line',
-                    'x0': mean_x[fgs],
-                    'y0': 0,
-                    'x1': mean_x[fgs],
-                    'y1': 1,
-                    'yref': 'paper',
-                    'line': {
-                        'color': 'red',
-                        'width': 3,
-                    }
-                },
-
-                {
-                    'type': 'line',
-                    'x0': 0,
-                    'y0': mean_y[fgs],
-                    'x1': 1,
-                    'y1': mean_y[fgs],
-                    'xref': 'paper',
-                    'line': {
-                        'color': 'red',
-                        'width': 3,
-                    },
-                }
-            ]
-            for fgs in self.data.dom_fgs.unique()
-        }
-
-        # Add FGS buttons
-        updatemenus = [
-            dict(
-                active=10,
-                buttons=[
-                    dict(
-                        label='FGS1',
-                        method='update',
-                        args=[
-                            {'visible': [True, False, False]},
-                            {'title': 'FGS1' + average_text['F1'], 'shapes': lines['F1']}
-                        ]
-                    ),
-                    dict(
-                        label='FGS2',
-                        method='update',
-                        args=[
-                            {'visible': [False, True, False]},
-                            {'title': 'FGS2' + average_text['F2'], 'shapes': lines['F2']}
-                        ]
-                    ),
-                    dict(
-                        label='FGS3',
-                        method='update',
-                        args=[
-                            {'visible': [False, False, True]},
-                            {'title': 'FGS3' + average_text['F3'], 'shapes': lines['F3']}
-                        ]
-                    )
-                ]
-            ),
-        ]
-
-        # Create layout
-        layout = go.Layout(updatemenus=updatemenus, hovermode='closest')
-
-        self.figure.add_traces(traces)
-        self.figure.update_layout(layout)
-
-    def store_results(self):
-        pass
 
 
 class AcqImageV2V3Monitor(BaseMonitor):
@@ -355,15 +93,65 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
             t_start = convert_day_of_year(self.break_points[name][-1][0]).mjd  # Last update date
 
-            df = self.data[self.data.EXPSTART >= t_start]
+            df = group[group.EXPSTART >= t_start]
 
             # Track V2V3 fit and fit-line since the last update for each FGS
-            v2_line_fit = fit_line(df.EXPSTART, df.V2SLEW)
-            v3_line_fit = fit_line(df.EXPSTART, df.V3SLEW)
+            v2_fit, v2_line = fit_line(Time(df.EXPSTART, format='mjd').byear, -df.V2SLEW)
+            v3_fit, v3_line = fit_line(Time(df.EXPSTART, format='mjd').byear, -df.V3SLEW)
 
-            last_updated_results[name] = (v2_line_fit, v3_line_fit)
+            # last_updated_results[name] = (v2_line_fit, v3_line_fit)
+            last_updated_results[name] = {
+                'V2': {
+                    'slope': v2_fit[1],
+                    'start': v2_line[0],
+                    'end': v2_line[-1]
+                },
+                'V3': {
+                    'slope': v3_fit[1],
+                    'start': v3_line[0],
+                    'end': v3_line[-1]
+                }
+            }
 
         return groups, last_updated_results
+
+    def set_notification(self):
+        """Set the notification to report line fit results for the last breakpoint group for V2 and V3 for each FGS.
+
+        Example Notification
+        --------------------
+        V2V3 Offset Monitor 2019-07-31 Results
+
+        FGS1 2014-02-24 - 2019-07-31 (Time of the most recent break point to now)
+        V2:
+            Slope: -0.0191 arcseconds/year
+            Offset (from fit) at time of first data point: -0.061 arcseconds
+            Offset (from fit) at time of last data point: -0.164 arcseconds
+
+        V3:
+            ...
+
+        FGS2 ...
+         ...
+        """
+        _, results = self.results
+        notification = f'{self.name} Results\n\n'
+
+        for fgs, v2v3_results in results.items():
+            notification += (
+                f'{fgs} {convert_day_of_year(self.break_points[fgs][-1][0]).to_datetime()} - {self.date} (Time of the '
+                f'most recent break point to now)\n'
+            )
+
+            for direction, values in v2v3_results.items():
+                notification += (
+                    f'{direction}:\n'
+                    f'\tSlope: {values["slope"]:.4f} arcseconds/year\n'
+                    f'\tOffset (from fit) at time of first data point: {values["start"]:.3f} arcseconds\n'
+                    f'\tOffset (from fit) at time of last data point: {values["end"]:.3f} arcseconds\n\n'
+                )
+
+        return notification
 
     def _create_traces(self, df, breakpoint_index):
         """Create V2V3 traces for the monitor figure."""
@@ -393,7 +181,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 line=dict(width=4)
             )
 
-            self.figure.add_traces([scatter, line], rows=[i+1] * 2, cols=[1] * 2)
+            self.figure.add_traces([scatter, line], rows=[i + 1] * 2, cols=[1] * 2)
 
     def _create_breakpoint_lines(self, fgs_breakpoint_list):
         return [
@@ -570,9 +358,13 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
 class SpecAcqBaseMonitor(BaseMonitor):
     """Base monitor class for the spectroscopic Acq types: PEAKD and PEAKXD"""
-    labels = ['ROOTNAME', 'PROPOSID']
+    labels = ['ROOTNAME', 'PROPOSID', 'LIFE_ADJ', 'OPT_ELEM', 'CENWAVE']
     output = COS_MONITORING
     slew = None
+
+    # PEAKD vs PEAKXD need different annotations and shapes
+    annotations = None,
+    shapes = None
 
     def get_data(self):
         return self.model.new_data
@@ -584,37 +376,68 @@ class SpecAcqBaseMonitor(BaseMonitor):
 
         return groups, scatter
 
+    def find_outliers(self):
+        """Outliers are defined as those slews/offsets with a magnitude >= 1 arcsecond."""
+        return self.data[self.slew].abs() >= 1
+
     def plot(self):
         """Plot offset (-slew) v time per FGS. Separate FGS via button options. Color by LP-POS"""
         fgs_groups, std_results = self.results  # groups are stored in the results attribute since track returns them.
 
-        traces = []
+        trace_count = {'F1': 0, 'F2': 0, 'F3': 0}
+        lp_colors = ['#1f77b4', '#2ca02c', '#8c564b', '#bcbd22']  # blue, green, brown, yellow-green
+
         for name, group in fgs_groups:
-            scatter = go.Scatter(  # Scatter plot
-                x=group.EXPSTART,
-                y=-group[self.slew],
-                mode='markers',
-                text=group.hover_text,
-                visible=False,
-                marker=dict(
-                    color=group.LIFE_ADJ,
-                    colorscale='Viridis',
-                    colorbar=dict(  # Color by LP and set labels to typical LP names
-                        len=0.75,
-                        tickmode='array',
-                        nticks=len(group.LIFE_ADJ.unique()),
-                        tickvals=group.LIFE_ADJ.unique(),
-                        ticktext=[f'LP{l}' for l in group.LIFE_ADJ.unique()]
-                    ),
-                    showscale=True,
-                ),
-                name=name,
-            )
+            lp_groups = group.groupby('LIFE_ADJ')
 
-            traces.append(scatter)
+            for lp, lp_group in lp_groups:
+                trace_count[name] += 1
+                scatter = go.Scatter(  # Scatter plot
+                    x=Time(lp_group.EXPSTART, format='mjd').to_datetime(),
+                    y=-lp_group[self.slew],
+                    mode='markers',
+                    text=lp_group.hover_text,
+                    visible=False,
+                    name=f'{name} LP{lp}',
+                    legendgroup=f'LP{lp}',
+                    marker_color=lp_colors[lp - 1]
+                )
 
-        fgs_labels = ['FGS1', 'FGS2', 'FGS3']
-        visibility = [np.roll([True, False, False], index) for index in range(len(fgs_labels))]
+                self.figure.add_trace(scatter)
+
+                outliers = lp_group[self.outliers.iloc[lp_group.index.values]]
+
+                if not outliers.empty:
+                    trace_count[name] += 1
+
+                    outlier_trace = go.Scatter(
+                        x=Time(outliers.EXPSTART, format='mjd').to_datetime(),
+                        y=-outliers[self.slew],
+                        mode='markers',
+                        text=outliers.hover_text,
+                        visible=False,
+                        name=f'{name} LP{lp} Outliers',
+                        legendgroup=f'LP{lp}',
+                        marker_color='red',
+                        marker_symbol='x',
+                        marker_size=10
+                    )
+
+                    self.figure.add_trace(outlier_trace)
+
+        fgs_labels = ['All FGS', 'FGS1', 'FGS2', 'FGS3']
+
+        all_visible = list(repeat(True, sum(trace_count.values())))
+        f1_visible = list(repeat(True, trace_count['F1'])) + list(repeat(False, trace_count['F2'] + trace_count['F3']))
+
+        f2_visible = (
+                list(repeat(False, trace_count['F1'])) +
+                list(repeat(True, trace_count['F2'])) +
+                list(repeat(False, trace_count['F3']))
+        )
+
+        f3_visible = list(repeat(False, trace_count['F1'] + trace_count['F2'])) + list(repeat(True, trace_count['F3']))
+
         title = f'{self.name}; Slew vs Time'
 
         # Create buttons
@@ -629,15 +452,21 @@ class SpecAcqBaseMonitor(BaseMonitor):
                             {'visible': visible},
                             {'title': f'{fgs} {title}'}
                         ]
-                    ) for fgs, visible in zip(fgs_labels, visibility)
+                    ) for fgs, visible in zip(fgs_labels, [all_visible, f1_visible, f2_visible, f3_visible])
                 ]
             )
         ]
 
         # Create layout
-        layout = go.Layout(updatemenus=updatemenus, hovermode='closest')
+        layout = go.Layout(
+            updatemenus=updatemenus,
+            hovermode='closest',
+            xaxis=dict(title='Datetime'),
+            yaxis=dict(title='Offset (-Slew) [arcseconds]'),
+            shapes=self.shapes,
+            annotations=self.annotations
+        )
 
-        self.figure.add_traces(traces)
         self.figure.update_layout(layout)
 
     def store_results(self):
@@ -651,9 +480,67 @@ class AcqPeakdMonitor(SpecAcqBaseMonitor):
     data_model = AcqPeakdModel
     slew = 'ACQSLEWX'
 
+    # Transparent box highlighting good offset range
+    shapes = [
+        go.layout.Shape(
+            type='rect',
+            xref='paper',
+            yref='y',
+            y0=-1,
+            y1=1,
+            x0=0,
+            x1=1,
+            fillcolor='lightseagreen',
+            opacity=0.3,
+            layer='below',
+        )
+    ]
+
 
 class AcqPeakxdMonitor(SpecAcqBaseMonitor):
     """ACQPEAKXD monitor."""
     name = 'AcqPeakxd Monitor'
     data_model = AcqPeakxdModel
     slew = 'ACQSLEWY'
+
+    peakxd_update = datetime.datetime.strptime('2017-10-02', '%Y-%m-%d')
+
+    shapes = [
+        go.layout.Shape(  # Transparent box highlighting "good" offset range
+            type='rect',
+            xref='paper',
+            yref='y',
+            y0=-1,
+            y1=1,
+            x0=0,
+            x1=1,
+            fillcolor='lightseagreen',
+            opacity=0.3,
+            layer='below',
+        ),
+        go.layout.Shape(  # Vertical line indicating when the new PEAKXD algorithm was activated
+            type='line',
+            x0=peakxd_update,
+            y0=0,
+            x1=peakxd_update,
+            y1=1,
+            yref='paper',
+            xref='x1',
+            line={
+                'width': 2
+            }
+        )
+    ]
+
+    annotations = [
+        {
+            'x': peakxd_update,
+            'y': 1,
+            'xref': 'x',
+            'yref': 'paper',
+            'text': f'New PEAKXD Algorithm Activated<br>{peakxd_update}',
+            'showarrow': True,
+            'ax': -30,
+            'ay': -30,
+        }
+    ]
