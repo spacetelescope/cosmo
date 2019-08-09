@@ -103,7 +103,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
                                 f'{Time(self.data.EXPSTART.mean(), format="mjd").to_datetime().date()}',
                                 f'{Time(self.data.EXPSTART.max(), format="mjd").to_datetime().date()}'
                             ],
-                            len=0.7,
+                            len=0.6,
                             y=0,
                             yanchor='bottom'
                         ),
@@ -115,7 +115,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
         # Set the layout.
         layout = go.Layout(
             title=self.name,
-            xaxis=dict(title='Time since last OSM1 move [s]'),
+            xaxis=dict(title='Time since last OSM1 move [s]', matches='x2'),
             xaxis2=dict(title='Time since last OSM1 move [s]'),
             yaxis=dict(title='SHIFT1 drift rate [pixels/sec]'),
             yaxis2=dict(title='SHIFT2 drift rate [pixels/sec]')
@@ -163,8 +163,8 @@ class NUVOSMDriftMonitor(BaseMonitor):
         locations = [(1, 1), (2, 1), (1, 2), (2, 2)]
 
         # Set the min and max for the scale so that each plot is plotted on the same scale
-        c_min = self.data.DATETIME_START.min()
-        c_max = self.data.DATETIME_START.max()
+        c_min = self.data.EXPSTART.min()
+        c_max = self.data.EXPSTART.max()
 
         segment_groups, _ = self.results
 
@@ -179,13 +179,24 @@ class NUVOSMDriftMonitor(BaseMonitor):
                     name=f'{segment} {name}',
                     legendgroup=segment,
                     marker=dict(
-                        color=group.DATETIME_START,
+                        color=group.EXPSTART,
                         cmin=c_min,
                         cmax=c_max,
                         colorscale='Viridis',
                         showscale=True,
-                        colorbar=dict(  # TODO: Move the colorbar location down
-                            title='Date of Observation'
+                        colorbar=dict(
+                            title='Observation Date',
+                            tickmode='array',
+                            ticks='outside',
+                            tickvals=[self.data.EXPSTART.min(), self.data.EXPSTART.mean(), self.data.EXPSTART.max()],
+                            ticktext=[
+                                f'{Time(self.data.EXPSTART.min(), format="mjd").to_datetime().date()}',
+                                f'{Time(self.data.EXPSTART.mean(), format="mjd").to_datetime().date()}',
+                                f'{Time(self.data.EXPSTART.max(), format="mjd").to_datetime().date()}'
+                            ],
+                            len=0.55,
+                            y=0,
+                            yanchor='bottom'
                         )
                     ),
                 )
@@ -195,9 +206,9 @@ class NUVOSMDriftMonitor(BaseMonitor):
         # Set the layout. Refer to the commented plot grid to make sense of this.
         layout = go.Layout(
             title=self.name,
-            xaxis=dict(title='Time since last OSM1 move [s]'),
+            xaxis=dict(title='Time since last OSM1 move [s]', matches='x3'),
             xaxis3=dict(title='Time since last OSM1 move [s]'),
-            xaxis2=dict(title='Time since last OSM2 move [s]'),
+            xaxis2=dict(title='Time since last OSM2 move [s]', matches='x4'),
             xaxis4=dict(title='Time since last OSM2 move [s]'),
             yaxis=dict(title='SHIFT1 drift rate [pixels/sec]'),
             yaxis3=dict(title='SHIFT2 drift rate [pixels/sec]'),
@@ -206,3 +217,6 @@ class NUVOSMDriftMonitor(BaseMonitor):
         )
 
         self.figure.update_layout(layout)
+
+    def store_results(self):
+        pass
