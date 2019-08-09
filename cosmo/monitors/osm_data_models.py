@@ -54,6 +54,11 @@ class OSMDriftDataModel(BaseDataModel):
         # Get lampflash data from the files
         file_data = pd.DataFrame(get_lampflash_data(self.files_source, self.cosmo_layout))
 
+        # Remove any rows that have empty data columns
+        file_data = file_data.drop(
+            file_data[file_data.apply(lambda x: not bool(len(x.SHIFT_DISP)), axis=1)].index.values
+        ).reset_index(drop=True)
+
         # Grab data from the SMSTable.
         sms_data = pd.DataFrame(
             list(
