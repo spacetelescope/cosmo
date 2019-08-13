@@ -64,7 +64,7 @@ gh-pages:
 	git diff --cached --exit-code
 	git checkout gh-pages
 	git pull
-	rm -rf %(GH_PAGES_EXCLUDE)
+	rm -rf $(GH_PAGES_EXCLUDE)
 	git checkout master $(GH_PAGES_SOURCES)
 	git reset HEAD
 	make html
