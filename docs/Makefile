@@ -68,8 +68,10 @@ gh-pages:
 	git checkout master $(GH_PAGES_SOURCES)
 	git reset HEAD
 	make html
-	mv -fv build/html/* ./
-	rm -rf $(GH_PAGES_SOURCES) build
+	mv -fv $(BUILDDIR)/html/* ../
+	rm -rf $(GH_PAGES_SOURCES) $(BUILDDIR)
+	mv -fv .nojekyll ../
+	rm -rf .nojekyll
 	git add -A
 	git commit --no-verify -m "Generated gh-pages for `git log master -1 --pretty=short --abbrev-commit`" && git push origin gh-pages ; git checkout master
 
