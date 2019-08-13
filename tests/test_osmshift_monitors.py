@@ -2,7 +2,7 @@ import os
 import pytest
 
 from cosmo.monitors.osm_shift_monitors import (
-    plot_fuv_osm_shift_cenwaves, compute_segment_diff, FuvOsmShiftMonitor, FuvOsmShift1Monitor, FuvOsmShift2Monitor,
+    compute_segment_diff, FuvOsmShiftMonitor, FuvOsmShift1Monitor, FuvOsmShift2Monitor,
     NuvOsmShiftMonitor, NuvOsmShift1Monitor, NuvOsmShift2Monitor
 )
 
