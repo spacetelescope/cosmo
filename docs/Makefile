@@ -7,6 +7,10 @@ SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = _build
 
+# For building the GitHub Pages branch
+GH_PAGES_SOURCES = source Makefile
+GH_PAGES_EXCLUDE = build _sources _static
+
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
 $(error The '$(SPHINXBUILD)' command was not found. Make sure you have Sphinx installed, then set the SPHINXBUILD environment variable to point to the full path of the '$(SPHINXBUILD)' executable. Alternatively you can add the directory with the executable to your PATH. If you don't have Sphinx installed, grab it from http://sphinx-doc.org/)
@@ -46,28 +50,33 @@ help:
 	@echo "  linkcheck  to check all external links for integrity"
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
 
-rebuildclean:
-	rm -rf $(BUILDDIR)
-	rm -rf _sources
-	rm -rf _static
-	rm *html
-	rm *inv
-	rm *js
-
 clean:
-	rm -rf $(BUILDDIR)
+	rm -rf $(BUILDDIR)/*
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
-cosmodocs:
-	make rebuildclean
+gh-pages:
 	make html
-	mv -fv $(BUILDDIR)/html/* ./
-	make clean
-	git add .
+	git diff --exit-code
+	git diff --cached --exit-code
+	git checkout gh-pages
+	git pull
+	rm -rf %(GH_PAGES_EXCLUDE)
+	git checkout master $(GH_PAGES_SOURCES)
+	git reset HEAD
+	make html
+	mv -fv build/html/* ./
+	rm -rf $(GH_PAGES_SOURCES) build
+	git add -A
+	git commit --no-verify -m "Generated gh-pages for `git log master -1 --pretty=short --abbrev-commit`" && git push origin gh-pages ; git checkout master
+
+gh-pages-clean:
+	git checkout -- .
+	rm -rf $(GH_PAGES_SOURCES) build
+	git checkout master
 
 dirhtml:
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml
