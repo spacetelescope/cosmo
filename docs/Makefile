@@ -8,7 +8,7 @@ PAPER         =
 BUILDDIR      = _build
 
 # For building the GitHub Pages branch
-GH_PAGES_SOURCES = docs Makefile
+GH_PAGES_SOURCES = source Makefile
 GH_PAGES_EXCLUDE = build _sources _static
 
 # User-friendly check for sphinx-build
