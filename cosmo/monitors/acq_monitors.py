@@ -1,5 +1,6 @@
 import numpy as np
 import plotly.graph_objs as go
+import plotly.express as px
 import datetime
 
 from itertools import repeat
@@ -11,6 +12,62 @@ from ..monitor_helpers import fit_line, convert_day_of_year
 from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
+
+
+class AcqImageMonitor(BaseMonitor):
+    data_model = AcqImageModel
+    labels = ['ROOTNAME', 'PROPOSID']
+    output = COS_MONITORING
+
+    def get_data(self):
+        return self.model.new_data
+
+    def track(self):
+        """Track the total offset (or slew) distance."""
+        return np.sqrt(self.data.ACQSLEWX ** 2 + self.data.ACQSLEWY ** 2)
+
+    def find_outliers(self):
+        """Find offsets of 2 arcseconds or larger."""
+        # Could also define outliers as those values that have ACQSTAT = fail, SHUTTER = closed etc etc
+        return (self.results >= 2) | (self.data.ACQSTAT == 'Failure') | (self.data.SHUTTER == 'Closed')
+
+    def plot(self):
+        self.figure = px.scatter(
+            self.data,
+            x='ACQSLEWX',
+            y='ACQSLEWY',
+            color='EXPSTART',
+            color_continuous_scale=px.colors.sequential.Viridis,
+            hover_data=self.labels,
+            title=self.name,
+            height=900,
+            marginal_x='histogram',
+            marginal_y='histogram',
+        )
+
+        outliers = self.data[self.outliers]
+
+        self.figure.add_trace(
+            go.Scatter(
+                x=outliers.ACQSLEWX,
+                y=outliers.ACQSLEWY,
+                mode='markers',
+                marker_color='red',
+                marker_size=10,
+                hovertext=outliers.hover_text,
+                name='Outliers'
+            )
+        )
+
+        self.figure.update_layout(
+            coloraxis_colorbar_len=0.8,
+            coloraxis_colorbar_title='EXPSTART [mjd]',
+            xaxis_title='ACQSLEWX [pix]',
+            yaxis_title='ACQSLEWY [pix]'
+        )
+
+    def store_results(self):
+        pass
 
 
 class AcqImageV2V3Monitor(BaseMonitor):
