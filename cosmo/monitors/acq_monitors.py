@@ -16,7 +16,7 @@ COS_MONITORING = SETTINGS['output']
 
 class AcqImageMonitor(BaseMonitor):
     data_model = AcqImageModel
-    labels = ['ROOTNAME', 'PROPOSID']
+    labels = ['ROOTNAME', 'PROPOSID', 'FGS']
     output = COS_MONITORING
 
     def get_data(self):
@@ -141,7 +141,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
     def track(self):
         """Track the fit and fit-line for the period since the last FGS alignment."""
-        groups = self.data.groupby('dom_fgs')
+        groups = self.data.groupby('FGS')
 
         last_updated_results = {}
         for name, group in groups:
@@ -428,7 +428,7 @@ class SpecAcqBaseMonitor(BaseMonitor):
 
     def track(self):
         """Track the standard deviation of the slew per FGS."""
-        groups = self.data.groupby('dom_fgs')
+        groups = self.data.groupby('FGS')
         scatter = groups[self.slew].std()
 
         return groups, scatter
