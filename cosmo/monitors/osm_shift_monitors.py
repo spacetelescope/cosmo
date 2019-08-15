@@ -236,7 +236,10 @@ class FuvOsmShiftMonitor(BaseMonitor):
         ]
 
         button_labels = ['All FPPOS', 'FPPOS 1', 'FPPOS 2', 'FPPOS 3', 'FPPOS 4']
-        titles = [f'{self.name} All FPPOS'] + [f'{self.name} {label} Only' for label in button_labels[1:]]
+        titles = [
+            f'<a href="https://spacetelescope.github.io/cosmo/monitors.html#osm-shift-monitors">{label} {self.name}</a>'
+            for label in button_labels
+        ]
 
         # Create the menu buttons
         updatemenus = [
@@ -507,7 +510,10 @@ class NuvOsmShiftMonitor(BaseMonitor):
         ]
 
         button_labels = ['All Stripes', 'NUVA', 'NUVB', 'NUVC']
-        titles = [f'{self.name} All Stripes'] + [f'{self.name} {label} Only' for label in button_labels[1:]]
+        titles = [
+            f'<a href="https://spacetelescope.github.io/cosmo/monitors.html#osm-shift-monitors">{label} {self.name}</a>'
+            for label in button_labels
+        ]
 
         # Create the menu buttons
         updatemenus = [
