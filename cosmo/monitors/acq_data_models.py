@@ -112,9 +112,10 @@ class AcqImageModel(BaseDataModel):
         # ACQ keys, extensions
         acq_keywords = (
             'ACQSLEWX', 'ACQSLEWY', 'EXPSTART', 'ROOTNAME', 'PROPOSID', 'OBSTYPE', 'NEVENTS', 'SHUTTER', 'LAMPEVNT',
-            'ACQSTAT', 'EXTENDED', 'LINENUM'
+            'ACQSTAT', 'EXTENDED', 'LINENUM', 'APERTURE', 'OPT_ELEM'
         )
-        acq_extensions = (0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0)
+
+        acq_extensions = (0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0)
 
         # SPT keys, extensions
         spt_keywords, spt_extensions = ('DGESTAR',), (0,)

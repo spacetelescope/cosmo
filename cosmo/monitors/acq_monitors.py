@@ -20,24 +20,34 @@ class AcqImageMonitor(BaseMonitor):
     output = COS_MONITORING
 
     def get_data(self):
+        data = self.model.new_data
+        data['configuration'] = data.APERTURE.str.cat(data.OPT_ELEM, sep='-')
         return self.model.new_data
 
     def track(self):
-        """Track the total offset (or slew) distance."""
-        return np.sqrt(self.data.ACQSLEWX ** 2 + self.data.ACQSLEWY ** 2)
+        """Track the total offset (or slew) distance and basic statistics on x and y slews."""
+        return {
+            'distance': np.sqrt(self.data.ACQSLEWX ** 2 + self.data.ACQSLEWY ** 2),
+            'stats': self.data.groupby('configuration')[['ACQSLEWX', 'ACQSLEWY']].describe()
+        }
 
     def find_outliers(self):
         """Find offsets of 2 arcseconds or larger."""
-        # Could also define outliers as those values that have ACQSTAT = fail, SHUTTER = closed etc etc
-        return (self.results >= 2) | (self.data.ACQSTAT == 'Failure') | (self.data.SHUTTER == 'Closed')
+        return {
+            'slews': self.results['distance'] >= 2,
+            'failed': self.data.ACQSTAT == 'Failure',
+            'closed': self.data.SHUTTER == 'Closed'
+        }
 
     def plot(self):
+        # Filter out shutter closed and failed exposures
+        filtered = self.data[~(self.outliers['failed']) & ~(self.outliers['closed'])]
+
         self.figure = px.scatter(
-            self.data,
+            filtered,
             x='ACQSLEWX',
             y='ACQSLEWY',
-            color='EXPSTART',
-            color_continuous_scale=px.colors.sequential.Viridis,
+            color='configuration',
             hover_data=self.labels,
             title=self.name,
             height=900,
@@ -45,7 +55,7 @@ class AcqImageMonitor(BaseMonitor):
             marginal_y='histogram',
         )
 
-        outliers = self.data[self.outliers]
+        outliers = self.data[self.outliers['slews']]
 
         self.figure.add_trace(
             go.Scatter(
@@ -60,8 +70,6 @@ class AcqImageMonitor(BaseMonitor):
         )
 
         self.figure.update_layout(
-            coloraxis_colorbar_len=0.8,
-            coloraxis_colorbar_title='EXPSTART [mjd]',
             xaxis_title='ACQSLEWX [pix]',
             yaxis_title='ACQSLEWY [pix]'
         )
