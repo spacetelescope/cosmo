@@ -1,5 +1,6 @@
 import numpy as np
 import plotly.graph_objs as go
+import plotly.express as px
 import datetime
 
 from itertools import repeat
@@ -11,6 +12,70 @@ from ..monitor_helpers import fit_line, convert_day_of_year
 from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
+
+
+class AcqImageMonitor(BaseMonitor):
+    data_model = AcqImageModel
+    labels = ['ROOTNAME', 'PROPOSID', 'FGS']
+    output = COS_MONITORING
+
+    def get_data(self):
+        data = self.model.new_data
+        data['configuration'] = data.APERTURE.str.cat(data.OPT_ELEM, sep='-')
+        return self.model.new_data
+
+    def track(self):
+        """Track the total offset (or slew) distance and basic statistics on x and y slews."""
+        return {
+            'distance': np.sqrt(self.data.ACQSLEWX ** 2 + self.data.ACQSLEWY ** 2),
+            'stats': self.data.groupby('configuration')[['ACQSLEWX', 'ACQSLEWY']].describe()
+        }
+
+    def find_outliers(self):
+        """Find offsets of 2 arcseconds or larger."""
+        return {
+            'slews': self.results['distance'] >= 2,
+            'failed': self.data.ACQSTAT == 'Failure',
+            'closed': self.data.SHUTTER == 'Closed'
+        }
+
+    def plot(self):
+        # Filter out shutter closed and failed exposures
+        filtered = self.data[~(self.outliers['failed']) & ~(self.outliers['closed'])]
+
+        self.figure = px.scatter(
+            filtered,
+            x='ACQSLEWX',
+            y='ACQSLEWY',
+            color='configuration',
+            hover_data=self.labels,
+            title=self.name,
+            height=900,
+            marginal_x='histogram',
+            marginal_y='histogram',
+        )
+
+        outliers = self.data[self.outliers['slews']]
+
+        self.figure.add_trace(
+            go.Scatter(
+                x=outliers.ACQSLEWX,
+                y=outliers.ACQSLEWY,
+                mode='markers',
+                marker_color='red',
+                marker_size=10,
+                hovertext=outliers.hover_text,
+                name='Outliers'
+            )
+        )
+
+        self.figure.update_layout(
+            xaxis_title='ACQSLEWX [pix]',
+            yaxis_title='ACQSLEWY [pix]'
+        )
+
+    def store_results(self):
+        pass
 
 
 class AcqImageV2V3Monitor(BaseMonitor):
@@ -84,7 +149,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
     def track(self):
         """Track the fit and fit-line for the period since the last FGS alignment."""
-        groups = self.data.groupby('dom_fgs')
+        groups = self.data.groupby('FGS')
 
         last_updated_results = {}
         for name, group in groups:
@@ -371,7 +436,7 @@ class SpecAcqBaseMonitor(BaseMonitor):
 
     def track(self):
         """Track the standard deviation of the slew per FGS."""
-        groups = self.data.groupby('dom_fgs')
+        groups = self.data.groupby('FGS')
         scatter = groups[self.slew].std()
 
         return groups, scatter

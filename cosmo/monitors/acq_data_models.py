@@ -10,9 +10,9 @@ FILES_SOURCE = SETTINGS['filesystem']['source']
 
 
 def dgestar_to_fgs(results: List[dict]) -> None:
-    """Add a dom_fgs key to each row dictionary."""
+    """Add a FGS key to each row dictionary."""
     for item in results:
-        item.update({'dom_fgs': item['DGESTAR'][-2:]})  # The dominant guide star key is the last 2 values in the string
+        item.update({'FGS': item['DGESTAR'][-2:]})  # The dominant guide star key is the last 2 values in the string
 
 
 def get_acq_data(data_dir: str, acq_keys: tuple, acq_extensions: tuple, spt_keys: tuple, spt_extensions: tuple,
@@ -112,9 +112,10 @@ class AcqImageModel(BaseDataModel):
         # ACQ keys, extensions
         acq_keywords = (
             'ACQSLEWX', 'ACQSLEWY', 'EXPSTART', 'ROOTNAME', 'PROPOSID', 'OBSTYPE', 'NEVENTS', 'SHUTTER', 'LAMPEVNT',
-            'ACQSTAT', 'EXTENDED', 'LINENUM'
+            'ACQSTAT', 'EXTENDED', 'LINENUM', 'APERTURE', 'OPT_ELEM'
         )
-        acq_extensions = (0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0)
+
+        acq_extensions = (0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0)
 
         # SPT keys, extensions
         spt_keywords, spt_extensions = ('DGESTAR',), (0,)
