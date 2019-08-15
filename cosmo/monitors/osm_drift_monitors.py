@@ -114,7 +114,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
 
         # Set the layout.
         layout = go.Layout(
-            title=self.name,
+            title=f'<a href="https://spacetelescope.github.io/cosmo/monitors.html#osm-drift-monitor">{self.name}</a>',
             xaxis=dict(title='Time since last OSM1 move [s]', matches='x2'),
             xaxis2=dict(title='Time since last OSM1 move [s]'),
             yaxis=dict(title='SHIFT1 drift rate [pixels/sec]'),
@@ -205,7 +205,7 @@ class NUVOSMDriftMonitor(BaseMonitor):
 
         # Set the layout. Refer to the commented plot grid to make sense of this.
         layout = go.Layout(
-            title=self.name,
+            title=f'<a href="https://spacetelescope.github.io/cosmo/monitors.html#osm-drift-monitor">{self.name}</a>',
             xaxis=dict(title='Time since last OSM1 move [s]', matches='x3'),
             xaxis3=dict(title='Time since last OSM1 move [s]'),
             xaxis2=dict(title='Time since last OSM2 move [s]', matches='x4'),

@@ -49,7 +49,7 @@ class AcqImageMonitor(BaseMonitor):
             y='ACQSLEWY',
             color='configuration',
             hover_data=self.labels,
-            title=self.name,
+            title=f'<a href="https://spacetelescope.github.io/cosmo/monitors.html#acqimage-monitor">{self.name}</a>',
             height=900,
             marginal_x='histogram',
             marginal_y='histogram',
@@ -359,47 +359,33 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 list(repeat(True, traces_per_fgs['F3']))
         )
 
+        labels = ['FGS1', 'FGS2', 'FGS3']
+
+        titles = [
+            f'<a href="https://spacetelescope.github.io/cosmo/monitors.html#fgs-monitoring">{fgs + self.name}</a>'
+            for fgs in labels
+        ]
+
+        shapes = [lines + fgs1_breaks, lines + fgs2_breaks, lines]
+        visibility = [f1_visibility, f2_visibility, f3_visibility]
+
         # Create buttons
         updatemenus = [
             go.layout.Updatemenu(
                 active=-1,
                 buttons=[
                     dict(
-                        label='FGS1',
+                        label=label,
                         method='update',
                         args=[
-                            {'visible': f1_visibility},
+                            {'visible': visible},
                             {
-                                'title': f'FGS1 {self.name}',
+                                'title': title,
                                 'annotations': annotations,
-                                'shapes': lines + fgs1_breaks
+                                'shapes': shape_set
                             }
                         ]
-                    ),
-                    dict(
-                        label='FGS2',
-                        method='update',
-                        args=[
-                            {'visible': f2_visibility},
-                            {
-                                'title': f'FGS2 {self.name}',
-                                'annotations': annotations,
-                                'shapes': lines + fgs2_breaks
-                            }
-                        ]
-                    ),
-                    dict(
-                        label='FGS3',
-                        method='update',
-                        args=[
-                            {'visible': f3_visibility},
-                            {
-                                'title': f'FGS3 {self.name}',
-                                'annotations': annotations,
-                                'shapes': lines
-                            }
-                        ]
-                    )
+                    ) for label, visible, title, shape_set in zip(labels, visibility, titles, shapes)
                 ]
             ),
         ]
@@ -428,7 +414,7 @@ class SpecAcqBaseMonitor(BaseMonitor):
     slew = None
 
     # PEAKD vs PEAKXD need different annotations and shapes
-    annotations = None,
+    annotations = None
     shapes = None
 
     def get_data(self):
@@ -503,8 +489,6 @@ class SpecAcqBaseMonitor(BaseMonitor):
 
         f3_visible = list(repeat(False, trace_count['F1'] + trace_count['F2'])) + list(repeat(True, trace_count['F3']))
 
-        title = f'{self.name}; Slew vs Time'
-
         # Create buttons
         updatemenus = [
             dict(
@@ -515,7 +499,12 @@ class SpecAcqBaseMonitor(BaseMonitor):
                         method='update',
                         args=[
                             {'visible': visible},
-                            {'title': f'{fgs} {title}'}
+                            {
+                                'title': (
+                                    f'<a href="https://spacetelescope.github.io/cosmo/monitors.html#acqpeakd-monitor">'
+                                    f'{fgs} {self.name}</a>'
+                                )
+                            }
                         ]
                     ) for fgs, visible in zip(fgs_labels, [all_visible, f1_visible, f2_visible, f3_visible])
                 ]
