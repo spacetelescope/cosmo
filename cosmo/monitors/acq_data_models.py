@@ -44,8 +44,8 @@ class AcqPeakdModel(BaseDataModel):
 
     def get_new_data(self):
         # ACQ file header keys, extensions
-        acq_keywords = ('ACQSLEWX', 'EXPSTART', 'LIFE_ADJ', 'ROOTNAME', 'PROPOSID', 'OPT_ELEM', 'CENWAVE')
-        acq_extensions = (0, 1, 0, 0, 0, 0, 0)
+        acq_keywords = ('ACQSLEWX', 'EXPSTART', 'LIFE_ADJ', 'ROOTNAME', 'PROPOSID', 'OPT_ELEM', 'CENWAVE', 'DETECTOR')
+        acq_extensions = (0, 1, 0, 0, 0, 0, 0, 0)
 
         # SPT file header keys, extensions
         spt_keywords, spt_extensions = ('DGESTAR',), (0,)
@@ -71,8 +71,8 @@ class AcqPeakxdModel(BaseDataModel):
 
     def get_new_data(self):
         # ACQ file header keys, extensions
-        acq_keywords = ('ACQSLEWY', 'EXPSTART', 'LIFE_ADJ', 'ROOTNAME', 'PROPOSID', 'OPT_ELEM', 'CENWAVE')
-        acq_extensions = (0, 1, 0, 0, 0, 0, 0)
+        acq_keywords = ('ACQSLEWY', 'EXPSTART', 'LIFE_ADJ', 'ROOTNAME', 'PROPOSID', 'OPT_ELEM', 'CENWAVE', 'DETECTOR')
+        acq_extensions = (0, 1, 0, 0, 0, 0, 0, 0)
 
         # SPT file header keys, extensions
         spt_keywords, spt_extensions = ('DGESTAR',), (0,)

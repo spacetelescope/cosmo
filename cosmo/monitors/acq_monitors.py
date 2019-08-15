@@ -409,7 +409,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
 class SpecAcqBaseMonitor(BaseMonitor):
     """Base monitor class for the spectroscopic Acq types: PEAKD and PEAKXD"""
-    labels = ['ROOTNAME', 'PROPOSID', 'LIFE_ADJ', 'OPT_ELEM', 'CENWAVE']
+    labels = ['ROOTNAME', 'PROPOSID', 'LIFE_ADJ', 'OPT_ELEM', 'CENWAVE', 'DETECTOR']
     output = COS_MONITORING
     slew = None
 
@@ -437,7 +437,7 @@ class SpecAcqBaseMonitor(BaseMonitor):
 
         trace_count = {'F1': 0, 'F2': 0, 'F3': 0}
         lp_colors = ['#1f77b4', '#2ca02c', '#8c564b', '#bcbd22']  # blue, green, brown, yellow-green
-
+        detector_symbols = {'NUV': 'x', 'FUV': 'circle'}
         for name, group in fgs_groups:
             lp_groups = group.groupby('LIFE_ADJ')
 
@@ -451,7 +451,8 @@ class SpecAcqBaseMonitor(BaseMonitor):
                     visible=False,
                     name=f'{name} LP{lp}',
                     legendgroup=f'LP{lp}',
-                    marker_color=lp_colors[lp - 1]
+                    marker_color=lp_colors[lp - 1],
+                    marker_symbol=[detector_symbols[detector] for detector in lp_group.DETECTOR]
                 )
 
                 self.figure.add_trace(scatter)
