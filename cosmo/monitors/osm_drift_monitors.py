@@ -4,7 +4,7 @@ from astropy.time import Time
 from monitorframe.monitor import BaseMonitor
 
 from .osm_data_models import OSMDriftDataModel
-from ..monitor_helpers import explode_df
+from ..monitor_helpers import explode_df, create_visibility
 from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
@@ -44,10 +44,12 @@ class FUVOSMDriftMonitor(BaseMonitor):
     """
     data_model = OSMDriftDataModel
     output = COS_MONITORING
+    doc_link = "https://spacetelescope.github.io/cosmo/monitors.html#osm-drift-monitor"
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'OPT_ELEM', 'SEGMENT']
 
     subplots = True
     subplot_layout = (2, 1)  # 2 rows, 1 column
+
     # This is the format of your plot grid:
     # [ (1,1)  x1,y1 ]
     # [ (2,1) x2,y2 ]
@@ -77,40 +79,84 @@ class FUVOSMDriftMonitor(BaseMonitor):
 
         lp_groups, _ = self.results
 
-        # Plot drift v time per grating
+        # Plot drift v time per lp
+        trace_counts = {}
         for lp, group in lp_groups:
-            for y, name, axes in zip(y_names, titles, locations):
-                trace = go.Scattergl(
-                    x=group.REL_TSINCEOSM1,
-                    y=group[y],
-                    mode='markers',
-                    name=f'LP{lp} {name}',
-                    text=group.hover_text,
-                    legendgroup=lp,
-                    marker=dict(
-                        color=group.EXPSTART,
-                        cmin=c_min,
-                        cmax=c_max,
-                        colorscale='Viridis',
-                        showscale=True,
-                        colorbar=dict(
-                            title='Observation Date',
-                            tickmode='array',
-                            ticks='outside',
-                            tickvals=[self.data.EXPSTART.min(), self.data.EXPSTART.mean(), self.data.EXPSTART.max()],
-                            ticktext=[
-                                f'{Time(self.data.EXPSTART.min(), format="mjd").to_datetime().date()}',
-                                f'{Time(self.data.EXPSTART.mean(), format="mjd").to_datetime().date()}',
-                                f'{Time(self.data.EXPSTART.max(), format="mjd").to_datetime().date()}'
-                            ],
-                            len=0.6,
-                            y=0,
-                            yanchor='bottom'
-                        ),
-                    ),
-                )
+            lp_count = 0  # count the number of traces per lp (for use in creating the buttons later)
 
-                self.figure.append_trace(trace, *axes)
+            # Plot per grating
+            for grating, grating_group in group.groupby('OPT_ELEM'):
+                for i, (y, name, axes) in enumerate(zip(y_names, titles, locations)):
+                    self.figure.append_trace(
+                        go.Scattergl(
+                            x=grating_group.REL_TSINCEOSM1,
+                            y=grating_group[y],
+                            mode='markers',
+                            name=f'LP{lp} {grating}',
+                            text=grating_group.hover_text,
+                            legendgroup=grating,
+                            showlegend=True if i == 0 else False,
+                            marker=dict(
+                                color=grating_group.EXPSTART,
+                                cmin=c_min,
+                                cmax=c_max,
+                                colorscale='Viridis',
+                                showscale=True,
+                                colorbar=dict(
+                                    title='Observation Date',
+                                    tickmode='array',
+                                    ticks='outside',
+                                    tickvals=[self.data.EXPSTART.min(), self.data.EXPSTART.mean(),
+                                              self.data.EXPSTART.max()],
+                                    ticktext=[
+                                        f'{Time(self.data.EXPSTART.min(), format="mjd").to_datetime().date()}',
+                                        f'{Time(self.data.EXPSTART.mean(), format="mjd").to_datetime().date()}',
+                                        f'{Time(self.data.EXPSTART.max(), format="mjd").to_datetime().date()}'
+                                    ],
+                                    len=0.57,
+                                    y=0,
+                                    yanchor='bottom'
+                                ),
+                            ),
+                        ),
+                        *axes
+                    )
+
+                    lp_count += 1
+
+            trace_counts[lp] = lp_count
+
+        # Create figure buttons for LP
+        titles = [f'<a href="{self.doc_link}">{self.name} All LPs'] + [
+            f'<a href="{self.doc_link}">{self.name} LP{lp}</a>'
+            for lp in trace_counts.keys()
+        ]
+
+        labels = ['All LPs'] + [f'LP{lp}' for lp in trace_counts.keys()]
+
+        # Create trace visibility options
+        traces = list(trace_counts.values())
+        all_visible = create_visibility(traces, [True, True, True, True, True])  # all lps, lp -1, lp 1, lp 2...
+        lp_neg1 = create_visibility(traces, [True, False, False, False, False])
+        lp_1 = create_visibility(traces, [False, True, False, False, False])
+        lp_2 = create_visibility(traces, [False, False, True, False, False])
+        lp_3 = create_visibility(traces, [False, False, False, True, False])
+        lp_4 = create_visibility(traces, [False, False, False, False, True])
+
+        updatemenus = [
+            go.layout.Updatemenu(
+                buttons=[
+                    dict(
+                        label=label,
+                        method='update',
+                        args=[
+                            {'visible': visible},
+                            {'title': title}
+                        ]
+                    ) for label, title, visible in zip(labels, titles, [all_visible, lp_neg1, lp_1, lp_2, lp_3, lp_4])
+                ]
+            )
+        ]
 
         # Set the layout.
         layout = go.Layout(
@@ -118,7 +164,8 @@ class FUVOSMDriftMonitor(BaseMonitor):
             xaxis=dict(title='Time since last OSM1 move [s]', matches='x2'),
             xaxis2=dict(title='Time since last OSM1 move [s]'),
             yaxis=dict(title='SHIFT1 drift rate [pixels/sec]'),
-            yaxis2=dict(title='SHIFT2 drift rate [pixels/sec]')
+            yaxis2=dict(title='SHIFT2 drift rate [pixels/sec]'),
+            updatemenus=updatemenus
         )
 
         self.figure.update_layout(layout)
@@ -135,6 +182,7 @@ class NUVOSMDriftMonitor(BaseMonitor):
 
     subplots = True
     subplot_layout = (2, 2)
+
     # This is the format of your plot grid:
     # [ (1,1) x1,y1 ]  [ (1,2) x2,y2 ]
     # [ (2,1) x3,y3 ]  [ (2,2) x4,y4 ]  The axes labels and x/y combinations need to match this layout.

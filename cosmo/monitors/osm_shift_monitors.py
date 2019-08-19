@@ -5,10 +5,10 @@ import os
 
 from itertools import repeat
 from monitorframe.monitor import BaseMonitor
-from typing import List, Union
+from typing import Union
 
 from .osm_data_models import OSMShiftDataModel
-from ..monitor_helpers import ExposureAbsoluteTime, explode_df
+from ..monitor_helpers import ExposureAbsoluteTime, explode_df, create_visibility
 from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
@@ -22,19 +22,6 @@ LP_MOVES = {
 def match_dfs(df1: pd.DataFrame, df2: pd.DataFrame, key: str) -> pd.DataFrame:
     """Filter df1 based on which values in key are available in df2."""
     return df1[df1.apply(lambda x: x[key] in df2[key].values, axis=1)]
-
-
-def create_visibility(trace_lengths: List[int], visible_list: List[bool]) -> List[bool]:
-    """Create visibility lists for plotly buttons. trace_lengths and visible_list must be in the correct order.
-
-    :param trace_lengths: List of the number of traces in each "button set".
-    :param visible_list: Visibility setting for each button set (either True or False).
-    """
-    visibility = []  # Total visibility. Length should match the total number of traces in the figure.
-    for visible, trace_length in zip(visible_list, trace_lengths):
-        visibility += list(repeat(visible, trace_length))  # Set each trace per button.
-
-    return visibility
 
 
 def compute_segment_diff(df: pd.DataFrame, shift: str, segment1: str, segment2: str) -> Union[pd.DataFrame, None]:

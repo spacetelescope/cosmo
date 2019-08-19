@@ -2,8 +2,9 @@ import pandas as pd
 import numpy as np
 import datetime
 
+from itertools import repeat
 from astropy.time import Time, TimeDelta
-from typing import Union, Iterable, Tuple, Sequence
+from typing import Union, Iterable, Tuple, Sequence, List
 
 
 def convert_day_of_year(date: Union[float, str]) -> Time:
@@ -95,3 +96,16 @@ class ExposureAbsoluteTime:
         instance = cls(expstart=expstart, time_array=time_array)
 
         return instance.compute_absolute_time(time_delta_format=time_format)
+
+
+def create_visibility(trace_lengths: List[int], visible_list: List[bool]) -> List[bool]:
+    """Create visibility lists for plotly buttons. trace_lengths and visible_list must be in the correct order.
+
+    :param trace_lengths: List of the number of traces in each "button set".
+    :param visible_list: Visibility setting for each button set (either True or False).
+    """
+    visibility = []  # Total visibility. Length should match the total number of traces in the figure.
+    for visible, trace_length in zip(visible_list, trace_lengths):
+        visibility += list(repeat(visible, trace_length))  # Set each trace per button.
+
+    return visibility
