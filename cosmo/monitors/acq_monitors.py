@@ -2,13 +2,14 @@ import numpy as np
 import plotly.graph_objs as go
 import plotly.express as px
 import datetime
+import pandas as pd
 
-from itertools import repeat
 from monitorframe.monitor import BaseMonitor
 from astropy.time import Time
+from typing import List
 
 from .acq_data_models import AcqImageModel, AcqPeakdModel, AcqPeakxdModel
-from ..monitor_helpers import fit_line, convert_day_of_year
+from ..monitor_helpers import fit_line, convert_day_of_year, create_visibility
 from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
@@ -16,6 +17,7 @@ COS_MONITORING = SETTINGS['output']
 
 class AcqImageMonitor(BaseMonitor):
     data_model = AcqImageModel
+    docs = "https://spacetelescope.github.io/cosmo/monitors.html#acqimage-monitor"
     labels = ['ROOTNAME', 'PROPOSID', 'FGS']
     output = COS_MONITORING
 
@@ -49,7 +51,7 @@ class AcqImageMonitor(BaseMonitor):
             y='ACQSLEWY',
             color='configuration',
             hover_data=self.labels,
-            title=f'<a href="https://spacetelescope.github.io/cosmo/monitors.html#acqimage-monitor">{self.name}</a>',
+            title=f'<a href="{self.docs}">{self.name}</a>',
             height=900,
             marginal_x='histogram',
             marginal_y='histogram',
@@ -82,7 +84,9 @@ class AcqImageV2V3Monitor(BaseMonitor):
     """V2V3 Offset Monitor."""
     name = 'V2V3 Offset Monitor'
     data_model = AcqImageModel
+    docs = "https://spacetelescope.github.io/cosmo/monitors.html#fgs-monitoring"
     labels = ['ROOTNAME', 'PROPOSID']
+
     subplots = True
     subplot_layout = (2, 1)
     output = COS_MONITORING
@@ -118,7 +122,6 @@ class AcqImageV2V3Monitor(BaseMonitor):
         'GAIA Guide Stars': 2017.272,
     }
 
-    #
     fgs1_breaks = ['FGS Realignment 1', 'FGS Realignment 2', 'SIAF Update']
     fgs2_breaks = ['FGS Realignment 2', 'SIAF Update', 'FGS2 Deactivated', 'FGS2 Reactivated']
 
@@ -127,23 +130,22 @@ class AcqImageV2V3Monitor(BaseMonitor):
         things besides FGS trends (such as bad coordinates).
         """
         data = self.model.new_data
-        # Filters determined by the team. These options are meant to filter out most outliers to study FGS zero-point
-        # offsets and rate of change with time.
-        index = np.where(
+
+        # Filters determined by the team.
+        # These options are meant to filter out most outliers to study FGS zero-point offsets and rate of change with
+        # time.
+        # Filter on LINENUM endswith 1 as this indicates that it was the first ACQIMAGE taken in the set (it's a good
+        # bet that this is the first ACQ, which you want to sample "blind pointings").
+        filtered_df = data[
             (data.OBSTYPE == 'IMAGING') &
             (data.NEVENTS >= 2000) &
             (np.sqrt(data.V2SLEW ** 2 + data.V3SLEW ** 2) < 2) &
             (data.SHUTTER == 'Open') &
             (data.LAMPEVNT >= 500) &
             (data.ACQSTAT == 'Success') &
-            (data.EXTENDED == 'NO')
-        )
-
-        partially_filtered = data.iloc[index]
-
-        # Filter on LINENUM endswith 1 as this indicates that it was the first ACQIMAGE taken in the set (it's a good
-        # bet that this is the first ACQ, which you want to sample "blind pointings").
-        filtered_df = partially_filtered[partially_filtered.LINENUM.str.endswith('1')]
+            (data.EXTENDED == 'NO') &
+            (data.LINENUM.str.endswith('1'))
+            ]
 
         return filtered_df.sort_values('EXPSTART').reset_index(drop=True)
 
@@ -166,16 +168,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
             # last_updated_results[name] = (v2_line_fit, v3_line_fit)
             last_updated_results[name] = {
-                'V2': {
-                    'slope': v2_fit[1],
-                    'start': v2_line[0],
-                    'end': v2_line[-1]
-                },
-                'V3': {
-                    'slope': v3_fit[1],
-                    'start': v3_line[0],
-                    'end': v3_line[-1]
-                }
+                'V2': {'slope': v2_fit[1], 'start': v2_line[0], 'end': v2_line[-1]},
+                'V3': {'slope': v3_fit[1], 'start': v3_line[0], 'end': v3_line[-1]}
             }
 
         return groups, last_updated_results
@@ -218,7 +212,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
         return notification
 
-    def _create_traces(self, df, breakpoint_index):
+    def _create_traces(self, df: pd.DataFrame, breakpoint_index: int):
         """Create V2V3 traces for the monitor figure."""
         for i, slew in enumerate(['V2SLEW', 'V3SLEW']):
             time = Time(df.EXPSTART, format='mjd')
@@ -248,7 +242,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
             self.figure.add_traces([scatter, line], rows=[i + 1] * 2, cols=[1] * 2)
 
-    def _create_breakpoint_lines(self, fgs_breakpoint_list):
+    def _create_breakpoint_lines(self, fgs_breakpoint_list: List[str]) -> List[dict]:
         return [
             {
                 'type': 'line',
@@ -273,6 +267,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
         fgs_groups, _ = self.results  # retrieve the groups already found in track.
 
         traces_per_fgs = {'F1': 0, 'F2': 0, 'F3': 0}
+
         for name, group in fgs_groups:
             if name == 'F3':
                 traces_per_fgs[name] += 4
@@ -290,19 +285,17 @@ class AcqImageV2V3Monitor(BaseMonitor):
                     df = group[group.EXPSTART >= convert_day_of_year(t_start).mjd]
 
                 else:
-                    df = group.iloc[
-                        np.where(
-                            (group.EXPSTART >= convert_day_of_year(t_start).mjd) &
-                            (group.EXPSTART <= convert_day_of_year(t_end).mjd)
-                        )
-                    ]
+                    df = group[
+                        (group.EXPSTART >= convert_day_of_year(t_start).mjd) &
+                        (group.EXPSTART <= convert_day_of_year(t_end).mjd)
+                        ]
 
                 if df.empty:  # Sometimes there may be no data; For example, FGS2 was not used for a while
                     continue
 
                 # Plot V2 and V3 offsets v time
-                traces_per_fgs[name] += 4
                 self._create_traces(df, i_breaks)
+                traces_per_fgs[name] += 4  # There are four plots created with each call to _create_traces
 
         # Create vertical lines
         lines = [
@@ -341,33 +334,17 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
         # Create visibility toggles for buttons
         # F1 traces are created first, so the order for the list of traces is f1 traces then f2 traces
-        f1_visibility = (
-                list(repeat(True, traces_per_fgs['F1'])) +
-                list(repeat(False, traces_per_fgs['F2'])) +
-                list(repeat(False, traces_per_fgs['F3']))
-        )
+        n_traces = list(traces_per_fgs.values())
 
-        f2_visibility = (
-                list(repeat(False, traces_per_fgs['F1'])) +
-                list(repeat(True, traces_per_fgs['F2'])) +
-                list(repeat(False, traces_per_fgs['F3']))
-        )
-
-        f3_visibility = (
-                list(repeat(False, traces_per_fgs['F1'])) +
-                list(repeat(False, traces_per_fgs['F2'])) +
-                list(repeat(True, traces_per_fgs['F3']))
-        )
-
-        labels = ['FGS1', 'FGS2', 'FGS3']
-
-        titles = [
-            f'<a href="https://spacetelescope.github.io/cosmo/monitors.html#fgs-monitoring">{fgs + self.name}</a>'
-            for fgs in labels
+        visibility = [
+            create_visibility(n_traces, [True, False, False]),  # F1
+            create_visibility(n_traces, [False, True, False]),  # F2
+            create_visibility(n_traces, [False, False, True])  # F3
         ]
 
+        labels = ['FGS1', 'FGS2', 'FGS3']
+        titles = [f'<a href="{self.docs}">{fgs + self.name}</a>' for fgs in labels]
         shapes = [lines + fgs1_breaks, lines + fgs2_breaks, lines]
-        visibility = [f1_visibility, f2_visibility, f3_visibility]
 
         # Create buttons
         updatemenus = [
@@ -379,11 +356,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
                         method='update',
                         args=[
                             {'visible': visible},
-                            {
-                                'title': title,
-                                'annotations': annotations,
-                                'shapes': shape_set
-                            }
+                            {'title': title, 'annotations': annotations, 'shapes': shape_set}
                         ]
                     ) for label, visible, title, shape_set in zip(labels, visibility, titles, shapes)
                 ]
@@ -409,6 +382,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
 class SpecAcqBaseMonitor(BaseMonitor):
     """Base monitor class for the spectroscopic Acq types: PEAKD and PEAKXD"""
+    docs = "https://spacetelescope.github.io/cosmo/monitors.html#acqpeakd-monitor"  # TODO: refactor docs; combine specs
     labels = ['ROOTNAME', 'PROPOSID', 'LIFE_ADJ', 'OPT_ELEM', 'CENWAVE', 'DETECTOR']
     output = COS_MONITORING
     slew = None
@@ -479,16 +453,12 @@ class SpecAcqBaseMonitor(BaseMonitor):
 
         fgs_labels = ['All FGS', 'FGS1', 'FGS2', 'FGS3']
 
-        all_visible = list(repeat(True, sum(trace_count.values())))
-        f1_visible = list(repeat(True, trace_count['F1'])) + list(repeat(False, trace_count['F2'] + trace_count['F3']))
-
-        f2_visible = (
-                list(repeat(False, trace_count['F1'])) +
-                list(repeat(True, trace_count['F2'])) +
-                list(repeat(False, trace_count['F3']))
-        )
-
-        f3_visible = list(repeat(False, trace_count['F1'] + trace_count['F2'])) + list(repeat(True, trace_count['F3']))
+        # Create visibility options for buttons
+        n_traces = list(trace_count.values())
+        all_fgs = create_visibility(n_traces, [True, True, True])
+        f1_visible = create_visibility(n_traces, [True, False, False])
+        f2_visible = create_visibility(n_traces, [False, True, False])
+        f3_visible = create_visibility(n_traces, [False, False, True])
 
         # Create buttons
         updatemenus = [
@@ -500,14 +470,9 @@ class SpecAcqBaseMonitor(BaseMonitor):
                         method='update',
                         args=[
                             {'visible': visible},
-                            {
-                                'title': (
-                                    f'<a href="https://spacetelescope.github.io/cosmo/monitors.html#acqpeakd-monitor">'
-                                    f'{fgs} {self.name}</a>'
-                                )
-                            }
+                            {'title': f'<a href="{self.docs}">{fgs} {self.name}</a>'}
                         ]
-                    ) for fgs, visible in zip(fgs_labels, [all_visible, f1_visible, f2_visible, f3_visible])
+                    ) for fgs, visible in zip(fgs_labels, [all_fgs, f1_visible, f2_visible, f3_visible])
                 ]
             )
         ]

@@ -149,10 +149,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
                     dict(
                         label=label,
                         method='update',
-                        args=[
-                            {'visible': visible},
-                            {'title': title}
-                        ]
+                        args=[{'visible': visible}, {'title': title}]
                     ) for label, title, visible in zip(labels, titles, [all_visible, lp_neg1, lp_1, lp_2, lp_3, lp_4])
                 ]
             )
@@ -160,7 +157,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
 
         # Set the layout.
         layout = go.Layout(
-            title=f'<a href="https://spacetelescope.github.io/cosmo/monitors.html#osm-drift-monitor">{self.name}</a>',
+            title=f'<a href="{self.docs}">{self.name}</a>',
             xaxis=dict(title='Time since last OSM1 move [s]', matches='x2'),
             xaxis2=dict(title='Time since last OSM1 move [s]'),
             yaxis=dict(title='SHIFT1 drift rate [pixels/sec]'),
@@ -285,10 +282,7 @@ class NUVOSMDriftMonitor(BaseMonitor):
                     dict(
                         label=label,
                         method='update',
-                        args=[
-                            {'visible': visible},
-                            {'title': title}
-                        ]
+                        args=[{'visible': visible}, {'title': title}]
                     ) for label, title, visible in zip(labels, titles, [all_visible, nuva, nuvb, nuvc])
                 ]
             )
@@ -296,7 +290,7 @@ class NUVOSMDriftMonitor(BaseMonitor):
 
         # Set the layout. Refer to the commented plot grid to make sense of this.
         layout = go.Layout(
-            title=f'<a href="https://spacetelescope.github.io/cosmo/monitors.html#osm-drift-monitor">{self.name}</a>',
+            title=f'<a href="{self.docs}">{self.name}</a>',
             xaxis=dict(title='Time since last OSM1 move [s]', matches='x3'),
             xaxis3=dict(title='Time since last OSM1 move [s]'),
             xaxis2=dict(title='Time since last OSM2 move [s]', matches='x4'),

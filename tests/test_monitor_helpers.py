@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 
-from cosmo.monitor_helpers import convert_day_of_year, fit_line, explode_df, ExposureAbsoluteTime
+from cosmo.monitor_helpers import convert_day_of_year, fit_line, explode_df, ExposureAbsoluteTime, create_visibility
 
 CONVERT_DOY_GOOD_DATES = (('date',), [(2017.301,), ('2017.301',)])
 CONVERT_DOY_BAD_DATES = (('date',), [(1,), ('1',)])
@@ -91,3 +91,15 @@ class TestAbsoluteTime:
     @pytest.mark.parametrize(*ABSTIME_GOOD_INPUT)
     def test_ingest_works(self, df, expstart, time_array, time_array_key):
         ExposureAbsoluteTime(df=df, expstart=expstart, time_array=time_array, time_array_key=time_array_key)
+
+
+class TestCreateVisibility:
+
+    def test_output(self):
+        test_trace_lengths = [1, 2, 3]
+        test_visible = [True, False, False]
+
+        visible_options = create_visibility(test_trace_lengths, test_visible)
+
+        assert len(visible_options) == 6
+        assert visible_options == [True, False, False, False, False, False]
