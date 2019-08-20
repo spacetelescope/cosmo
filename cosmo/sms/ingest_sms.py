@@ -20,6 +20,8 @@ class SMSFile:
     patterns = {
         'ROOTNAME': r'l[a-z0-9]{7}',  # String of 7 alpha-numeric characters after 'l'
         'PROPOSID': r'(?<=l[a-z0-9]{7} )\d{5}',  # String of 5 digits occurring after a rootname.
+        # Exposure: Group of three sets of alpha(caps)-numeric characters
+        'EXPOSURE': r'(?<= )[A-Z0-9]{3} [A-Z0-9]{2} [A-Z0-9]{2}(?= \d{2} )',
         'DETECTOR': r'(?<= )NUV|FUV(?= )',  # Either NUV or FUV
         'OPMODE': r'ACQ\/\S{5,6}|TIME\-TAG|ACCUM',  # ACQ followed by 5 or 6 characters or TIME-TAG or ACCUM
         'EXPTIME': r'(?<= )\d+\.\d{1}(?= )',  # Float with one decimal place followed and preceded by a space
@@ -38,6 +40,7 @@ class SMSFile:
     table_keys = {
         'ROOTNAME': str,
         'PROPOSID': int,
+        'EXPOSURE': str,
         'DETECTOR': str,
         'OPMODE': str,
         'EXPTIME': float,
@@ -114,6 +117,9 @@ class SMSFile:
             }
         )
 
+        # Ingest EXPOSURE
+        data['EXPOSURE'] = [''.join(item.split()) for item in re.findall(self.patterns['EXPOSURE'], sms_string)]
+
         # Ingest fuvhvstate since some values are empty
         for item in re.findall(self.patterns['FUVHVSTATE'], sms_string):
             data['FUVHVSTATE'].append(item if item.strip() else 'N/A')
@@ -139,8 +145,9 @@ class SMSFile:
             data['TSINCEOSM1'].append(tsinceosm1)
             data['TSINCEOSM2'].append(tsinceosm2)
 
-        # Add the filename
+        # Add the filename and version
         data.update({'FILEID': list(repeat(self.file_id, len(data['ROOTNAME'])))})
+        data.update({'VERSION': list(repeat(self.version, len(data['ROOTNAME'])))})
 
         return data
 
@@ -183,8 +190,9 @@ class SMSFile:
                     SMSTable.insert(**row).on_conflict(
                         action='update',
                         update=row,
-                        conflict_target=[SMSTable.ROOTNAME],
-                        where=(EXCLUDED.FILEID_id >= SMSTable.FILEID_id)
+                        conflict_target=[SMSTable.EXPOSURE],
+                        # Update if the FILEID is greater or if the new version is greater
+                        where=((EXCLUDED.FILEID_id > SMSTable.FILEID_id) | (EXCLUDED.VERSION > SMSTable.VERSION))
                     ).execute()
 
 
