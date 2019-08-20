@@ -5,10 +5,10 @@ import os
 
 from itertools import repeat
 from monitorframe.monitor import BaseMonitor
-from typing import List, Union
+from typing import Union, List
 
 from .osm_data_models import OSMShiftDataModel
-from ..monitor_helpers import ExposureAbsoluteTime, explode_df
+from ..monitor_helpers import ExposureAbsoluteTime, explode_df, create_visibility
 from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
@@ -22,19 +22,6 @@ LP_MOVES = {
 def match_dfs(df1: pd.DataFrame, df2: pd.DataFrame, key: str) -> pd.DataFrame:
     """Filter df1 based on which values in key are available in df2."""
     return df1[df1.apply(lambda x: x[key] in df2[key].values, axis=1)]
-
-
-def create_visibility(trace_lengths: List[int], visible_list: List[bool]) -> List[bool]:
-    """Create visibility lists for plotly buttons. trace_lengths and visible_list must be in the correct order.
-
-    :param trace_lengths: List of the number of traces in each "button set".
-    :param visible_list: Visibility setting for each button set (either True or False).
-    """
-    visibility = []  # Total visibility. Length should match the total number of traces in the figure.
-    for visible, trace_length in zip(visible_list, trace_lengths):
-        visibility += list(repeat(visible, trace_length))  # Set each trace per button.
-
-    return visibility
 
 
 def compute_segment_diff(df: pd.DataFrame, shift: str, segment1: str, segment2: str) -> Union[pd.DataFrame, None]:
@@ -66,6 +53,26 @@ def compute_segment_diff(df: pd.DataFrame, shift: str, segment1: str, segment2: 
     return
 
 
+def create_osmshift_buttons(doc_link: str, button_labels: List[str], name: str, visibilities: List[List[bool]]
+                            ) -> List[go.layout.Updatemenu]:
+    """Create the updatemenu buttons for the OSM Shift plots. This is the same procedure for NUV and FUV."""
+    titles = [f'<a href="{doc_link}">{label} {name}</a>' for label in button_labels]
+
+    # Create the menu buttons
+    return [
+        go.layout.Updatemenu(
+            type='buttons',
+            buttons=[
+                dict(
+                    label=label,
+                    method='update',
+                    args=[{'visible': visibility}, {'title': button_title}]
+                ) for label, visibility, button_title in zip(button_labels, visibilities, titles)
+            ]
+        )
+    ]
+
+
 class FuvOsmShiftMonitor(BaseMonitor):
     """Abstracted FUV OSM Shift monitor. This monitor class is not meant to be used directly, but rather inherited from
     by specific Shift1 and Shift2 monitors (which share the same plots, but differ in which shift value is plotted and
@@ -73,6 +80,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
     """
     data_model = OSMShiftDataModel
     output = COS_MONITORING
+    docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-shift-monitors"
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'SEGMENT', 'CENWAVE']
 
     subplots = True
@@ -236,27 +244,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
         ]
 
         button_labels = ['All FPPOS', 'FPPOS 1', 'FPPOS 2', 'FPPOS 3', 'FPPOS 4']
-        titles = [
-            f'<a href="https://spacetelescope.github.io/cosmo/monitors.html#osm-shift-monitors">{label} {self.name}</a>'
-            for label in button_labels
-        ]
-
-        # Create the menu buttons
-        updatemenus = [
-            dict(
-                type='buttons',
-                buttons=[
-                    dict(
-                        label=label,
-                        method='update',
-                        args=[
-                            {'visible': visibility},
-                            {'title': button_title}
-                        ]
-                    ) for label, visibility, button_title in zip(button_labels, visibilities, titles)
-                ]
-            )
-        ]
+        updatemenus = create_osmshift_buttons(self.docs, button_labels, self.name, visibilities)
 
         # Create vertical lines for the LP moves
         lines = [
@@ -328,6 +316,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
     how outliers are defined)."""
     data_model = OSMShiftDataModel
     output = COS_MONITORING
+    docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-shift-monitors"
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'CENWAVE']
 
     subplots = True,
@@ -427,6 +416,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
                 col=1,
             )
 
+            # Plot a rolling average of the shift value
             self.figure.add_trace(
                 go.Scattergl(
                     x=rolling_mean.index,
@@ -510,27 +500,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
         ]
 
         button_labels = ['All Stripes', 'NUVA', 'NUVB', 'NUVC']
-        titles = [
-            f'<a href="https://spacetelescope.github.io/cosmo/monitors.html#osm-shift-monitors">{label} {self.name}</a>'
-            for label in button_labels
-        ]
-
-        # Create the menu buttons
-        updatemenus = [
-            dict(
-                type='buttons',
-                buttons=[
-                    dict(
-                        label=label,
-                        method='update',
-                        args=[
-                            {'visible': visibility},
-                            {'title': button_title}
-                        ]
-                    ) for label, visibility, button_title in zip(button_labels, visibilities, titles)
-                ]
-            )
-        ]
+        updatemenus = create_osmshift_buttons(self.docs, button_labels, self.name, visibilities)
 
         # Set layout
         layout = go.Layout(
@@ -555,10 +525,7 @@ class NuvOsmShift1Monitor(NuvOsmShiftMonitor):
     shift = 'SHIFT_DISP'  # shift1
 
     def find_outliers(self) -> dict:
-        return {
-            'B-C': self.results['B-C'].seg_diff.abs() >= 10,
-            'C-A': self.results['C-A'].seg_diff.abs() >= 10
-        }
+        return {'B-C': self.results['B-C'].seg_diff.abs() >= 10, 'C-A': self.results['C-A'].seg_diff.abs() >= 10}
 
 
 class NuvOsmShift2Monitor(NuvOsmShiftMonitor):
@@ -566,7 +533,4 @@ class NuvOsmShift2Monitor(NuvOsmShiftMonitor):
     shift = 'SHIFT_XDISP'  # shift2
 
     def find_outliers(self) -> dict:
-        return {
-            'B-C': self.results['B-C'].seg_diff.abs() >= 5,
-            'C-A': self.results['C-A'].seg_diff.abs() >= 5
-        }
+        return {'B-C': self.results['B-C'].seg_diff.abs() >= 5, 'C-A': self.results['C-A'].seg_diff.abs() >= 5}
