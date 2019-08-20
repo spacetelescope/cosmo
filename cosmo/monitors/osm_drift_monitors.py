@@ -44,7 +44,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
     """
     data_model = OSMDriftDataModel
     output = COS_MONITORING
-    doc_link = "https://spacetelescope.github.io/cosmo/monitors.html#osm-drift-monitor"
+    docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-drift-monitor"
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'OPT_ELEM', 'SEGMENT']
 
     subplots = True
@@ -127,8 +127,8 @@ class FUVOSMDriftMonitor(BaseMonitor):
             trace_counts[lp] = lp_count
 
         # Create figure buttons for LP
-        titles = [f'<a href="{self.doc_link}">{self.name} All LPs'] + [
-            f'<a href="{self.doc_link}">{self.name} LP{lp}</a>'
+        titles = [f'<a href="{self.docs}">{self.name} All LPs'] + [
+            f'<a href="{self.docs}">{self.name} LP{lp}</a>'
             for lp in trace_counts.keys()
         ]
 
@@ -178,6 +178,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
 class NUVOSMDriftMonitor(BaseMonitor):
     data_model = OSMDriftDataModel
     output = COS_MONITORING
+    docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-drift-monitor"
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'OPT_ELEM']
 
     subplots = True
@@ -216,40 +217,82 @@ class NUVOSMDriftMonitor(BaseMonitor):
 
         segment_groups, _ = self.results
 
-        # Plot drift v time for each grating
+        # Plot drift v time for each segment/stripe
+        trace_counts = {}
         for segment, group in segment_groups:
-            for x, y, axes, name in zip(x_names, y_names, locations, titles):
-                trace = go.Scattergl(
-                    x=group[x],
-                    y=group[y],
-                    mode='markers',
-                    text=group.hover_text,
-                    name=f'{segment} {name}',
-                    legendgroup=segment,
-                    marker=dict(
-                        color=group.EXPSTART,
-                        cmin=c_min,
-                        cmax=c_max,
-                        colorscale='Viridis',
-                        showscale=True,
-                        colorbar=dict(
-                            title='Observation Date',
-                            tickmode='array',
-                            ticks='outside',
-                            tickvals=[self.data.EXPSTART.min(), self.data.EXPSTART.mean(), self.data.EXPSTART.max()],
-                            ticktext=[
-                                f'{Time(self.data.EXPSTART.min(), format="mjd").to_datetime().date()}',
-                                f'{Time(self.data.EXPSTART.mean(), format="mjd").to_datetime().date()}',
-                                f'{Time(self.data.EXPSTART.max(), format="mjd").to_datetime().date()}'
-                            ],
-                            len=0.55,
-                            y=0,
-                            yanchor='bottom'
-                        )
-                    ),
-                )
+            segment_count = 0
 
-                self.figure.append_trace(trace, *axes)
+            # Plot per grating
+            for grating, grating_group in group.groupby('OPT_ELEM'):
+                for i, (x, y, axes, name) in enumerate(zip(x_names, y_names, locations, titles)):
+                    self.figure.append_trace(
+                        go.Scattergl(
+                            x=grating_group[x],
+                            y=grating_group[y],
+                            mode='markers',
+                            text=grating_group.hover_text,
+                            name=f'{segment} {grating}',
+                            legendgroup=grating,
+                            showlegend=True if i == 0 else False,
+                            marker=dict(
+                                color=grating_group.EXPSTART,
+                                cmin=c_min,
+                                cmax=c_max,
+                                colorscale='Viridis',
+                                showscale=True,
+                                colorbar=dict(
+                                    title='Observation Date',
+                                    tickmode='array',
+                                    ticks='outside',
+                                    tickvals=[self.data.EXPSTART.min(), self.data.EXPSTART.mean(),
+                                              self.data.EXPSTART.max()],
+                                    ticktext=[
+                                        f'{Time(self.data.EXPSTART.min(), format="mjd").to_datetime().date()}',
+                                        f'{Time(self.data.EXPSTART.mean(), format="mjd").to_datetime().date()}',
+                                        f'{Time(self.data.EXPSTART.max(), format="mjd").to_datetime().date()}'
+                                    ],
+                                    len=0.65,
+                                    y=0,
+                                    yanchor='bottom'
+                                )
+                            ),
+                        ),
+                        *axes
+                    )
+
+                    segment_count += 1
+
+            trace_counts[segment] = segment_count
+
+        # Create figure buttons for LP
+        titles = [f'<a href="{self.docs}">{self.name} All Stripes'] + [
+            f'<a href="{self.docs}">{self.name} {stripe}</a>'
+            for stripe in trace_counts.keys()
+        ]
+
+        labels = ['All Stripes'] + [f'{stripe}' for stripe in trace_counts.keys()]
+
+        # Create trace visibility options
+        traces = list(trace_counts.values())
+        all_visible = create_visibility(traces, [True, True, True])  # all stripes, NUVA, NUVB, NUVC
+        nuva = create_visibility(traces, [True, False, False])
+        nuvb = create_visibility(traces, [False, True, False])
+        nuvc = create_visibility(traces, [False, False, True])
+
+        updatemenus = [
+            go.layout.Updatemenu(
+                buttons=[
+                    dict(
+                        label=label,
+                        method='update',
+                        args=[
+                            {'visible': visible},
+                            {'title': title}
+                        ]
+                    ) for label, title, visible in zip(labels, titles, [all_visible, nuva, nuvb, nuvc])
+                ]
+            )
+        ]
 
         # Set the layout. Refer to the commented plot grid to make sense of this.
         layout = go.Layout(
@@ -261,7 +304,8 @@ class NUVOSMDriftMonitor(BaseMonitor):
             yaxis=dict(title='SHIFT1 drift rate [pixels/sec]'),
             yaxis3=dict(title='SHIFT2 drift rate [pixels/sec]'),
             yaxis2=dict(title='SHIFT1 drift rate [pixels/sec]'),
-            yaxis4=dict(title='SHIFT2 drift rate [pixels/sec]')
+            yaxis4=dict(title='SHIFT2 drift rate [pixels/sec]'),
+            updatemenus=updatemenus
         )
 
         self.figure.update_layout(layout)
