@@ -8,90 +8,60 @@ from cosmo.filesystem import get_file_data, FileData, FileDataFinder
 
 TEST_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
 
-ARGS = (
-    'source_dr',
-    'file_pattern',
-    'keywords',
-    'extensions',
-    'spt_keywords',
-    'spt_extensions',
-    'data_extensions',
-    'data_keys'
-)
+BAD_INPUT = [
+    # Different lengths in the data
+    (TEST_DATA, '*', ['key1', 'key2'], [1], None, None, None, None),
+    (TEST_DATA, '*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], [1], None, None),
+    (TEST_DATA, '*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], [1], ['key1', 'key2']),
 
-DIFFERENT_LENGTHS = (
-    ARGS,
-    [
-        (TEST_DATA, '*', ['key1', 'key2'], [1], None, None, None, None),
-        (TEST_DATA, '*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], [1], None, None),
-        (TEST_DATA, '*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], [1], ['key1', 'key2'])
-    ]
-)
+    # Input is missing corresponding extension argument with the keyword argument given
+    (TEST_DATA, '*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], None, None, None),
+    (TEST_DATA, '*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], None, ['key1', 'key2']),
 
-MISSING_EXTS = (
-    ARGS,
-    [
-        (TEST_DATA, '*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], None, None, None),
-        (TEST_DATA, '*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], None, ['key1', 'key2'])
-    ]
-)
+    # Input is missing corresponding keyword argument with the extension argument given
+    (TEST_DATA, '*', ['key1', 'key2'], [1, 1], None, [1, 1], None, None),
+    (TEST_DATA, '*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], [1, 1], None),
 
-MISSING_KEYS = (
-    ARGS,
-    [
-        (TEST_DATA, '*', ['key1', 'key2'], [1, 1], None, [1, 1], None, None),
-        (TEST_DATA, '*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], [1, 1], None)
-    ]
-)
+    # Input includes a bad directory
+    ('doesnotexist', '*', ['key'], [0], None, None, None, None)
+]
+
+
+@pytest.fixture(params=BAD_INPUT)
+def params(request):
+    return request.param
 
 
 class TestFileDataFinder:
 
-    @pytest.mark.parametrize(*DIFFERENT_LENGTHS)
-    def test_fails_for_different_legnths(self, source_dr, file_pattern, keywords, extensions, spt_keywords,
-                                         spt_extensions, data_extensions, data_keys):
-        with pytest.raises(ValueError):
-            FileDataFinder(
-                source_dr,
-                file_pattern,
-                keywords,
-                extensions,
-                spt_keywords=spt_keywords,
-                spt_extensions=spt_extensions,
-                data_keywords=data_keys,
-                data_extensions=data_extensions
-            )
+    def test_fails_for_bad_input(self, params):
+        source_dr, file_pattern, keywords, extensions, spt_keywords, spt_extensions, data_extensions, data_keys = params
 
-    @pytest.mark.parametrize(*MISSING_EXTS)
-    def test_fails_for_missing_extensions(self, source_dr, file_pattern, keywords, extensions, spt_keywords,
-                                          spt_extensions, data_extensions, data_keys):
+        if source_dr == TEST_DATA:
+            with pytest.raises(ValueError):
+                FileDataFinder(
+                    source_dr,
+                    file_pattern,
+                    keywords,
+                    extensions,
+                    spt_keywords=spt_keywords,
+                    spt_extensions=spt_extensions,
+                    data_keywords=data_keys,
+                    data_extensions=data_extensions
+                )
 
-        with pytest.raises(TypeError):
-            FileDataFinder(
-                source_dr,
-                file_pattern,
-                keywords,
-                extensions,
-                spt_keywords=spt_keywords,
-                spt_extensions=spt_extensions,
-                data_keywords=data_keys,
-                data_extensions=data_extensions
-            )
-
-    @pytest.mark.parametrize(*MISSING_KEYS)
-    def test_fails_for_missing_keywords(self, source_dr, file_pattern, keywords, extensions, spt_keywords,
-                                        spt_extensions, data_extensions, data_keys):
-        with pytest.raises(TypeError):
-            FileDataFinder(
-                source_dr,
-                file_pattern,
-                keywords,
-                extensions,
-                spt_keywords=spt_keywords,
-                spt_extensions=spt_extensions,
-                data_keywords=data_keys,
-                data_extensions=data_extensions
-            )
+        else:
+            with pytest.raises(OSError):
+                FileDataFinder(
+                    source_dr,
+                    file_pattern,
+                    keywords,
+                    extensions,
+                    spt_keywords=spt_keywords,
+                    spt_extensions=spt_extensions,
+                    data_keywords=data_keys,
+                    data_extensions=data_extensions
+                )
 
     def test_get_data_from_files(self):
         test_finder = FileDataFinder(TEST_DATA, '*rawtag*', ('ROOTNAME',), (0,), cosmo_layout=False)

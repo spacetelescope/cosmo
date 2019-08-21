@@ -37,14 +37,14 @@ class FileDataFinder:
 
         if bool(self.spt_keywords or self.spt_extensions):
             if not(self.spt_keywords and self.spt_extensions):
-                raise TypeError('spt_keywords and spt_extensions must be used together.')
+                raise ValueError('spt_keywords and spt_extensions must be used together.')
 
             if len(self.spt_keywords) != len(self.spt_extensions):
                 raise ValueError('spt_keywords and spt_extensions must be the same length.')
 
         if bool(self.data_keywords or self.data_extensions):
             if not (self.data_keywords and self.data_extensions):
-                raise TypeError('data_keywords and data_extensions must be used together.')
+                raise ValueError('data_keywords and data_extensions must be used together.')
 
             if len(self.data_keywords) != len(self.data_extensions):
                 raise ValueError('data_keywords and data_extensions must be the same length.')
