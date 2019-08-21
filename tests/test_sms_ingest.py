@@ -76,6 +76,8 @@ class TestSMSFile:
         correct_dtypes = {
             'FILEID': object,
             'FILENAME': object,
+            'EXPOSURE': object,
+            'VERSION': object,
             'ROOTNAME': object,
             'PROPOSID': int,
             'DETECTOR': object,
@@ -145,3 +147,17 @@ class TestSMSFinder:
 
         assert len(testcase) == 1
         assert testcase.version.values[0] == 'c2'
+
+    def test_entry_is_updated(self, test_finder):
+        test_sms = SMSFile(os.path.join(TEST_DATA, '181137b3.txt'), '181137', 'b3')
+        test_sms.insert_to_db()
+
+        finder = SMSFinder(TEST_DATA)  # Will discover the new version, b4
+        finder.ingest_files()  # ingest new files
+
+        record = SMSFileStats.get(SMSFileStats.FILEID == '181137')
+        assert record.VERSION == 'c2'  # After running ingest_files the newer file should've replaced the old version
+
+        records = SMSTable.select().where(SMSTable.FILEID == '181137').dicts().iterator()
+        for record in records:
+            assert record['VERSION'] == 'c2'
