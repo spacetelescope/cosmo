@@ -70,12 +70,13 @@ class SMSFile:
         'TSINCEOSM2'
     ]
 
-    def __init__(self, smsfile: str, file_id: str, version: str):
+    def __init__(self, smsfile: str):
         """Initialize and ingest the sms file data."""
         self.datetime_format = '%Y-%m-%d %H:%M:%S'
         self.filename = smsfile
-        self.file_id = file_id
-        self.version = version
+        self.file_id = os.path.basename(self.filename).split('.')[0]
+        self.sms_id = self.file_id[:6]   # The SMS id is the first 6 digits of the filename
+        self.version = self.file_id[6:]  # The SMS version is the last 2 (or sometimes 3) digits of the filename
         self.ingest_date = datetime.datetime.today()
 
         self._data = self.ingest_smsfile()
@@ -145,17 +146,17 @@ class SMSFile:
             data['TSINCEOSM1'].append(tsinceosm1)
             data['TSINCEOSM2'].append(tsinceosm2)
 
-        # Add the filename and version
+        # Add the "sms id"
         data.update({'FILEID': list(repeat(self.file_id, len(data['ROOTNAME'])))})
-        data.update({'VERSION': list(repeat(self.version, len(data['ROOTNAME'])))})
 
         return data
 
     def insert_to_db(self):
         """Insert ingested SMS data into the database tables."""
         new_record = {
-            'FILEID': self.file_id,
+            'SMSID': self.sms_id,
             'VERSION': self.version,
+            'FILEID': self.file_id,
             'FILENAME': self.filename,
             'INGEST_DATE': self.ingest_date.strftime(self.datetime_format)
         }
@@ -170,8 +171,8 @@ class SMSFile:
                 SMSFileStats.insert(new_record).on_conflict(
                     action='update',
                     update=new_record,
-                    conflict_target=[SMSFileStats.FILEID],
-                    where=(EXCLUDED.VERSION >= SMSFileStats.VERSION)
+                    conflict_target=[SMSFileStats.SMSID],
+                    where=(EXCLUDED.VERSION > SMSFileStats.VERSION)
                 ).execute()
 
         # Insert data into sms data table
@@ -191,8 +192,9 @@ class SMSFile:
                         action='update',
                         update=row,
                         conflict_target=[SMSTable.EXPOSURE],
-                        # Update if the FILEID is greater or if the new version is greater
-                        where=((EXCLUDED.FILEID_id > SMSTable.FILEID_id) | (EXCLUDED.VERSION > SMSTable.VERSION))
+                        # Update if the FILEID is greater. This is only possible if exposures appear in a later SMS
+                        # or a new SMS version is available.
+                        where=(EXCLUDED.FILEID_id > SMSTable.FILEID_id)
                     ).execute()
 
 
@@ -250,7 +252,7 @@ class SMSFinder:
 
     def find_all(self) -> pd.DataFrame:
         """Find all SMS files from the source directory. Determine if the file is 'new'."""
-        results = {'smsfile': [], 'is_new': [], 'file_id': [], 'version': []}
+        results = {'smsfile': [], 'is_new': [], 'sms_id': [], 'version': []}
         all_files = glob.glob(os.path.join(self.filesource, '*'))
 
         # Filter out l-exp files that have txt counterparts
@@ -261,11 +263,11 @@ class SMSFinder:
             match = re.findall(self.sms_pattern, os.path.basename(file))
             if match and os.path.isfile(file):
                 name = match[0]  # findall returns a list. There should only be one match per file
-                file_id = name[:-2]
-                version = name[-2:]
+                sms_id = name[:6]
+                version = name[6:]
 
                 results['version'].append(version)
-                results['file_id'].append(file_id)
+                results['sms_id'].append(sms_id)
                 results['smsfile'].append(file)
                 results['is_new'].append(self._is_new(file))
 
@@ -274,7 +276,7 @@ class SMSFinder:
         # Filter the dataframe for the most recent version of the files per file id
         data = data.iloc[
             [
-                index for _, group in data.groupby('file_id')
+                index for _, group in data.groupby('sms_id')
                 for index in group[group.version == group.version.max()].index.values
             ]
         ].reset_index(drop=True)
@@ -296,6 +298,6 @@ class SMSFinder:
     def ingest_files(self):
         """Add new sms data to the database."""
         if self.new_sms is not None:
-            for _, sms in self.new_sms.iterrows():
-                smsfile = SMSFile(sms.smsfile, sms.file_id, sms.version)
+            for sms in self.new_sms.smsfile:
+                smsfile = SMSFile(sms)
                 smsfile.insert_to_db()

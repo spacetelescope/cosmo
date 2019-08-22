@@ -64,16 +64,16 @@ class TestFileDataFinder:
                 )
 
     def test_get_data_from_files(self):
-        test_finder = FileDataFinder(TEST_DATA, '*rawtag*', ('ROOTNAME',), (0,), cosmo_layout=False)
+        test_finder = FileDataFinder(TEST_DATA, '*lampflash*', ('ROOTNAME',), (0,), cosmo_layout=False)
         file_data = test_finder.get_data_from_files()
 
         assert None not in file_data
-        assert len(file_data) == 4
+        assert len(file_data) == 11
 
 
 @pytest.fixture
 def testfile():
-    file = os.path.join(TEST_DATA, 'ldfd01vpq_rawtag_a.fits.gz')
+    file = os.path.join(TEST_DATA, 'lb4c10niq_lampflash.fits.gz')
     hdu = fits.open(file)
     testfile = FileData(
         file,
@@ -82,7 +82,7 @@ def testfile():
         (0,),
         spt_keys=('LQTDFINI',),
         spt_exts=(1,),
-        data_keys=('RAWX',),
+        data_keys=('TIME',),
         data_exts=(1,)
     )
 
@@ -95,7 +95,7 @@ class TestFileData:
 
     def test_spt_name(self, testfile):
         assert testfile.spt_file is not None
-        assert testfile.spt_file == os.path.join(TEST_DATA, 'ldfd01vpq_spt.fits.gz')
+        assert testfile.spt_file == os.path.join(TEST_DATA, 'lb4c10niq_spt.fits.gz')
 
     def test_get_spt_header_data(self, testfile):
         testfile.get_spt_header_data()
@@ -107,18 +107,18 @@ class TestFileData:
         testfile.get_header_data()
 
         assert 'ROOTNAME' in testfile.data.keys()
-        assert testfile.data['ROOTNAME'] == 'ldfd01vpq'
+        assert testfile.data['ROOTNAME'] == 'lb4c10niq'
 
     def test_get_table_data(self, testfile):
         testfile.get_table_data()
 
-        assert 'RAWX' in testfile.data.keys()
-        assert isinstance(testfile.data['RAWX'],  np.ndarray)
+        assert 'TIME' in testfile.data.keys()
+        assert isinstance(testfile.data['TIME'],  np.ndarray)
 
 
 @pytest.fixture
 def delayed_get_data():
-    file = os.path.join(TEST_DATA, 'ldfd01vpq_rawtag_a.fits.gz')
+    file = os.path.join(TEST_DATA, 'lb4c10niq_lampflash.fits.gz')
 
     delayed_get_data = get_file_data(
         file,
@@ -126,7 +126,7 @@ def delayed_get_data():
         (0,),
         spt_keys=('LQTDFINI',),
         spt_exts=(1,),
-        data_keys=('RAWX',),
+        data_keys=('TIME',),
         data_exts=(1,)
     )
 
@@ -139,7 +139,7 @@ class TestGetFileData:
         result = delayed_get_data.compute(scheduler='multiprocessing')
 
         assert isinstance(result, dict)
-        assert 'ROOTNAME' in result and 'LQTDFINI' in result and 'RAWX' in result
-        assert result['ROOTNAME'] == 'ldfd01vpq'
+        assert 'ROOTNAME' in result and 'LQTDFINI' in result and 'TIME' in result
+        assert result['ROOTNAME'] == 'lb4c10niq'
         assert result['LQTDFINI'] == 'TDF Up'
-        assert isinstance(result['RAWX'], np.ndarray)
+        assert isinstance(result['TIME'], np.ndarray)
