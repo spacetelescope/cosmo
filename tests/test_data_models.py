@@ -1,24 +1,21 @@
 import pandas as pd
 import numpy as np
-import os
 import pytest
 
 from cosmo.monitors.osm_data_models import OSMShiftDataModel, OSMDriftDataModel
 from cosmo.monitors.acq_data_models import AcqPeakdModel, AcqImageModel, AcqPeakxdModel
 from cosmo.sms import SMSFinder
 
-TEST_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
-
 
 @pytest.fixture
-def make_datamodel():
+def make_datamodel(data_dir):
     def _make_datamodel(model):
         if model == OSMDriftDataModel:
             # OSM Drift data model requires that an SMS database exist
-            test_finder = SMSFinder(TEST_DATA)
+            test_finder = SMSFinder(data_dir)
             test_finder.ingest_files()
 
-        model.files_source = TEST_DATA
+        model.files_source = data_dir
         model.cosmo_layout = False
         test_model = model()
 
@@ -164,4 +161,3 @@ class TestAcqPeakxdModel:
 
         for key in keys_that_should_be_there:
             assert key in self.acqpeakxdmodel.new_data
-

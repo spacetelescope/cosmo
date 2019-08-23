@@ -9,15 +9,12 @@ from cosmo.monitors.osm_shift_monitors import (
 
 from cosmo.monitors.osm_data_models import OSMShiftDataModel
 
-TEST_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
-
 
 @pytest.fixture(scope='module', autouse=True)
-def clean_up():
+def clean_up(here):
     yield
 
-    path = os.path.dirname(os.path.abspath(__file__))
-    output = glob(os.path.join(path, '*html')) + glob(os.path.join(path, '*csv'))
+    output = glob(os.path.join(here, '*html')) + glob(os.path.join(here, '*csv'))
 
     if output:
         for file in output:
@@ -25,13 +22,13 @@ def clean_up():
 
 
 @pytest.fixture
-def set_monitor():
+def set_monitor(data_dir, here):
     def _set_monitor(monitor, datamodel):
-        datamodel.files_source = TEST_DATA
+        datamodel.files_source = data_dir
         datamodel.cosmo_layout = False
 
         monitor.data_model = datamodel
-        monitor.output = os.path.dirname(os.path.abspath(__file__))
+        monitor.output = here
 
         active = monitor()
 

@@ -23,3 +23,13 @@ def db_cleanup():
     # Remove temporary write-ahead log file if it exists
     if os.path.exists('test.db-wal'):
         os.remove('test.db-wal')
+
+
+@pytest.fixture(scope='module')
+def data_dir():
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
+
+
+@pytest.fixture(scope='module')
+def here():
+    return os.path.dirname(os.path.abspath(__file__))
