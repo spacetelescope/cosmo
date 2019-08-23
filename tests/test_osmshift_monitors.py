@@ -1,24 +1,11 @@
 import os
 import pytest
 
-from glob import glob
-
 from cosmo.monitors.osm_shift_monitors import (
     FuvOsmShift1Monitor, FuvOsmShift2Monitor, NuvOsmShift1Monitor, NuvOsmShift2Monitor
 )
 
 from cosmo.monitors.osm_data_models import OSMShiftDataModel
-
-
-@pytest.fixture(scope='module', autouse=True)
-def clean_up(here):
-    yield
-
-    output = glob(os.path.join(here, '*html')) + glob(os.path.join(here, '*csv'))
-
-    if output:
-        for file in output:
-            os.remove(file)
 
 
 @pytest.fixture

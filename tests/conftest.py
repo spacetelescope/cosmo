@@ -1,6 +1,8 @@
 import os
 import pytest
 
+from glob import glob
+
 TEST_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cosmoconfig_test.yaml')
 
 # Check to make sure that the test config file is being used. If not, don't run the tests
@@ -25,11 +27,22 @@ def db_cleanup():
         os.remove('test.db-wal')
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='session')
 def data_dir():
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='session')
 def here():
     return os.path.dirname(os.path.abspath(__file__))
+
+
+@pytest.fixture(scope='session', autouse=True)
+def clean_up_output(here):
+    yield
+
+    output = glob(os.path.join(here, '*html')) + glob(os.path.join(here, '*csv'))
+
+    if output:
+        for file in output:
+            os.remove(file)

@@ -1,22 +1,9 @@
 import os
 import pytest
 
-from glob import glob
-
 from cosmo.monitors.osm_drift_monitors import FUVOSMDriftMonitor, NUVOSMDriftMonitor
 from cosmo.monitors.osm_data_models import OSMDriftDataModel
 from cosmo.sms import SMSFinder
-
-
-@pytest.fixture(scope='module', autouse=True)
-def clean_up(here):
-    yield
-
-    output = glob(os.path.join(here, '*html'))
-
-    if output:
-        for file in output:
-            os.remove(file)
 
 
 @pytest.fixture
