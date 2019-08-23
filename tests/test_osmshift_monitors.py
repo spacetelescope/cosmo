@@ -1,54 +1,68 @@
 import os
 import pytest
 
+from glob import glob
+
 from cosmo.monitors.osm_shift_monitors import (
-    compute_segment_diff, FuvOsmShiftMonitor, FuvOsmShift1Monitor, FuvOsmShift2Monitor,
-    NuvOsmShiftMonitor, NuvOsmShift1Monitor, NuvOsmShift2Monitor
+    FuvOsmShift1Monitor, FuvOsmShift2Monitor, NuvOsmShift1Monitor, NuvOsmShift2Monitor
 )
 
 from cosmo.monitors.osm_data_models import OSMShiftDataModel
 
 TEST_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
 
-# TODO: Need to define a better test data set that includes everything that we need: Both FUV segments, NUV Data,
-#  all acq types etc class
+
+@pytest.fixture(scope='module', autouse=True)
+def clean_up():
+    yield
+
+    path = os.path.dirname(os.path.abspath(__file__))
+    output = glob(os.path.join(path, '*html')) + glob(os.path.join(path, '*csv'))
+
+    if output:
+        for file in output:
+            os.remove(file)
 
 
-@pytest.mark.xfail(reason='Incomplete test data set causes these to break')
-class TestFuvOsmShift1Monitor:  # TODO: Refactor to use fixtures instead of setup/teardown class methods
+@pytest.fixture
+def set_monitor():
+    def _set_monitor(monitor, datamodel):
+        datamodel.files_source = TEST_DATA
+        datamodel.cosmo_layout = False
 
-    @classmethod
-    def setup_class(cls):
-        test_datamodel = OSMShiftDataModel
-        test_datamodel.files_source = TEST_DATA
-        test_datamodel.cosmo_layout = False
+        monitor.data_model = datamodel
+        monitor.output = os.path.dirname(os.path.abspath(__file__))
 
-        test_monitor = FuvOsmShift1Monitor
-        test_monitor.data_model = test_datamodel
-        test_monitor.output = os.path.dirname(os.path.abspath(__file__))
-        cls.active_test_monitor = test_monitor()
-        cls.csv_output = os.path.join(
-            os.path.dirname(cls.active_test_monitor.output), f'{cls.active_test_monitor._filename}-outliers.csv'
-        )
+        active = monitor()
 
-    @classmethod
-    def teardown_class(cls):
-        os.remove(cls.active_test_monitor.output)
-        os.remove(cls.csv_output)
+        return active
 
-    def test_data_initialization(self):
-        self.active_test_monitor.initialize_data()
+    return _set_monitor
 
-    def test_run_analysis(self):
-        self.active_test_monitor.run_analysis()
 
-    def test_plotting(self):
-        self.active_test_monitor.plot()
+class TestOsmShiftMonitors:
 
-    def test_write_output(self):
-        self.active_test_monitor.write_figure()
-        assert os.path.exists(self.active_test_monitor.output)
+    @pytest.fixture(
+        autouse=True, params=[FuvOsmShift1Monitor, FuvOsmShift2Monitor, NuvOsmShift1Monitor, NuvOsmShift2Monitor]
+    )
+    def osmshiftmonitor(self, request, set_monitor):
+        osmshiftmonitor = set_monitor(request.param, OSMShiftDataModel)
 
-    def test_store_results(self):
-        self.active_test_monitor.store_results()
-        assert os.path.exists(self.csv_output)
+        request.cls.osmshiftmonitor = osmshiftmonitor
+
+    def test_monitor_steps(self):
+        self.osmshiftmonitor.initialize_data()
+        self.osmshiftmonitor.run_analysis()
+        self.osmshiftmonitor.plot()
+        self.osmshiftmonitor.write_figure()
+        self.osmshiftmonitor.store_results()
+
+        assert os.path.exists(self.osmshiftmonitor.output)
+
+        if 'Fuv' in self.osmshiftmonitor.name:
+            assert os.path.exists(
+                os.path.join(
+                    os.path.dirname(self.osmshiftmonitor.output),
+                    f'{self.osmshiftmonitor._filename}-outliers.csv'
+                )
+            )

@@ -347,8 +347,8 @@ class NuvOsmShiftMonitor(BaseMonitor):
         b_c = match_dfs(self.results['B-C'], df, 'ROOTNAME')
         c_a = match_dfs(self.results['C-A'], df, 'ROOTNAME')
 
-        b_c_outliers = match_dfs(all_b_c_outliers, df, 'ROOTNAME')
-        c_a_outliers = match_dfs(all_c_a_outliers, df, 'ROOTNAME')
+        b_c_outliers = match_dfs(all_b_c_outliers, df, 'ROOTNAME') if not all_b_c_outliers.empty else None
+        c_a_outliers = match_dfs(all_c_a_outliers, df, 'ROOTNAME') if not all_c_a_outliers.empty else None
 
         # Plot diffs v time
         if not b_c.empty:

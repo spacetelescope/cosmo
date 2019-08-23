@@ -13,7 +13,8 @@ def db_cleanup():
     yield  # The tests don't actually need this test "value"
 
     # Cleanup
-    os.remove('test.db')   # Delete test database file after the completion of all tests
+    if os.path.exists('test.db'):
+        os.remove('test.db')   # Delete test database file after the completion of all tests
 
     # Remove temporary shared memory file if it exists
     if os.path.exists('test.db-shm'):
