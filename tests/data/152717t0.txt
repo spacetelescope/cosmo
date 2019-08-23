@@ -1,0 +1,175 @@
+
+COS Exposure Report: SMS 152717T0
+
+Data                                                          Exposure Start    FUV     Mechanism Positions     Cent    Tsince Tsince       Lamp    STIMs      Flash
+Filename Prop  Target     PRG OB AL EX Conf Opmode    ExpTime yyyy.ddd:hh:mm:ss State   Aper   OSM1     OSM2    Wave FP   OSM1   OSM2 Lamp  Curr    A   B  Dop # Dur T
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcr9bubb 13968 DARK       CR9 BU 02 01 FUV  TIME-TAG   1330.0 2015.271:03:30:07 171/167 PSA B  G130M    -----   1309  0  12607  12607              LOW LOW NO
+lcr9bvbk 13968 DARK       CR9 BV 02 01 FUV  TIME-TAG   1330.0 2015.271:04:05:37 171/167 PSA B  G130M    -----   1309  0  14737  14737              LOW LOW NO
+lcr9bwby 13968 DARK       CR9 BW 02 01 FUV  TIME-TAG   1330.0 2015.271:05:13:59 171/167 PSA B  G130M    -----   1309  0  18839  18839              LOW LOW NO
+lcr9bxc4 13968 DARK       CR9 BX 02 01 FUV  TIME-TAG   1330.0 2015.271:05:49:29 171/167 PSA B  G130M    -----   1309  0  20969  20969              LOW LOW NO
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcxv02cd 14268 ZW535.012  CXV 02 01 01 FUV  ACQ/SEARCH    4.3 2015.271:07:29:18 167/163 PSA B  G130M    -----   1291  0  26958  26958 SCANSIZE=3 STEPSIZE=1767 FLUXFLR
+lcxv02ce 14268 ZW535.012  CXV 02 02 01 FUV  ACQ/PEAKXD    1.7 2015.271:07:35:58 167/163 PSA B  G130M    -----   1291  0  27358  27358              OFF OFF NO
+lcxv02cf 14268 ZW535.012  CXV 02 03 01 FUV  ACQ/PEAKD     4.3 2015.271:07:36:46 167/163 PSA B  G130M    -----   1291  0  27406  27406   DWELLS=5 STEPSIZE= 900 FLUXFLR
+lcxv02ch 14268 ZW535.012  CXV 02 05 01 FUV  TIME-TAG    283.0 2015.271:07:42:20 167/163 PSA B  G130M    -----   1291 -2  27740  27740              LOW LOW NO  1  12 S
+lcxv02cj 14268 ZW535.012  CXV 02 07 01 FUV  TIME-TAG    270.0 2015.271:07:48:58 167/163 PSA B  G130M    -----   1291 -1  28138  28138              LOW LOW NO  1  12 S
+lcxv02cl 14268 ZW535.012  CXV 02 09 01 FUV  TIME-TAG    271.0 2015.271:07:55:23 167/163 PSA B  G130M    -----   1291  0  28523  28523              LOW LOW NO  1  12 S
+lcxv02cn 14268 ZW535.012  CXV 02 0B 01 FUV  TIME-TAG    250.0 2015.271:08:01:49 167/163 PSA B  G130M    -----   1291  1  28909  28909              LOW LOW NO  1  12 S
+lcxv02d2 14268 ZW535.012  CXV 02 0D 01 FUV  TIME-TAG    250.0 2015.271:09:02:30 167/163 PSA B  G130M    -----   1327 -2  32550  32550              LOW LOW NO  1  12 S
+lcxv02d4 14268 ZW535.012  CXV 02 0F 01 FUV  TIME-TAG    348.0 2015.271:09:08:35 167/163 PSA B  G130M    -----   1327 -1  32915  32915              LOW LOW NO  1  12 S
+lcxv02d6 14268 ZW535.012  CXV 02 0H 01 FUV  TIME-TAG    410.0 2015.271:09:16:18 167/163 PSA B  G130M    -----   1327  0  33378  33378              LOW LOW NO  1  12 S
+lcxv02d8 14268 ZW535.012  CXV 02 0J 01 FUV  TIME-TAG    410.0 2015.271:09:25:12 167/163 PSA B  G130M    -----   1327  1  33912  33912              LOW LOW NO  1  12 S
+lcxv02da 14268 ZW535.012  CXV 02 0L 01 FUV  TIME-TAG    470.0 2015.271:09:36:13 167/163 PSA B  G160M    -----   1589 -2    139  34573              LOW LOW NO  2  12 S
+lcxv02dd 14268 ZW535.012  CXV 02 0N 01 FUV  TIME-TAG    470.0 2015.271:10:37:54 167/163 PSA B  G160M    -----   1589 -1   3840  38274              LOW LOW NO  1  12 S
+lcxv02df 14268 ZW535.012  CXV 02 0P 01 FUV  TIME-TAG    370.0 2015.271:10:47:39 167/163 PSA B  G160M    -----   1589  0   4425  38859              LOW LOW NO  1  12 S
+lcxv02dh 14268 ZW535.012  CXV 02 0R 01 FUV  TIME-TAG    365.0 2015.271:10:55:44 167/163 PSA B  G160M    -----   1589  1   4910  39344              LOW LOW NO  1  12 S
+lcxv02dj 14268 ZW535.012  CXV 02 0T 01 FUV  TIME-TAG    365.0 2015.271:11:05:03 167/163 PSA B  G160M    -----   1623 -2   5469  39903              LOW LOW NO  1  12 S
+lcxv02dl 14268 ZW535.012  CXV 02 0V 01 FUV  TIME-TAG    349.0 2015.271:11:12:53 167/163 PSA B  G160M    -----   1623 -1   5939  40373              LOW LOW NO  1  12 S
+lcxv02dn 14268 ZW535.012  CXV 02 0X 01 FUV  TIME-TAG    320.0 2015.271:11:20:27 167/163 PSA B  G160M    -----   1623  0   6393  40827              LOW LOW NO  1  12 S
+lcxv02dz 14268 ZW535.012  CXV 02 0Z 01 FUV  TIME-TAG    320.0 2015.271:12:13:17 167/163 PSA B  G160M    -----   1623  1   9563  43997              LOW LOW NO  1  12 S
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcr9bye1 13968 DARK       CR9 BY 02 01 FUV  TIME-TAG   1330.0 2015.271:12:30:02 171/167 PSA B  G130M    -----   1309  0    576  45002              LOW LOW NO
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbdoa0fn 12046            BDO A0 01 01                        2015.271:21:42:40         COS MEMORY COPY -- DCE CODE IMAGE TO CS RAM
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcxv10o4 14268 KAZ238     CXV 10 01 01 FUV  ACQ/SEARCH   12.7 2015.272:18:31:33 167/163 PSA B  G130M    -----   1327  0 108667 153093 SCANSIZE=3 STEPSIZE=1767 FLUXFLR
+lcxv10o5 14268 KAZ238     CXV 10 02 01 FUV  ACQ/PEAKXD    5.0 2015.272:18:39:29 167/163 PSA B  G130M    -----   1327  0 109143 153569              OFF OFF NO
+lcxv10o6 14268 KAZ238     CXV 10 03 01 FUV  ACQ/PEAKD    12.7 2015.272:18:40:20 167/163 PSA B  G130M    -----   1327  0 109194 153620   DWELLS=5 STEPSIZE= 900 FLUXFLR
+lcxv10o8 14268 KAZ238     CXV 10 05 01 FUV  TIME-TAG    463.0 2015.272:18:45:29 167/163 PSA B  G130M    -----   1327  1 109503 153929              LOW LOW NO  1  12 S
+lcxv10ob 14268 KAZ238     CXV 10 07 01 FUV  TIME-TAG    509.0 2015.272:18:57:17 167/163 PSA B  G160M    -----   1589 -2    139 154637              LOW LOW NO  2  12 S
+lcxv10og 14268 KAZ238     CXV 10 09 01 FUV  TIME-TAG    480.0 2015.272:19:07:31 167/163 PSA B  G160M    -----   1589 -1    753 155251              LOW LOW NO  2  12 S
+lcxv10ol 14268 KAZ238     CXV 10 0B 01 FUV  TIME-TAG   1332.0 2015.272:20:02:16 167/163 PSA B  G160M    -----   1589  0   4038 158536              LOW LOW NO  2  12 S
+lcxv10or 14268 KAZ238     CXV 10 0D 01 FUV  TIME-TAG   1250.0 2015.272:20:26:29 167/163 PSA B  G160M    -----   1589  1   5491 159989              LOW LOW NO  2  12 S
+lcxv10ow 14268 KAZ238     CXV 10 0F 01 FUV  TIME-TAG   1279.0 2015.272:21:38:59 167/163 PSA B  G160M    -----   1623 -2   9841 164339              LOW LOW NO  2  12 S
+lcxv10p2 14268 KAZ238     CXV 10 0H 01 FUV  TIME-TAG   1230.0 2015.272:22:02:13 167/163 PSA B  G160M    -----   1623 -1  11235 165733              LOW LOW NO  2  12 S
+lcxv10p7 14268 KAZ238     CXV 10 0J 01 FUV  TIME-TAG   1278.0 2015.272:23:13:05 167/163 PSA B  G160M    -----   1623  0  15487 169985              LOW LOW NO  2  12 S
+lcxv10pd 14268 KAZ238     CXV 10 0L 01 FUV  TIME-TAG   1300.0 2015.272:23:36:29 167/163 PSA B  G160M    -----   1623  1  16891 171389              LOW LOW NO  2  12 S
+lcxv04s4 14268 IRASF00040 CXV 04 01 01 FUV  ACQ/SEARCH    3.1 2015.273:05:36:14 167/163 PSA B  G130M    -----   1291  0  19140 192974 SCANSIZE=3 STEPSIZE=1767 FLUXFLR
+lcxv04s5 14268 IRASF00040 CXV 04 02 01 FUV  ACQ/PEAKXD    1.2 2015.273:05:42:43 167/163 PSA B  G130M    -----   1291  0  19529 193363              OFF OFF NO
+lcxv04s6 14268 IRASF00040 CXV 04 03 01 FUV  ACQ/PEAKD     3.1 2015.273:05:43:31 167/163 PSA B  G130M    -----   1291  0  19577 193411   DWELLS=5 STEPSIZE= 900 FLUXFLR
+lcxv04s8 14268 IRASF00040 CXV 04 05 01 FUV  TIME-TAG    293.0 2015.273:05:48:59 167/163 PSA B  G130M    -----   1291 -2  19905 193739              LOW LOW NO  1  12 S
+lcxv04sa 14268 IRASF00040 CXV 04 07 01 FUV  TIME-TAG    280.0 2015.273:05:55:47 167/163 PSA B  G130M    -----   1291 -1  20313 194147              LOW LOW NO  1  12 S
+lcxv04sc 14268 IRASF00040 CXV 04 09 01 FUV  TIME-TAG    260.0 2015.273:06:02:22 167/163 PSA B  G130M    -----   1291  0  20708 194542              LOW LOW NO  1  12 S
+lcxv04sh 14268 IRASF00040 CXV 04 0B 01 FUV  TIME-TAG    250.0 2015.273:07:08:09 167/163 PSA B  G130M    -----   1291  1  24655 198489              LOW LOW NO  1  12 S
+lcxv04sj 14268 IRASF00040 CXV 04 0D 01 FUV  TIME-TAG    250.0 2015.273:07:15:37 167/163 PSA B  G130M    -----   1327 -2  25103 198937              LOW LOW NO  1  12 S
+lcxv04sl 14268 IRASF00040 CXV 04 0F 01 FUV  TIME-TAG    340.0 2015.273:07:21:42 167/163 PSA B  G130M    -----   1327 -1  25468 199302              LOW LOW NO  1  12 S
+lcxv04sn 14268 IRASF00040 CXV 04 0H 01 FUV  TIME-TAG    410.0 2015.273:07:29:26 167/163 PSA B  G130M    -----   1327  0  25932 199766              LOW LOW NO  1  12 S
+lcxv04sp 14268 IRASF00040 CXV 04 0J 01 FUV  TIME-TAG    410.0 2015.273:07:38:20 167/163 PSA B  G130M    -----   1327  1  26466 200300              LOW LOW NO  1  12 S
+lcxv04ss 14268 IRASF00040 CXV 04 0L 01 FUV  TIME-TAG    470.0 2015.273:08:43:35 167/163 PSA B  G160M    -----   1589 -2    139 204215              LOW LOW NO  2  12 S
+lcxv04su 14268 IRASF00040 CXV 04 0N 01 FUV  TIME-TAG    461.0 2015.273:08:53:20 167/163 PSA B  G160M    -----   1589 -1    724 204800              LOW LOW NO  2  12 S
+lcxv04sw 14268 IRASF00040 CXV 04 0P 01 FUV  TIME-TAG    371.0 2015.273:09:02:56 167/163 PSA B  G160M    -----   1589  0   1300 205376              LOW LOW NO  2  12 S
+lcxv04sy 14268 IRASF00040 CXV 04 0R 01 FUV  TIME-TAG    355.0 2015.273:09:11:02 167/163 PSA B  G160M    -----   1589  1   1786 205862              LOW LOW NO  1  12 S
+lcxv04t0 14268 IRASF00040 CXV 04 0T 01 FUV  TIME-TAG    365.0 2015.273:09:20:11 167/163 PSA B  G160M    -----   1623 -2   2335 206411              LOW LOW NO  2  12 S
+lcxv04t2 14268 IRASF00040 CXV 04 0V 01 FUV  TIME-TAG    340.0 2015.273:10:18:57 167/163 PSA B  G160M    -----   1623 -1   5861 209937              LOW LOW NO  1  12 S
+lcxv04t4 14268 IRASF00040 CXV 04 0X 01 FUV  TIME-TAG    320.0 2015.273:10:26:22 167/163 PSA B  G160M    -----   1623  0   6306 210382              LOW LOW NO  1  12 S
+lcxv04t6 14268 IRASF00040 CXV 04 0Z 01 FUV  TIME-TAG    320.0 2015.273:10:33:27 167/163 PSA B  G160M    -----   1623  1   6731 210807              LOW LOW NO  1  12 S
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcwj01wh 14265 HS2154+222 CWJ 01 01 01 NUV  ACQ/IMAGE    20.0 2015.274:02:14:27         PSA O  NCM1     MIRRORB    0  0    273    189                      NO
+lcwj01wk 14265 HS2154+222 CWJ 01 03 01 NUV  TIME-TAG    573.0 2015.274:02:18:25         PSA O  NCM1     G225M   2339 -2    511     87                      NO  2  12 S
+lcwj01wm 14265 HS2154+222 CWJ 01 05 01 NUV  TIME-TAG    572.0 2015.274:02:29:35         PSA O  NCM1     G225M   2339 -1   1181    757                      NO  2  12 S
+lcwj01wo 14265 HS2154+222 CWJ 01 07 01 NUV  TIME-TAG    572.0 2015.274:03:45:00         PSA O  NCM1     G225M   2339  0   5706   5282                      NO  1  12 S
+lcwj01wq 14265 HS2154+222 CWJ 01 09 01 NUV  TIME-TAG    572.0 2015.274:03:56:09         PSA O  NCM1     G225M   2339  1   6375   5951                      NO  1  12 S
+lcwj01ws 14265 HS2154+222 CWJ 01 0B 01 NUV  TIME-TAG    671.0 2015.274:05:20:25         PSA O  NCM1     G225M   2339 -2  11431  11007                      NO  1  12 S
+lcwj01wu 14265 HS2154+222 CWJ 01 0D 01 NUV  TIME-TAG    671.0 2015.274:05:33:13         PSA O  NCM1     G225M   2339 -1  12199  11775                      NO  1  12 S
+lcwj01ww 14265 HS2154+222 CWJ 01 0F 01 NUV  TIME-TAG    670.0 2015.274:06:55:50         PSA O  NCM1     G225M   2339  0  17156  16732                      NO  1  12 S
+lcwj01wy 14265 HS2154+222 CWJ 01 0H 01 NUV  TIME-TAG    670.0 2015.274:07:08:37         PSA O  NCM1     G225M   2339  1  17923  17499                      NO  1  12 S
+lcwj01x0 14265 HS2154+222 CWJ 01 0J 01 NUV  TIME-TAG    671.0 2015.274:07:22:31         PSA O  NCM1     G225M   2339 -2  18757  18333                      NO  1  12 S
+lcwj01x2 14265 HS2154+222 CWJ 01 0L 01 NUV  TIME-TAG    671.0 2015.274:08:31:15         PSA O  NCM1     G225M   2339 -1  22881  22457                      NO  1  12 S
+lcwj01x4 14265 HS2154+222 CWJ 01 0N 01 NUV  TIME-TAG    670.0 2015.274:08:44:03         PSA O  NCM1     G225M   2339  0  23649  23225                      NO  1  12 S
+lcwj01x6 14265 HS2154+222 CWJ 01 0P 01 NUV  TIME-TAG    670.0 2015.274:08:56:50         PSA O  NCM1     G225M   2339  1  24416  23992                      NO  1  12 S
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcxv09x8 14268 KAZ238     CXV 09 01 01 FUV  ACQ/SEARCH   13.4 2015.274:10:15:48 167/163 PSA B  G130M    -----   1291  0   3940   3834 SCANSIZE=3 STEPSIZE=1767 FLUXFLR
+lcxv09x9 14268 KAZ238     CXV 09 02 01 FUV  ACQ/PEAKXD    5.2 2015.274:10:23:50 167/163 PSA B  G130M    -----   1291  0   4422   4316              OFF OFF NO
+lcxv09xa 14268 KAZ238     CXV 09 03 01 FUV  ACQ/PEAKD    13.4 2015.274:10:24:42 167/163 PSA B  G130M    -----   1291  0   4474   4368   DWELLS=5 STEPSIZE= 900 FLUXFLR
+lcxv09xc 14268 KAZ238     CXV 09 05 01 FUV  TIME-TAG    813.0 2015.274:10:31:01 167/163 PSA B  G130M    -----   1291 -2   4853   4747              LOW LOW NO  2  12 S
+lcxv09xg 14268 KAZ238     CXV 09 07 01 FUV  TIME-TAG    748.0 2015.274:10:46:38 167/163 PSA B  G130M    -----   1291 -1   5790   5684              LOW LOW NO  1  12 S
+lcxv09xm 14268 KAZ238     CXV 09 09 01 FUV  TIME-TAG    860.0 2015.274:11:47:28 167/163 PSA B  G130M    -----   1291  0   9440   9334              LOW LOW NO  2  12 S
+lcxv09xs 14268 KAZ238     CXV 09 0B 01 FUV  TIME-TAG    760.0 2015.274:12:03:52 167/163 PSA B  G130M    -----   1291  1  10424  10318              LOW LOW NO  1  12 S
+lcxv09xy 14268 KAZ238     CXV 09 0D 01 FUV  TIME-TAG    740.0 2015.274:12:20:12 167/163 PSA B  G130M    -----   1327 -2  11404  11298              LOW LOW NO  1  12 S
+lcxv09y3 14268 KAZ238     CXV 09 0F 01 FUV  TIME-TAG   1315.0 2015.274:13:22:52 167/163 PSA B  G130M    -----   1327 -1  15164  15058              LOW LOW NO  2  12 S
+lcxv09y9 14268 KAZ238     CXV 09 0H 01 FUV  TIME-TAG   1250.0 2015.274:13:47:01 167/163 PSA B  G130M    -----   1327  0  16613  16507              LOW LOW NO  2  12 S
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcr96pas 13968 DARK       CR9 6P 01 01 FUV  TIME-TAG   1330.0 2015.275:00:00:11 167/163 PSA B  G130M    -----   1309  0  53403  53297              LOW LOW NO
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcsla2bh 14035 206W3      CSL A2 01 01 NUV  ACQ/IMAGE    60.0 2015.275:03:00:13         PSA O  NCM1     MIRRORA    0  0    237  64099                      NO
+lcsla2bj 14035 206W3      CSL A2 03 01 NUV  ACQ/IMAGE   300.0 2015.275:03:10:15         PSA O  NCM1     MIRRORB    0  0    839    466                      NO
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcr96qbs 13968 DARK       CR9 6Q 01 01 FUV  TIME-TAG   1330.0 2015.275:03:29:54 167/163 PSA B  G130M    -----   1309  0    738    654              LOW LOW NO
+lcr96rc4 13968 DARK       CR9 6R 01 01 FUV  TIME-TAG   1330.0 2015.275:04:38:25 167/163 PSA B  G130M    -----   1309  0   4849   4765              LOW LOW NO
+lcr96scu 13968 DARK       CR9 6S 01 01 FUV  TIME-TAG   1330.0 2015.275:05:12:29 167/163 PSA B  G130M    -----   1309  0   6893   6809              LOW LOW NO
+lcr96td9 13968 DARK       CR9 6T 01 01 FUV  TIME-TAG   1330.0 2015.275:06:27:20 167/163 PSA B  G130M    -----   1309  0  11384  11300              LOW LOW NO
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcqf1ddh 13974 DARK       CQF 1D 01 01 NUV  TIME-TAG   1330.0 2015.275:07:01:47         PSA O  G130M    MIRRORA    0  0  13451  13367                      NO
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcxv19do 14268 RBS2055    CXV 19 01 01 FUV  ACQ/SEARCH   11.5 2015.275:08:48:42 167/163 PSA B  G130M    -----   1327  0  19866  19782 SCANSIZE=3 STEPSIZE=1767 FLUXFLR
+lcxv19dp 14268 RBS2055    CXV 19 02 01 FUV  ACQ/PEAKXD    4.5 2015.275:08:56:27 167/163 PSA B  G130M    -----   1327  0  20331  20247              OFF OFF NO
+lcxv19dq 14268 RBS2055    CXV 19 03 01 FUV  ACQ/PEAKD    11.5 2015.275:08:57:18 167/163 PSA B  G130M    -----   1327  0  20382  20298   DWELLS=5 STEPSIZE= 900 FLUXFLR
+lcxv19ds 14268 RBS2055    CXV 19 05 01 FUV  TIME-TAG    479.0 2015.275:09:02:21 167/163 PSA B  G130M    -----   1327  1  20685  20601              LOW LOW NO  1  12 S
+lcxv19dv 14268 RBS2055    CXV 19 07 01 FUV  TIME-TAG    500.0 2015.275:10:06:13 167/163 PSA B  G160M    -----   1589 -2    139  24433              LOW LOW NO  2  12 S
+lcxv19e0 14268 RBS2055    CXV 19 09 01 FUV  TIME-TAG    498.0 2015.275:10:16:18 167/163 PSA B  G160M    -----   1589 -1    744  25038              LOW LOW NO  2  12 S
+lcxv19e5 14268 RBS2055    CXV 19 0B 01 FUV  TIME-TAG   1338.0 2015.275:10:28:02 167/163 PSA B  G160M    -----   1589  0   1448  25742              LOW LOW NO  2  12 S
+lcxv19eb 14268 RBS2055    CXV 19 0D 01 FUV  TIME-TAG   1250.0 2015.275:11:39:31 167/163 PSA B  G160M    -----   1589  1   5737  30031              LOW LOW NO  2  12 S
+lcxv19eg 14268 RBS2055    CXV 19 0F 01 FUV  TIME-TAG   1279.0 2015.275:12:04:36 167/163 PSA B  G160M    -----   1623 -2   7242  31536              LOW LOW NO  2  12 S
+lcxv19em 14268 RBS2055    CXV 19 0H 01 FUV  TIME-TAG   1230.0 2015.275:13:14:56 167/163 PSA B  G160M    -----   1623 -1  11462  35756              LOW LOW NO  2  12 S
+lcxv19er 14268 RBS2055    CXV 19 0J 01 FUV  TIME-TAG   1289.0 2015.275:13:38:42 167/163 PSA B  G160M    -----   1623  0  12888  37182              LOW LOW NO  2  12 S
+lcxv19ex 14268 RBS2055    CXV 19 0L 01 FUV  TIME-TAG   1300.0 2015.275:14:50:20 167/163 PSA B  G160M    -----   1623  1  17186  41480              LOW LOW NO  2  12 S
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcqf1ef4 13974 DARK       CQF 1E 01 01 NUV  TIME-TAG   1330.0 2015.275:15:46:51         PSA O  G130M    MIRRORA    0  0    946  44871                      NO
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcld01f6 13862 J080704.88 CLD 01 01 01 NUV  ACQ/IMAGE    10.0 2015.275:17:07:33         PSA B  NCM1     MIRRORA    0  0    187  49713                      NO
+lcld01f9 13862 J080704.88 CLD 01 03 01 FUV  TIME-TAG   1250.0 2015.275:17:11:58 171/167 PSA B  G130M    -----   1222 -2    141  49978              LOW LOW NO  3  52 S
+lcld01ff 13862 J080704.88 CLD 01 05 01 FUV  TIME-TAG   1240.0 2015.275:17:34:33 171/167 PSA B  G130M    -----   1222 -1   1496  51333              LOW LOW NO  2  52 S
+lcld01fk 13862 J080704.88 CLD 01 07 01 FUV  TIME-TAG   1447.0 2015.275:18:39:56 171/167 PSA B  G130M    -----   1222  0   5419  55256              LOW LOW NO  2  52 S
+lcld01fr 13862 J080704.88 CLD 01 09 01 FUV  TIME-TAG   1440.0 2015.275:19:05:48 171/167 PSA B  G130M    -----   1222  1   6971  56808              LOW LOW NO  2  52 S
+lcld01fu 13862 J080704.88 CLD 01 0B 01 FUV  TIME-TAG   2000.0 2015.275:20:15:26 167/163 PSA B  G160M    -----   1577 -2    134  60986              LOW LOW NO  3  12 S
+lcld01g2 13862 J080704.88 CLD 01 0D 01 FUV  TIME-TAG    885.0 2015.275:20:50:31 167/163 PSA B  G160M    -----   1577 -1   2239  63091              LOW LOW NO  2  12 S
+lcld01g5 13862 J080704.88 CLD 01 0F 01 FUV  TIME-TAG   1000.0 2015.275:21:50:53 167/163 PSA B  G160M    -----   1577 -1   5861  66713              LOW LOW NO  2  12 S
+lcld01gd 13862 J080704.88 CLD 01 0H 01 FUV  TIME-TAG   1849.0 2015.275:22:09:56 167/163 PSA B  G160M    -----   1577  0   7004  67856              LOW LOW NO  2  12 S
+lcld01gg 13862 J080704.88 CLD 01 0J 01 FUV  TIME-TAG    767.0 2015.275:23:26:21 167/163 PSA B  G160M    -----   1577  0  11589  72441              LOW LOW NO  1  12 S
+lcld01gn 13862 J080704.88 CLD 01 0L 01 FUV  TIME-TAG   2110.0 2015.275:23:41:03 167/163 PSA B  G160M    -----   1577  1  12471  73323              LOW LOW NO  2  12 S
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcxv15k7 14268 PG0052+251 CXV 15 01 01 FUV  ACQ/SEARCH    3.1 2015.276:10:00:09 167/163 PSA B  G130M    -----   1291  0  34927 110469 SCANSIZE=3 STEPSIZE=1767 FLUXFLR
+lcxv15k8 14268 PG0052+251 CXV 15 02 01 FUV  ACQ/PEAKXD    1.2 2015.276:10:06:38 167/163 PSA B  G130M    -----   1291  0  35316 110858              OFF OFF NO
+lcxv15k9 14268 PG0052+251 CXV 15 03 01 FUV  ACQ/PEAKD     3.1 2015.276:10:07:26 167/163 PSA B  G130M    -----   1291  0  35364 110906   DWELLS=5 STEPSIZE= 900 FLUXFLR
+lcxv15kb 14268 PG0052+251 CXV 15 05 01 FUV  TIME-TAG    295.0 2015.276:10:12:54 167/163 PSA B  G130M    -----   1291 -2  35692 111234              LOW LOW NO  1  12 S
+lcxv15kd 14268 PG0052+251 CXV 15 07 01 FUV  TIME-TAG    280.0 2015.276:10:19:44 167/163 PSA B  G130M    -----   1291 -1  36102 111644              LOW LOW NO  1  12 S
+lcxv15kf 14268 PG0052+251 CXV 15 09 01 FUV  TIME-TAG    260.0 2015.276:10:26:19 167/163 PSA B  G130M    -----   1291  0  36497 112039              LOW LOW NO  1  12 S
+lcxv15kh 14268 PG0052+251 CXV 15 0B 01 FUV  TIME-TAG    250.0 2015.276:10:32:34 167/163 PSA B  G130M    -----   1291  1  36872 112414              LOW LOW NO  1  12 S
+lcxv15kj 14268 PG0052+251 CXV 15 0D 01 FUV  TIME-TAG    250.0 2015.276:10:40:02 167/163 PSA B  G130M    -----   1327 -2  37320 112862              LOW LOW NO  1  12 S
+lcxv15km 14268 PG0052+251 CXV 15 0F 01 FUV  TIME-TAG    342.0 2015.276:11:34:31 167/163 PSA B  G130M    -----   1327 -1  40589 116131              LOW LOW NO  1  12 S
+lcxv15ko 14268 PG0052+251 CXV 15 0H 01 FUV  TIME-TAG    410.0 2015.276:11:42:17 167/163 PSA B  G130M    -----   1327  0  41055 116597              LOW LOW NO  1  12 S
+lcxv15kq 14268 PG0052+251 CXV 15 0J 01 FUV  TIME-TAG    410.0 2015.276:11:51:11 167/163 PSA B  G130M    -----   1327  1  41589 117131              LOW LOW NO  1  12 S
+lcxv15ks 14268 PG0052+251 CXV 15 0L 01 FUV  TIME-TAG    470.0 2015.276:12:02:12 167/163 PSA B  G160M    -----   1589 -2    139 117792              LOW LOW NO  2  12 S
+lcxv15ku 14268 PG0052+251 CXV 15 0N 01 FUV  TIME-TAG    461.0 2015.276:12:11:57 167/163 PSA B  G160M    -----   1589 -1    724 118377              LOW LOW NO  2  12 S
+lcxv15kw 14268 PG0052+251 CXV 15 0P 01 FUV  TIME-TAG    373.0 2015.276:13:09:57 167/163 PSA B  G160M    -----   1589  0   4204 121857              LOW LOW NO  1  12 S
+lcxv15ky 14268 PG0052+251 CXV 15 0R 01 FUV  TIME-TAG    355.0 2015.276:13:18:05 167/163 PSA B  G160M    -----   1589  1   4692 122345              LOW LOW NO  1  12 S
+lcxv15l0 14268 PG0052+251 CXV 15 0T 01 FUV  TIME-TAG    365.0 2015.276:13:27:14 167/163 PSA B  G160M    -----   1623 -2   5241 122894              LOW LOW NO  1  12 S
+lcxv15l2 14268 PG0052+251 CXV 15 0V 01 FUV  TIME-TAG    340.0 2015.276:13:35:14 167/163 PSA B  G160M    -----   1623 -1   5721 123374              LOW LOW NO  1  12 S
+lcxv15l4 14268 PG0052+251 CXV 15 0X 01 FUV  TIME-TAG    320.0 2015.276:13:42:39 167/163 PSA B  G160M    -----   1623  0   6166 123819              LOW LOW NO  1  12 S
+lcxv15l6 14268 PG0052+251 CXV 15 0Z 01 FUV  TIME-TAG    320.0 2015.276:13:49:44 167/163 PSA B  G160M    -----   1623  1   6591 124244              LOW LOW NO  1  12 S
+lcxv18mr 14268 RBS2055    CXV 18 01 01 FUV  ACQ/SEARCH   12.1 2015.276:19:33:42 167/163 PSA B  G130M    -----   1291  0  20209 144882 SCANSIZE=3 STEPSIZE=1767 FLUXFLR
+lcxv18ms 14268 RBS2055    CXV 18 02 01 FUV  ACQ/PEAKXD    4.8 2015.276:19:41:32 167/163 PSA B  G130M    -----   1291  0  20679 145352              OFF OFF NO
+lcxv18mt 14268 RBS2055    CXV 18 03 01 FUV  ACQ/PEAKD    12.1 2015.276:19:42:23 167/163 PSA B  G130M    -----   1291  0  20730 145403   DWELLS=5 STEPSIZE= 900 FLUXFLR
+lcxv18mv 14268 RBS2055    CXV 18 05 01 FUV  TIME-TAG    875.0 2015.276:19:48:36 167/163 PSA B  G130M    -----   1291 -2  21103 145776              LOW LOW NO  2  12 S
+lcxv18mz 14268 RBS2055    CXV 18 07 01 FUV  TIME-TAG    750.0 2015.276:20:05:15 167/163 PSA B  G130M    -----   1291 -1  22102 146775              LOW LOW NO  1  12 S
+lcxv18n5 14268 RBS2055    CXV 18 09 01 FUV  TIME-TAG    872.0 2015.276:21:03:15 167/163 PSA B  G130M    -----   1291  0  25582 150255              LOW LOW NO  2  12 S
+lcxv18nb 14268 RBS2055    CXV 18 0B 01 FUV  TIME-TAG    750.0 2015.276:21:19:51 167/163 PSA B  G130M    -----   1291  1  26578 151251              LOW LOW NO  1  12 S
+lcxv18nh 14268 RBS2055    CXV 18 0D 01 FUV  TIME-TAG    740.0 2015.276:21:35:59 167/163 PSA B  G130M    -----   1327 -2  27546 152219              LOW LOW NO  1  12 S
+lcxv18nm 14268 RBS2055    CXV 18 0F 01 FUV  TIME-TAG   1311.0 2015.276:22:38:40 167/163 PSA B  G130M    -----   1327 -1  31307 155980              LOW LOW NO  2  12 S
+lcxv18ns 14268 RBS2055    CXV 18 0H 01 FUV  TIME-TAG   1250.0 2015.276:23:02:54 167/163 PSA B  G130M    -----   1327  0  32761 157434              LOW LOW NO  2  12 S
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcwj02qf 14265 HS2154+222 CWJ 02 01 01 NUV  ACQ/IMAGE    20.0 2015.277:09:44:11         PSA O  NCM1     MIRRORB    0  0    273    189                      NO
+lcwj02qh 14265 HS2154+222 CWJ 02 03 01 NUV  TIME-TAG    573.0 2015.277:09:48:09         PSA O  NCM1     G225M   2373 -2    511     87                      NO  2  22 S
+lcwj02qj 14265 HS2154+222 CWJ 02 05 01 NUV  TIME-TAG    572.0 2015.277:09:59:19         PSA O  NCM1     G225M   2373 -1   1181    757                      NO  2  22 S
+lcwj02ql 14265 HS2154+222 CWJ 02 07 01 NUV  TIME-TAG    572.0 2015.277:10:10:28         PSA O  NCM1     G225M   2373  0   1850   1426                      NO  2  22 S
+lcwj02qn 14265 HS2154+222 CWJ 02 09 01 NUV  TIME-TAG    572.0 2015.277:10:21:37         PSA O  NCM1     G225M   2373  1   2519   2095                      NO  2  22 S
+lcwj02qp 14265 HS2154+222 CWJ 02 0B 01 NUV  TIME-TAG    671.0 2015.277:11:15:45         PSA O  NCM1     G225M   2373 -2   5767   5343                      NO  1  22 S
+lcwj02qr 14265 HS2154+222 CWJ 02 0D 01 NUV  TIME-TAG    671.0 2015.277:11:28:33         PSA O  NCM1     G225M   2373 -1   6535   6111                      NO  1  22 S
+lcwj02qt 14265 HS2154+222 CWJ 02 0F 01 NUV  TIME-TAG    670.0 2015.277:11:41:21         PSA O  NCM1     G225M   2373  0   7303   6879                      NO  1  22 S
+lcwj02qv 14265 HS2154+222 CWJ 02 0H 01 NUV  TIME-TAG    670.0 2015.277:11:54:08         PSA O  NCM1     G225M   2373  1   8070   7646                      NO  1  22 S
+lcwj02qx 14265 HS2154+222 CWJ 02 0J 01 NUV  TIME-TAG    671.0 2015.277:12:51:10         PSA O  NCM1     G225M   2373 -2  11492  11068                      NO  1  22 S
+lcwj02qz 14265 HS2154+222 CWJ 02 0L 01 NUV  TIME-TAG    671.0 2015.277:13:03:58         PSA O  NCM1     G225M   2373 -1  12260  11836                      NO  1  22 S
+lcwj02r1 14265 HS2154+222 CWJ 02 0N 01 NUV  TIME-TAG    670.0 2015.277:13:16:46         PSA O  NCM1     G225M   2373  0  13028  12604                      NO  1  22 S
+lcwj02r3 14265 HS2154+222 CWJ 02 0P 01 NUV  TIME-TAG    670.0 2015.277:13:29:33         PSA O  NCM1     G225M   2373  1  13795  13371                      NO  1  22 S
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------

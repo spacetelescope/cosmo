@@ -13,8 +13,9 @@ class BaseModel(Model):
 
 
 class SMSFileStats(BaseModel):
-    FILEID = TextField(primary_key=True)
+    SMSID = TextField(primary_key=True)
     VERSION = TextField()
+    FILEID = TextField(unique=True)
     FILENAME = TextField()
     INGEST_DATE = DateTimeField()
 
@@ -22,9 +23,8 @@ class SMSFileStats(BaseModel):
 class SMSTable(BaseModel):
 
     EXPOSURE = TextField(primary_key=True)
+    FILEID = ForeignKeyField(SMSFileStats, field='FILEID', backref='exposures', on_delete='cascade', on_update='cascade')
     ROOTNAME = TextField()
-    FILEID = ForeignKeyField(SMSFileStats, field='FILEID', backref='exposures', on_delete='cascade')
-    VERSION = TextField()
     PROPOSID = IntegerField(verbose_name='proposal id')
     DETECTOR = TextField()
     OPMODE = TextField()
