@@ -26,6 +26,15 @@ def db_cleanup():
     if os.path.exists('test.db-wal'):
         os.remove('test.db-wal')
 
+    if os.path.exists('data_test.db'):
+        os.remove('data_test.db')
+
+    if os.path.exists('data_test.db-shm'):
+        os.remove('data_test.db-shm')
+
+    if os.path.exists('data_test.db-wal'):
+        os.remove('data_test.db-wal')
+
 
 @pytest.fixture(scope='session')
 def data_dir():

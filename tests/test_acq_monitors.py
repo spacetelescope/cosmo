@@ -2,16 +2,18 @@ import os
 import pytest
 
 from cosmo.monitors.acq_monitors import AcqPeakdMonitor, AcqImageMonitor, AcqPeakxdMonitor
-from cosmo.monitors.acq_data_models import AcqPeakdModel, AcqPeakxdModel, AcqImageModel
+from cosmo.monitors.data_models import AcqDataModel
+
+# TODO: Add tests to make sure that the monitors can work with or without db
 
 
 @pytest.fixture
-def set_monitor(data_dir, here):
-    def _set_monitor(monitor, datamodel):
-        datamodel.files_source = data_dir
-        datamodel.cosmo_layout = False
+def set_acqmonitor(data_dir, here):
+    def _set_monitor(monitor):
+        AcqDataModel.files_source = data_dir
+        AcqDataModel.cosmo_layout = False
 
-        monitor.data_model = datamodel
+        monitor.data_model = AcqDataModel
         monitor.output = here
 
         active = monitor()
@@ -23,17 +25,9 @@ def set_monitor(data_dir, here):
 
 class TestAcqMonitors:
 
-    @pytest.fixture(
-        autouse=True,
-        params=[
-            (AcqImageMonitor, AcqImageModel),
-            # (AcqImageV2V3Monitor, AcqImageModel),  This set still needs some additional data
-            (AcqPeakdMonitor, AcqPeakdModel),
-            (AcqPeakxdMonitor, AcqPeakxdModel)
-        ]
-    )
-    def acqmonitor(self, request, set_monitor):
-        acqmonitor = set_monitor(*request.param)
+    @pytest.fixture(autouse=True, params=[AcqImageMonitor, AcqPeakdMonitor, AcqPeakxdMonitor])
+    def acqmonitor(self, request, set_acqmonitor):
+        acqmonitor = set_acqmonitor(request.param)
 
         request.cls.acqmonitor = acqmonitor
 

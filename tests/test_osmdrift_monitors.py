@@ -2,8 +2,10 @@ import os
 import pytest
 
 from cosmo.monitors.osm_drift_monitors import FUVOSMDriftMonitor, NUVOSMDriftMonitor
-from cosmo.monitors.osm_data_models import OSMDriftDataModel
+from cosmo.monitors.data_models import OSMDataModel
 from cosmo.sms import SMSFinder
+
+# TODO: Add tests to make sure that the monitors can work with or without db
 
 
 @pytest.fixture
@@ -30,7 +32,7 @@ class TestOSMDriftMonitors:
 
     @pytest.fixture(autouse=True, params=[FUVOSMDriftMonitor, NUVOSMDriftMonitor])
     def osmdriftmonitor(self, request, set_monitor):
-        osmdriftmonitor = set_monitor(request.param, OSMDriftDataModel)
+        osmdriftmonitor = set_monitor(request.param, OSMDataModel)
 
         request.cls.osmdriftmonitor = osmdriftmonitor
 

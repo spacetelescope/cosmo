@@ -5,7 +5,9 @@ from cosmo.monitors.osm_shift_monitors import (
     FuvOsmShift1Monitor, FuvOsmShift2Monitor, NuvOsmShift1Monitor, NuvOsmShift2Monitor
 )
 
-from cosmo.monitors.osm_data_models import OSMShiftDataModel
+from cosmo.monitors.data_models import OSMDataModel
+
+# TODO: Add tests to make sure that the monitors can work with or without db
 
 
 @pytest.fixture
@@ -30,7 +32,7 @@ class TestOsmShiftMonitors:
         autouse=True, params=[FuvOsmShift1Monitor, FuvOsmShift2Monitor, NuvOsmShift1Monitor, NuvOsmShift2Monitor]
     )
     def osmshiftmonitor(self, request, set_monitor):
-        osmshiftmonitor = set_monitor(request.param, OSMShiftDataModel)
+        osmshiftmonitor = set_monitor(request.param, OSMDataModel)
 
         request.cls.osmshiftmonitor = osmshiftmonitor
 
