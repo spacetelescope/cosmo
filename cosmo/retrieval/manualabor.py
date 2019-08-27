@@ -66,31 +66,35 @@ def timefunc(func):
     return wrapper
 
 
-def combine_2dicts(dict1, dict2):
+def combine_2dicts(dict1, dict2):  # IN USE
+    """
+    This function is a helper function to combine dictionaries.
+
+    Parameters
+    ----------
+    dict1: dict
+        first dictionary to be combined
+    dict2: dict
+        second dictionary to be combined
+
+    Returns
+    -------
+    combined: dict
+        dictionary with unique union entries for the union of keys in dict1,
+        dict2
+    """
     combined = defaultdict(list)
-    for k,v in dict1.items():
+    for k, v in dict1.items():
         if k in dict2:
             combined[k] += list(set(v) | set(dict2[k]))
         else:
             combined[k] += list(v)
-    for k,v in dict2.items():
+    for k, v in dict2.items():
         if k not in combined:
             combined[k] += list(v)
 
     return combined
 
-# def combine_2dicts(dict1, dict2):
-#    combined = defaultdict(list)
-#    incommon = list(set(dict1) & set(dict2))
-#    indict1 = list(set(dict1) - set(dict2))
-#    indict2 = list(set(dict2) - set(dict1))
-#    for k in incommon:
-#        combined[k] += list(set(dict1[k] + dict2[k]))
-#    for k in indict1:
-#        combined[k] += dict1[k]
-#    for k in indict2:
-#        combined[k] += dict2[k]
-#    return combined
 
 # TODO: FIGURE OUT WHAT IS GOING ON WITH VARIABLE "ITEM"
 @timefunc
@@ -391,44 +395,20 @@ def uncompress_files(z_files):
             print("Something went terribly wrong unzipping {}".format(z_item))
 
 
-# def send_email():
-#     """
-#     Send a confirmation email. Currently not used.
-#
-#     Parameters:
-#     -----------
-#         None
-#
-#     Returns:
-#     --------
-#         Nothing
-#     """
-#
-#     msg = MIMEMultipart()
-#     msg["Subject"] = "Testing"
-#     msg["From"] = "jotaylor@stsci.edu"
-#     msg["To"] = "jotaylor@stsci.edu"
-#     msg.attach(MIMEText("Hello, the script is finished."))
-#     msg.attach(MIMEText("Testing line 2."))
-#     s = smtplib.SMTP("smtp.stsci.edu")
-#     s.sendmail("jotaylor@stsci.edu",["jotaylor@stsci.edu"], msg.as_string())
-#     s.quit()
-
-
-def check_usage(playnice=True):
+def check_usage(playnice=True):  # IN USE
     """
     Check current system resource usage, and adjust number of requested
     processes accordingly.
 
     Parameters:
     -----------
-        playnice : Bool
-            If True, use only 25% of *available* cores. If False use 50%.
+    playnice : Bool, default=True
+        If True, use only 25% of *available* cores. If False use 50%.
 
     Returns:
     --------
-        nprocs : int
-            Number of processes to use when multiprocessing.
+    nprocs : int
+        Number of processes to use when multiprocessing.
     """
 
     # Are we feeling charitable or not?
@@ -463,6 +443,7 @@ def check_usage(playnice=True):
     if nprocs <= 0:
         nprocs = 1
 
+    # TODO: make decisions about the fractions being used here and the timing?
     return nprocs
 
 
@@ -486,16 +467,46 @@ def smart_chunks(nelems, nprocs):
     return chunksize
 
 
-def parallelize(chunksize, nprocs, func, iterable, *args, **kwargs):
+def parallelize(func, iterable, chunksize="smart", nprocs="check_usage", *args,
+                **kwargs):  # IN USE
+    """
+    This function is a decorator to parallelize other functions.
+
+    Parameters
+    ----------
+    func: function
+        Function to be parallelized
+    iterable: iterable
+        Some iterable the function takes
+    chunksize: str, default="smart"
+        String to determine how the iterable should be split into chunks
+    nprocs: str, default="check_usage"
+        String to determine how many processes to use
+    args: list
+        Arguments that are parameters of the original function
+    kwargs: dict
+        Keyword arguments that are parameters of the original function
+
+    Returns
+    -------
+    funcout: replacement function
+        Function that has been parallelized
+
+    """
     t1 = datetime.datetime.now()
+    funcout = None
 
     if len(iterable) == 0:
-        return funcout  # TODO: what is going on here
+        # nothing to iterate over; return None
+        return funcout
 
     if nprocs == "check_usage":
+        # get the number of cores to use for parallelizing based on current
+        # server usage
         nprocs = check_usage()
 
     if chunksize == "smart":
+        # TODO: here 3
         chunksize = smart_chunks(len(iterable), nprocs)
 
     if isinstance(iterable, dict):
@@ -508,7 +519,6 @@ def parallelize(chunksize, nprocs, func, iterable, *args, **kwargs):
 
     func_args = [(x,)+args for x in chunks]
 
-    funcout = None
     with Pool(processes=nprocs) as pool:
         # print("Starting the Pool for {} with {} processes...".format(func,
         #                                                              nprocs))

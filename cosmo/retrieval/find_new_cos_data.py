@@ -313,8 +313,8 @@ def tally_cs(mydir=BASE_DIR, uniq_roots=True):
 
     Returns:
     --------
-        smovfiles : list
-            A list of all fits files in BASE_DIR
+    smovfiles : list
+        A list of all fits files in BASE_DIR
     """
 
     print("Checking {0} for existing data...".format(mydir))
@@ -338,9 +338,9 @@ def find_missing_data():  # IN USE
 
     Returns:
     --------
-        missing_data : dictionary
-            Dictionary where each key is the proposal, and values are the
-            missing data.
+    missing_data : dictionary
+        Dictionary where each key is the proposal, and values are the
+        missing data.
     """
 
     existing, existing_filenames, existing_roots = tally_cs()
@@ -367,20 +367,20 @@ def _determine_missing(in_dict, existing_root):  # IN USE
 
     Parameters:
     -----------
-        in_dict : dictionary
-            For all (public or proprietary) data, a dictionary where each key 
-            is any PID and the value is one single dataset for that PID
-            (i.e. there are multiple keys for the same PID).
-        existing_root : 
-            For all datasets already in central store, a dictionary where each
-            key is any PID and the value is one single dataset for that PID
-            (i.e. there are multiple keys for the same PID).
+    in_dict : dictionary
+        For all (public or proprietary) data, a dictionary where each key
+        is any PID and the value is one single dataset for that PID
+        (i.e. there are multiple keys for the same PID).
+    existing_root :
+        For all datasets already in central store, a dictionary where each
+        key is any PID and the value is one single dataset for that PID
+        (i.e. there are multiple keys for the same PID).
 
     Returns:
     --------
-        missing_data : dictionary
-            A dictionary of missing data where each key is a PID and the value 
-            is all missing datsets for that PID.
+    missing_data : dictionary
+        A dictionary of missing data where each key is a PID and the value
+        is all missing datsets for that PID.
     """
 
     # Determine which datasets are missing.
@@ -494,13 +494,13 @@ def tabulate_cache():  # IN USE
     
     Returns:
     --------
-    array - cos_cache : array
+    cos_cache : array
         The full path of every COS data set in the cache.
 
-    array - cache_filenames : array
+    cache_filenames : array
         Full filename of every COS data set in the cache.
 
-    array - cache_roots : array
+    cache_roots : array
         The rootname of every COS data set in the cache.
     """
 
@@ -622,21 +622,18 @@ def copy_cache(missing_data, missing_exts=None):  # IN USE
 
     Parameters:
     -----------
-        missing_data : dictionary
-            Dictionary where each key is the proposal, and values are the
-            missing data.
-        missing_exts : dictionary
-            Dictionary where each key is the proposal, and values are 
-            missing single raw or product files from previous COSMO runs. 
-        out_q : multiprocess.Queue object
-            If not None, the output of this function will be passed to 
-            the Queue object in order to be curated during multiprocessing. 
+    missing_data : dictionary
+        Dictionary where each key is the proposal, and values are the
+        missing data.
+    missing_exts : dictionary
+        Dictionary where each key is the proposal, and values are
+        missing single raw or product files from previous COSMO runs.
     
     Returns:
     --------
-        missing_data : dictionary
-            Dictionary where each key is the proposal, and values are the
-            missing data after copying any available data from the cache.
+    missing_data : dictionary
+        Dictionary where each key is the proposal, and values are the
+        missing data after copying any available data from the cache.
     """
 
     cos_cache, cache_filenames, cache_roots = tabulate_cache()
@@ -644,7 +641,7 @@ def copy_cache(missing_data, missing_exts=None):  # IN USE
     missing_data, to_copy_root = find_missing_in_cache(missing_data,
                                                        cache_roots, cos_cache)
 
-    if missing_exts is not None:
+    if missing_exts:
         # specifically looking for any exts that might be missing from
         # partially retrieved data sets
         print("looking at exts")
@@ -652,19 +649,31 @@ def copy_cache(missing_data, missing_exts=None):  # IN USE
         missing_exts, to_copy_exts = find_missing_in_cache(missing_exts,
                                                            cache_filenames,
                                                            cos_cache)
-        # TODO here 3
+        # combining the root and exts lists that need to be copied into a
+        # dictionary that is the union of the unique values
         to_copy = combine_2dicts(to_copy_root, to_copy_exts)
+        # basically doing the same for all the rootnames associated with
+        # missing exts
         missing_ext_roots = {
             k: list(set([dataset[:9].upper() for dataset in v])) for k, v in
             missing_exts.items()}
+        # combine the rootname dictionaries for the missing data and missing
+        # extensions to be requested
         still_missing = combine_2dicts(missing_data, missing_ext_roots)
     else:
+        # if there are no missing_exts, don't need to bother combining those
+        # dictionaries of rootnames relevant to the missing extensions,
+        # so just go ahead with missing full datasets
         to_copy = to_copy_root
         still_missing = missing_data
 
     if to_copy:
-        parallelize("smart", "check_usage", copy_from_cache, to_copy)
+        # if there is data that needs to be copied, copy it from the cache
+        # in parallel
+        # TODO here 2
+        parallelize(copy_from_cache, to_copy)
 
+    # return the missing data set dictionary that needs to be requested
     return still_missing
 
 
@@ -729,17 +738,17 @@ def find_new_cos_data(pkl_it, pkl_file):  # IN USE
 
     Parameters:
     -----------
-        pkl_it : Bool
-            Switch to pickle final dictionary of data to requested from MAST.
-        pkl_file : str
-            Name of output pickle file.
+    pkl_it : Bool
+        Switch to pickle final dictionary of data to requested from MAST.
+    pkl_file : str
+        Name of output pickle file.
 
     Returns:
     --------
-        all_missing_data : dictionary
-            Dictionary of all datasets that need to be requested from MAST, 
-            where each key is a PID and the value is a list of all missing 
-            datasets for that PID.
+    all_missing_data : dictionary
+        Dictionary of all datasets that need to be requested from MAST,
+        where each key is a PID and the value is a list of all missing
+        datasets for that PID.
     """
     print("*" * 72)
     missing_data_priv, missing_data_pub, missing_exts = find_missing_data()

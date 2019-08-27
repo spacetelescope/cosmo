@@ -39,3 +39,7 @@ def retrieve():
     # proprietary status.
     set_grpid(prl=True)
     set_user_permissions("close", prl=True)
+
+
+# if __name__ == "__main__":
+#     retrieve()

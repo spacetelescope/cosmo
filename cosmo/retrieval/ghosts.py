@@ -99,3 +99,41 @@ in the retrieval process but are not currently used.
 #         # By importing pyfastcopy, shutil performance is automatically
 #         enhanced
 #         shutil.copyfile(item, dest)
+
+# from manualabor.py
+
+# def combine_2dicts(dict1, dict2):
+#    combined = defaultdict(list)
+#    incommon = list(set(dict1) & set(dict2))
+#    indict1 = list(set(dict1) - set(dict2))
+#    indict2 = list(set(dict2) - set(dict1))
+#    for k in incommon:
+#        combined[k] += list(set(dict1[k] + dict2[k]))
+#    for k in indict1:
+#        combined[k] += dict1[k]
+#    for k in indict2:
+#        combined[k] += dict2[k]
+#    return combined
+
+# def send_email():
+#     """
+#     Send a confirmation email. Currently not used.
+#
+#     Parameters:
+#     -----------
+#         None
+#
+#     Returns:
+#     --------
+#         Nothing
+#     """
+#
+#     msg = MIMEMultipart()
+#     msg["Subject"] = "Testing"
+#     msg["From"] = "jotaylor@stsci.edu"
+#     msg["To"] = "jotaylor@stsci.edu"
+#     msg.attach(MIMEText("Hello, the script is finished."))
+#     msg.attach(MIMEText("Testing line 2."))
+#     s = smtplib.SMTP("smtp.stsci.edu")
+#     s.sendmail("jotaylor@stsci.edu",["jotaylor@stsci.edu"], msg.as_string())
+#     s.quit()
