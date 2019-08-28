@@ -44,6 +44,9 @@ class AcqDataModel(BaseDataModel):
             for file in currently_ingested:
                 files.remove(file)
 
+        if not files:  # No new files
+            return pd.DataFrame()
+
         data_results = get_file_data(
             files,
             acq_keywords,
@@ -82,6 +85,9 @@ class OSMDataModel(BaseDataModel):
 
             for file in currently_ingested:
                 files.remove(file)
+
+        if not files:   # No new files
+            return pd.DataFrame()
 
         data_results = pd.DataFrame(
             get_file_data(
