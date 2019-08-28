@@ -3,6 +3,7 @@ import os
 import numpy as np
 
 from astropy.io import fits
+from shutil import copy
 
 from cosmo.filesystem import get_file_data, FileData, find_files
 
@@ -58,6 +59,20 @@ def testfile(data_dir):
     hdu.close()
 
 
+@pytest.fixture
+def cosmo_layout_testdir(data_dir):
+    # Set up the test cosmo-style directory
+    cosmo_dir = os.path.join(data_dir, '11111')  # 11111 is a fake directory; matches the program directory pattern
+
+    os.mkdir(cosmo_dir)
+    copy(os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz'), cosmo_dir)
+
+    yield
+
+    os.remove(os.path.join(cosmo_dir, 'lb4c10niq_lampflash.fits.gz'))
+    os.rmdir(cosmo_dir)
+
+
 class TestFindFiles:
 
     def test_fails_for_bad_dir(self):
@@ -68,6 +83,12 @@ class TestFindFiles:
         files = find_files('*lampflash*', data_dir=data_dir, cosmo_layout=False)
 
         assert len(files) == 11
+
+    @pytest.mark.usefixtures("cosmo_layout_testdir")
+    def test_finds_files_cosmo_layout(self, data_dir):
+        files = find_files('*', data_dir=data_dir, cosmo_layout=True)
+
+        assert len(files) == 1  # only one "program" directory with only one file in it
 
 
 class TestFileData:
