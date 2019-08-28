@@ -1,30 +1,31 @@
 import plotly.graph_objs as go
+import pandas as pd
 
 from astropy.time import Time
 from monitorframe.monitor import BaseMonitor
 
-from .osm_data_models import OSMDriftDataModel
-from ..monitor_helpers import explode_df, create_visibility
+from .data_models import OSMDataModel
+from ..monitor_helpers import explode_df, create_visibility, get_osm_data
 from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
 
 
-def get_osmdrift_data(data, detector):
+def get_osmdrift_data(datamodel: OSMDataModel, detector: str) -> pd.DataFrame:
     """Get OSM Drift monitoring data."""
-    df = data[data.DETECTOR == detector].reset_index(drop=True)
+    data = get_osm_data(datamodel, detector)
 
     # Calculate the relative shift (relative to the first shift measurement for each set of flashes) for AD and XD
-    df['REL_SHIFT_DISP'] = df.apply(lambda x: x.SHIFT_DISP[1:] - x.SHIFT_DISP[0], axis=1)
-    df['REL_SHIFT_XDISP'] = df.apply(lambda x: x.SHIFT_XDISP[1:] - x.SHIFT_XDISP[0], axis=1)
+    data['REL_SHIFT_DISP'] = data.apply(lambda x: x.SHIFT_DISP[1:] - x.SHIFT_DISP[0], axis=1)
+    data['REL_SHIFT_XDISP'] = data.apply(lambda x: x.SHIFT_XDISP[1:] - x.SHIFT_XDISP[0], axis=1)
 
     # Drop the first value for the other data columns
     for col in ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT']:
-        df[col] = df.apply(lambda x: x[col][1:], axis=1)
+        data[col] = data.apply(lambda x: x[col][1:], axis=1)
 
     # Expand the dataframe
     exploded = explode_df(
-        df, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT', 'REL_SHIFT_DISP', 'REL_SHIFT_XDISP']
+        data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT', 'REL_SHIFT_DISP', 'REL_SHIFT_XDISP']
     )
 
     # Add drift columns and time since OSM move columns
@@ -42,7 +43,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
     """FUV OSM Drift monitor. Includes the drift for both along and cross-dispersion directions as a function of time
     since the last OSM1 move.
     """
-    data_model = OSMDriftDataModel
+    data_model = OSMDataModel
     output = COS_MONITORING
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-drift-monitor"
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'OPT_ELEM', 'SEGMENT']
@@ -55,7 +56,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
     # [ (2,1) x2,y2 ]
 
     def get_data(self):
-        return get_osmdrift_data(self.model.new_data, 'FUV')
+        return get_osmdrift_data(self.model, 'FUV')
 
     def track(self):
         """Track statistics for the drift for SHIFT1 and SHIFT2 for each LP."""
@@ -173,7 +174,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
 
 
 class NUVOSMDriftMonitor(BaseMonitor):
-    data_model = OSMDriftDataModel
+    data_model = OSMDataModel
     output = COS_MONITORING
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-drift-monitor"
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'OPT_ELEM']
@@ -186,7 +187,7 @@ class NUVOSMDriftMonitor(BaseMonitor):
     # [ (2,1) x3,y3 ]  [ (2,2) x4,y4 ]  The axes labels and x/y combinations need to match this layout.
 
     def get_data(self):
-        return get_osmdrift_data(self.model.new_data, 'NUV')
+        return get_osmdrift_data(self.model, 'NUV')
 
     def track(self):
         """Track SHIFT1 and SHIFT2 statistics per SEGMENT (stripe for NUV)."""

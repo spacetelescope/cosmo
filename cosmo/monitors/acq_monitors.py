@@ -4,27 +4,45 @@ import plotly.express as px
 import datetime
 import pandas as pd
 
+from peewee import Model
 from monitorframe.monitor import BaseMonitor
 from astropy.time import Time
-from typing import List
+from typing import List, Union
 
-from .acq_data_models import AcqImageModel, AcqPeakdModel, AcqPeakxdModel
-from ..monitor_helpers import fit_line, convert_day_of_year, create_visibility
+from .data_models import AcqDataModel
+from ..monitor_helpers import fit_line, convert_day_of_year, create_visibility, detector_to_v2v3
 from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
 
 
+def select_all_acq(model: Union[Model, None], exptype: str, new_data_df: pd.DataFrame = None) -> pd.DataFrame:
+    """Get all ingested acq data of a particular exptype and combine it with any new data found."""
+    data = pd.DataFrame()
+
+    if model is not None:
+        data = data.append(pd.DataFrame(model.select().where(model.EXPTYPE == exptype).dicts()))
+
+    if not new_data_df.empty:
+        new_data = new_data_df[new_data_df.EXPTYPE == exptype]
+        data = data.append(new_data)
+
+    return data
+
+
 class AcqImageMonitor(BaseMonitor):
-    data_model = AcqImageModel
+    data_model = AcqDataModel
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#acqimage-monitor"
     labels = ['ROOTNAME', 'PROPOSID', 'FGS']
     output = COS_MONITORING
 
     def get_data(self):
-        data = self.model.new_data
+        data = select_all_acq(self.model.model, 'ACQ/IMAGE', self.model.new_data)
+
+        # Add configuration column which is a combination of aperture-grating/mirror
         data['configuration'] = data.APERTURE.str.cat(data.OPT_ELEM, sep='-')
-        return self.model.new_data
+
+        return data
 
     def track(self):
         """Track the total offset (or slew) distance and basic statistics on x and y slews."""
@@ -83,7 +101,7 @@ class AcqImageMonitor(BaseMonitor):
 class AcqImageV2V3Monitor(BaseMonitor):
     """V2V3 Offset Monitor."""
     name = 'V2V3 Offset Monitor'
-    data_model = AcqImageModel
+    data_model = AcqDataModel
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#fgs-monitoring"
     labels = ['ROOTNAME', 'PROPOSID']
 
@@ -129,7 +147,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
         """Filter ACQIMAGE data for V2V3 plot. These filter options attempt to weed out outliers that might result from
         things besides FGS trends (such as bad coordinates).
         """
-        data = self.model.new_data
+        data = select_all_acq(self.model.model, 'ACQ/IMAGE', self.model.new_data)
+        data['V2SLEW'], data['V3SLEW'] = detector_to_v2v3(data.ACQSLEWX, data.ACQSLEWY)
 
         # Filters determined by the team.
         # These options are meant to filter out most outliers to study FGS zero-point offsets and rate of change with
@@ -392,7 +411,9 @@ class SpecAcqBaseMonitor(BaseMonitor):
     shapes = None
 
     def get_data(self):
-        return self.model.new_data
+        exptype = 'ACQ/PEAKD' if self.slew == 'ACQSLEWX' else 'ACQ/PEAKXD'
+
+        return select_all_acq(self.model.model, exptype, self.model.new_data)
 
     def track(self):
         """Track the standard deviation of the slew per FGS."""
@@ -431,7 +452,7 @@ class SpecAcqBaseMonitor(BaseMonitor):
 
                 self.figure.add_trace(scatter)
 
-                outliers = lp_group[self.outliers.iloc[lp_group.index.values]]
+                outliers = lp_group[self.outliers[lp_group.index.values]]
 
                 if not outliers.empty:
                     trace_count[name] += 1
@@ -497,7 +518,7 @@ class SpecAcqBaseMonitor(BaseMonitor):
 class AcqPeakdMonitor(SpecAcqBaseMonitor):
     """ACQPEAKD monitor."""
     name = 'AcqPeakd Monitor'
-    data_model = AcqPeakdModel
+    data_model = AcqDataModel
     slew = 'ACQSLEWX'
 
     # Transparent box highlighting good offset range
@@ -520,7 +541,7 @@ class AcqPeakdMonitor(SpecAcqBaseMonitor):
 class AcqPeakxdMonitor(SpecAcqBaseMonitor):
     """ACQPEAKXD monitor."""
     name = 'AcqPeakxd Monitor'
-    data_model = AcqPeakxdModel
+    data_model = AcqDataModel
     slew = 'ACQSLEWY'
 
     peakxd_update = datetime.datetime.strptime('2017-10-02', '%Y-%m-%d')

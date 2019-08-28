@@ -3,23 +3,24 @@ import os
 import numpy as np
 
 from astropy.io import fits
+from shutil import copy
 
-from cosmo.filesystem import get_file_data, FileData, FileDataFinder
+from cosmo.filesystem import get_file_data, FileData, find_files
 
 
 BAD_INPUT = [
     # Different lengths in the data
-    ('*', ['key1', 'key2'], [1], None, None, None, None),
-    ('*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], [1], None, None),
-    ('*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], [1], ['key1', 'key2']),
+    (['key1', 'key2'], [1], None, None, None, None),
+    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1], None, None),
+    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], [1], ['key1', 'key2']),
 
     # Input is missing corresponding extension argument with the keyword argument given
-    ('*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], None, None, None),
-    ('*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], None, ['key1', 'key2']),
+    (['key1', 'key2'], [1, 1], ['key1', 'key2'], None, None, None),
+    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], None, ['key1', 'key2']),
 
     # Input is missing corresponding keyword argument with the extension argument given
-    ('*', ['key1', 'key2'], [1, 1], None, [1, 1], None, None),
-    ('*', ['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], [1, 1], None),
+    (['key1', 'key2'], [1, 1], None, [1, 1], None, None),
+    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], [1, 1], None),
 ]
 
 
@@ -28,37 +29,8 @@ def params(request):
     return request.param
 
 
-class TestFileDataFinder:
-
-    def test_fails_for_bad_input(self, params, data_dir):
-        file_pattern, keywords, extensions, spt_keywords, spt_extensions, data_extensions, data_keys = params
-
-        with pytest.raises(ValueError):
-            FileDataFinder(
-                data_dir,
-                file_pattern,
-                keywords,
-                extensions,
-                spt_keywords=spt_keywords,
-                spt_extensions=spt_extensions,
-                data_keywords=data_keys,
-                data_extensions=data_extensions
-            )
-
-    def test_bad_input_dir_fails(self):
-        with pytest.raises(OSError):
-            FileDataFinder('doesnotexist', '*', ['key'], [0])
-
-    def test_get_data_from_files(self, data_dir):
-        test_finder = FileDataFinder(data_dir, '*lampflash*', ('ROOTNAME',), (0,), cosmo_layout=False)
-        file_data = test_finder.get_data_from_files()
-
-        assert None not in file_data
-        assert len(file_data) == 11
-
-
 @pytest.fixture
-def testfile(data_dir):
+def testfiledata(data_dir):
     file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
     hdu = fits.open(file)
     testfile = FileData(
@@ -66,10 +38,10 @@ def testfile(data_dir):
         hdu,
         ('ROOTNAME',),
         (0,),
-        spt_keys=('LQTDFINI',),
-        spt_exts=(1,),
-        data_keys=('TIME',),
-        data_exts=(1,)
+        spt_keywords=('LQTDFINI',),
+        spt_extensions=(1,),
+        data_keywords=('TIME',),
+        data_extensions=(1,)
     )
 
     yield testfile
@@ -77,55 +49,106 @@ def testfile(data_dir):
     testfile.hdu.close()
 
 
-class TestFileData:
+@pytest.fixture
+def testfile(data_dir):
+    file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
+    hdu = fits.open(file)
 
-    def test_spt_name(self, testfile, data_dir):
-        assert testfile.spt_file is not None
-        assert testfile.spt_file == os.path.join(data_dir, 'lb4c10niq_spt.fits.gz')
+    yield file, hdu
 
-    def test_get_spt_header_data(self, testfile):
-        testfile.get_spt_header_data()
-
-        assert 'LQTDFINI' in testfile.data.keys()
-        assert testfile.data['LQTDFINI'] == 'TDF Up'
-
-    def test_get_header_data(self, testfile):
-        testfile.get_header_data()
-
-        assert 'ROOTNAME' in testfile.data.keys()
-        assert testfile.data['ROOTNAME'] == 'lb4c10niq'
-
-    def test_get_table_data(self, testfile):
-        testfile.get_table_data()
-
-        assert 'TIME' in testfile.data.keys()
-        assert isinstance(testfile.data['TIME'],  np.ndarray)
+    hdu.close()
 
 
 @pytest.fixture
-def delayed_get_data(data_dir):
-    file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
+def cosmo_layout_testdir(data_dir):
+    # Set up the test cosmo-style directory
+    cosmo_dir = os.path.join(data_dir, '11111')  # 11111 is a fake directory; matches the program directory pattern
 
-    delayed_get_data = get_file_data(
-        file,
-        ('ROOTNAME',),
-        (0,),
-        spt_keys=('LQTDFINI',),
-        spt_exts=(1,),
-        data_keys=('TIME',),
-        data_exts=(1,)
-    )
+    os.mkdir(cosmo_dir)
+    copy(os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz'), cosmo_dir)
 
-    return delayed_get_data
+    yield
+
+    os.remove(os.path.join(cosmo_dir, 'lb4c10niq_lampflash.fits.gz'))
+    os.rmdir(cosmo_dir)
+
+
+class TestFindFiles:
+
+    def test_fails_for_bad_dir(self):
+        with pytest.raises(OSError):
+            find_files('*', 'doesnotexist', cosmo_layout=False)
+
+    def test_finds_files(self, data_dir):
+        files = find_files('*lampflash*', data_dir=data_dir, cosmo_layout=False)
+
+        assert len(files) == 11
+
+    @pytest.mark.usefixtures("cosmo_layout_testdir")
+    def test_finds_files_cosmo_layout(self, data_dir):
+        files = find_files('*', data_dir=data_dir, cosmo_layout=True)
+
+        assert len(files) == 1  # only one "program" directory with only one file in it
+
+
+class TestFileData:
+
+    def test_spt_name(self, testfiledata, data_dir):
+        assert testfiledata.spt_file is not None
+        assert testfiledata.spt_file == os.path.join(data_dir, 'lb4c10niq_spt.fits.gz')
+
+    def test_get_spt_header_data(self, testfiledata):
+        testfiledata.get_spt_header_data()
+
+        assert 'LQTDFINI' in testfiledata.data.keys()
+        assert testfiledata.data['LQTDFINI'] == 'TDF Up'
+
+    def test_get_header_data(self, testfiledata):
+        testfiledata.get_header_data()
+
+        assert 'ROOTNAME' in testfiledata.data.keys()
+        assert testfiledata.data['ROOTNAME'] == 'lb4c10niq'
+
+    def test_get_table_data(self, testfiledata):
+        testfiledata.get_table_data()
+
+        assert 'TIME' in testfiledata.data.keys()
+        assert isinstance(testfiledata.data['TIME'],  np.ndarray)
+
+    def test_fails_with_bad_input(self, testfile, params):
+        filename, hdu = testfile
+        header_keys, header_exts, spt_keys, spt_exts, data_exts, data_keys = params
+
+        with pytest.raises(ValueError):
+            FileData(
+                filename,
+                hdu,
+                header_keywords=header_keys,
+                header_extensions=header_exts,
+                spt_keywords=spt_keys,
+                spt_extensions=spt_exts,
+                data_keywords=data_keys,
+                data_extensions=data_exts
+            )
 
 
 class TestGetFileData:
 
-    def test_compute_result(self, delayed_get_data):
-        result = delayed_get_data.compute(scheduler='multiprocessing')
+    def test_compute_result(self, data_dir):
+        files = [os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')]
 
-        assert isinstance(result, dict)
-        assert 'ROOTNAME' in result and 'LQTDFINI' in result and 'TIME' in result
-        assert result['ROOTNAME'] == 'lb4c10niq'
-        assert result['LQTDFINI'] == 'TDF Up'
-        assert isinstance(result['TIME'], np.ndarray)
+        result = get_file_data(
+            files,
+            ('ROOTNAME',),
+            (0,),
+            spt_keys=('LQTDFINI',),
+            spt_exts=(1,),
+            data_keys=('TIME',),
+            data_exts=(1,)
+        )
+
+        assert isinstance(result, list) and len(result) == 1
+        assert 'ROOTNAME' in result[0] and 'LQTDFINI' in result[0] and 'TIME' in result[0]
+        assert result[0]['ROOTNAME'] == 'lb4c10niq'
+        assert result[0]['LQTDFINI'] == 'TDF Up'
+        assert isinstance(result[0]['TIME'], np.ndarray)

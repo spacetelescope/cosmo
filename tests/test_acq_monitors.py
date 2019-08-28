@@ -2,16 +2,20 @@ import os
 import pytest
 
 from cosmo.monitors.acq_monitors import AcqPeakdMonitor, AcqImageMonitor, AcqPeakxdMonitor
-from cosmo.monitors.acq_data_models import AcqPeakdModel, AcqPeakxdModel, AcqImageModel
+from cosmo.monitors.data_models import AcqDataModel
 
 
-@pytest.fixture
-def set_monitor(data_dir, here):
-    def _set_monitor(monitor, datamodel):
-        datamodel.files_source = data_dir
-        datamodel.cosmo_layout = False
+@pytest.fixture(params=[False, True])
+def set_acqmonitor(request, data_dir, here):
+    if request.param:
+        model = AcqDataModel()
+        model.ingest()
 
-        monitor.data_model = datamodel
+    def _set_monitor(monitor):
+        AcqDataModel.files_source = data_dir
+        AcqDataModel.cosmo_layout = False
+
+        monitor.data_model = AcqDataModel
         monitor.output = here
 
         active = monitor()
@@ -23,19 +27,16 @@ def set_monitor(data_dir, here):
 
 class TestAcqMonitors:
 
-    @pytest.fixture(
-        autouse=True,
-        params=[
-            (AcqImageMonitor, AcqImageModel),
-            # (AcqImageV2V3Monitor, AcqImageModel),  This set still needs some additional data
-            (AcqPeakdMonitor, AcqPeakdModel),
-            (AcqPeakxdMonitor, AcqPeakxdModel)
-        ]
-    )
-    def acqmonitor(self, request, set_monitor):
-        acqmonitor = set_monitor(*request.param)
+    @pytest.fixture(autouse=True, params=[AcqImageMonitor, AcqPeakdMonitor, AcqPeakxdMonitor])
+    def acqmonitor(self, request, set_acqmonitor):
+        acqmonitor = set_acqmonitor(request.param)
 
         request.cls.acqmonitor = acqmonitor
+
+        yield
+
+        if request.cls.acqmonitor.model.model is not None:
+            request.cls.acqmonitor.model.model.drop_table(safe=True)
 
     def test_monitor_steps(self):
         self.acqmonitor.initialize_data()

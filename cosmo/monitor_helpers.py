@@ -109,3 +109,38 @@ def create_visibility(trace_lengths: List[int], visible_list: List[bool]) -> Lis
         visibility += list(repeat(visible, trace_length))  # Set each trace per button.
 
     return visibility
+
+
+def detector_to_v2v3(slew_x, slew_y):
+    """Detector coordinates to V2/V3 coordinates."""
+    rotation_angle = np.radians(45.0)  # rotation angle in degrees converted to radians
+    x_conversion = slew_x * np.cos(rotation_angle)
+    y_conversion = slew_y * np.sin(rotation_angle)
+
+    v2 = x_conversion + y_conversion
+    v3 = x_conversion - y_conversion
+
+    return v2, v3
+
+
+def get_osm_data(datamodel, detector):
+    """Query for OSM data and append any relevant new data to it."""
+    data = pd.DataFrame()
+
+    if datamodel.model is not None:
+        query = datamodel.model.select().where(datamodel.model.DETECTOR == detector)
+
+        # Need to convert the stored array columns back into... arrays
+        data = data.append(
+            datamodel.query_to_pandas(
+                query,
+                array_cols=['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'],
+                array_dtypes=[float, float, float, str]
+            )
+        )
+
+    if not datamodel.new_data.empty:
+        new_data = datamodel.new_data[datamodel.new_data.DETECTOR == detector]
+        data = data.append(new_data)
+
+    return data

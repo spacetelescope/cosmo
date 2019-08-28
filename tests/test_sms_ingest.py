@@ -6,6 +6,14 @@ from cosmo.sms import SMSFinder, SMSFile, SMSFileStats, SMSTable
 TEST_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
 
 
+@pytest.fixture
+def clean_db_tables():
+    yield
+
+    SMSTable.drop_table(safe=True)
+    SMSFileStats.drop_table(safe=True)
+
+
 @pytest.fixture(params=[os.path.dirname(os.path.abspath(__file__)), '/this/is/not/a/directory'])
 def bad_file_path(request):
     """Fixture that parametrizes cases of file paths that should result in an error."""
@@ -15,43 +23,21 @@ def bad_file_path(request):
 
 
 @pytest.fixture(params=[os.path.join(TEST_DATA, test_file) for test_file in ['100047aa.txt', '180147b1.txt']])
-def smsfile(request):
+def smsfile(request, clean_db_tables):
     """Fixture that parametrizes cases of two files (one old format and one new) that should be ingested
     successfully.
 
     Includes a clean up for tests that create tables in the test database.
     """
-    yield request.param
-
-    if SMSTable.table_exists():
-        SMSTable.drop_table()
-
-    if SMSFileStats.table_exists():
-        SMSFileStats.drop_table()
+    return request.param
 
 
 @pytest.fixture
-def test_finder():
+def test_finder(clean_db_tables):
     """Fixture that yields an SMSFinder object for testing. Clean up removes database tables."""
     test_finder = SMSFinder(TEST_DATA)
-    yield test_finder
 
-    if SMSTable.table_exists():
-        SMSTable.drop_table()
-
-    if SMSFileStats.table_exists():
-        SMSFileStats.drop_table()
-
-
-@pytest.fixture
-def clean_tables():
-    yield
-
-    if SMSTable.table_exists():
-        SMSTable.drop_table()
-
-    if SMSFileStats.table_exists():
-        SMSFileStats.drop_table()
+    return test_finder
 
 
 class TestSMSFile:
@@ -144,7 +130,7 @@ class TestSMSFinder:
         assert len(testcase) == 1
         assert testcase.version.values[0] == 'c2'
 
-    def test_entry_is_updated(self, clean_tables):
+    def test_entry_is_updated(self, clean_db_tables):
         test_sms = SMSFile(os.path.join(TEST_DATA, '181137b4.txt'))
         test_sms.insert_to_db()
 

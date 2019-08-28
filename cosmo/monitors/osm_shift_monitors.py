@@ -7,8 +7,8 @@ from itertools import repeat
 from monitorframe.monitor import BaseMonitor
 from typing import Union, List
 
-from .osm_data_models import OSMShiftDataModel
-from ..monitor_helpers import ExposureAbsoluteTime, explode_df, create_visibility
+from .data_models import OSMDataModel
+from ..monitor_helpers import ExposureAbsoluteTime, explode_df, create_visibility, get_osm_data
 from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
@@ -78,7 +78,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
     by specific Shift1 and Shift2 monitors (which share the same plots, but differ in which shift value is plotted and
     how outliers are defined).
     """
-    data_model = OSMShiftDataModel
+    data_model = OSMDataModel
     output = COS_MONITORING
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-shift-monitors"
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'SEGMENT', 'CENWAVE']
@@ -90,9 +90,9 @@ class FuvOsmShiftMonitor(BaseMonitor):
 
     def get_data(self) -> pd.DataFrame:
         """Get new data from the data model. Expand the data around individual flashes and filter on FUV."""
-        exploded_data = explode_df(self.model.new_data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+        data = get_osm_data(self.model, 'FUV')
 
-        return exploded_data[exploded_data.DETECTOR == 'FUV']
+        return explode_df(data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
 
     def track(self) -> pd.DataFrame:
         """Track the difference in shift, A-B"""
@@ -314,7 +314,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
     """Abstracted NUV OSM Shift monitor. This monitor class is not meant to be used directly, but rather inherited from
     by specific Shift1 and Shift2 monitors (which share the same plots, but differ in which shift value is plotted and
     how outliers are defined)."""
-    data_model = OSMShiftDataModel
+    data_model = OSMDataModel
     output = COS_MONITORING
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-shift-monitors"
     labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'CENWAVE']
@@ -326,9 +326,9 @@ class NuvOsmShiftMonitor(BaseMonitor):
 
     def get_data(self):
         """Filter on detector."""
-        exploded_data = explode_df(self.model.new_data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+        data = get_osm_data(self.model, 'NUV')
 
-        return exploded_data[exploded_data.DETECTOR == 'NUV']
+        return explode_df(data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
 
     def track(self) -> dict:
         """Track the difference in shift between stripes. B-C and C-A."""
