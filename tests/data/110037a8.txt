@@ -1,0 +1,134 @@
+
+COS Exposure Report: SMS 110037A8
+
+Data                                                          Exposure Start    FUV    Mechanism Positions   Cent    Tsince Tsince       Lamp    STIMs      Flash
+Filename Prop  Target     PRG OB AL EX Conf Opmode    ExpTime yyyy.ddd:hh:mm:ss State  Aper OSM1     OSM2    Wave FP   OSM1   OSM2 Lamp  Curr    A   B  Dop # Dur T
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbhx79ba 12289 J074451.37 BHX 79 01 01 NUV  ACQ/IMAGE   120.0 2011.003:06:03:21        PSA  NCM1     MIRRORB    0  0    491    317                      NO
+lbhx79bd 12289 J074451.37 BHX 79 03 01 FUV  TIME-TAG    900.0 2011.003:06:09:31 HVNom  PSA  G140L    -----   1280  0    127    687              LOW LOW NO  2   7 S
+lbhx12gd 12289 J074815.44 BHX 12 01 01 NUV  ACQ/IMAGE   100.0 2011.003:23:37:55        PSA  NCM1     MIRRORB    0  0    471    297                      NO
+lbhx12gf 12289 J074815.44 BHX 12 03 01 FUV  TIME-TAG    900.0 2011.003:23:43:45 HVNom  PSA  G140L    -----   1280  0    127    647              LOW LOW NO  2   7 S
+lbhx0wm7 12289 J075222.91 BHX 0W 01 01 NUV  ACQ/IMAGE   100.0 2011.004:21:59:32        PSA  NCM1     MIRRORB    0  0    471    297                      NO
+lbhx0wma 12289 J075222.91 BHX 0W 03 01 FUV  TIME-TAG    900.0 2011.004:22:05:22 HVNom  PSA  G140L    -----   1280  0    127    647              LOW LOW NO  2   7 S
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbdo59mt 12046            BDO 59 01 01                        2011.005:00:00:00        COS MEMORY COPY -- DCE CODE IMAGE TO CS RAM
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbhx70tm 12289 J081050.90 BHX 70 01 01 NUV  ACQ/IMAGE   222.0 2011.005:20:23:45        PSA  NCM1     MIRRORB    0  0    593    419                      NO
+lbhx70tr 12289 J081050.90 BHX 70 03 01 FUV  TIME-TAG    900.0 2011.005:20:31:37 HVNom  PSA  G140L    -----   1280  0    127    891              LOW LOW NO  2   7 S
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbmxe1u9 12423 DARK       BMX E1 01 01 FUV  TIME-TAG   1330.0 2011.006:00:00:13 HVNom  PSA  G130M    -----   1309  0  11407  11277              LOW LOW NO
+lbmxe2ue 12423 DARK       BMX E2 01 01 FUV  TIME-TAG   1330.0 2011.006:00:32:28 HVNom  PSA  G130M    -----   1309  0  13342  13212              LOW LOW NO
+lbmxe3uo 12423 DARK       BMX E3 01 01 FUV  TIME-TAG   1330.0 2011.006:01:07:18 HVNom  PSA  G130M    -----   1309  0  15432  15302              LOW LOW NO
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbj014uw 12264 FIRST-J020 BJ0 14 01 01 NUV  ACQ/IMAGE   118.0 2011.006:02:24:05        PSA  NCM1     MIRRORB    0  0    489    315                      NO
+lbj014vk 12264 FIRST-J020 BJ0 14 03 01 NUV  TIME-TAG   2373.0 2011.006:02:29:04        PSA  NCM1     G230L   2950  0    788     87                      NO  3   7 S
+lbj014vu 12264 FIRST-J020 BJ0 14 05 01 NUV  TIME-TAG   2985.0 2011.006:03:53:27        PSA  NCM1     G230L   2950  1   5851   5150                      NO  2   7 S
+lbj014w3 12264 FIRST-J020 BJ0 14 07 01 NUV  TIME-TAG   2985.0 2011.006:05:29:18        PSA  NCM1     G230L   2635  0  11602  10901                      NO  2   7 S
+lbj014wc 12264 FIRST-J020 BJ0 14 09 01 NUV  TIME-TAG   2985.0 2011.006:07:05:09        PSA  NCM1     G230L   3360  0  17353  16652                      NO  2  12 S
+lbj014wl 12264 FIRST-J020 BJ0 14 0B 01 NUV  TIME-TAG   2985.0 2011.006:08:41:00        PSA  NCM1     G230L   3360  1  23104  22403                      NO  2  12 S
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbmxe4ws 12423 DARK       BMX E4 01 01 FUV  TIME-TAG   1330.0 2011.006:10:13:26 HVNom  PSA  G130M    -----   1309  0   2395   2198              LOW LOW NO
+lbmxe5wx 12423 DARK       BMX E5 01 01 FUV  TIME-TAG   1330.0 2011.006:10:44:28 HVNom  PSA  G130M    -----   1309  0   4257   4060              LOW LOW NO
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbngl1x5 12421 WD1057+719 BNG L1 01 01 NUV  ACQ/SEARCH    0.7 2011.006:12:42:12        PSA  NCM1     G230L   2635  0    281     80 SCANSIZE=3 STEPSIZE=1767 FLUXFLR
+lbngl1x6 12421 WD1057+719 BNG L1 02 01 NUV  ACQ/PEAKXD    1.0 2011.006:12:48:32        PSA  NCM1     G230L   2635  0    661    460                      NO
+lbngl1x7 12421 WD1057+719 BNG L1 03 01 NUV  ACQ/PEAKD     0.7 2011.006:12:48:52        PSA  NCM1     G230L   2635  0    681    480   DWELLS=9 STEPSIZE=1000 FLUXFLR
+lbngl1x9 12421 WD1057+719 BNG L1 05 01 NUV  TIME-TAG    540.0 2011.006:12:54:25        PSA  NCM1     G230L   2635  0   1014    813                      NO  2   7 S
+lbngl1xd 12421 WD1057+719 BNG L1 07 01 NUV  TIME-TAG   1193.0 2011.006:13:50:12        PSA  NCM1     G230L   3360  0   4361   4160                      NO  2  12 S
+lbngl1xi 12421 WD1057+719 BNG L1 09 01 NUV  TIME-TAG   1500.0 2011.006:14:13:07        PSA  NCM1     G230L   2950  0   5736   5535                      NO  2   7 S
+lbngl1xn 12421 WD1057+719 BNG L1 0B 01 NUV  TIME-TAG   1150.0 2011.006:15:25:58        PSA  NCM1     G230L   3360  0  10107   9906                      NO  2  12 S
+lbngm1xq 12421 G191B2B    BNG M1 01 01 NUV  ACQ/SEARCH    1.0 2011.006:16:55:40        PSA  NCM1     G185M   1921  0    152   3907 SCANSIZE=3 STEPSIZE=1767 FLUXFLR
+lbngm1xr 12421 G191B2B    BNG M1 02 01 NUV  ACQ/PEAKXD    1.0 2011.006:17:02:02        PSA  NCM1     G185M   1921  0    534   4289                      NO
+lbngm1xs 12421 G191B2B    BNG M1 03 01 NUV  ACQ/PEAKD     1.0 2011.006:17:02:22        PSA  NCM1     G185M   1921  0    554   4309   DWELLS=9 STEPSIZE= 600 FLUXFLR
+lbngm1xu 12421 G191B2B    BNG M1 05 01 NUV  TIME-TAG    130.0 2011.006:17:07:50        PSA  NCM1     G185M   1921  0    882   4637                      NO  1  12 S
+lbngm1xw 12421 G191B2B    BNG M1 07 01 NUV  TIME-TAG    241.0 2011.006:17:15:40        PSA  NCM1     G225M   2186  0   1352     89                      NO  2   7 S
+lbngm1xy 12421 G191B2B    BNG M1 09 01 NUV  TIME-TAG    213.0 2011.006:17:22:51        PSA  NCM1     G225M   2306  0   1783    520                      NO  2  12 S
+lbngm1y0 12421 G191B2B    BNG M1 0B 01 NUV  TIME-TAG    225.0 2011.006:17:31:01        PSA  NCM1     G225M   2410  0   2273   1010                      NO  1   7 S
+lbngm1y2 12421 G191B2B    BNG M1 0D 01 NUV  TIME-TAG    330.0 2011.006:17:39:58        PSA  NCM1     G285M   2617  0   2810     92                      NO  2  12 S
+lbngm1y4 12421 G191B2B    BNG M1 0F 01 NUV  TIME-TAG    400.0 2011.006:18:31:05        PSA  NCM1     G285M   2739  0   5877   3159                      NO  1   7 S
+lbngm1y6 12421 G191B2B    BNG M1 0H 01 NUV  TIME-TAG   1230.0 2011.006:18:41:06        PSA  NCM1     G285M   3094  0   6478   3760                      NO  2  32 S
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lb6b07y8 11616 V-AA-TAU   B6B 07 01 01 NUV  ACQ/SEARCH   73.0 2011.006:20:05:57        PSA  NCM1     MIRRORB    0  0    252     78 SCANSIZE=3 STEPSIZE=1767 FLUXWT
+lb6b07y9 11616 V-AA-TAU   B6B 07 02 01 NUV  ACQ/IMAGE    58.0 2011.006:20:24:59        PSA  NCM1     MIRRORB    0  0   1394   1220                      NO
+lb6b07yb 11616 V-AA-TAU   B6B 07 04 01 FUV  TIME-TAG   1418.0 2011.006:20:30:31 HVNom  PSA  G160M    -----   1577  0    124   1552              LOW LOW NO  3  12 S
+lb6b07yd 11616 V-AA-TAU   B6B 07 06 01 FUV  TIME-TAG   1387.0 2011.006:21:39:59 HVNom  PSA  G160M    -----   1600  0   4292   5720              LOW LOW NO  2  12 S
+lb6b07yf 11616 V-AA-TAU   B6B 07 08 01 FUV  TIME-TAG   1387.0 2011.006:22:06:14 HVNom  PSA  G160M    -----   1623  0   5867   7295              LOW LOW NO  2  12 S
+lb6b07yh 11616 V-AA-TAU   B6B 07 0A 01 FUV  TIME-TAG   1422.0 2011.006:23:15:52 HVNom  PSA  G130M    -----   1327 -2    122  11473              LOW LOW NO  3  12 S
+lb6b07yj 11616 V-AA-TAU   B6B 07 0C 01 FUV  TIME-TAG   1422.0 2011.006:23:41:31 HVNom  PSA  G130M    -----   1327  1   1661  13012              LOW LOW NO  2  12 S
+lb6b07ys 11616 V-AA-TAU   B6B 07 0E 01 FUV  TIME-TAG   1422.0 2011.007:00:51:41 HVNom  PSA  G130M    -----   1291 -2   5871  17222              LOW LOW NO  2  12 S
+lb6b07yy 11616 V-AA-TAU   B6B 07 0G 01 FUV  TIME-TAG   1422.0 2011.007:01:17:22 HVNom  PSA  G130M    -----   1291  1   7412  18763              LOW LOW NO  2  12 S
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbnm02zk 12426 WD-0308-56 BNM 02 01 01 NUV  ACQ/IMAGE    45.0 2011.007:04:28:17        BOA  NCM1     MIRRORA    0  0    387    219                      NO
+lbnm02zm 12426 WD-0308-56 BNM 02 03 01 FUV  TIME-TAG    500.0 2011.007:04:32:59 HVNom  PSA  G130M    -----   1291 -2    120    501              LOW LOW NO  2  12 S
+lbnm02zs 12426 WD-0308-56 BNM 02 05 01 FUV  TIME-TAG    500.0 2011.007:04:44:03 HVNom  PSA  G130M    -----   1291 -1    784   1165              LOW LOW NO  2  12 S
+lbnm02zv 12426 WD-0308-56 BNM 02 07 01 FUV  TIME-TAG    500.0 2011.007:05:14:31 HVNom  PSA  G130M    -----   1291  0   2612   2993              LOW LOW NO  1  12 S
+lbnm02zx 12426 WD-0308-56 BNM 02 09 01 FUV  TIME-TAG    500.0 2011.007:05:25:37 HVNom  PSA  G130M    -----   1291  1   3278   3659              LOW LOW NO  1  12 S
+lbnm02zz 12426 WD-0308-56 BNM 02 0B 01 FUV  TIME-TAG    490.0 2011.007:05:37:52 HVNom  PSA  G130M    -----   1300 -2   4013   4394              LOW LOW NO  1  12 S
+lbnm02a2 12426 WD-0308-56 BNM 02 0D 01 FUV  TIME-TAG    490.0 2011.007:05:48:48 HVNom  PSA  G130M    -----   1300 -1   4669   5050              LOW LOW NO  1  12 S
+lbnm02a4 12426 WD-0308-56 BNM 02 0F 01 FUV  TIME-TAG    490.0 2011.007:05:59:44 HVNom  PSA  G130M    -----   1300  0   5325   5706              LOW LOW NO  1  12 S
+lbnm02a6 12426 WD-0308-56 BNM 02 0H 01 FUV  TIME-TAG    490.0 2011.007:06:10:40 HVNom  PSA  G130M    -----   1300  1   5981   6362              LOW LOW NO  1  12 S
+lbnm02ar 12426 WD-0308-56 BNM 02 0J 01 FUV  TIME-TAG    490.0 2011.007:06:50:20 HVNom  PSA  G130M    -----   1309 -2   8361   8742              LOW LOW NO  1  12 S
+lbnm02au 12426 WD-0308-56 BNM 02 0L 01 FUV  TIME-TAG    490.0 2011.007:07:01:16 HVNom  PSA  G130M    -----   1309 -1   9017   9398              LOW LOW NO  1  12 S
+lbnm02aw 12426 WD-0308-56 BNM 02 0N 01 FUV  TIME-TAG    490.0 2011.007:07:12:12 HVNom  PSA  G130M    -----   1309  0   9673  10054              LOW LOW NO  1  12 S
+lbnm02ay 12426 WD-0308-56 BNM 02 0P 01 FUV  TIME-TAG    490.0 2011.007:07:23:08 HVNom  PSA  G130M    -----   1309  1  10329  10710              LOW LOW NO  1  12 S
+lbnm02b0 12426 WD-0308-56 BNM 02 0R 01 FUV  TIME-TAG    490.0 2011.007:07:35:13 HVNom  PSA  G130M    -----   1318 -2  11054  11435              LOW LOW NO  1  12 S
+lbnm02b2 12426 WD-0308-56 BNM 02 0T 01 FUV  TIME-TAG    490.0 2011.007:07:46:09 HVNom  PSA  G130M    -----   1318 -1  11710  12091              LOW LOW NO  1  12 S
+lbnm02b4 12426 WD-0308-56 BNM 02 0V 01 FUV  TIME-TAG    490.0 2011.007:08:33:37 HVNom  PSA  G130M    -----   1318  0  14558  14939              LOW LOW NO  1  12 S
+lbnm02b6 12426 WD-0308-56 BNM 02 0X 01 FUV  TIME-TAG    490.0 2011.007:08:44:33 HVNom  PSA  G130M    -----   1318  1  15214  15595              LOW LOW NO  1  12 S
+lbnm02b8 12426 WD-0308-56 BNM 02 0Z 01 FUV  TIME-TAG    490.0 2011.007:08:56:38 HVNom  PSA  G130M    -----   1327 -2  15939  16320              LOW LOW NO  1  12 S
+lbnm02ba 12426 WD-0308-56 BNM 02 11 01 FUV  TIME-TAG    490.0 2011.007:09:07:34 HVNom  PSA  G130M    -----   1327 -1  16595  16976              LOW LOW NO  1  12 S
+lbnm02bc 12426 WD-0308-56 BNM 02 13 01 FUV  TIME-TAG    490.0 2011.007:09:18:30 HVNom  PSA  G130M    -----   1327  0  17251  17632              LOW LOW NO  1  12 S
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbnj01ch 12425 SK191      BNJ 01 01 01 FUV  ACQ/PEAKXD    2.0 2011.007:16:13:09 HVNom  PSA  G130M    -----   1291  0  42130  24073              OFF OFF NO
+lbnj01ci 12425 SK191      BNJ 01 02 01 FUV  ACQ/PEAKXD    2.0 2011.007:16:15:02 HVNom  PSA  G130M    -----   1291  0  42243  24186              OFF OFF NO
+lbnj01cj 12425 SK191      BNJ 01 03 01 FUV  ACQ/PEAKD     2.0 2011.007:16:15:38 HVNom  PSA  G130M    -----   1291  0  42279  24222   DWELLS=5 STEPSIZE=1000 FLUXFLR
+lbnj01cl 12425 SK191      BNJ 01 05 01 FUV  TIME-TAG    100.0 2011.007:16:19:56 HVNom  PSA  G130M    -----   1291  0  42537  24480              MID MID NO  1  12 S
+lbnj01cn 12425 SK191      BNJ 01 07 01 FUV  TIME-TAG    100.0 2011.007:16:24:41 HVNom  PSA  G130M    -----   1291  1  42822  24765              MID MID NO  1  12 S
+lbnj01cp 12425 SK191      BNJ 01 09 01 FUV  TIME-TAG    108.0 2011.007:16:51:42 HVNom  PSA  G130M    -----   1309  0  44443  26386              LOW LOW NO  1  12 S
+lbnj01cr 12425 SK191      BNJ 01 0B 01 FUV  TIME-TAG     90.0 2011.007:16:56:35 HVNom  PSA  G130M    -----   1309  1  44736  26679              MID MID NO  1  12 S
+lbnj01ct 12425 SK191      BNJ 01 0D 01 FUV  TIME-TAG    230.0 2011.007:17:06:10 HVNom  PSA  G160M    -----   1600  0    123  27254              LOW LOW NO  2  12 S
+lbnj01cy 12425 SK191      BNJ 01 0F 01 FUV  TIME-TAG    230.0 2011.007:17:45:16 HVNom  PSA  G160M    -----   1600  1   2469  29600              LOW LOW NO  1  12 S
+lbnj01d0 12425 SK191      BNJ 01 0H 01 FUV  TIME-TAG    230.0 2011.007:17:53:20 HVNom  PSA  G160M    -----   1623  0   2953  30084              LOW LOW NO  1  12 S
+lbnj01d2 12425 SK191      BNJ 01 0J 01 FUV  TIME-TAG    160.0 2011.007:18:00:15 HVNom  PSA  G160M    -----   1623  1   3368  30499              LOW LOW NO  1  12 S
+lbnj04d4 12425 CL-NGC-330 BNJ 04 01 01 FUV  ACQ/PEAKXD    1.0 2011.007:18:42:47 HVNom  PSA  G140L    -----   1280  0    151  33051              OFF OFF NO
+lbnj04d5 12425 CL-NGC-330 BNJ 04 02 01 FUV  ACQ/PEAKXD    1.0 2011.007:18:44:33 HVNom  PSA  G140L    -----   1280  0    257  33157              OFF OFF NO
+lbnj04d6 12425 CL-NGC-330 BNJ 04 03 01 FUV  ACQ/PEAKD     1.0 2011.007:18:45:04 HVNom  PSA  G140L    -----   1280  0    288  33188   DWELLS=5 STEPSIZE=1000 FLUXFLR
+lbnj04dd 12425 CL-NGC-330 BNJ 04 05 01 FUV  TIME-TAG    360.0 2011.007:19:22:19 HVNom  PSA  G140L    -----   1280 -2   2523  35423              LOW LOW NO  1   7 S
+lbnj04df 12425 CL-NGC-330 BNJ 04 07 01 FUV  TIME-TAG    360.0 2011.007:19:30:37 HVNom  PSA  G140L    -----   1280  0   3021  35921              LOW LOW NO  1   7 S
+lbnj04di 12425 CL-NGC-330 BNJ 04 09 01 FUV  TIME-TAG    360.0 2011.007:19:45:09 HVSegA PSA  G140L    -----   1105 -2   3893  36793              LOW OFF NO  1   7 S
+lbnj04do 12425 CL-NGC-330 BNJ 04 0B 01 FUV  TIME-TAG    360.0 2011.007:19:53:27 HVSegA PSA  G140L    -----   1105  0   4391  37291              LOW OFF NO  1   7 S
+lbnj04dr 12425 CL-NGC-330 BNJ 04 0D 01 FUV  TIME-TAG    360.0 2011.007:20:01:45 HVSegA PSA  G140L    -----   1105  1   4889  37789              LOW OFF NO  1   7 S
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lb5h05dz 11585 LBQS-0107- B5H 05 01 01 NUV  ACQ/SEARCH   15.0 2011.007:23:00:40        PSA  NCM1     MIRRORA    0  0    246     78 SCANSIZE=2 STEPSIZE=1767 FLUXWT
+lb5h05e0 11585 LBQS-0107- B5H 05 02 01 NUV  ACQ/IMAGE    15.0 2011.007:23:06:23        PSA  NCM1     MIRRORA    0  0    589    421                      NO
+lb5h05e4 11585 LBQS-0107- B5H 05 04 01 FUV  TIME-TAG   2263.0 2011.007:23:11:12 HVNom  PSA  G160M    -----   1623 -2    125    710              LOW LOW NO  3  12 S
+lb5h05ej 11585 LBQS-0107- B5H 05 06 01 FUV  TIME-TAG   2948.0 2011.008:00:34:20 HVNom  PSA  G160M    -----   1623 -1   5113   5698              LOW LOW NO  2  12 S
+lb5h05fb 11585 LBQS-0107- B5H 05 08 01 FUV  TIME-TAG   2948.0 2011.008:02:10:11 HVNom  PSA  G160M    -----   1623  0  10864  11449              LOW LOW NO  2  12 S
+lb5h05fj 11585 LBQS-0107- B5H 05 0A 01 FUV  TIME-TAG   2948.0 2011.008:03:46:01 HVNom  PSA  G160M    -----   1623  1  16614  17199              LOW LOW NO  2  12 S
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbhx97ig 12289 J114343.09 BHX 97 01 01 NUV  ACQ/IMAGE    65.0 2011.008:15:47:17        PSA  NCM1     MIRRORB    0  0    436    262                      NO
+lbhx97ij 12289 J114343.09 BHX 97 03 01 FUV  TIME-TAG    900.0 2011.008:15:52:32 HVNom  PSA  G140L    -----   1280  0    127    577              LOW LOW NO  2   7 S
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbni01ko 12422 HD-6655    BNI 01 01 01 NUV  ACQ/PEAKXD    1.5 2011.009:01:33:56        PSA  NCM1     G230L   2635  0    346    145                      NO
+lbni01kp 12422 HD-6655    BNI 01 02 01 NUV  ACQ/PEAKXD    1.5 2011.009:01:40:34        PSA  NCM1     G230L   2635  0    744    543                      NO
+lbni01kq 12422 HD-6655    BNI 01 03 01 NUV  ACQ/PEAKD     1.0 2011.009:01:40:55        PSA  NCM1     G230L   2635  0    765    564   DWELLS=5 STEPSIZE=1000 FLUXFLR
+lbni01kt 12422 HD-6655    BNI 01 05 01 NUV  TIME-TAG     80.0 2011.009:01:44:35        PSA  NCM1     G230L   2635  0    985    784                      NO  1   7 S
+lbni01kv 12422 HD-6655    BNI 01 07 01 NUV  TIME-TAG     80.0 2011.009:01:49:35        PSA  NCM1     G230L   2950  0   1285   1084                      NO  1   7 S
+lbni01kx 12422 HD-6655    BNI 01 09 01 NUV  TIME-TAG     80.0 2011.009:01:54:35        PSA  NCM1     G230L   3000  0   1585   1384                      NO  1   7 S
+lbni01kz 12422 HD-6655    BNI 01 0B 01 NUV  TIME-TAG     90.0 2011.009:02:01:18        PSA  NCM1     G285M   2676  0   1988     93                      NO  1  22 S
+lbni01l1 12422 HD-6655    BNI 01 0D 01 NUV  TIME-TAG    440.0 2011.009:02:06:56        PSA  NCM1     G225M   2217  0   2326     91                      NO  2  12 S
+lbni01l4 12422 HD-6655    BNI 01 0F 01 NUV  TIME-TAG    860.0 2011.009:02:18:05        PSA  NCM1     G185M   2010  0   2995     89                      NO  2  12 S
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lb5h08l9 11585 HB89-0107- B5H 08 01 01 NUV  ACQ/SEARCH  100.0 2011.009:03:46:04        PSA  NCM1     MIRRORB    0  0    252     78 SCANSIZE=2 STEPSIZE=1767 FLUXWT
+lb5h08la 11585 HB89-0107- B5H 08 02 01 NUV  ACQ/IMAGE   100.0 2011.009:03:59:15        PSA  NCM1     MIRRORB    0  0   1043    869                      NO
+lb5h08le 11585 HB89-0107- B5H 08 04 01 FUV  TIME-TAG   1775.0 2011.009:04:04:44 HVNom  PSA  G130M    -----   1318 -2    121   1198              LOW LOW NO  3  12 S
+lb5h08lh 11585 HB89-0107- B5H 08 06 01 FUV  TIME-TAG   2948.0 2011.009:05:19:37 HVNom  PSA  G130M    -----   1318 -1   4614   5691              LOW LOW NO  2  12 S
+lb5h08lo 11585 HB89-0107- B5H 08 08 01 FUV  TIME-TAG   2948.0 2011.009:06:55:28 HVNom  PSA  G130M    -----   1318  0  10365  11442              LOW LOW NO  2  12 S
+lb5h08lu 11585 HB89-0107- B5H 08 0A 01 FUV  TIME-TAG   2948.0 2011.009:08:31:19 HVNom  PSA  G130M    -----   1318  1  16116  17193              LOW LOW NO  2  12 S
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbi621ot 12276 SDSSJ17282 BI6 21 01 01 FUV  ACQ/SEARCH   14.0 2011.009:22:38:37 HVNom  PSA  G130M    -----   1327  0  66954  47539 SCANSIZE=3 STEPSIZE=1767 FLUXWT
+lbi621ou 12276 SDSSJ17282 BI6 21 02 01 FUV  ACQ/PEAKXD   14.0 2011.009:22:47:06 HVNom  PSA  G130M    -----   1327  0  67463  48048              OFF OFF NO
+lbi621ov 12276 SDSSJ17282 BI6 21 03 01 FUV  ACQ/PEAKD    14.0 2011.009:22:47:54 HVNom  PSA  G130M    -----   1327  0  67511  48096   DWELLS=5 STEPSIZE= 900 FLUXFLR
+lbi621ox 12276 SDSSJ17282 BI6 21 05 01 FUV  TIME-TAG   1017.0 2011.009:22:53:10 HVNom  PSA  G130M    -----   1327  0  67827  48412              LOW LOW NO  2  12 S
+lbi621oz 12276 SDSSJ17282 BI6 21 07 01 FUV  TIME-TAG   1017.0 2011.009:23:13:05 HVNom  PSA  G130M    -----   1291  0  69022  49607              LOW LOW NO  2  12 S
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------

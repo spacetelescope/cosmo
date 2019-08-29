@@ -3,29 +3,29 @@ from setuptools import setup, find_packages
 setup(
     name='cosmo',
     version='0.0.1',
-    description='Provide utilities and monotiring of cos data',
+    description='Monitors for HST/COS',
     keywords=['astronomy'],
     classifiers=[
-        'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Development Status :: 1 - Planning',
-        'Intended Audience :: Science/Research',
-        'Topic :: Scientific/Engineering :: Astronomy',
-        'Topic :: Scientific/Engineering :: Physics',
-        'Topic :: Software Development :: Libraries :: Python Modules'
+        'License :: BSD-3 :: Association of Universities for Research in Astronomy',
+        'Operating System :: Linux'
     ],
+    python_requires='~=3.7',  # 3.7 and higher, but not 4
     packages=find_packages(),
-    requires=['numpy', 'scipy', 'astropy', 'matplotlib'],
     install_requires=[
         'setuptools',
         'numpy>=1.11.1',
         'astropy>=1.0.1',
-        'plotly',
+        'plotly>=4.0.0',
         'scipy',
         'pyfastcopy',
-        'monitorframe',
         'dask',
         'pandas',
-        'pytest'
+        'pytest',
+        'pyyaml',
+        'peewee',
+        'calcos',
+        'crds',
+        'monitorframe @ git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe'
     ]
 )

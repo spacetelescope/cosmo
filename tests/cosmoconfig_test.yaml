@@ -1,0 +1,34 @@
+filesystem:
+  source: ''
+
+sms:
+  source: ''
+  db_settings:
+    database: 'test.db'
+    pragmas:
+      journal_mode: 'wal'
+      foreign_keys: 1
+      ignore_check_constraints: 0
+      synchronous: 0
+
+output: ''
+
+# Monitor data database
+data:
+  db_settings:
+    database: 'data_test.db'
+    pragmas:
+      journal_mode: 'wal'
+      foreign_keys: 1
+      ignore_check_constraints: 0
+      synchronous: 0
+
+# Monitor status and results database
+results:
+  db_settings:
+    database: 'results_test.db'
+    pragmas:
+      journal_mode: 'wal'
+      foreign_keys: 1
+      ignore_check_constraints: 0
+      synchronous: 0

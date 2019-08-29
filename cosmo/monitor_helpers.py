@@ -2,8 +2,9 @@ import pandas as pd
 import numpy as np
 import datetime
 
+from itertools import repeat
 from astropy.time import Time, TimeDelta
-from typing import Union, Iterable, Tuple, Sequence
+from typing import Union, Iterable, Tuple, Sequence, List
 
 
 def convert_day_of_year(date: Union[float, str]) -> Time:
@@ -44,7 +45,7 @@ class ExposureAbsoluteTime:
     """
     def __init__(self, df: pd.DataFrame = None, expstart: Union[Sequence, pd.Series] = None,
                  time_array: Union[Sequence, pd.Series] = None, time_array_key: str = None):
-        """Initalize AbsoluteTime from a dataframe or arrays.
+        """Initialize AbsoluteTime from a dataframe or arrays.
         Optionally provide a time_array_key keyword if ingesting from a dataframe which contains a time array with a
         different name from 'TIME', or if the dataframe contains multiple 'time' columns.
         """
@@ -95,3 +96,51 @@ class ExposureAbsoluteTime:
         instance = cls(expstart=expstart, time_array=time_array)
 
         return instance.compute_absolute_time(time_delta_format=time_format)
+
+
+def create_visibility(trace_lengths: List[int], visible_list: List[bool]) -> List[bool]:
+    """Create visibility lists for plotly buttons. trace_lengths and visible_list must be in the correct order.
+
+    :param trace_lengths: List of the number of traces in each "button set".
+    :param visible_list: Visibility setting for each button set (either True or False).
+    """
+    visibility = []  # Total visibility. Length should match the total number of traces in the figure.
+    for visible, trace_length in zip(visible_list, trace_lengths):
+        visibility += list(repeat(visible, trace_length))  # Set each trace per button.
+
+    return visibility
+
+
+def detector_to_v2v3(slew_x, slew_y):
+    """Detector coordinates to V2/V3 coordinates."""
+    rotation_angle = np.radians(45.0)  # rotation angle in degrees converted to radians
+    x_conversion = slew_x * np.cos(rotation_angle)
+    y_conversion = slew_y * np.sin(rotation_angle)
+
+    v2 = x_conversion + y_conversion
+    v3 = x_conversion - y_conversion
+
+    return v2, v3
+
+
+def get_osm_data(datamodel, detector):
+    """Query for OSM data and append any relevant new data to it."""
+    data = pd.DataFrame()
+
+    if datamodel.model is not None:
+        query = datamodel.model.select().where(datamodel.model.DETECTOR == detector)
+
+        # Need to convert the stored array columns back into... arrays
+        data = data.append(
+            datamodel.query_to_pandas(
+                query,
+                array_cols=['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'],
+                array_dtypes=[float, float, float, str]
+            )
+        )
+
+    if not datamodel.new_data.empty:
+        new_data = datamodel.new_data[datamodel.new_data.DETECTOR == detector]
+        data = data.append(new_data)
+
+    return data
