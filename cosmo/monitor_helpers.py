@@ -136,11 +136,13 @@ def get_osm_data(datamodel, detector):
                 query,
                 array_cols=['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'],
                 array_dtypes=[float, float, float, str]
-            )
+            ),
+            sort=True,
+            ignore_index=True
         )
 
     if not datamodel.new_data.empty:
-        new_data = datamodel.new_data[datamodel.new_data.DETECTOR == detector]
-        data = data.append(new_data)
+        new_data = datamodel.new_data[datamodel.new_data.DETECTOR == detector].reset_index(drop=True)
+        data = data.append(new_data, sort=True, ignore_index=True)
 
     return data
