@@ -88,7 +88,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
             # Plot per grating
             for grating, grating_group in group.groupby('OPT_ELEM'):
                 for i, (y, name, axes) in enumerate(zip(y_names, titles, locations)):
-                    self.figure.append_trace(
+                    self.figure.add_trace(
                         go.Scattergl(
                             x=grating_group.REL_TSINCEOSM1,
                             y=grating_group[y],
@@ -223,7 +223,7 @@ class NUVOSMDriftMonitor(BaseMonitor):
             # Plot per grating
             for grating, grating_group in group.groupby('OPT_ELEM'):
                 for i, (x, y, axes, name) in enumerate(zip(x_names, y_names, locations, titles)):
-                    self.figure.append_trace(
+                    self.figure.add_trace(
                         go.Scattergl(
                             x=grating_group[x],
                             y=grating_group[y],
