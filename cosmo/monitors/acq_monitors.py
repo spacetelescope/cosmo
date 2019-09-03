@@ -21,11 +21,15 @@ def select_all_acq(model: Union[Model, None], exptype: str, new_data_df: pd.Data
     data = pd.DataFrame()
 
     if model is not None:
-        data = data.append(pd.DataFrame(model.select().where(model.EXPTYPE == exptype).dicts()))
+        data = data.append(
+            pd.DataFrame(model.select().where(model.EXPTYPE == exptype).dicts()),
+            sort=True,
+            ignore_index=True
+        )
 
     if not new_data_df.empty:
-        new_data = new_data_df[new_data_df.EXPTYPE == exptype]
-        data = data.append(new_data)
+        new_data = new_data_df[new_data_df.EXPTYPE == exptype].reset_index(drop=True)
+        data = data.append(new_data, sort=True, ignore_index=True)
 
     return data
 
@@ -452,7 +456,7 @@ class SpecAcqBaseMonitor(BaseMonitor):
 
                 self.figure.add_trace(scatter)
 
-                outliers = lp_group[self.outliers[lp_group.index.values]]
+                outliers = lp_group[self.outliers.iloc[lp_group.index.values]]
 
                 if not outliers.empty:
                     trace_count[name] += 1
