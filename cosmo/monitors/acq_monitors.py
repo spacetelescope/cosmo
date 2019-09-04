@@ -405,7 +405,9 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
 class SpecAcqBaseMonitor(BaseMonitor):
     """Base monitor class for the spectroscopic Acq types: PEAKD and PEAKXD"""
-    docs = "https://spacetelescope.github.io/cosmo/monitors.html#acqpeakd-monitor"  # TODO: refactor docs; combine specs
+    docs = (
+        "https://spacetelescope.github.io/cosmo/monitors.html#spectroscopic-acquisition-monitors-acqpeakd-and-acqpeakxd"
+    )
     labels = ['ROOTNAME', 'PROPOSID', 'LIFE_ADJ', 'OPT_ELEM', 'CENWAVE', 'DETECTOR']
     output = COS_MONITORING
     slew = None

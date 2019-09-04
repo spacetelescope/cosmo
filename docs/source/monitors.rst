@@ -27,15 +27,8 @@ ACQIMAGE Monitor
 
 .. Needs to be finalized
 
-ACQPEAKD Monitor
-^^^^^^^^^^^^^^^^
-
-.. Needs to be finalized
-
-ACQPEAKXD Monitor
-^^^^^^^^^^^^^^^^^
-
-.. Needs to be finalized
+Spectroscopic Acquisition Monitors: ACQPEAKD and ACQPEAKXD
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 FGS Monitoring
 ^^^^^^^^^^^^^^
