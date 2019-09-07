@@ -362,3 +362,500 @@ The monitor class that will be used as an example looks like this:
 
         :return: None
 
+SMS File Ingestion and Support
+------------------------------
+Here we describe basic use of the ``sms`` subpackage.
+
+.. py:currentmodule:: ingest_sms
+
+.. py:class:: SMSFile(smsfile)
+
+    Class used for reading in, exploring, and ingesting SMS data from an SMS file.
+
+    :param str smsfile: ``.txt`` or ``.l-exp`` file to ingest.
+
+    Example Usage:
+
+    .. code-block:: python
+
+        from cosmo.sms import SMSFile
+
+        smsfile = 'path/to/some/181137b4.txt'  # Ingestion also works for the .l-exp file extension
+
+        sms = SMSFile(smsfile)  # Ingest the file
+
+        sms.file_id
+        # '181137b4'
+
+        sms.sms_id
+        # '181137'
+
+        sms.version
+        # 'b4'
+
+        sms.data  # pandas DataFrame of the ingested data
+
+        # Construct a new record out of the ingested file and insert into the database
+        sms.insert_to_db()
+
+    .. py:attribute:: datetime_format
+
+        :type: ``str``
+
+        Format for the date and time to use in the INGEST_DATE column.
+
+    .. py:attribute:: filename
+
+        :type: ``str``
+
+        Path of the file to be ingested.
+
+    .. py:attribute:: file_id
+
+        :type: ``str``
+
+        The "complete" ID of the SMS file being ingested.
+        Includes the SMS ID and the version.
+        Typically this is the file name of the SMS file.
+
+    .. py:attribute:: sms_id
+
+        :type: ``str``
+
+        ID of the SMS report.
+        Typically the first 6 digits of the SMS file name.
+
+    .. py:attribute:: version
+
+        :type: ``str``
+
+        Version of the SMS report.
+        Typically the last 2 characters following the SMS ID in the file name (with exceptions for special cases).
+
+    .. py:attribute:: ingest_date
+
+        :type: ``datetime.datetime``
+
+        Date that the file was ingested (date of the creation of the SMSFile instance).
+
+    .. py:attribute:: data
+
+        :type: ``pandas.DataFrame``
+
+        Ingested data from the SMS file.
+
+    .. py:method:: ingest_smsfile
+
+        Read the input SMS text file and ingest data from the string.
+
+        :return: Ingested data
+        :rtype: ``dict``
+
+    .. py:method:: insert_to_db
+
+        Create a new record for the SMS file and insert into the SMSFileStats table.
+        Creates new records for each row ingested from the SMS file and inserts into the SMSTable table.
+
+        .. note::
+
+            This methods follows the SMS version and ingestion rules outlined in the SMS section.
+            If you try to insert an SMS file that is already in the table(s), nothing will happen.
+
+.. py:class:: SMSFinder
+
+        Class for finding SMS files in a given directory and determining which of those found are already ingested in
+        the database.
+        Of the SMS files that exist in the directory, only the highest version is returned for each unique SMS ID.
+
+        Example Usage:
+
+        .. code-block:: python
+
+            from cosmo.sms import SMSFinder
+
+            finder = SMSFinder()  # Default files location is set in the configuration file
+
+            finder.all_sms   # DataFrame with all SMS files found (of highest version)
+
+            # See "old" SMS files
+            finder.old_sms
+
+            # See "new" SMS files
+            finder.new_sms
+
+            # Ingest new files into the database
+            finder.ingest_files()
+
+        .. py:attribute:: currently_ingested
+
+            :type: None if no data is ingested or if the SMSFileStats table doesn't exist, else ``pandas.DataFrame``
+
+            All files that exist in the SMSFileStats table.
+
+        .. py:attribute:: all_sms
+
+            :type: ``pandas.DataFrame``
+
+            All SMS files found in the target directory regardless of whether or not they exist in the database.
+
+        .. py:attribute:: new_sms
+
+            :type: ``pandas.DataFrame``
+
+            Property that returns only the files that were classified as "new."
+
+        .. py:attribute:: old_sms
+
+            :type: ``pandas.DataFrame``
+
+            Property that returns only the files that were classified as "old."
+
+        .. py:method:: find_all
+
+            Find all SMS files from the source directory.
+            Determine if the file is "new" or "old."
+
+            :return: ``DataFrame`` of found files with "version," "sms_id," "smsfile," and "is_new" columns.
+            :rtype: ``pandas.DataFrame``
+
+        .. py:method:: ingest_files
+
+            Ingest "new" SMS files into the database.
+
+            :return: None
+
+Other Modules
+-------------
+Cosmo also contains other modules used in supporting either the monitors or data acquisition.
+
+.. py:currentmodule:: filesystem
+
+.. py:function:: find_files(file_pattern, data_dir, cosmo_layout)
+
+    Find COS data files from a source directory.
+    The default ``data_dir`` is set in the configuration file.
+    If another source is used, it's assumed that the directory only contains the data files, or is organized by
+    program ID like the cosmo data cache.
+
+    Example Usage:
+
+    .. code-block:: python
+
+        from cosmo.filesystem import find_files
+
+        # Using the configuration file data source
+
+        # Find all lampflash files
+        lamps = find_files('*lampflash*')
+
+        # Using a different data source with the data not organized in subdirectories
+        results = find_files('*', data_dir='some/file/directory/', cosmo_layout=False)
+
+    :param str file_pattern: file pattern to search for.
+    :param str data_dir: Directory to use in searching for data files.
+    Defaults to the source in the config file.
+    :param bool cosmo_layout: Option for searching if the files are organized in the same way as the COSMO cache.
+    Default is ``True``.
+
+    :return: List of paths to files found.
+    :rtype: ``list``
+
+.. py:class:: FileData(filename, hdu, header_keywords, header_extensions, spt_suffix='spt.fits.gz', \
+    spt_keywords=None, spt_extensions=None, data_keywords=None, data_extensions=None, header_defaults=None)
+
+    Class used for ingesting and collecting the specified data from a particular COS FITS file.
+    This class is a data container that subclasses python's ``dict`` object to create a dictionary-like object that's
+    instantiated via a FITS file and lists of keywords and extensions.
+    For a complete list of methods, see documentation for ``dict``
+
+    :raises ValueError: A ``ValueError`` is raised if any set of keywords is given without a corresponding set of
+        extensions or if the keywords and extensions are of different lengths.
+
+    Example Usage:
+
+    .. code-block:: python
+
+        from cosmo.filesystem import FileData
+
+        # Get the desired data from somefitsfile.fits
+        filedata = FileData('somefitsfile.fits', ('ROOTNAME', 'DETECTOR'), (0, 0))
+
+        # filedata is basically a dictionary with an alternate construction method
+
+        filedata.keys()
+        # dict_keys(['FILENAME', 'ROOTNAME', 'DETECTOR'])  # Note, FILENAME is automatically included
+
+        filedata.values()
+        # dict_values(['somefitsfile.fits', 'lb4c10niq', 'NUV'])
+
+        for key, value in filedata.items():
+            print(key, value)
+        # FILENAME somefitsfile.fits
+        # ROOTNAME lb4c10niq
+        # DETECTOR NUV
+
+    .. py:method:: get_header_data(hdu, header_keywords, header_extensions, header_defaults=None)
+
+        Retrieve the specified header data from the input FITS file.
+
+        :param astropy.io.fits.HDUList hdu: FTIS HDUList object.
+        :param list header_keywords: ``list`` or ``tuple`` of header keywords to extract.
+        :param list header_extensions: corresponding `list`` or ``tuple`` of extensions to the keywords.
+            Must be the same length as ``header_keywords``
+        :param dict header_defaults: Default, ``None``. Dictionary of keywords that if not found should be set with a
+            default value.
+            This is useful, for example, when attempting to construct a DataModel around a particular file type that has
+            similar keywords, but may or may not be missing some values depending on the exposure type (like with
+            `rawacq` files: ``ACQSLEWX`` and ``ACQSLEWY`` are not always present across different acquisition types, but
+            all other data required for the Acq monitors `are` shared across all `rawacq` files.
+        :return: ``None``. This method updates the instance's dictionary.
+
+    .. py:method:: get_spt_header_data(spt_file, spt_keywords, spt_extensions)
+
+        Get the specified data from the corresponding `spt` file.
+        The `spt` file name is constructed using the input file.
+
+        :raises FileNotFoundError: If the `spt` file is missing or in a different location from the input file.
+        :param str spt_file: file name of the corresponding `spt` file.
+        :param list spt_keywords: List of keywords to retrieve from the `spt` file.
+        :param list spt_extensions: Corresponding list of extensions for the keywords. Must be the same size as
+            ``spt_keywords``.
+        :return: ``None``. Updates the instance's dictionary.
+
+    .. py:method:: get_table_data(hdu, data_keywords, data_extensions)
+
+        Get specified columns from table data.
+
+        :params astropy.io.fits.HDUList hdu: HDUList of the data file.
+        :params list data_keywords: List of column-name keywords to extract.
+        :params list data_extensions: Corresponding list of extensions for the keywords.
+        :return: ``None``. Updates the instance's dictionary.
+
+.. py:function:: get_file_data(fitsfiles, keywords, extensions, spt_keywords=None, spt_extensions=None, \
+    data_keywords=None, data_extensionsSequence=None, header_defaults=None)
+
+    Get data from the specified FITS files (and optionally, any information needed from the corresponding `spt` file) in
+    parallel with ``dask``
+
+    Example Usage:
+
+    .. code-block:: python
+
+        import glob
+        from cosmo.filesystem import get_file_data
+
+        files = glob.glob('*fits')  # Some list of files.
+
+        # Retrive a bunch of data
+        results = get_file_data(files, ('ROOTNAME', 'APERTURE'), (0, 0))
+
+    :param list fitsfiles: List of files from which to retrieve data.
+    :param list keywords: List of keywords to retrieve.
+    :param list extensions: Corresponding list of extensions for the keywords. Must be the same length as ``keywords``
+    :param list spt_keywords: Optional. List of keywords to retrieve from the `spt` file.
+    :param list spt_extensions: Required if ``spt_keywords`` is used. Corresponding list of extensions for the `spt`
+        keywords.
+    :param list data_keywords: Optional. List of column-name keywords to extract.
+    :param list data_extensions: Required if ``data_keywords`` is used. Corresponding list of extensions for the
+        specified columns.
+    :return: List of ``FileData`` dictionaries containing the extracted data.
+    :rtype: ``list``
+
+.. py:currentmodule:: monitor_helpers
+
+.. py:function:: convert_day_of_year(date)
+
+    Convert day of year date (defined as yyyy.ddd where ddd is the numbered day of that year) to an astropy ``Time``
+    object.
+
+    Example Usage:
+
+    .. code-block:: python
+
+        from cosmo.monitor_helpers import convert_day_of_year
+
+        doy = convert_day_of_year('2019.125')  # doy is an astropy Time object
+
+        # Use it as a datetime object
+        dt = doy.to_datetime()
+
+        # Use it in mjd format
+        mjd = doy.mjd
+
+        # Also works for a float
+        doy = convert_day_of_year(2019.125)
+
+    :param str date: Date of the form yyyy.ddd
+    :return: Astropy Time object
+    :rtype: ``astropy.time.Time``
+
+.. py:function:: fit_line(x, y)
+
+    Given arrays, x and y, fit a line.
+
+    Example Usage:
+
+    .. code-block:: python
+
+        from cosmo.monitor_helpers import fit_line
+
+        x, y = [1, 2 ,3]
+
+        fit, result = fit_line(x, y)  # fit is the numpy.poly1d object, and result is the y-fit values
+
+        # Get the slope and intercept
+        slope, intercept = fit[1], fit[0]   # See numpy documentation for more info on this
+
+    :param list or numpy.ndarray x: Independent variable for fitting.
+    :param list or numpy.ndarray y: Dependent variable for fitting.
+    :return: fit object
+    :rtype: ``numpy.poly1d``
+    :return: fit result
+    :rtype: ``numpy.ndarray``
+
+.. py:function:: explode_df(df, list_keywords)
+
+    For a ``DataFrame`` that contains arrays for the elements of a column or columns given by ``list_keywords``, expand
+    the dataframe to one row per array element.
+    Each row in list_keywords must be the same length.
+
+    Example Usage:
+
+    .. code-block:: python
+
+        import pandas as pd
+        from cosmo.monitor_helpers import explode_df
+
+        df = pd.DataFrame({'a': [1], 'b': [[1, 2, 3]], 'c': [[4, 5, 6]]})
+
+        df
+        #     a          b          c
+        # 0  1  [1, 2, 3]  [4, 5, 6]
+
+        exploded = explode_df(df, ['b', 'c'])
+
+        exploded
+        #    b  c  a
+        # 0  1  4  1
+        # 1  2  5  1
+        # 2  3  6  1
+
+    :raises AttributeError: If a column included in ``list_keywords`` does not have arrays as elements.
+    :raises ValueError: If targeted columns have elements with different lengths in the same row.
+    :param pandas.DataFrame df: Input ``DataFrame`` with array elements.
+    :param list list_keywords: List of column-names that correspond to columns that should be expanded.
+    :return: Exploded ``DataFrame``. Elements that were arrays are expanded to one element per row with non-array
+        elements duplicated
+
+.. py:function:: absolute_time(df=None, expstart=None, time=None, time_key=None, time_format='sec')
+
+    Compute the time sequence relative to the start of the exposure (EXPSTART).
+    Can be computed from a DataFrame that contains an EXPSTART column and some other time array column, or from an
+    EXPSTART array and time array pair.
+
+    Absolute time = EXPSTART[i] + time[i]
+
+    Example Usage:
+
+    .. code-block:: python
+
+        from cosmo.monitor_helpers import absolute_time
+
+        # This is silly, but the expstart array will be converted to a Time object with the mjd format
+        #  and the time array will be assumed to be in seconds
+        abstime = absolute_time(expstart=[1, 2, 3], time=[4, 5, 6])
+
+        # From a DataFrame, df with EXPSTART and TIME columns
+        abstime = absolute_time(df=df)
+
+        # If the time column is named something different
+        abstime = absolute_time(df=df, time_key='SomeOtherTime')
+
+        # Use the result as a datetime object
+        absolute_datetime = abstime.to_datetime()
+
+    :raises TypeError: If no values are given, or if one array is given without the other.
+    :raises ValueError: If a ``DataFrame`` is given with arrays.
+    :param pandas.DataFrame df: ``DataFrame`` with the relevant information. If the time array is under a column name
+        other than "TIME", then the column name must be specified with ``time_key``.
+    :param array-like expstart: Exposure start time values.
+    :param array-like time: Time values (typically this indicates events within an exposure).
+    :param str time_key: Optional. Column-name of the time array. Required if the time values are not under "TIME".
+    :param str time_format: Default, 'sec'. Specify a different format for a different time unit (see astropy's
+        TimeDelta documentation for more format options).
+    :return: Time relative to the start of the exposure.
+    :rtype: astropy.time.TimeDelta
+
+.. py:function:: create_visibility(trace_lengths, visible_list)
+
+    Create a "visibility list" for use with constructing ``plotly`` buttons.
+    Creates a list of ``True`` and ``False`` that corresponds to the traces in the monitors' plotly figures.
+
+    Example Usage:
+
+    .. code-block:: python
+
+        from cosmo.monitor_helpers import create_visibility
+
+        # All traces for a figure will be in a single list, but "sets" of traces that should be active are usually kept
+        #  track of by the length of the set, and the order in which the sets are created.
+        trace_legnths = [1, 2, 3]  # The figure has a total of 6 traces, with three distinct sets (ex: button options)
+        visible = [True, False, False]  # For this setting, we only want the first set visible (True) and all others not
+
+        visibility = create_visibility(trace_lengths, visible)
+
+        visibility
+        # [True, False, False, False, False, False]
+
+    :param list trace_lengths: List of integer lengths that correspond to the number of traces that determine a "set".
+    :param list visible_list: List of ``bool`` that determine which "sets" should be active (``True``) or not
+        (``False``)
+    :return: List of visibility options for each trace, determined by the set lengths
+    :rtype: ``list``
+
+.. py:function:: detector_to_v2v3(slew_x, slew_y)
+
+    Convert slews in detector coordinates to V2/V3 coordinates.
+
+    v2 = x * cos(45degrees) + y * sin(45degrees)
+    v3 = x * cos(45degrees) - y * sin(45degrees)
+
+    Example Usage:
+
+    .. code-block:: python
+
+        import numpy as np
+        from cosmo.monitor_helpers import detector_to_v2v3(slew_x)
+
+        x, y = np.array([1, 2 ,3])
+
+        v2, v3 = v2v3(x, y)
+
+        v2, v3
+        # (array([1.41421356, 2.82842712, 4.24264069]),
+        #  array([1.11022302e-16, 2.22044605e-16, 4.44089210e-16]))
+
+    :param array-like slew_x: X-Slew values in detector coordinates
+    :param array-like slew_y: Y-Slew values in detector coordinates
+    :return: Slews in V2 and V3 coordinates
+    :rtype: ``tuple`` (V2, V3)
+
+.. py:function:: get_osm_data(datamodel, detector)
+
+    Query for all OSM data and append any relevant new data.
+
+    Example Usage:
+
+    .. code-block:: python
+
+        from cosmo.monitors import get_osm_data
+        from cosmo.monitors.data_models import OSMDatamodel
+
+        datamodel = OSMDatamodel()
+
+        data = get_osm_data(datamodel, 'FUV')
+
+    :param OSMDatamodel datamodel: instance of the OSMDatamodel class
+    :param str detector: COS Detector name (used in filtering between the two OSM Monitors). "NUV" or "FUV"
+    :return: ``DataFrame`` with required data for the OSM monitors.
+    :rtype: pandas.DataFrame
