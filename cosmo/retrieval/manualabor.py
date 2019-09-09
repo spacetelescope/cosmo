@@ -14,28 +14,21 @@ __maintainer__ = "Jo Taylor"
 
 # Import necessary packages.
 import sys
-import pwd
 import datetime
 import os
 import glob
 import shutil
 import gzip
 from astropy.io import fits
-import smtplib
-import multiprocessing as mp
 from multiprocessing import Queue, Process, Pool
 import psutil
 import math
 import time
 import numpy as np
 import stat
-import subprocess
 from collections import defaultdict
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from itertools import islice
 
-from .ProgramGroups import *
 from .. import SETTINGS
 
 BASE_DIR = SETTINGS["filesystem"]["source"]
@@ -50,9 +43,19 @@ CSUM_DIR = "tmp_out"
 # --------------------------------------------------------------------------- #
 
 
-def timefunc(func):
+def timefunc(func):  # IN USE
     """
-    Decorator to time functions.
+    Decorator to wrap and time functions.
+
+    Parameters
+    ----------
+    func: func
+        Function to be timed
+
+    Returns
+    -------
+    wrapper: func
+        Timed version of the function
     """
 
     def wrapper(*args, **kw):
@@ -66,333 +69,81 @@ def timefunc(func):
     return wrapper
 
 
-def combine_2dicts(dict1, dict2):  # IN USE
+def parallelize(func, iterable, chunksize="smart", nprocs="check_usage", *args,
+                **kwargs):  # IN USE
     """
-    This function is a helper function to combine dictionaries.
+    This function is a decorator to parallelize other functions.
 
     Parameters
     ----------
-    dict1: dict
-        first dictionary to be combined
-    dict2: dict
-        second dictionary to be combined
+    func: function
+        Function to be parallelized
+
+    iterable: iterable
+        Some iterable the function takes
+
+    chunksize: str, default="smart"
+        String to determine how the iterable should be split into chunks
+
+    nprocs: str, default="check_usage"
+        String to determine how many processes to use
+
+    args: list
+        Arguments that are parameters of the original function
+
+    kwargs: dict
+        Keyword arguments that are parameters of the original function
 
     Returns
     -------
-    combined: dict
-        dictionary with unique union entries for the union of keys in dict1,
-        dict2
+    funcout: replacement function
+        Function that has been parallelized
     """
-    combined = defaultdict(list)
-    for k, v in dict1.items():
-        if k in dict2:
-            combined[k] += list(set(v) | set(dict2[k]))
-        else:
-            combined[k] += list(v)
-    for k, v in dict2.items():
-        if k not in combined:
-            combined[k] += list(v)
+    t1 = datetime.datetime.now()
+    funcout = None
 
-    return combined
+    if len(iterable) == 0:
+        # nothing to iterate over; return None
+        return funcout
 
+    if nprocs == "check_usage":
+        # get the number of cores to use for parallelizing based on current
+        # server usage
+        nprocs = check_usage()
 
-# TODO: FIGURE OUT WHAT IS GOING ON WITH VARIABLE "ITEM"
-@timefunc
-def unzip_mistakes(zipped):
-    """
-    Occasionally, files will get zipped without having csums made.
-    This function checks if each raw* file has a csum: if it does
-    not, it unzips the file to be calibrated in the make_csum()
-    function.
+    if chunksize == "smart":
+        chunksize = smart_chunks(len(iterable), nprocs)
 
-    Parameters:
-    -----------
-        zipped : list
-            A list of all files in the base directory that are zipped
-
-    Returns:
-    --------
-        Nothing
-    """
-
-    if isinstance(zipped, str):
-        zipped = [zipped]
-    for zfile in zipped:
-        rootname = os.path.basename(zfile)[:9]
-        dirname = os.path.dirname(zfile)
-        calibrate, badness= csum_existence(zfile)
-        if badness is True:
-            print("="*72 + "\n" + "="*72)
-            print("The file is empty or corrupt: {0}".format(item))
-            print("Deleting file")
-            print("="*72 + "\n" + "="*72)
-            os.remove(item)
-            continue
-        if calibrate is True:
-            # chmod_recurs(dirname, PERM_755)
-            files_to_unzip = glob.glob(zfile)
-            uncompress_files(files_to_unzip)
-
-
-def needs_processing(zipped):
-    if isinstance(zipped, str):
-        zipped = [zipped]
-    files_to_calibrate = []
-
-    for zfile in zipped:
-        calibrate, badness= csum_existence(zfile)
-        if badness is True:
-            print("="*72 + "\n" + "="*72)
-            print("The file is empty or corrupt: {0}".format(item))
-            print("Deleting file")
-            print("="*72 + "\n" + "="*72)
-            os.remove(item)
-            continue
-        if calibrate is True:
-            files_to_calibrate.append(zfile)
-
-    return files_to_calibrate
-
-
-@timefunc
-def chgrp(mydir):
-    """
-    Walk through all directories in base directory and change the group ids
-    to reflect the type of COS data (calbration, GTO, or GO).
-    Group ids can be found by using the grp module, e.g.
-    > grp.getgrnam("STSCI\cosstis").gr_gid
-    User ids can be found using the pwd module e.g.
-    > pwd.getpwnam("jotaylor").pw_uid
-
-    Parameters:
-    -----------
-        mydir : string
-            The base directory to walk through.
-
-    Returns:
-    --------
-        Nothing
-    """
-
-    user_id = pwd.getpwnam(USERNAME).pw_uid
-    for root, dirs, files in os.walk(mydir):
-        # This expects the dirtree to be in the format /blah/blah/blah/12345
-        pid = root.split("/")[-1]
-        try:
-            pid = int(pid)
-        except ValueError:
-            continue
-        try:
-            if pid in smov_proposals or pid in calib_proposals:
-                grp_id = 6045  # gid for STSCI/cosstis group
-            elif pid in gto_proposals:
-                grp_id = 65546  # gid for STSCI/cosgto group
-            else:
-                grp_id = 65545  # gid for STSCI/cosgo group
-            os.chown(root, user_id, grp_id)
-        except PermissionError as e:
-            print(repr(e))
-
-            for filename in files:
-                try:
-                    os.chown(os.path.join(root, filename), user_id, grp_id)
-                except PermissionError as e:
-                    nothing = True
-                    print(repr(e))
-
-
-def chmod_recurs(dirname, perm):
-    """
-    Edit permissions on a directory and all files in that directory.
-
-    Parameters:
-        dirname : string
-            A string of the directory name to edit.
-        perm : int (octal)
-            An integer corresponding to the permission bit settings.
-
-    Returns:
-        Nothing
-    """
-
-    # [os.chmod(os.path.join(root, filename)) for root,dirs,files in
-    # os.walk(DIRECTORY) for filename in files]
-    # The above line works fine, but is confusing to read, and is only
-    # marginally faster than than an explicit for loop.
-    for root, dirs, files in os.walk(dirname):
-        os.chmod(root, perm)
-        if files:
-            for item in files:
-                os.chmod(os.path.join(root, item), perm)
-
-
-def chmod_recurs_prl(perm, item):
-    """
-    Edit permissions in parallel.
-
-    Parameters:
-        perm : int (octal)
-            An integer corresponding to the permission bit settings.
-        item : string
-            A string of the directory/file name to edit.
-
-    Returns:
-        Nothing
-    """
-
-    os.chmod(item, perm)
-
-
-@timefunc
-def chmod_recurs_sp(rootdir, perm):
-    """
-    Edit permissions on a directory and all files in that directory.
-
-    Parameters:
-        perm : int (octal)
-            An integer corresponding to the permission bit settings.
-        rootdir : string
-            A string of the directory name to edit.
-
-    Returns:
-        Nothing
-    """
-
-    subprocess.check_call(["chmod", "-R", perm, rootdir])
-
-
-def csum_existence(filename):
-    """
-    Check for the existence of a CSUM for a given input dataset.
-
-    Parameters:
-    -----------
-        filename : string
-            A raw dataset name.
-
-    Returns:
-    --------
-        calibrate : bool
-            A boolean, True if the dataset should not be calibrated to
-            create csums.
-        badness : bool
-            A boolean, True if the dataset should be deleted (if corrupt or
-            empty)
-    """
-
-    rootname = os.path.basename(filename)[:9]
-    dirname = os.path.dirname(filename)
-    # If getting one header keyword, getval is faster than opening.
-    # The more you know.
-    try:
-        exptime = fits.getval(filename, "exptime", 1)
-        if exptime == 0:
-            return False, False
-    except:
-        pass
-
-    try:
-        exptype = fits.getval(filename, "exptype")
-    except KeyError:  # EXPTYPE = None
-        return False, False
-    except Exception as e:
-        if type(e).__name__ == "IOError" and \
-           e.args[0] == "Empty or corrupt FITS file":
-            return False, True
-
-    bad_exptypes = ["ACQ/PEAKD", "ACQ/PEAKXD", "ACQ/SEARCH"]
-    if exptype not in bad_exptypes:
-        if "_a.fits" in filename:
-            csums = glob.glob(os.path.join(dirname, rootname+"*csum_a*"))
-        elif "_b.fits" in filename:
-            csums = glob.glob(os.path.join(dirname, rootname+"*csum_b*"))
-        else:
-            csums = glob.glob(os.path.join(dirname, rootname+"*csum*"))
-        if not csums:
-            calibrate = True
-        else:
-            calibrate = False
+    if isinstance(iterable, dict):
+        isdict = True
+        chunks = chunkify_d(iterable, chunksize)
     else:
-        calibrate = False
+        isdict = False
+        chunks = [iterable[i:i+chunksize] for i in range(0, len(iterable),
+                                                         chunksize)]
 
-    return calibrate, False
+    # create function args for the number of chunks
+    func_args = [(x,)+args for x in chunks]
 
+    # parallelize the function
+    with Pool(processes=nprocs) as pool:
+        # print("Starting the Pool for {} with {} processes...".format(func,
+        #                                                              nprocs))
+        results = [pool.apply_async(func, fargs, kwargs) for fargs in func_args]
 
-def compress_files(uz_files, outdir=None, remove_orig=True, verbose=False):
-    """
-    Compress unzipped files and delete original unzipped files.
-
-    Paramters:
-    ----------
-        uz_files : list or string
-            Unzipped file(s) to zip
-        outdir : list or string
-            Directory to place zipped products.
-
-    Returns:
-    --------
-        Nothing
-    """
-
-    if isinstance(uz_files, str):
-        uz_files = [uz_files]
-
-    if outdir is None:
-        outdir = [os.path.dirname(x) for x in uz_files]
-    elif isinstance(outdir, str):
-        outdir = [outdir for x in uz_files]
-
-    outdir = [os.path.dirname(x) if not os.path.isdir(x) else x for x in outdir]
-
-    if len(uz_files) != len(outdir):
-        print("ERROR: List uz_files needs to match length of list outdir, {} "
-              "vs {}, exiting".
-              format(len(uz_files), len(outdir)))
-        sys.exit()
-
-    for i in range(len(uz_files)):
-        z_item = os.path.join(outdir[i], os.path.basename(uz_files[i]) + ".gz")
-        with open(uz_files[i], "rb") as f_in, gzip.open(z_item, "wb") as f_out:
-            shutil.copyfileobj(f_in, f_out)
-            if verbose is True:
-                print("Compressing {} -> {}".format(uz_files[i], z_item))
-        if remove_orig is True:
-            if os.path.isfile(z_item):
-                os.remove(uz_files[i])
+        if results[0].get() is not None:
+            if isdict:
+                funcout = {}
+                for d in results:
+                    funcout.update(d.get())
             else:
-                print("Something went terribly wrong zipping {}".format
-                      (uz_files[i]))
+                funcout = [item for innerlist in results for item in
+                           innerlist.get()]
 
-    return uz_files
+    t2 = datetime.datetime.now()
+    print("\tparallelize({}) executed in {}".format(func.__name__, t2-t1))
 
-
-def uncompress_files(z_files):
-    """
-    Uncompress zipped files and delete original zipped files.
-
-    Paramters:
-    ----------
-        z_files : list
-            A list of zipped files to zip
-
-    Returns:
-    --------
-        Nothing
-    """
-
-    if isinstance(z_files, str):
-        z_files = [z_files]
-
-    for z_item in z_files:
-        uz_item = z_item.split(".gz")[0]
-        print("Uncompressing {} -> {}".format(z_item, uz_item))
-        with gzip.open(z_item, "rb") as f_in, open(uz_item, "wb") as f_out:
-            shutil.copyfileobj(f_in, f_out)
-            print("Uncompressing {} -> {}".format(z_item, uz_item))
-        if os.path.isfile(uz_item):
-            os.remove(z_item)
-        else:
-            print("Something went terribly wrong unzipping {}".format(z_item))
+    return funcout
 
 
 def check_usage(playnice=True):  # IN USE
@@ -447,16 +198,23 @@ def check_usage(playnice=True):  # IN USE
     return nprocs
 
 
-def chunkify_d(d, chunksize):
-    it = iter(d)
-    chunks = []
-    for i in range(0, len(d), chunksize):
-        chunks.append({k:d[k] for k in islice(it, chunksize)})
+def smart_chunks(nelems, nprocs):  # IN USE
+    """
+    This function decides what chunksize should be used, based on some
+    conditions.
 
-    return chunks
+    Parameters
+    ----------
+    nelems: int
+        The number of elements that need to be subdivided
+    nprocs: int
+        The number of processors that are being used
 
-
-def smart_chunks(nelems, nprocs):
+    Returns
+    -------
+    chunksize: int
+        The size of chunks that should be used for subdividing the elements
+    """
     if nelems <= 10*nprocs:
         chunksize = math.ceil(nelems/nprocs)
     elif 10*nprocs < nelems <= 1000*nprocs:
@@ -467,351 +225,85 @@ def smart_chunks(nelems, nprocs):
     return chunksize
 
 
-def parallelize(func, iterable, chunksize="smart", nprocs="check_usage", *args,
-                **kwargs):  # IN USE
+def chunkify_d(d, chunksize):  # IN USE
     """
-    This function is a decorator to parallelize other functions.
+    This function is for turning a dictionary of iterables into chunks of
+    dictionaries.
 
     Parameters
     ----------
-    func: function
-        Function to be parallelized
-    iterable: iterable
-        Some iterable the function takes
-    chunksize: str, default="smart"
-        String to determine how the iterable should be split into chunks
-    nprocs: str, default="check_usage"
-        String to determine how many processes to use
-    args: list
-        Arguments that are parameters of the original function
-    kwargs: dict
-        Keyword arguments that are parameters of the original function
+    d : iterable, dict
+        Dictionary of iterables
+    chunksize: int
+        Size of chunks for subdividing elements
 
     Returns
     -------
-    funcout: replacement function
-        Function that has been parallelized
-
+    chunks: dict
+        Iterable dictionary divided into appropriate chunks
     """
-    t1 = datetime.datetime.now()
-    funcout = None
+    it = iter(d)
+    chunks = []
+    for i in range(0, len(d), chunksize):
+        chunks.append({k:d[k] for k in islice(it, chunksize)})
 
-    if len(iterable) == 0:
-        # nothing to iterate over; return None
-        return funcout
-
-    if nprocs == "check_usage":
-        # get the number of cores to use for parallelizing based on current
-        # server usage
-        nprocs = check_usage()
-
-    if chunksize == "smart":
-        # TODO: here 3
-        chunksize = smart_chunks(len(iterable), nprocs)
-
-    if isinstance(iterable, dict):
-        isdict = True
-        chunks = chunkify_d(iterable, chunksize)
-    else:
-        isdict = False
-        chunks = [iterable[i:i+chunksize] for i in range(0, len(iterable),
-                                                         chunksize)]
-
-    func_args = [(x,)+args for x in chunks]
-
-    with Pool(processes=nprocs) as pool:
-        # print("Starting the Pool for {} with {} processes...".format(func,
-        #                                                              nprocs))
-        results = [pool.apply_async(func, fargs, kwargs) for fargs in func_args]
-
-        if results[0].get() is not None:
-            if isdict:
-                funcout = {}
-                for d in results:
-                    funcout.update(d.get())
-            else:
-                funcout = [item for innerlist in results for item in
-                           innerlist.get()]
-
-    t2 = datetime.datetime.now()
-    print("\tparallelize({}) executed in {}".format(func.__name__, t2-t1))
-
-    return funcout
+    return chunks
 
 
-@timefunc
-def parallelize_joe(func, iterable, nprocs, *args, **kwargs):
-    if nprocs == None:
-        nprocs = check_usage()
+def combine_2dicts(dict1, dict2):  # IN USE
+    """
+    This function is a helper function to combine dictionaries.
 
-    if type(iterable) is dict:
-        isdict = True
-        func_args = [ ({k:v},) + args for k,v in iterable.items() ]
-    else:
-        isdict = False
-        func_args = [(iterable,) + args]
+    Parameters
+    ----------
+    dict1: dict
+        first dictionary to be combined
+    dict2: dict
+        second dictionary to be combined
 
-    with Pool(processes=nprocs) as pool:
-        print("Starting the Pool with {} processes...".format(nprocs))
-        results = [pool.apply_async(func, fargs, kwargs) for fargs in
-                   func_args]
-
-        if results[0].get() is not None:
-            if isdict:
-                funcout = {}
-                for d in results:
-                    funcout.update(d.get())
-            else:
-                funcout = [item for innerlist in results for item in
-                           innerlist.get()]
+    Returns
+    -------
+    combined: dict
+        dictionary with unique union entries for the union of keys in dict1,
+        dict2
+    """
+    combined = defaultdict(list)
+    for k, v in dict1.items():
+        if k in dict2:
+            combined[k] += list(set(v) | set(dict2[k]))
         else:
-            funcout = None
+            combined[k] += list(v)
+    for k, v in dict2.items():
+        if k not in combined:
+            combined[k] += list(v)
 
-    return funcout
+    return combined
 
 
-@timefunc
-def parallelize_queue(func, iterable, funcargs=None, nprocs="check_usage",
-                      keep_output=False):
+def remove_outdirs():  # IN USE
     """
-    Run a function in parallel with either multiple processes.
-
-    Parameters:
-    -----------
-        func : function
-            Function to be run in parallel.
-        iterable : list, array-like object, or dictionary 
-            The series of data that should be processed in parallel with 
-            function func.
-        funcargs : tuple
-            Additional arguments, if any, for the function func.
-        nprocs : int
-            Number of processes to use during multiprocessing.
-        keep_output : Bool
-            True if output from function func is to stored and returned.
-    
-    Returns:
-    --------
-        resultdict : dictionary
-            None if keep_output is False, otherwise a dictionary where each
-            key is a single input element from the series iterable, and the
-            value is the output from function func for that element. 
+    Removes all temporary dirs (read: all dirs) in CSUM_DIR for each PID dir
+    in BASE_DIR.
     """
-
-    # Handle process usage checks.
-    if nprocs == "check_usage":
-        playnice = False
-        if playnice is True:
-            core_frac = 0.25
-        else:
-            core_frac = 0.5
-        # Get load average of system and # of hyper-threaded CPUs on current
-        # system.
-        loadavg = os.getloadavg()[0]
-        ncores = psutil.cpu_count()
-        # If too many cores are being used, wait 10 mins, and reassess.
-        # Check if elapsed time > XX, if so, just use Y cores
-        while loadavg >= (ncores-1):
-            print("Too many cores in usage, waiting 10 minutes before "
-                  "continuing...")
-            time.sleep(600)
-        else:
-            avail = ncores - math.ceil(loadavg)
-            nprocs = int(np.floor(avail * core_frac))
-        # If, after rounding, no cores are available, default to 1 to avoid
-        # pooling with processes=0.
-        if nprocs <= 0:
-            nprocs = 1
-
-    # If you want the output from the function being parallelized.
-    if keep_output:
-        out_q = Queue()
-    # If there are input arguments (besides iterable) to the function,
-    # they must be defined as a tuple for multiprocessing.
-    if funcargs is not None:
-        if type(funcargs) is not tuple:
-            print("ERROR: Arguments for function {} need to be tuple, exiting".
-                  format(func))
-            sys.exit()
-
-    # Split the iterable up into chunks determined by the number of processes.
-    # what if the iterable is less than the number of nprocs?
-    chunksize = math.ceil(len(iterable) / nprocs)
-    procs = []
-    for i in range(nprocs):
-        if type(iterable) is dict:
-            # try using {k:v for k,v in list(iterable.items())...}
-            subset = {k: iterable[k] for k in list(iterable.keys())
-                    [chunksize*i:chunksize*(i+1)]}
-        else:
-            subset = iterable[chunksize*i:chunksize*(i+1)]
-        # Multiprocessing requires a tuple as input, so if there are 
-        # additional input arguments, concatenate them.
-        if funcargs is not None:
-            if keep_output:
-                inargs = (subset, out_q) + funcargs
-            else:
-                inargs = (subset,) + funcargs
-        else:
-            if keep_output:
-                inargs = (subset, out_q)
-            else:
-                inargs = (subset,)
-        # Create the process.
-        p = Process(target=func, args=inargs)
-        procs.append(p)
-        p.start()
-
-    # Collect the results into a dictionary, if desired.
-    if keep_output:
-        resultdict = {}
-        for i in range(nprocs):
-            resultdict.update(out_q.get())
-    else:
-        resultdict = None
-
-    # Wait for all worker processes to finish.
-    for p in procs:
-        p.join()
-
-    return resultdict
+    tmp_dirs = glob.glob(os.path.join(BASE_DIR, "*", CSUM_DIR))
+    if tmp_dirs:
+        for bad_dir in tmp_dirs:
+            try:
+                shutil.rmtree(bad_dir)
+            except OSError:
+                pass
 
 
-@timefunc
-def parallelize_orig(myfunc, mylist, check_usage=True):
-    """
-    Parallelize a function. Be a good samaritan and CHECK the current usage
-    of resources before determining number of processes to use. If usage
-    is too high, wait 10 minutes before checking again. Currently only
-    supports usage with functions that act on a list. Will modify for
-    future to support nargs.
-
-    Parameters:
-    -----------
-        myfunc : function
-            The function to be parallelized.
-        mylist : list
-            List to be used with function.
-
-    Returns:
-    --------
-        Nothing
-    """
-
-    # Percentage of cores to eat up.
-    playnice = 0.25
-    playmean = 0.40
-
-    # Split list into multiple lists if it's large.
-    # I don't think this is necessary.
-#    maxnum = 25
-#    if len(mylist) > maxnum:
-#        metalist = [mylist[i:i+maxnum] for i in range(0, len(mylist), maxnum)]
-#    else:
-#        metalist = [mylist]
-#    for onelist in metalist:
-    if check_usage:
-        # Get load average of system and # of hyper-threaded CPUs on current
-        # system.
-        loadavg = os.getloadavg()[0]
-        ncores = psutil.cpu_count()
-        # If too many cores are being used, wait 10 mins, and reasses.
-        while loadavg >= (ncores-1):
-            print("Too many cores in usage, waiting 10 minutes before "
-                  "continuing...")
-            time.sleep(600)
-        else:
-            avail = ncores - math.ceil(loadavg)
-            nprocs = int(np.floor(avail * playmean))
-        # If, after rounding, no cores are available, default to 1 to avoid
-        # pooling with processes=0.
-        if nprocs == 0:
-            nprocs = 1
-    else:
-        nprocs = 10
-
-    print("Starting the Pool with {} processes...".format(nprocs))
-    pool = mp.Pool(processes=nprocs)
-    pool.map(myfunc, mylist)
-    pool.close()
-    pool.join()
-
-
-@timefunc
-def check_disk_space():
-    """
-    Determine how much free space there is in BASE_DIR
-
-    Parameters:
-    -----------
-        None
-
-    Returns:
-    --------
-        free_gb : float
-            Number of free GB in BASE_DIR.
-    """
-
-    statvfs = os.statvfs(BASE_DIR)
-    free_gb = (statvfs.f_frsize * statvfs.f_bfree) / 1e9
-    if free_gb < 200:
-        print("WARNING: There are {0}GB left on disk".format(free_gb))
-        unzipped_csums = glob.glob(os.path.join(BASE_DIR, "*", "*csum*.fits"))
-        if not unzipped_csums:
-            print("WARNING: Disk space is running very low, no csums to zip")
-        else:
-            print("Zipping csums to save space...")
-            if prl:  # TODO: this needs to be addressed
-                parallelize("smart", "check_usage", compress_files,
-                            unzipped_csums)
-            else:
-                compress_files(unzipped_csums)
-
-
-def only_one_seg(uz_files):
-    """
-    If rawtag_a and rawtag_b both exist in a list of raw files,
-    keep only one of the segments. Keep NUV and acq files as is.
-
-    Parameters:
-    -----------
-        uz_files : list
-            List of all unzipped files.
-
-    Returns:
-    --------
-        uz_files_1seg : list
-            List of all unzipped files with only one segment for a given root
-            (if applicable).
-    """
-
-    roots = [os.path.basename(x)[:9] for x in uz_files]
-    uniqinds = []
-    uniqroots = []
-    for i in range(len(roots)):
-        if roots[i] not in uniqroots:
-            uniqroots.append(roots[i])
-            uniqinds.append(i)
-    uz_files_1seg = [uz_files[j] for j in uniqinds]
-
-    return uz_files_1seg
-
-
-def handle_nullfiles():
+def handle_nullfiles():  # IN USE
     """
     It can be difficult to tell if all files found by find_new_cos_data with
     program ID 'NULL' are actually COS files (e.g. reference files that start
     with 'L' can accidentally be downloaded). Delete any files that are not
-    actually COS files
-
-    Parameters:
-    -----------
-        nullfiles : list
-            List of all files in the NULL directory
+    actually COS files.
 
     Returns:
     --------
-        None
+    None, but only if there are no null files to delete
     """
 
     nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*"))
@@ -824,6 +316,7 @@ def handle_nullfiles():
         with fits.open(item) as hdulist:
             hdr0 = hdulist[0].header
         try:
+            # WHY
             instrument = hdr0["instrume"]
             try:
                 pid = hdr0["proposid"]
@@ -836,6 +329,7 @@ def handle_nullfiles():
             except KeyError:
                 try:
                     # These files are reference files and should be removed.
+                    # WHY
                     useafter = hdr0["useafter"]
                     os.remove(item)
                 except KeyError:
@@ -845,46 +339,90 @@ def handle_nullfiles():
             os.remove(item)
 
 
-def move_files(orig, dest):
-    if isinstance(orig, str):
-        orig = [orig]
-    if isinstance(dest, str):
-        dest = [dest]
-    for i in range(len(orig)):
-        shutil.move(orig[i], dest[i])
+def gzip_files(prl=True):  # IN USE
+    """
+    Get all the unzipped files in all the PID subdirs of BASE_DIR and zip them.
 
-
-def remove_outdirs():
-    tmp_dirs = glob.glob(os.path.join(BASE_DIR, "*", CSUM_DIR))
-    if tmp_dirs:
-        for bad_dir in tmp_dirs:
-            try:
-                shutil.rmtree(bad_dir)
-            except OSError:
-                pass
-
-
-def copy_outdirs():
-    csums = glob.glob(os.path.join(BASE_DIR, "*", CSUM_DIR, "*csum*"))
-    if csums:
-        dest_dirs = [os.path.dirname(x).strip(CSUM_DIR) for x in csums]
-        move_files(csums, dest_dirs)
-
-
-def gzip_files(prl=True):
+    Parameters
+    ----------
+    prl: bool
+        Switch to parallelize the compression
+    """
     # Get a list of all unzipped files and zip them.
+    # everything else should theoretically end in .gz
     unzipped = glob.glob(os.path.join(BASE_DIR, "*", "*fits"))
     if unzipped:
         print("Zipping {0} unzipped file(s)...".format(len(unzipped)))
         if prl:
-            parallelize("smart", "check_usage", compress_files, unzipped)
+            parallelize(compress_files, unzipped)
         else:
             compress_files(unzipped)
 
 
-def get_unprocessed_data(prl=True):
-    # When calibrating zipped raw files, you need to calibrate both segments 
-    # separately since calcos can't find the original 
+def compress_files(uz_files, outdir=None, remove_orig=True, verbose=False):
+    # IN USE
+    """
+    Compress unzipped files and delete original unzipped files.
+
+    Parameters:
+    ----------
+    uz_files : list or string
+        Unzipped file(s) to zip
+
+    outdir : list or string
+        Directory to place zipped products
+    """
+
+    if isinstance(uz_files, str):
+        uz_files = [uz_files]
+
+    if outdir is None:
+        outdir = [os.path.dirname(x) for x in uz_files]
+    elif isinstance(outdir, str):
+        outdir = [outdir for x in uz_files]  # what
+
+    outdir = [os.path.dirname(x) if not os.path.isdir(x) else x
+              for x in outdir]
+
+    if len(uz_files) != len(outdir):
+        print("ERROR: List uz_files needs to match length of list outdir, {} "
+              "vs {}, exiting".
+              format(len(uz_files), len(outdir)))
+        sys.exit()
+
+    for i in range(len(uz_files)):
+        z_item = os.path.join(outdir[i], os.path.basename(uz_files[i]) + ".gz")
+        with open(uz_files[i], "rb") as f_in, gzip.open(z_item, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+            if verbose is True:
+                print("Compressing {} -> {}".format(uz_files[i], z_item))
+        if remove_orig is True:
+            if os.path.isfile(z_item):
+                os.remove(uz_files[i])
+            else:
+                print("Something went terribly wrong zipping {}".format
+                      (uz_files[i]))
+
+
+def get_unprocessed_data(prl=True):  # IN USE
+    """
+    This function finds all the raw files in the BASE_DIR and its subdirs,
+    under the assumption that these are new files that need to be calibrated.
+
+    Parameters
+    ----------
+    prl : bool, default=True
+        Switch for processing in parallel
+
+    Returns
+    -------
+    to_calibrate: list
+        List of files that need calibrating
+    """
+    # this really does NOT need to be its own function
+    to_calibrate = None
+    # When calibrating zipped raw files, you need to calibrate both segments
+    # separately since calcos can't find the original
     zipped_raws = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*fits.gz")) + \
                   glob.glob(os.path.join(BASE_DIR, "*", "*rawacq*fits.gz")) + \
                   glob.glob(os.path.join(BASE_DIR, "*", "*rawaccum*.fits.gz"))
@@ -893,9 +431,226 @@ def get_unprocessed_data(prl=True):
           "while)...")
     if zipped_raws:
         if prl:
-            to_calibrate = parallelize("smart", "check_usage",
-                                       needs_processing, zipped_raws)
+            to_calibrate = parallelize(needs_processing, zipped_raws)
         else:
             to_calibrate = needs_processing(zipped_raws)
 
     return to_calibrate
+
+
+def needs_processing(zipped):  # IN USE
+    """
+    Checks each file in the given list to see if it needs to be calibrated.
+    Deletes bad files.
+
+    Parameters
+    ----------
+    zipped: list
+        List of presumably raw, zipped files that need to be calibrated
+
+    Returns
+    -------
+    files to calibrate: list
+        List of files in the given list that do actually need to be
+        calibrated and are not bad files
+    """
+    if isinstance(zipped, str):
+        zipped = [zipped]
+    files_to_calibrate = []
+
+    for zfile in zipped:
+        # figure if the file should be calibrated or deleted
+        calibrate, badness = csum_existence(zfile)
+        if badness is True:
+            print("="*72 + "\n" + "="*72)
+            print("The file is empty or corrupt: {0}".format(zfile))
+            print("Deleting file")
+            print("="*72 + "\n" + "="*72)
+            os.remove(zfile)
+            continue
+        if calibrate is True:
+            files_to_calibrate.append(zfile)
+
+    return files_to_calibrate
+
+
+def csum_existence(filename):  # IN USE
+    """
+    Check for the existence of a CSUM for a given input dataset.
+
+    Parameters:
+    -----------
+    filename : str
+        A raw dataset name.
+
+    Returns:
+    --------
+    calibrate : bool
+        True if the dataset should not be calibrated to create csums
+
+    badness : bool
+        True if the dataset should be deleted (if corrupt or empty)
+    """
+    rootname = os.path.basename(filename)[:9]
+    dirname = os.path.dirname(filename)
+    calibrate = False
+    badness = False
+    # If getting one header keyword, getval is faster than opening.
+    # The more you know.
+    try:
+        exptime = fits.getval(filename, "exptime", 1)
+        if exptime == 0:
+            return calibrate, badness
+    except:
+        pass
+
+    exptype = None
+    try:
+        exptype = fits.getval(filename, "exptype")
+    except KeyError:  # EXPTYPE = None
+        return calibrate, badness
+    except Exception as e:
+        if type(e).__name__ == "IOError" and \
+           e.args[0] == "Empty or corrupt FITS file":
+            badness = True
+            return calibrate, badness
+
+    bad_exptypes = ["ACQ/PEAKD", "ACQ/PEAKXD", "ACQ/SEARCH"]
+    if exptype not in bad_exptypes:
+        if "_a.fits" in filename:
+            csums = glob.glob(os.path.join(dirname, rootname+"*csum_a*"))
+        elif "_b.fits" in filename:
+            csums = glob.glob(os.path.join(dirname, rootname+"*csum_b*"))
+        else:
+            csums = glob.glob(os.path.join(dirname, rootname+"*csum*"))
+
+        if not csums:
+            calibrate = True
+
+    return calibrate, badness
+
+
+def clobber_calcos_csumgz(func):  # IN USE
+    """
+    This is a decorator to be used to clobber output files from calcos.
+    If the output products already exist, they will be deleted and calcos
+    re-run for the particular infile.
+
+    Use:
+    ----
+    This should be imported and used as an explicit decorator:
+
+        import calcos
+        from dec_calcos import clobber_calcos
+        new_calcos = clobber_calcos(calcos.calcos)
+        new_calcos(input...)
+
+    Parameters:
+    -----------
+    func : func
+        The input function to decorate
+
+    Returns:
+    --------
+    wrapper : func
+        A wrapper to the modified function
+    """
+    __author__ = "Jo Taylor"
+    __date__ = "02-25-2016"
+    __maintainer__ = "Jo Taylor"
+    __email__ = "jotaylor@stsci.edu"
+
+    import os
+    import glob
+    from astropy.io import fits
+
+    def wrapper(*args, **kwargs):
+        try:
+            func(*args, **kwargs)
+        except Exception as e:
+            # If the reason for crashing is that the output files already exist
+            if type(e).__name__ == "RuntimeError" and \
+               e.args[0] == "output files already exist":
+                # If asntable defined in kwargs or just in args
+                if "asntable" in kwargs.keys():
+                    asntable = kwargs["asntable"]
+                else:
+                    asntable = args[0]
+                filename = os.path.basename(asntable)
+                if "outdir" in kwargs.keys():
+                    outdir = kwargs["outdir"]
+                elif len(args) >= 2:
+                    outdir = args[1]
+                else:
+                    outdir = None
+                # If the asntable is an association file, not rawtag,
+                # get the member IDs
+                if "asn.fits" in filename:
+                    with fits.open(asntable) as hdu:
+                        data = hdu[1].data
+                        memnames = data["memname"]
+                        f_to_remove = [root.lower() for root in memnames]
+                    # If an output directory is specified, the asn file is
+                    # is copied to there and must be removed as well.
+                    if outdir:
+                        os.remove(os.path.join(outdir, filename))
+                # if rawtag, just get the rawtag rootname to delete
+                else:
+                    f_to_remove = [filename[:9]]
+                # If no outdir specified, it is the current directory
+                if not outdir:
+                    outdir = "."
+                for item in f_to_remove:
+                    matching = glob.glob(os.path.join(outdir, item +
+                                                      "corrtag*fits*")) + \
+                               glob.glob(os.path.join(outdir,
+                                                      item+"csum*fits*"))
+                    for match in matching:
+                        ext = match.split("/")[-1].split("_")[1].split(".")[0]
+                        if ext not in ["asn", "pha", "rawaccum", "rawacq",
+                                       "rawtag", "spt"]:
+                            os.remove(match)
+                print("="*72 + "\n" + "="*72)
+                print("!!!WARNING!!! Deleting products for {} !!!".format(
+                      asntable))
+                print("CalCOS will now calibrate {}...".format(asntable))
+                print("="*72 + "\n" + "="*72)
+                # actually running calcos here
+                func(*args, **kwargs)
+            else:
+                raise e
+    return wrapper
+
+
+def copy_outdirs():  # IN USE
+    """
+    Copy the csums from the temp CSUM dirs to the main subdir for each csum.
+    """
+    csums = glob.glob(os.path.join(BASE_DIR, "*", CSUM_DIR, "*csum*"))
+    if csums:
+        dest_dirs = [os.path.dirname(x).strip(CSUM_DIR) for x in csums]
+        move_files(csums, dest_dirs)
+
+
+def move_files(orig, dest):  # IN USE
+    """
+    For each file in the given list, move it to the destination.
+
+    Parameters
+    ----------
+    orig: list or str
+        List of files that need to be moved
+
+    dest: list or str
+        Destination(s) for files to be moved to
+    """
+    # why does this even exist as a function
+    if isinstance(orig, str):
+        orig = [orig]
+    if isinstance(dest, str):
+        dest = [dest]
+    for i in range(len(orig)):
+        shutil.move(orig[i], dest[i])
+
+
+# --------------------------------------------------------------------------- #

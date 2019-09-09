@@ -5,10 +5,6 @@ from __future__ import print_function, absolute_import, division
 """
 Contains functions that facilitate the downloading of COS data
 via XML requests to MAST.
-
-Use:
-    This script is intended to be imported by other modules that
-    download COS data.
 """
 
 __author__ = "Jo Taylor"
@@ -63,19 +59,233 @@ REQUEST_TEMPLATE = string.Template('\
 # --------------------------------------------------------------------------- #
 
 
-def build_xml_request(dest_dir, datasets):
+def run_all_retrievals(prop_dict=None, pkl_file=None):
+    """
+    Get the proposal IDs of datasets to be retrieved from either the pickle
+    file or the dictionary. If there are a large number of programs,
+    these will be retrieved in batches. For each batch, once a set number
+    have been retrieved, add more to the queue.
+
+    Apparently, this was supposed to handle the case of re-retrieving all
+    data by stopping every 100 programs and calibrating and zipping files as it
+    went but this part of the code has all been commented out.
+
+    Legacy comment below:
+
+    Open the pickle file containing a dictionary of all missing COS data
+    to be retrieved. It is set up to handle all situations (if run daily=few
+    programs, if re-retrieving all data=hundreds of programs). If there
+    are more than 100 programs to be retrieved, stop every 100 programs and
+    run manualabor to calibrate and zip files. If this is not done, you will
+    QUICKLY run out of storage when running manualabor later.
+    Split the total number of programs into groups, once a defined number
+    of programs have been retrieved (int_num), add more to the queue.
+    Using this method, there are always pending programs (as opposed to
+    retrieving X, waiting until finished, then starting another X).
+    For each proposal in a group, use cycle_thru to request all datasets.
+    If there are too many datasets, it will split it up for manageability.
+
+    Parameters
+    ----------
+    prop_dict: dict, default=None
+        Dictionary with all data that needs to be requested, keys by PID
+
+    pkl_file : str, default=None
+        Name of pickle file with data to be retrieved
+    """
+    if pkl_file:
+        prop_dict = pickle.load(open(pkl_file, "rb"))
+    # if there is no pickle file and no prop_dict given, there will be a
+    # problem
+    prop_dict_keys = prop_dict.keys()
+    if len(prop_dict_keys) == 0:
+        return
+
+    pstart = 0
+    pend = 20  # should be 10
+    int_num = 10  # should be 5
+    # century = 3000  # should be 50
+    all_tracking_ids = []
+    # If less than pend programs were requested, do not enter while loop.
+    if pend > len(prop_dict_keys):
+        for prop in prop_dict_keys:
+            # keep passing the tracking ids and accumulating the complete list
+            all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
+        counter = []
+        # num_ids = len(all_tracking_ids)
+        # sum(counter) will be equal to len(all_tracking_ids) when all data
+        # has been delivered
+        while sum(counter) < len(all_tracking_ids):
+            counter, not_yet_retrieved = check_data_retrieval(all_tracking_ids)
+            if sum(counter) < len(all_tracking_ids):
+                print(datetime.now())
+                print("Data not yet delivered for {0}. Checking again in "
+                      "5 minutes".format(not_yet_retrieved))
+                time.sleep(350)
+
+    # While the number of processed programs is less than total programs
+    while pend < len(prop_dict_keys):
+
+        # If there are more than N*50 programs to be retrieved, stop
+        # and calibrate and zip.
+        # See note in find_new_cos_data about total COS dataset sizes.
+        #        if pend > century:
+        #            century += 50 # should be 50
+        #            print("Pausing retrieval to calibrate and
+        #            zip current data")
+        #            work_laboriously(prl, do_chmod)
+        # For each proposal (prop) in the current grouping (total number
+        # of programs split up for manageability), retrieve data for it.
+        for prop in list(prop_dict_keys)[pstart:pend]:
+            all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
+        # This while loop keeps track of how many submitted programs in the
+        # current group (defined as from pstart:pend) have been entirely
+        # retrieved, stored in counter. Once the number of finished
+        # programs reaches (total# - int_num), another int_num of programs
+        # are added to the queue. While data not retrieved, wait 5 minutes
+        # before checking again.
+        counter = []
+        num_ids = len(all_tracking_ids)
+        while sum(counter) < (num_ids - int_num):
+            counter = []
+            # this is all basically what check_data_retrieval() does
+            for tracking_id in all_tracking_ids:
+                status, badness = check_id_status(tracking_id)
+                counter.append(status)
+                if badness:
+                    print("!" * 70)
+                    print(
+                        "RUH ROH!!! Request {0} was killed or cannot be "
+                        "connected!".format(tracking_id))
+                    counter.append(badness)
+            not_yet_retrieved = [all_tracking_ids[i] for i in
+                                 range(len(counter)) if not counter[i]]
+            if sum(counter) < (num_ids - int_num):
+                print(datetime.now())
+                print("Data not yet delivered for {0}. Checking again in "
+                      "5 minutes".format(not_yet_retrieved))
+                time.sleep(350)
+        # When total# - int_num programs have been retrieved, add int_num more
+        # to queue.
+        else:
+            print("\nData delivered, adding {0} program(s) to queue".
+                  format(int_num))
+            pstart = pend
+            pend += int_num
+    # When pend > total # of programs, it does not mean all have been
+    # retrieved. Check, and retrieve if so.
+    else:
+        # how on earth does this condition mean anything, especially since
+        # it is unclear how many times pend += int_num
+        if (len(prop_dict_keys) - (pend - int_num)) > 0:
+            for prop in list(prop_dict_keys)[pend - int_num:]:
+                all_tracking_ids = cycle_thru(prop_dict, prop,
+                                              all_tracking_ids)
+
+    print("All data from {} programs were successfully delivered.".format(
+        len(prop_dict_keys)))
+
+
+def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):  # IN USE
+    """
+    For a given proposal, determine path to put data. Build and submit an
+    xml request to retrieve data for a proposal and keep track of the
+    tracking IDs for each submission (each proposal may have multiple
+    submissions depending on number of datasets in proposal).
+
+    Parameters
+    ----------
+    prop_dict : dict
+        A dictionary whose keys are proposal IDs and values are dataset names
+        for each ID
+
+    prop : int
+        The proposal ID for which to retrieve data
+
+    all_tracking_ids_tmp : list
+         Running tally of all tracking IDs for all proposals retrieved so far
+
+    Returns
+    -------
+    all_tracking_ids_tmp : list
+        Updated tally of all tracking IDs for all proposals retrieved so far
+    """
+    prop_dir = os.path.join(BASE_DIR, str(prop))
+    if not os.path.exists(prop_dir):
+        os.mkdir(prop_dir)
+    print("Requesting {0} association(s) for {1}".format(len(prop_dict[prop]),
+                                                         prop))
+    # retrieve_data() pretty much does everything
+    ind_id = retrieve_data(prop_dir, prop_dict[prop])
+    for item in ind_id:
+        all_tracking_ids_tmp.append(item)
+
+    return all_tracking_ids_tmp
+
+
+def retrieve_data(dest_dir, datasets):  # IN USE
+    """
+    For a given list of datasets (theoretically these are all associated
+    with a PID, but that is not required to use this function), build and
+    submit an xml request to MAST to retrieve them to a specified directory.
+    Also keep track of the tracking IDS for these datasets.
+
+    Parameters
+    ----------
+    dest_dir : str
+        The path to the directory to which the data will be downloaded
+
+    datasets : list
+        A list of datasets to be requested
+
+    Returns
+    -------
+    tracking_ids : list
+        The tracking IDs for all submitted datasets
+    """
+    if isinstance(datasets, str):
+        datasets = [datasets]
+    elif type(datasets) is not list:
+        datasets = datasets.tolist()
+    dataset_lists = (datasets[i:i + MAX_RETRIEVAL]
+                     for i in range(0, len(datasets), MAX_RETRIEVAL))
+    tracking_ids = []
+    for item in dataset_lists:
+        try:
+            xml_string = build_xml_request(dest_dir, item)
+            result0 = submit_xml_request(xml_string)
+            result = result0.decode("utf-8")
+            tmp_id = re.search("(" + USERNAME + "[0-9]{5})", result).group()
+            if "FAILURE" in result:
+                print("Request {} for program {} failed.".format(tmp_id,
+                                                                 dest_dir))
+            tracking_ids.append(tmp_id)
+        # If you can't get a ID, MAST is most likely down.
+        except AttributeError:
+            print("\tSomething is wrong on the MAST side...")
+            print("\tUnsuccessful request for {} {}".format(dest_dir, item))
+            print("\tIgnoring this request and continuing to next.")
+            pass
+
+    return tracking_ids
+
+
+def build_xml_request(dest_dir, datasets):  # IN USE
     """
     Build the xml request string.
 
-    Parameters:
-        dest_dir : string
-            The path fo the directory in which the data will be downloaded.
-        datasets : list
-            A list of datasets to be requested.
+    Parameters
+    ----------
+    dest_dir : str
+        The path for the directory in which the data will be downloaded
 
-    Returns:
-        xml_request : string
-            The xml request string.
+    datasets : list
+        A list of datasets to be requested
+
+    Returns
+    -------
+    xml_request : str
+        The xml request string
     """
     archive_user = USERNAME
     email = USERNAME + "@stsci.edu"
@@ -86,8 +296,7 @@ def build_xml_request(dest_dir, datasets):
     suffix = "<suffix name=\"*\" />"
     dataset_str = "\n"
     for item in datasets:
-        dataset_str = "{0}          <rootname>{1}</rootname>\n".format(
-            dataset_str, item)
+        dataset_str = "{0}<rootname>{1}</rootname>\n".format(dataset_str, item)
 
     request_str = REQUEST_TEMPLATE.safe_substitute(
         archive_user=archive_user,
@@ -103,24 +312,28 @@ def build_xml_request(dest_dir, datasets):
     return xml_request
 
 
-def submit_xml_request(xml_file):
+def submit_xml_request(xml_string):  # IN USE
     """
     Submit the xml request to MAST.
 
-    Parameters:
-        xml_file : string
-            The xml request string.
+    Parameters
+    ----------
+    xml_string : str
+        The xml request string
 
-    Returns:
-        response : httplib object
-            The xml request submission result.
+    Returns
+    -------
+    response : httplib object
+        The xml request submission result
     """
     home = os.environ.get("HOME")
     user = os.environ.get("USER")
 
+    # this is a module written by someone at ST. we don't touch what's
+    # inside at all
     signer = SignStsciRequest()
     request_xml_str = signer.signRequest("{0}/.ssh/privkey.pem".format(home),
-                                         xml_file)
+                                         xml_string)
     params = urllib.parse.urlencode({
         "dadshost": "dmsops1.stsci.edu",
         "dadsport": 4703,
@@ -138,64 +351,55 @@ def submit_xml_request(xml_file):
     return response
 
 
-def retrieve_data(dest_dir, datasets):
+def check_data_retrieval(all_tracking_ids):  # IN USE
     """
-    For a given list of datasets, submit an xml request to MAST
-    to retrieve them to a specified directory.
+    Given a list of request IDs, check the retrieval status.
 
     Parameters:
-        dest_dir : string
-            The path to the directory to which the data will be downloaded.
-        datasets : list
-            A list of datasets to be requested.
+    -----------
+    all_tracking_ids : list
+        Running tally of all tracking IDs for all proposals retrieved so far
 
     Returns:
-        tracking_ids : list
-            The tracking IDs for all submitted for a given program.
+    --------
+    counter : list
+        List with boolean retrieval status corresponding to each tracking ID
+
+    not_yet_retrieved : list
+        IDs of all requests that have not yet completed
     """
-    if isinstance(datasets, str):
-        datasets = [datasets]
-    elif type(datasets) is not list:
-        datasets = datasets.tolist()
-    dataset_lists = (datasets[i:i + MAX_RETRIEVAL]
-                     for i in range(0, len(datasets), MAX_RETRIEVAL))
-    tracking_ids = []
-    for item in dataset_lists:
-        try:
-            xml_file = build_xml_request(dest_dir, item)
-            result0 = submit_xml_request(xml_file)
-            result = result0.decode("utf-8")
-            tmp_id = re.search("(" + USERNAME + "[0-9]{5})", result).group()
-            if "FAILURE" in result:
-                print("Request {} for program {} failed.".format(tmp_id,
-                                                                 dest_dir))
-            tracking_ids.append(tmp_id)
-        # If you can't get a ID, MAST is most likely down. 
-        except AttributeError:
-            print("\tSomething is wrong on the MAST side...")
-            print("\tUnsuccessful request for {} {}".format(dest_dir, item))
-            print("\tIgnoring this request and continuing to next.")
-            pass
+    counter = []
+    for tracking_id in all_tracking_ids:
+        status, badness = check_id_status(tracking_id)
+        counter.append(status)
+        if badness:
+            print("!" * 70)
+            print("RUH ROH!!! Request {0} was killed, cannot be connected, or "
+                  "did not yield any data!!!".format(tracking_id))
+            counter.append(badness)
+    not_yet_retrieved = [all_tracking_ids[i] for i in range(len(counter)) if
+                         not counter[i]]
 
-    return tracking_ids
+    return counter, not_yet_retrieved
 
 
-def check_id_status(tracking_id):
+def check_id_status(tracking_id):  # IN USE
     """
     Check every 15 minutes to see if all submitted datasets have been
     retrieved. Based on code from J. Ely.
 
-    Parameters:
-        tracking_id : string
-            A submission ID string..
+    Parameters
+    ----------
+    tracking_id : str
+        A submission ID string
 
-    Returns:
-        done : bool
-            Boolean specifying is data is retrieved or not.
-        killed : bool
-            Boolean specifying is request was killed.
+    Returns
+    -------
+    done : bool
+        Boolean specifying if data has been retrieved
+    killed : bool
+        Boolean specifying if request was killed
     """
-
     done = False
     killed = False
     status_url = "http://archive.stsci.edu/cgi-bin/reqstat?reqnum=={0}" \
@@ -227,182 +431,7 @@ def check_id_status(tracking_id):
     return done, killed
 
 
-def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):
-    """
-    For a given proposal, determine path to put data.
-    Retrieve data for a proposal and keep track of the tracking IDs
-    for each submission (each proposal may have multiple submissions
-    depending on number of datasets in proposal).
-
-    Parameters:
-        prop_dict : dictionary
-            A dictionary whose keys are proposal IDs and keys are
-            dataset names for each ID.
-        prop : int
-            The proposal ID for which to retrieve data.
-        all_tracking_ids_tmp : list
-            Running tally of all tracking IDs for all propsals retrieved
-            to date. 
-
-    Returns:
-        all_tracking_ids_tmp : list
-            Running tally of all tracking IDs for all propsals retrieved
-            to date.
-    """
-
-    prop_dir = os.path.join(BASE_DIR, str(prop))
-    if not os.path.exists(prop_dir):
-        os.mkdir(prop_dir)
-    print("Requesting {0} association(s) for {1}".format(len(prop_dict[prop]),
-                                                         prop))
-    ind_id = retrieve_data(prop_dir, prop_dict[prop])
-    for item in ind_id:
-        all_tracking_ids_tmp.append(item)
-
-    return all_tracking_ids_tmp
-
-
-def check_data_retrieval(all_tracking_ids):
-    """
-    Given a list of request IDs, check the retrieval status.
-
-    Parameters:
-    -----------
-        all_tracking_ids : list
-            Running tally of all tracking IDs for all propsals retrieved
-            to date.
-    
-    Returns:
-    --------
-        counter : list
-            Each value in the list describes the completion status of a request. 
-        not_yet_retrieved : list
-            IDs of all requests that have not yet completed. 
-    """
-
-    counter = []
-    for tracking_id in all_tracking_ids:
-        status, badness = check_id_status(tracking_id)
-        counter.append(status)
-        if badness:
-            print("!" * 70)
-            print("RUH ROH!!! Request {0} was killed, cannot be connected, or "
-                  "did not yield any data!!!".format(tracking_id))
-            counter.append(badness)
-    not_yet_retrieved = [all_tracking_ids[i] for i in
-                         range(len(counter)) if not counter[i]]
-
-    return counter, not_yet_retrieved
-
-
-def run_all_retrievals(prop_dict=None, pkl_file=None, prl=True):
-    """
-    Open the pickle file containing a dictionary of all missing COS data
-    to be retrieved. It is set up to handle all situations (if run daily=few
-    programs, if re-retrieving all data=hundreds of programs). If there
-    are more than 100 programs to be retrieved, stop every 100 programs and
-    run manualabor to calibrate and zip files. If this is not done, you will
-    QUICKLY run out of storage when running manualabor later.
-    Split the total number of programs into groups, once a defined number
-    of programs have been retrieved (int_num), add more to the queue.
-    Using this method, there are always pending programs (as opposed to
-    retrieving X, waiting until finished, then starting another X).
-    For each proposal in a group, use cycle_thru to request all datasets.
-    If there are too many datasets, it will split it up for manageability.
-
-    Paramaters:
-        pkl_file : string
-            Name of pickle file with data to be retrieved.
-        prl : Boolean
-            Switch for running functions in parallel
-
-    Returns:
-        Nothing
-    """
-
-    if pkl_file:
-        prop_dict = pickle.load(open(pkl_file, "rb"))
-    prop_dict_keys = prop_dict.keys()
-    if len(prop_dict_keys) == 0:
-        return
-
-    pstart = 0
-    pend = 20  # should be 10
-    int_num = 10  # should be 5
-    century = 3000  # should be 50
-    all_tracking_ids = []
-    # If less than pend programs were requested, do not enter while loop.
-    if pend > len(prop_dict_keys):
-        for prop in prop_dict_keys:
-            all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
-        counter = []
-        num_ids = len(all_tracking_ids)
-        while sum(counter) < len(all_tracking_ids):
-            counter, not_yet_retrieved = check_data_retrieval(all_tracking_ids)
-            if sum(counter) < len(all_tracking_ids):
-                print(datetime.now())
-                print("Data not yet delivered for {0}. Checking again in "
-                      "5 minutes".format(not_yet_retrieved))
-                time.sleep(350)
-
-    # While the number of processed programs is less than total programs
-    while pend < len(prop_dict_keys):
-
-        # If there are more than N*50 programs to be retrieved, stop 
-        # and calibrate and zip.
-        # See note in find_new_cos_data about total COS dataset sizes.
-        #        if pend > century:
-        #            century += 50 # should be 50
-        #            print("Pausing retrieval to calibrate and
-        #            zip current data")
-        #            work_laboriously(prl, do_chmod)
-        # For each proposal (prop) in the current grouping (total number
-        # of programs split up for manageability), retrieve data for it.
-        for prop in list(prop_dict_keys)[pstart:pend]:
-            all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
-        # This while loop keeps track of how many submitted programs in the 
-        # current group (defined as from pstart:pend) have been entirely
-        # retrieved, stored in counter. Once the number of finished
-        # programs reaches (total# - int_num), another int_num of programs
-        # are added to the queue. While data not retrieved, wait 5 minutes
-        # before checking again.
-        counter = []
-        num_ids = len(all_tracking_ids)
-        while sum(counter) < (num_ids - int_num):
-            counter = []
-            for tracking_id in all_tracking_ids:
-                status, badness = check_id_status(tracking_id)
-                counter.append(status)
-                if badness:
-                    print("!" * 70)
-                    print(
-                        "RUH ROH!!! Request {0} was killed or cannot be "
-                        "connected!".format(tracking_id))
-                    counter.append(badness)
-            not_yet_retrieved = [all_tracking_ids[i] for i in
-                                 range(len(counter)) if not counter[i]]
-            if sum(counter) < (num_ids - int_num):
-                print(datetime.now())
-                print("Data not yet delivered for {0}. Checking again in "
-                      "5 minutes".format(not_yet_retrieved))
-                time.sleep(350)
-        # When total# - int_num programs have been retrieved, add int_num more
-        # to queue.
-        else:
-            print("\nData delivered, adding {0} program(s) to queue".
-                  format(int_num))
-            pstart = pend
-            pend += int_num
-    # When pend > total # of programs, it does not mean all have been
-    # retrieved. Check, and retrieve if so.
-    else:
-        if (len(prop_dict_keys) - (pend - int_num)) > 0:
-            for prop in list(prop_dict_keys)[pend - int_num:]:
-                all_tracking_ids = cycle_thru(prop_dict, prop,
-                                              all_tracking_ids)
-
-    print("All data from {} programs were successfully delivered.".format(
-        len(prop_dict_keys)))
+# --------------------------------------------------------------------------- #
 
 
 if __name__ == "__main__":
@@ -410,7 +439,10 @@ if __name__ == "__main__":
     parser.add_argument("pkl_file",
                         help="Path of pickle file with files to retrieve.")
     parser.add_argument("--prl", dest="prl", action="store_true",
-                        default=False, help="Parallellize functions")
+                        default=False, help="Parallelize functions")
     args = parser.parse_args()
 
     run_all_retrievals(prop_dict=None, pkl_file=args.pkl_file, prl=args.prl)
+
+
+# --------------------------------------------------------------------------- #

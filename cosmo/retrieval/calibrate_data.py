@@ -18,9 +18,9 @@ import os
 import calcos
 import argparse
 
-from .dec_calcos import clobber_calcos_csumgz
-from .manualabor import (handle_nullfiles, gzip_files, get_unprocessed_data, 
-    parallelize, copy_outdirs, remove_outdirs, timefunc)
+from .manualabor import (handle_nullfiles, gzip_files, get_unprocessed_data,
+                         parallelize, copy_outdirs, remove_outdirs, timefunc,
+                         clobber_calcos_csumgz)
 from .. import SETTINGS
 
 BASE_DIR = SETTINGS["filesystem"]["source"]
@@ -31,20 +31,66 @@ CSUM_DIR = "tmp_out"
 # --------------------------------------------------------------------------- #
 
 
-def make_csum(unzipped_raws):
+@timefunc
+def calibrate_data(prl=True):  # IN USE
+    """
+    Run all the functions in the correct order.
+
+    Parameters:
+    -----------
+    prl : bool
+        Switch for running functions in parallel
+    """
+    # Check for the temporary output directories used during calibration,
+    # and delete if present. 
+    remove_outdirs()
+
+    # Delete any files with program ID = NULL that are not COS files.
+    handle_nullfiles() 
+    
+    # Zip any unzipped files, if they exist.
+    gzip_files(prl)
+
+    # Get list of files that need to be processed.
+    to_calibrate = get_unprocessed_data(prl)
+
+    # If there are files to calibrate, create csums for them.
+    if to_calibrate:
+        print("There are {0} file(s) to calibrate, beginning now.".format(
+            len(to_calibrate)))
+        if prl:
+            parallelize(make_csum, to_calibrate)
+        else:
+            make_csum(to_calibrate)
+    
+    # Output csums are put in temporary output directories to avoid overwriting
+    # intermediate products. Copy only the csums from these directories into 
+    # their parent PID directories.
+    copy_outdirs()
+
+    # To be safe, check again for unzipped files, and zip them.
+    gzip_files(prl)
+        
+    # Check for the temporary output directories used during calibration,
+    # and delete if present. 
+    remove_outdirs()
+
+    print("\nFinished at {0}.".format(datetime.datetime.now()))
+
+
+def make_csum(unzipped_raws):  # IN USE
     """
     Calibrate raw files to produce csum files.
 
     Parameters:
     -----------
-        unzipped_raws : list or string
-            A list or string filenames that are unzipped to be calibrated.
+    unzipped_raws : list or str
+        A list or string filenames that are unzipped to be calibrated
 
-    Returns:
-    --------
-        Nothing
+    NOTE: this parameter claims it needs to be unzipped but as far as i can
+    tell, those files are never unzipped before being passed here
     """
-
+    # creating a wrapper function for calcos that clobbers output files
     run_calcos = clobber_calcos_csumgz(calcos.calcos)
     if isinstance(unzipped_raws, str):
         unzipped_raws = [unzipped_raws]
@@ -73,59 +119,8 @@ def make_csum(unzipped_raws):
                 print(e)
                 pass
 
-    return unzipped_raws
 
-
-@timefunc
-def calibrate_data(prl=True):
-    """
-    Run all the functions in the correct order.
-
-    Parameters:
-    -----------
-        prl : Boolean
-            Switch for running functions in parallel
-
-    Returns:
-    --------
-        Nothing
-    """
-
-    # Check for the temporary output directories used during calibration,
-    # and delete if present. 
-    remove_outdirs()
-
-    # Delete any files with program ID = NULL that are not COS files.
-    handle_nullfiles() 
-    
-    # Zip any unzipped files, if they exist.
-    gzip_files(prl)
-
-    # Get list of files that need to be processed.
-    to_calibrate = get_unprocessed_data(prl)
-    
-    # If there are files to calibrate, create csums for them.
-    if to_calibrate:
-        print("There are {0} file(s) to calibrate, beginning now.".format(
-            len(to_calibrate)))
-        if prl:
-            parallelize("smart", "check_usage", make_csum, to_calibrate)
-        else:
-            make_csum(to_calibrate)
-    
-    # Output csums are put in temporary output directories to avoid overwriting
-    # intermediate products. Copy only the csums from these directories into 
-    # their parent PID directories.
-    copy_outdirs()
-
-    # To be safe, check again for unzipped files, and zip them.
-    gzip_files(prl)
-        
-    # Check for the temporary output directories used during calibration,
-    # and delete if present. 
-    remove_outdirs()
-
-    print("\nFinished at {0}.".format(datetime.datetime.now()))
+# --------------------------------------------------------------------------- #
 
 
 if __name__ == "__main__":
@@ -135,3 +130,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     calibrate_data(args.prl)
+
+
+# --------------------------------------------------------------------------- #

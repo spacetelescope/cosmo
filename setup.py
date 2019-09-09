@@ -26,13 +26,9 @@ setup(
         'pyyaml',
         'peewee',
         'monitorframe',
-        'tqdm'
-        # 'monitorframe @ git+https://github.com/spacetelescope/monitor-'
-        # 'framework#egg=monitorframe'
-        ],
-    dependency_links=[
-        'http://github.com/spacetelescope/monitor-framework/tarball/master#egg'
-        '=monitorframe'
+        'tqdm',
+        'monitorframe @ git+https://github.com/spacetelescope/monitor-'
+        'framework#egg=monitorframe'
         ],
     entry_points={
         'console_scripts':

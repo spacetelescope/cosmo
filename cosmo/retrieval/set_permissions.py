@@ -3,10 +3,7 @@
 from __future__ import print_function, absolute_import, division
 
 """
-This is a program designed to calibrate COS raw files to create CSUMs.
-
-It also sets permissions and group ids appropriately as well
-as zipping up any unzipped files to save space.
+This module sets permissions and group ids appropriately.
 """
 
 __author__ = "Jo Taylor"
@@ -35,22 +32,22 @@ USERNAME = SETTINGS["retrieval"]["username"]
 # --------------------------------------------------------------------------- #
 
 
-def set_user_permissions(perm, mydir=BASE_DIR, prl=True):
+def set_user_permissions(perm, mydir=BASE_DIR, prl=True):  # IN USE
     """
     Function to set file permissions as specified.
 
     Parameters
     ----------
     perm : str, octal mode
-        permission keyword/mode. if "open", uses the 755 octal mode for all
+        Permission keyword/mode. if "open", uses the 755 octal mode for all
         files and directories. if "close", uses 550 for files and
         directories. otherwise, a custom valid octal mode can be passed.
     mydir : str, default=BASE_DIR
-        absolute path to directory to perform the actions on. by default is
+        Absolute path to directory to perform the actions on. by default is
         set to be the retrieval directory as specified in the user's
         configuration .yaml file.
     prl: bool, default=True
-        keyword to parallelize this function.
+        Keyword to parallelize this function.
     """
     all_dirs = glob.glob(os.path.join(mydir, "*"))
     all_files = glob.glob(os.path.join(mydir, "*", "*"))
@@ -69,12 +66,25 @@ def set_user_permissions(perm, mydir=BASE_DIR, prl=True):
         perm_d = {x: perm for x in tqdm(all_dirs + all_files)}
 
     if prl:
-        parallelize("smart", "check_usage", chmod, perm_d)
+        parallelize(chmod, perm_d)
     else:
         chmod(perm_d)
 
 
-def set_grpid(mydir=BASE_DIR, prl=True):
+def chmod(file_perm):  # IN USE
+    """
+    This function changes the permissions of all files given.
+
+    Parameters
+    ----------
+    file_perm: dict
+        Dictionary of file names and permission mode for each filename
+    """
+    for filename, fid in file_perm.items():
+        os.chmod(filename, fid)
+
+
+def set_grpid(mydir=BASE_DIR, prl=True):  # IN USE
     """
     Given a base directory mydir, determine which datasets are proprietary, 
     and should have the group permissions set to 'cosgo' while all else
@@ -82,22 +92,22 @@ def set_grpid(mydir=BASE_DIR, prl=True):
     
     Parameters:
     -----------
-        mydir : str
-            The base directory to set group permissions on.
-
-    Returns:
-    --------
-        Nothing
+    mydir : str, default=BASE_DIR
+        The base directory to set group permissions on.
     """
     # priv_id = 65545
     pub_id = 6045
 
+    # find all the existing data in the BASE_DIR
     existing, existing_filenames, existing_root = tally_cs(mydir,
                                                            uniq_roots=False)
+    # get the proprietary status and sql result rootname for each file
     propr_status, sql_roots = check_proprietary_status(
         list(set(existing_root)))
     propr_d = dict(zip(sql_roots, propr_status))
 
+    # make a version of the propr_status that matches the order of the
+    # existing files
     propr_status = []
     for i in range(len(existing)):
         rootname = existing_root[i].upper()
@@ -106,18 +116,31 @@ def set_grpid(mydir=BASE_DIR, prl=True):
         except:
             propr_status.append(pub_id)
     propr_status_d = dict(zip(existing, propr_status))
+
     all_dirs = glob.glob(os.path.join(mydir, "*"))
+    # make a default public id associated with all dirs
     dir_perm_d = {x: pub_id for x in all_dirs}
+    # intersection of the default public id and the derived specific ids
     perm_d = {**propr_status_d, **dir_perm_d}
 
+    # TODO here 2
     print("Setting group IDs...")
     if prl:
-        parallelize("smart", "check_usage", chgrp, perm_d)
+        parallelize(chgrp, perm_d)
     else:
         chgrp(perm_d)
 
 
-def chgrp(grp_perm):
+def chgrp(grp_perm):  # IN USE
+    """
+    Change the "ownership" of each file to the correct group that
+    corresponds to public or proprietary data.
+
+    Parameters
+    ----------
+    grp_perm: dict
+        Dictionary of file names and group that should own it
+    """
     user_id = pwd.getpwnam(USERNAME).pw_uid
     for filename, gid in grp_perm.items():
         os.chown(filename, user_id, gid)
@@ -125,8 +148,4 @@ def chgrp(grp_perm):
     return grp_perm
 
 
-def chmod(file_perm):
-    for filename, fid in file_perm.items():
-        os.chmod(filename, fid)
-
-    return file_perm
+# --------------------------------------------------------------------------- #
