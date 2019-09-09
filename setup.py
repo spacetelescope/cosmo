@@ -27,8 +27,7 @@ setup(
         'peewee',
         'monitorframe',
         'tqdm',
-        'monitorframe @ git+https://github.com/spacetelescope/monitor-'
-        'framework#egg=monitorframe'
+        'monitorframe @ git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe'
         ],
     entry_points={
         'console_scripts':
