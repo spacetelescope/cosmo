@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="COS Monitors" href="monitors.html" /> 
+    <link rel="prev" title="&lt;no title&gt;" href="datamodels.html" /> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -84,7 +84,16 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="monitors.html">COS Monitors</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">API</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#monitors-and-their-datamodels">Monitors and their DataModels</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#datamodels">DataModels</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#monitors">Monitors</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#sms-file-ingestion-and-support">SMS File Ingestion and Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#other-modules">Other Modules</a></li>
+</ul>
+</li>
 </ul>
 
             
@@ -151,6 +160,1494 @@
             
   <div class="section" id="api">
 <h1>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="monitors-and-their-datamodels">
+<h2>Monitors and their DataModels<a class="headerlink" href="#monitors-and-their-datamodels" title="Permalink to this headline">¶</a></h2>
+<p>Here, we give a brief description of the monitor and DataModel API.
+For more detailed information on the <code class="docutils literal notranslate"><span class="pre">monitorframe</span></code> framework and the Monitor and DataModel objects, please see that
+<a class="reference external" href="https://spacetelescope.github.io/monitor-framework/?">project’s documentation</a>.</p>
+<p>Since COSMO is built on the <code class="docutils literal notranslate"><span class="pre">monitorframe</span></code> framework, all monitors are objects that inherit the <code class="docutils literal notranslate"><span class="pre">BaseMonitor</span></code>
+object, and all DataModels are objects that inherit the <code class="docutils literal notranslate"><span class="pre">BaseDataModel</span></code> object.</p>
+<p>Each monitor must be defined with a corresponding DataModel.
+The DataModel represents the monitor’s interface with the data needed to perform monitoring; it defines how new data for
+the monitor is acquired and how that data is then defined and stored in the database.
+The Monitor utilizes the database to access the necessary data, perform any filtering, perform the necessary analysis,
+and produce outputs (typically plots).</p>
+<p>The examples described below include assumptions about the existing implementation with respect to the configuration
+file.
+For more help with the configuration file, see this section: <a class="reference internal" href="getting_started.html#settings-via-a-configuration-file"><span class="std std-ref">Settings via a Configuration File</span></a></p>
+<div class="section" id="datamodels">
+<h3>DataModels<a class="headerlink" href="#datamodels" title="Permalink to this headline">¶</a></h3>
+<p>The DataModels usage and API will be described in terms of an example DataModel:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">monitorframe.datamodel</span> <span class="kn">import</span> <span class="n">BaseDataModel</span>
+
+<span class="k">class</span> <span class="nc">DataModel</span><span class="p">(</span><span class="n">BaseDataModel</span><span class="p">):</span>
+    <span class="n">files_source</span> <span class="o">=</span> <span class="n">FILES_SOURCE</span>  <span class="c1"># The source of the COS data files is defined in the configuration file</span>
+    <span class="n">cosmo_layout</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="n">primary_key</span> <span class="o">=</span> <span class="s1">&#39;SomeKeyWord&#39;</span>
+
+    <span class="k">def</span> <span class="nf">get_new_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="o">...</span>  <span class="c1"># This method depends on what data is needed</span>
+</pre></div>
+</div>
+<dl class="class">
+<dt id="DataModel">
+<em class="property">class </em><code class="descname">DataModel</code><span class="sig-paren">(</span><em>find_new=True</em><span class="sig-paren">)</span><a class="headerlink" href="#DataModel" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>find_new</strong> (<em>bool</em>) – Default is <code class="docutils literal notranslate"><span class="pre">True</span></code>. If <code class="docutils literal notranslate"><span class="pre">True</span></code>, <code class="docutils literal notranslate"><span class="pre">get_new_data</span></code> will be executed during init.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If a database does not exist or if the table representation of the DataModel data does not exist, executing the
+<code class="docutils literal notranslate"><span class="pre">ingest</span></code> method will create them.</p>
+</div>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+
+<span class="c1"># Using the defined example model above...</span>
+<span class="c1"># Create a model instance</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">DataModel</span><span class="p">()</span>  <span class="c1"># by default this will attempt to find new data</span>
+
+<span class="c1"># Create an instance without finding new data</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">DataModel</span><span class="p">(</span><span class="n">find_new</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+<span class="c1"># Ingest data into a corresponding database table; Also creates a SQLite database and corresponding table if</span>
+<span class="c1">#  they don&#39;t exist.</span>
+<span class="n">model</span><span class="o">.</span><span class="n">ingest</span><span class="p">()</span>
+
+<span class="c1"># Perform a query (assumes that the database table &quot;DataModel&quot; exists)</span>
+<span class="n">query</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">select</span><span class="p">()</span>  <span class="c1"># Grab everything from this particular table</span>
+
+<span class="c1"># Convert a query to a dataframe</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">select</span><span class="p">()</span><span class="o">.</span><span class="n">dicts</span><span class="p">())</span>
+
+<span class="c1"># If there are columns with array elements</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">query_to_pandas</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="attribute">
+<dt id="DataModel.files_source">
+<code class="descname">files_source</code><a class="headerlink" href="#DataModel.files_source" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">str</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Path to COS data cache.
+This attribute is used in the <code class="docutils literal notranslate"><span class="pre">get_new_data</span></code> method to find COS data files, and is set with a configuration
+file</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DataModel.cosmo_layout">
+<code class="descname">cosmo_layout</code><a class="headerlink" href="#DataModel.cosmo_layout" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">bool</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Used for determining the how to find files.
+If set to True, the files will be assumed to be organized by COSMO (i.e. by program ID).
+Otherwise, it is assumed that the data files are located in the files_source directory with no subdirectories.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DataModel.model">
+<code class="descname">model</code><a class="headerlink" href="#DataModel.model" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">None</span></code> until a corresponding table exists in the database, then <code class="docutils literal notranslate"><span class="pre">peewee.Model</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>This attribute can be used to execute queries on the corresponding table.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="DataModel.new_data">
+<code class="descname">new_data</code><a class="headerlink" href="#DataModel.new_data" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>new data as defined by <code class="docutils literal notranslate"><span class="pre">get_new_data</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="DataModel.get_new_data">
+<code class="descname">get_new_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#DataModel.get_new_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method that determines how new data is found and sets the <code class="docutils literal notranslate"><span class="pre">new_data</span></code> attribute.</p>
+<p>This method is always wrapped by the <code class="docutils literal notranslate"><span class="pre">monitorframe</span></code> framework to produce a pandas <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code>, and so any
+new data must be in column-wise (a dictionary of lists) or row-wise (a list of dictionaries) format.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A dataframe of new data</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="DataModel.ingest">
+<code class="descname">ingest</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#DataModel.ingest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ingest the <code class="docutils literal notranslate"><span class="pre">new_data</span></code> DataFrame into the database.</p>
+<p>If the <code class="docutils literal notranslate"><span class="pre">primary_key</span></code> attribute is set, that key will be used as the primary key for the table.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="DataModel.query_to_pandas">
+<code class="descname">query_to_pandas</code><span class="sig-paren">(</span><em>query</em>, <em>array_cols=None</em>, <em>array_dtypes=None</em><span class="sig-paren">)</span><a class="headerlink" href="#DataModel.query_to_pandas" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute a given query and return the result as a pandas <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code>.
+If there are columns with array elements, convert those elements from the string representation used in
+storing back to the correct type.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>query</strong> (<em>peewee.ModelSelect</em>) – query object from <code class="docutils literal notranslate"><span class="pre">DataModel.model</span></code>.</li>
+<li><strong>array_cols</strong> (<em>list</em>) – Optional. If not given, the array columns will be inferred from <code class="docutils literal notranslate"><span class="pre">new_data</span></code>.</li>
+<li><strong>array_dtypes</strong> (<em>list</em>) – Optional. If not given, and array columns are detected, then <code class="docutils literal notranslate"><span class="pre">float</span></code> is assumed.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="monitors">
+<h3>Monitors<a class="headerlink" href="#monitors" title="Permalink to this headline">¶</a></h3>
+<p>Relevant information for the monitors’ API will be described in terms of an example monitor that
+we’ll call “Monitor” and the example DataModel object that was described above.
+The monitor class that will be used as an example looks like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">monitorframe.monitor</span> <span class="kn">import</span> <span class="n">BaseMonitor</span>
+
+
+<span class="k">class</span> <span class="nc">Monitor</span><span class="p">(</span><span class="n">BaseMonitor</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Monitor&quot;</span>
+    <span class="n">data_model</span> <span class="o">=</span> <span class="n">DataModel</span>  <span class="c1"># Same example as described above</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Some&#39;</span><span class="p">,</span> <span class="s1">&#39;List&#39;</span><span class="p">,</span> <span class="s1">&#39;Of&#39;</span><span class="p">,</span> <span class="s1">&#39;Header&#39;</span><span class="p">,</span> <span class="s1">&#39;Keywords&#39;</span><span class="p">]</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">COS_MONITORING</span>  <span class="c1"># Typically, the output path is given via the configuration file</span>
+    <span class="n">notification_settings</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;active&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="s1">&#39;username&#39;</span><span class="p">:</span> <span class="s1">&#39;user&#39;</span><span class="p">,</span> <span class="s1">&#39;recipients&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;user2&#39;</span><span class="p">,</span> <span class="s1">&#39;user3&#39;</span><span class="p">]}</span>
+
+    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="o">...</span>  <span class="c1"># May include filtering, mixing of old and new data, etc</span>
+
+    <span class="k">def</span> <span class="nf">track</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="o">...</span>  <span class="c1"># What quantity or quantities the monitor calculates or keeps track of</span>
+
+    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="o">...</span>  <span class="c1"># Produce an output plot</span>
+
+    <span class="k">def</span> <span class="nf">set_notification</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="o">...</span> <span class="c1"># Define a string that will be used in an email notification (if active)</span>
+
+    <span class="k">def</span> <span class="nf">store_results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="o">...</span>  <span class="c1"># What and how results are stored.</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">monitorframe</span></code> provides some built-in basic plotting and results storage.
+To use the basic plotting, an <code class="docutils literal notranslate"><span class="pre">x</span></code> and a <code class="docutils literal notranslate"><span class="pre">y</span></code> (with an optional color dimension, <code class="docutils literal notranslate"><span class="pre">z</span></code>) attribute must be set in
+the definition of the new monitor.</p>
+<p class="last">Most of the monitors in COSMO require plots too complex to take advantage of this feature, and so the example here
+uses a more representative signature. For more information on the basic plotting functionality, see the
+<a class="reference external" href="https://spacetelescope.github.io/monitor-framework/?">monitorframe documentation</a>.</p>
+</div>
+<dl class="class">
+<dt id="Monitor">
+<em class="property">class </em><code class="descname">Monitor</code><a class="headerlink" href="#Monitor" title="Permalink to this definition">¶</a></dt>
+<dd><p>All COSMO monitors will have this signature.</p>
+<p>In some cases, such as for the ACQ/PEAKD and ACQ/PEAKXD monitors, the monitors are similar enough to warrant the
+creation of an additional, partial implementation layer to avoid duplicate code, in which case the top most layer
+may be an even simpler signature than the example above (as several attributes or methods may be set or implemented
+respectively in the partial implementation). In the case of the PEAKD and PEAKXD monitors, the shared layer is
+<code class="docutils literal notranslate"><span class="pre">SpecAcqBaseMonitor</span></code>.</p>
+<p>Additionally, it is sometimes useful to store information in the new Monitor class itself for use in the monitoring
+methods.
+Again, an example of this can be found in the shared “base layer” of the spectroscopic acquisition monitors,
+<code class="docutils literal notranslate"><span class="pre">SpecAcqBaseMonitor</span></code></p>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">Monitor</span>
+
+<span class="c1"># Create a new instance of the monitor</span>
+<span class="n">monitor</span> <span class="o">=</span> <span class="n">Monitor</span><span class="p">()</span>
+
+<span class="c1"># Run the monitor</span>
+<span class="n">monitor</span><span class="o">.</span><span class="n">monitor</span><span class="p">()</span>
+
+<span class="c1"># Access outliers (if find_outliers is defined and returns a mask as per COSMO convention)</span>
+<span class="n">outliers</span> <span class="o">=</span> <span class="n">monitor</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">monitor</span><span class="o">.</span><span class="n">outliers</span><span class="p">]</span>
+</pre></div>
+</div>
+<dl class="attribute">
+<dt id="Monitor.name">
+<code class="descname">name</code><a class="headerlink" href="#Monitor.name" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">str</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Optional.
+If this attribute is not set for the Monitor class upon definition, then the name will be derived from the
+object’s classname.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Monitor.data_model">
+<code class="descname">data_model</code><a class="headerlink" href="#Monitor.data_model" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">DataModel</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Required.
+At the definition of the Monitor, a DataModel object must be assigned.
+The monitor utilizes the DataModel object to access data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Monitor.labels">
+<code class="descname">labels</code><a class="headerlink" href="#Monitor.labels" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">list</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Optional.
+List of keywords (that must be included in the data available) to be used in the hover labels in the plots.
+A <code class="docutils literal notranslate"><span class="pre">hover_text</span></code> column is added to the monitor <code class="docutils literal notranslate"><span class="pre">data</span></code> attribute based on these keys and can be accessed like
+any other column in the <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Monitor.output">
+<code class="descname">output</code><a class="headerlink" href="#Monitor.output" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Tye:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">str</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Optional.
+Either a directory or a full file path to use for the output.
+If not given, the current directory will be used, and a filename will be created with the form
+“monitor_yyyy_mm_dd.”</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Monitor.model">
+<code class="descname">model</code><a class="headerlink" href="#Monitor.model" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">DataModel</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Instance of the supplied DataModel from the <code class="docutils literal notranslate"><span class="pre">data_model</span></code> attribute.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Monitor.data">
+<code class="descname">data</code><a class="headerlink" href="#Monitor.data" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Monitor data that was defined by the DataModel.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Monitor.results">
+<code class="descname">results</code><a class="headerlink" href="#Monitor.results" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">Any</td>
+</tr>
+</tbody>
+</table>
+<p>Results from the <code class="docutils literal notranslate"><span class="pre">track</span></code> method</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Monitor.outliers">
+<code class="descname">outliers</code><a class="headerlink" href="#Monitor.outliers" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">Any</td>
+</tr>
+</tbody>
+</table>
+<p>Results from the <code class="docutils literal notranslate"><span class="pre">find_outliers</span></code> method.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Monitor.figure">
+<code class="descname">figure</code><a class="headerlink" href="#Monitor.figure" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">plotly.graph_objects.Figure</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Plotly figure used for output plots.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Monitor.docs">
+<code class="descname">docs</code><a class="headerlink" href="#Monitor.docs" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">str</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Link to the corresponding monitor’s documentation page.
+This attribute is not set by default, but is useful to include in the monitor definitions.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Monitor.date">
+<code class="descname">date</code><a class="headerlink" href="#Monitor.date" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">datetime.datetime</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Datetime when the monitor instance was created.
+This date is used throughout the monitoring process (figures, filenames, etc).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="Monitor.get_data">
+<code class="descname">get_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Monitor.get_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get data from the DataModel for use in the monitor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">data</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Monitor.track">
+<code class="descname">track</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Monitor.track" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a specific value or perform analysis on data to track through time.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Results from analysis</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">Any</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Monitor.find_outliers">
+<code class="descname">find_outliers</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Monitor.find_outliers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Optional.
+Define outliers in the data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Typically a mask (or masks) for <code class="docutils literal notranslate"><span class="pre">data</span></code> that describe the outliers, or <code class="docutils literal notranslate"><span class="pre">Any</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">Any</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Monitor.plot">
+<code class="descname">plot</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Monitor.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create traces and update <code class="docutils literal notranslate"><span class="pre">figure</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Monitor.initialize_data">
+<code class="descname">initialize_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Monitor.initialize_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the <code class="docutils literal notranslate"><span class="pre">data</span></code> attribute based on how <code class="docutils literal notranslate"><span class="pre">get_data</span></code> was defined and create hover labels</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Monitor.run_analysis">
+<code class="descname">run_analysis</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Monitor.run_analysis" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the <code class="docutils literal notranslate"><span class="pre">results</span></code>, <code class="docutils literal notranslate"><span class="pre">outliers</span></code>, and <code class="docutils literal notranslate"><span class="pre">notification</span></code> attributes via executing
+<code class="docutils literal notranslate"><span class="pre">track</span></code>, <code class="docutils literal notranslate"><span class="pre">find_outliers</span></code>, and <code class="docutils literal notranslate"><span class="pre">set_notification</span></code> respectivelly.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Order matters! If steps of the monitoring process are run individually, they must be run in the correct
+order.
+For example, if <code class="docutils literal notranslate"><span class="pre">Monitor.find_outliers</span></code> is called before <code class="docutils literal notranslate"><span class="pre">Monitor.initialize_data</span></code>, an error will be
+raised since the <code class="docutils literal notranslate"><span class="pre">data</span></code> attribute was not set.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="Monitor.write_figure">
+<code class="descname">write_figure</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Monitor.write_figure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write the output figure to an htnml file using the <code class="docutils literal notranslate"><span class="pre">output</span></code> directory and/or name provided.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Monitor.store_results">
+<code class="descname">store_results</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Monitor.store_results" title="Permalink to this definition">¶</a></dt>
+<dd><p>Store the results.
+By default, <code class="docutils literal notranslate"><span class="pre">monitorframe</span></code> is set up to create and use a “results” database.
+However, to use the default method and the database, the <code class="docutils literal notranslate"><span class="pre">format_results</span></code> method may be required as the
+<code class="docutils literal notranslate"><span class="pre">monitorframe</span></code> results database will attempt to store results as a <code class="docutils literal notranslate"><span class="pre">json</span></code> field (and so the data needs to be
+<code class="docutils literal notranslate"><span class="pre">json</span></code>-friendly). See
+<a class="reference external" href="https://spacetelescope.github.io/monitor-framework/advanced_monitors.html#database">this</a> for more
+information.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Monitor.set_notification">
+<code class="descname">set_notification</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Monitor.set_notification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Defines the notification string to be used in the notification email.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">notification string</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">str</span></code></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><strong>NotImplementedError</strong> – If the <code class="docutils literal notranslate"><span class="pre">notification_settings</span></code> attribute is set with “active”: <code class="docutils literal notranslate"><span class="pre">True</span></code> and
+the new monitor does not define this method.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Monitor.monitor">
+<code class="descname">monitor</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Monitor.monitor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Executes all monitoring steps</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="sms-file-ingestion-and-support">
+<h2>SMS File Ingestion and Support<a class="headerlink" href="#sms-file-ingestion-and-support" title="Permalink to this headline">¶</a></h2>
+<p>Here we describe basic use of the <code class="docutils literal notranslate"><span class="pre">sms</span></code> subpackage.</p>
+<dl class="class">
+<dt id="ingest_sms.SMSFile">
+<em class="property">class </em><code class="descclassname">ingest_sms.</code><code class="descname">SMSFile</code><span class="sig-paren">(</span><em>smsfile</em><span class="sig-paren">)</span><a class="headerlink" href="#ingest_sms.SMSFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class used for reading in, exploring, and ingesting SMS data from an SMS file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>smsfile</strong> (<em>str</em>) – <code class="docutils literal notranslate"><span class="pre">.txt</span></code> or <code class="docutils literal notranslate"><span class="pre">.l-exp</span></code> file to ingest.</td>
+</tr>
+</tbody>
+</table>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.sms</span> <span class="kn">import</span> <span class="n">SMSFile</span>
+
+<span class="n">smsfile</span> <span class="o">=</span> <span class="s1">&#39;path/to/some/181137b4.txt&#39;</span>  <span class="c1"># Ingestion also works for the .l-exp file extension</span>
+
+<span class="n">sms</span> <span class="o">=</span> <span class="n">SMSFile</span><span class="p">(</span><span class="n">smsfile</span><span class="p">)</span>  <span class="c1"># Ingest the file</span>
+
+<span class="n">sms</span><span class="o">.</span><span class="n">file_id</span>
+<span class="c1"># &#39;181137b4&#39;</span>
+
+<span class="n">sms</span><span class="o">.</span><span class="n">sms_id</span>
+<span class="c1"># &#39;181137&#39;</span>
+
+<span class="n">sms</span><span class="o">.</span><span class="n">version</span>
+<span class="c1"># &#39;b4&#39;</span>
+
+<span class="n">sms</span><span class="o">.</span><span class="n">data</span>  <span class="c1"># pandas DataFrame of the ingested data</span>
+
+<span class="c1"># Construct a new record out of the ingested file and insert into the database</span>
+<span class="n">sms</span><span class="o">.</span><span class="n">insert_to_db</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="attribute">
+<dt id="ingest_sms.SMSFile.datetime_format">
+<code class="descname">datetime_format</code><a class="headerlink" href="#ingest_sms.SMSFile.datetime_format" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">str</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Format for the date and time to use in the INGEST_DATE column.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ingest_sms.SMSFile.filename">
+<code class="descname">filename</code><a class="headerlink" href="#ingest_sms.SMSFile.filename" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">str</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Path of the file to be ingested.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ingest_sms.SMSFile.file_id">
+<code class="descname">file_id</code><a class="headerlink" href="#ingest_sms.SMSFile.file_id" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">str</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>The “complete” ID of the SMS file being ingested.
+Includes the SMS ID and the version.
+Typically this is the file name of the SMS file.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ingest_sms.SMSFile.sms_id">
+<code class="descname">sms_id</code><a class="headerlink" href="#ingest_sms.SMSFile.sms_id" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">str</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>ID of the SMS report.
+Typically the first 6 digits of the SMS file name.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ingest_sms.SMSFile.version">
+<code class="descname">version</code><a class="headerlink" href="#ingest_sms.SMSFile.version" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">str</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Version of the SMS report.
+Typically the last 2 characters following the SMS ID in the file name (with exceptions for special cases).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ingest_sms.SMSFile.ingest_date">
+<code class="descname">ingest_date</code><a class="headerlink" href="#ingest_sms.SMSFile.ingest_date" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">datetime.datetime</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Date that the file was ingested (date of the creation of the SMSFile instance).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ingest_sms.SMSFile.data">
+<code class="descname">data</code><a class="headerlink" href="#ingest_sms.SMSFile.data" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Ingested data from the SMS file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ingest_sms.SMSFile.ingest_smsfile">
+<code class="descname">ingest_smsfile</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ingest_sms.SMSFile.ingest_smsfile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read the input SMS text file and ingest data from the string.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Ingested data</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">dict</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ingest_sms.SMSFile.insert_to_db">
+<code class="descname">insert_to_db</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ingest_sms.SMSFile.insert_to_db" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new record for the SMS file and insert into the SMSFileStats table.
+Creates new records for each row ingested from the SMS file and inserts into the SMSTable table.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This methods follows the SMS version and ingestion rules outlined in the SMS section.
+If you try to insert an SMS file that is already in the table(s), nothing will happen.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ingest_sms.SMSFinder">
+<em class="property">class </em><code class="descclassname">ingest_sms.</code><code class="descname">SMSFinder</code><a class="headerlink" href="#ingest_sms.SMSFinder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for finding SMS files in a given directory and determining which of those found are already ingested in
+the database.
+Of the SMS files that exist in the directory, only the highest version is returned for each unique SMS ID.</p>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.sms</span> <span class="kn">import</span> <span class="n">SMSFinder</span>
+
+<span class="n">finder</span> <span class="o">=</span> <span class="n">SMSFinder</span><span class="p">()</span>  <span class="c1"># Default files location is set in the configuration file</span>
+
+<span class="n">finder</span><span class="o">.</span><span class="n">all_sms</span>   <span class="c1"># DataFrame with all SMS files found (of highest version)</span>
+
+<span class="c1"># See &quot;old&quot; SMS files</span>
+<span class="n">finder</span><span class="o">.</span><span class="n">old_sms</span>
+
+<span class="c1"># See &quot;new&quot; SMS files</span>
+<span class="n">finder</span><span class="o">.</span><span class="n">new_sms</span>
+
+<span class="c1"># Ingest new files into the database</span>
+<span class="n">finder</span><span class="o">.</span><span class="n">ingest_files</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="attribute">
+<dt id="ingest_sms.SMSFinder.currently_ingested">
+<code class="descname">currently_ingested</code><a class="headerlink" href="#ingest_sms.SMSFinder.currently_ingested" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">None if no data is ingested or if the SMSFileStats table doesn’t exist, else <code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>All files that exist in the SMSFileStats table.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ingest_sms.SMSFinder.all_sms">
+<code class="descname">all_sms</code><a class="headerlink" href="#ingest_sms.SMSFinder.all_sms" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>All SMS files found in the target directory regardless of whether or not they exist in the database.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ingest_sms.SMSFinder.new_sms">
+<code class="descname">new_sms</code><a class="headerlink" href="#ingest_sms.SMSFinder.new_sms" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Property that returns only the files that were classified as “new.”</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ingest_sms.SMSFinder.old_sms">
+<code class="descname">old_sms</code><a class="headerlink" href="#ingest_sms.SMSFinder.old_sms" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Property that returns only the files that were classified as “old.”</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ingest_sms.SMSFinder.find_all">
+<code class="descname">find_all</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ingest_sms.SMSFinder.find_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find all SMS files from the source directory.
+Determine if the file is “new” or “old.”</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> of found files with “version,” “sms_id,” “smsfile,” and “is_new” columns.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ingest_sms.SMSFinder.ingest_files">
+<code class="descname">ingest_files</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ingest_sms.SMSFinder.ingest_files" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ingest “new” SMS files into the database.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sms_db.SMSFileStats">
+<em class="property">class </em><code class="descclassname">sms_db.</code><code class="descname">SMSFileStats</code><a class="headerlink" href="#sms_db.SMSFileStats" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class is a <code class="docutils literal notranslate"><span class="pre">peewee.Model</span></code> object that represents the <code class="docutils literal notranslate"><span class="pre">SMSFileStats</span></code> table in the SMS database.
+This table includes information about the SMS files.</p>
+<p>Columns include:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="17%" />
+<col width="83%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Column</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>SMSID</td>
+<td>ID that describes a single SMS. Primary key.</td>
+</tr>
+<tr class="row-odd"><td>VERSION</td>
+<td>String of 2 or 3 characters that give the SMS version.</td>
+</tr>
+<tr class="row-even"><td>FILEID</td>
+<td>Combination of the SMSID and the VERSION.</td>
+</tr>
+<tr class="row-odd"><td>FILENAME</td>
+<td>Filename of the ingested SMS file.</td>
+</tr>
+<tr class="row-even"><td>INGEST_DATE</td>
+<td>Date that the file was inserted into the database.</td>
+</tr>
+</tbody>
+</table>
+<p>See <a class="reference external" href="http://docs.peewee-orm.com/en/latest/peewee/querying.html#selecting-multiple-records">peewee’s documentation</a>
+for more examples on querying and filtering.</p>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.sms</span> <span class="kn">import</span> <span class="n">SMSFileStats</span>
+
+<span class="n">query</span> <span class="o">=</span> <span class="n">SMSFileStats</span><span class="o">.</span><span class="n">select</span><span class="p">()</span>  <span class="c1"># Query for every SMS file in the database</span>
+
+<span class="n">results</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">query</span><span class="o">.</span><span class="n">dicts</span><span class="p">())</span>  <span class="c1"># convert the peewee records into a list of dictionaries: {col: value}</span>
+
+<span class="c1"># You can also perform more complicated queries. See the peewee documentation for a complete description</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+
+<span class="n">more_complicated</span> <span class="o">=</span> <span class="n">SMSFileStats</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+    <span class="n">SMSFileStats</span><span class="o">.</span><span class="n">SMSID</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">SMSFileStats</span><span class="o">.</span><span class="n">INGEST_DATE</span> <span class="o">&lt;</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">()</span>
+<span class="p">)</span>
+
+<span class="c1"># Get the data associated with a particular SMS</span>
+<span class="n">sms</span> <span class="o">=</span> <span class="n">SMSFileStats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">SMSFileStats</span><span class="o">.</span><span class="n">SMSID</span> <span class="o">==</span> <span class="s1">&#39;118537&#39;</span><span class="p">)</span>
+
+<span class="n">sms</span><span class="o">.</span><span class="n">exposures</span>  <span class="c1"># Rows in the SMSTable table that reference the particular SMS</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="sms_db.SMSTable">
+<em class="property">class </em><code class="descclassname">sms_db.</code><code class="descname">SMSTable</code><a class="headerlink" href="#sms_db.SMSTable" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class is a <code class="docutils literal notranslate"><span class="pre">peewee.Model</span></code> object that represents the <code class="docutils literal notranslate"><span class="pre">SMSTable</span></code> table in the SMS database.
+This table includes extracted data from the SMS files.</p>
+<p>Columns include:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="11%" />
+<col width="89%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Column</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>EXPOSURE</td>
+<td>String that describes an exposure based on Phase II information. Primary Key.</td>
+</tr>
+<tr class="row-odd"><td>FILEID</td>
+<td>Same field as in the SMSFileStats table. Allows for back-referencing.</td>
+</tr>
+<tr class="row-even"><td>ROOTNAME</td>
+<td>Rootname of the exposure.</td>
+</tr>
+<tr class="row-odd"><td>PROPOSID</td>
+<td>Proposal ID of the exposure.</td>
+</tr>
+<tr class="row-even"><td>DETECTOR</td>
+<td>Name of the detector used for the exposure.</td>
+</tr>
+<tr class="row-odd"><td>OPMODE</td>
+<td>ACCUM, TIME-TAG, or one of the other acquisition keys.</td>
+</tr>
+<tr class="row-even"><td>EXPTIME</td>
+<td>Start time of the exposure (yyyy.ddd:hh:mm:ss).</td>
+</tr>
+<tr class="row-odd"><td>FUVHVSTATE</td>
+<td>Commanded High-Voltage for FUV.</td>
+</tr>
+<tr class="row-even"><td>APERTURE</td>
+<td>Aperture name.</td>
+</tr>
+<tr class="row-odd"><td>OSM1POS</td>
+<td>OSM1 position.</td>
+</tr>
+<tr class="row-even"><td>OSM2POS</td>
+<td>OSM2 position.</td>
+</tr>
+<tr class="row-odd"><td>CENWAVE</td>
+<td>Cenwave of the exposure.</td>
+</tr>
+<tr class="row-even"><td>FPPOS</td>
+<td>FPPOS position of the exposure.</td>
+</tr>
+<tr class="row-odd"><td>TSINCEOSM1</td>
+<td>Time since the last OSM1 move.</td>
+</tr>
+<tr class="row-even"><td>TSINCEOSM2</td>
+<td>Time since the last OSM2 move.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="other-modules">
+<h2>Other Modules<a class="headerlink" href="#other-modules" title="Permalink to this headline">¶</a></h2>
+<p>Cosmo also contains other modules used in supporting either the monitors or data acquisition.</p>
+<dl class="function">
+<dt id="filesystem.find_files">
+<code class="descclassname">filesystem.</code><code class="descname">find_files</code><span class="sig-paren">(</span><em>file_pattern</em>, <em>data_dir</em>, <em>cosmo_layout</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.find_files" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find COS data files from a source directory.
+The default <code class="docutils literal notranslate"><span class="pre">data_dir</span></code> is set in the configuration file.
+If another source is used, it’s assumed that the directory only contains the data files, or is organized by
+program ID like the cosmo data cache.</p>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.filesystem</span> <span class="kn">import</span> <span class="n">find_files</span>
+
+<span class="c1"># Using the configuration file data source</span>
+
+<span class="c1"># Find all lampflash files</span>
+<span class="n">lamps</span> <span class="o">=</span> <span class="n">find_files</span><span class="p">(</span><span class="s1">&#39;*lampflash*&#39;</span><span class="p">)</span>
+
+<span class="c1"># Using a different data source with the data not organized in subdirectories</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">find_files</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="n">data_dir</span><span class="o">=</span><span class="s1">&#39;some/file/directory/&#39;</span><span class="p">,</span> <span class="n">cosmo_layout</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>file_pattern</strong> (<em>str</em>) – file pattern to search for.</li>
+<li><strong>data_dir</strong> (<em>str</em>) – Directory to use in searching for data files.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Defaults to the source in the config file.
+:param bool cosmo_layout: Option for searching if the files are organized in the same way as the COSMO cache.
+Default is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List of paths to files found.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">list</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="filesystem.FileData">
+<em class="property">class </em><code class="descclassname">filesystem.</code><code class="descname">FileData</code><span class="sig-paren">(</span><em>filename</em>, <em>hdu</em>, <em>header_keywords</em>, <em>header_extensions</em>, <em>spt_suffix='spt.fits.gz'</em>, <em>spt_keywords=None</em>, <em>spt_extensions=None</em>, <em>data_keywords=None</em>, <em>data_extensions=None</em>, <em>header_defaults=None</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.FileData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class used for ingesting and collecting the specified data from a particular COS FITS file.
+This class is a data container that subclasses python’s <code class="docutils literal notranslate"><span class="pre">dict</span></code> object to create a dictionary-like object that’s
+instantiated via a FITS file and lists of keywords and extensions.
+For a complete list of methods, see documentation for <code class="docutils literal notranslate"><span class="pre">dict</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><strong>ValueError</strong> – A <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> is raised if any set of keywords is given without a corresponding set of
+extensions or if the keywords and extensions are of different lengths.</td>
+</tr>
+</tbody>
+</table>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.filesystem</span> <span class="kn">import</span> <span class="n">FileData</span>
+
+<span class="c1"># Get the desired data from somefitsfile.fits</span>
+<span class="n">filedata</span> <span class="o">=</span> <span class="n">FileData</span><span class="p">(</span><span class="s1">&#39;somefitsfile.fits&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;ROOTNAME&#39;</span><span class="p">,</span> <span class="s1">&#39;DETECTOR&#39;</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+
+<span class="c1"># filedata is basically a dictionary with an alternate construction method</span>
+
+<span class="n">filedata</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+<span class="c1"># dict_keys([&#39;FILENAME&#39;, &#39;ROOTNAME&#39;, &#39;DETECTOR&#39;])  # Note, FILENAME is automatically included</span>
+
+<span class="n">filedata</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+<span class="c1"># dict_values([&#39;somefitsfile.fits&#39;, &#39;lb4c10niq&#39;, &#39;NUV&#39;])</span>
+
+<span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">filedata</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+<span class="c1"># FILENAME somefitsfile.fits</span>
+<span class="c1"># ROOTNAME lb4c10niq</span>
+<span class="c1"># DETECTOR NUV</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="filesystem.FileData.get_header_data">
+<code class="descname">get_header_data</code><span class="sig-paren">(</span><em>hdu</em>, <em>header_keywords</em>, <em>header_extensions</em>, <em>header_defaults=None</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.FileData.get_header_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve the specified header data from the input FITS file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>hdu</strong> (<em>astropy.io.fits.HDUList</em>) – FTIS HDUList object.</li>
+<li><strong>header_keywords</strong> (<em>list</em>) – <code class="docutils literal notranslate"><span class="pre">list</span></code> or <code class="docutils literal notranslate"><span class="pre">tuple</span></code> of header keywords to extract.</li>
+<li><strong>header_extensions</strong> (<em>list</em>) – corresponding <cite>list`</cite> or <code class="docutils literal notranslate"><span class="pre">tuple</span></code> of extensions to the keywords.
+Must be the same length as <code class="docutils literal notranslate"><span class="pre">header_keywords</span></code></li>
+<li><strong>header_defaults</strong> (<em>dict</em>) – Default, <code class="docutils literal notranslate"><span class="pre">None</span></code>. Dictionary of keywords that if not found should be set with a
+default value.
+This is useful, for example, when attempting to construct a DataModel around a particular file type that has
+similar keywords, but may or may not be missing some values depending on the exposure type (like with
+<cite>rawacq</cite> files: <code class="docutils literal notranslate"><span class="pre">ACQSLEWX</span></code> and <code class="docutils literal notranslate"><span class="pre">ACQSLEWY</span></code> are not always present across different acquisition types, but
+all other data required for the Acq monitors <cite>are</cite> shared across all <cite>rawacq</cite> files.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><code class="docutils literal notranslate"><span class="pre">None</span></code>. This method updates the instance’s dictionary.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="filesystem.FileData.get_spt_header_data">
+<code class="descname">get_spt_header_data</code><span class="sig-paren">(</span><em>spt_file</em>, <em>spt_keywords</em>, <em>spt_extensions</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.FileData.get_spt_header_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the specified data from the corresponding <cite>spt</cite> file.
+The <cite>spt</cite> file name is constructed using the input file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>FileNotFoundError</strong> – If the <cite>spt</cite> file is missing or in a different location from the input file.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>spt_file</strong> (<em>str</em>) – file name of the corresponding <cite>spt</cite> file.</li>
+<li><strong>spt_keywords</strong> (<em>list</em>) – List of keywords to retrieve from the <cite>spt</cite> file.</li>
+<li><strong>spt_extensions</strong> (<em>list</em>) – Corresponding list of extensions for the keywords. Must be the same size as
+<code class="docutils literal notranslate"><span class="pre">spt_keywords</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><code class="docutils literal notranslate"><span class="pre">None</span></code>. Updates the instance’s dictionary.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="filesystem.FileData.get_table_data">
+<code class="descname">get_table_data</code><span class="sig-paren">(</span><em>hdu</em>, <em>data_keywords</em>, <em>data_extensions</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.FileData.get_table_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get specified columns from table data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name" colspan="2">Params astropy.io.fits.HDUList hdu:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body">HDUList of the data file.</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Params list data_keywords:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body">List of column-name keywords to extract.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">Params list data_extensions:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body">Corresponding list of extensions for the keywords.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">None</span></code>. Updates the instance’s dictionary.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="filesystem.get_file_data">
+<code class="descclassname">filesystem.</code><code class="descname">get_file_data</code><span class="sig-paren">(</span><em>fitsfiles</em>, <em>keywords</em>, <em>extensions</em>, <em>spt_keywords=None</em>, <em>spt_extensions=None</em>, <em>data_keywords=None</em>, <em>data_extensionsSequence=None</em>, <em>header_defaults=None</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.get_file_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get data from the specified FITS files (and optionally, any information needed from the corresponding <cite>spt</cite> file) in
+parallel with <code class="docutils literal notranslate"><span class="pre">dask</span></code></p>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">from</span> <span class="nn">cosmo.filesystem</span> <span class="kn">import</span> <span class="n">get_file_data</span>
+
+<span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">&#39;*fits&#39;</span><span class="p">)</span>  <span class="c1"># Some list of files.</span>
+
+<span class="c1"># Retrive a bunch of data</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">get_file_data</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;ROOTNAME&#39;</span><span class="p">,</span> <span class="s1">&#39;APERTURE&#39;</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>fitsfiles</strong> (<em>list</em>) – List of files from which to retrieve data.</li>
+<li><strong>keywords</strong> (<em>list</em>) – List of keywords to retrieve.</li>
+<li><strong>extensions</strong> (<em>list</em>) – Corresponding list of extensions for the keywords. Must be the same length as <code class="docutils literal notranslate"><span class="pre">keywords</span></code></li>
+<li><strong>spt_keywords</strong> (<em>list</em>) – Optional. List of keywords to retrieve from the <cite>spt</cite> file.</li>
+<li><strong>spt_extensions</strong> (<em>list</em>) – Required if <code class="docutils literal notranslate"><span class="pre">spt_keywords</span></code> is used. Corresponding list of extensions for the <cite>spt</cite>
+keywords.</li>
+<li><strong>data_keywords</strong> (<em>list</em>) – Optional. List of column-name keywords to extract.</li>
+<li><strong>data_extensions</strong> (<em>list</em>) – Required if <code class="docutils literal notranslate"><span class="pre">data_keywords</span></code> is used. Corresponding list of extensions for the
+specified columns.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">List of <code class="docutils literal notranslate"><span class="pre">FileData</span></code> dictionaries containing the extracted data.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><code class="docutils literal notranslate"><span class="pre">list</span></code></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="monitor_helpers.convert_day_of_year">
+<code class="descclassname">monitor_helpers.</code><code class="descname">convert_day_of_year</code><span class="sig-paren">(</span><em>date</em><span class="sig-paren">)</span><a class="headerlink" href="#monitor_helpers.convert_day_of_year" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert day of year date (defined as yyyy.ddd where ddd is the numbered day of that year) to an astropy <code class="docutils literal notranslate"><span class="pre">Time</span></code>
+object.</p>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.monitor_helpers</span> <span class="kn">import</span> <span class="n">convert_day_of_year</span>
+
+<span class="n">doy</span> <span class="o">=</span> <span class="n">convert_day_of_year</span><span class="p">(</span><span class="s1">&#39;2019.125&#39;</span><span class="p">)</span>  <span class="c1"># doy is an astropy Time object</span>
+
+<span class="c1"># Use it as a datetime object</span>
+<span class="n">dt</span> <span class="o">=</span> <span class="n">doy</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">()</span>
+
+<span class="c1"># Use it in mjd format</span>
+<span class="n">mjd</span> <span class="o">=</span> <span class="n">doy</span><span class="o">.</span><span class="n">mjd</span>
+
+<span class="c1"># Also works for a float</span>
+<span class="n">doy</span> <span class="o">=</span> <span class="n">convert_day_of_year</span><span class="p">(</span><span class="mf">2019.125</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>date</strong> (<em>str</em>) – Date of the form yyyy.ddd</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Astropy Time object</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">astropy.time.Time</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="monitor_helpers.fit_line">
+<code class="descclassname">monitor_helpers.</code><code class="descname">fit_line</code><span class="sig-paren">(</span><em>x</em>, <em>y</em><span class="sig-paren">)</span><a class="headerlink" href="#monitor_helpers.fit_line" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given arrays, x and y, fit a line.</p>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.monitor_helpers</span> <span class="kn">import</span> <span class="n">fit_line</span>
+
+<span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+
+<span class="n">fit</span><span class="p">,</span> <span class="n">result</span> <span class="o">=</span> <span class="n">fit_line</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>  <span class="c1"># fit is the numpy.poly1d object, and result is the y-fit values</span>
+
+<span class="c1"># Get the slope and intercept</span>
+<span class="n">slope</span><span class="p">,</span> <span class="n">intercept</span> <span class="o">=</span> <span class="n">fit</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">fit</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>   <span class="c1"># See numpy documentation for more info on this</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>or numpy.ndarray x</strong> (<em>list</em>) – Independent variable for fitting.</li>
+<li><strong>or numpy.ndarray y</strong> (<em>list</em>) – Dependent variable for fitting.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">fit object</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first"><code class="docutils literal notranslate"><span class="pre">numpy.poly1d</span></code></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">fit result</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><code class="docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="monitor_helpers.explode_df">
+<code class="descclassname">monitor_helpers.</code><code class="descname">explode_df</code><span class="sig-paren">(</span><em>df</em>, <em>list_keywords</em><span class="sig-paren">)</span><a class="headerlink" href="#monitor_helpers.explode_df" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> that contains arrays for the elements of a column or columns given by <code class="docutils literal notranslate"><span class="pre">list_keywords</span></code>, expand
+the dataframe to one row per array element.
+Each row in list_keywords must be the same length.</p>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">cosmo.monitor_helpers</span> <span class="kn">import</span> <span class="n">explode_df</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]],</span> <span class="s1">&#39;c&#39;</span><span class="p">:</span> <span class="p">[[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]]})</span>
+
+<span class="n">df</span>
+<span class="c1">#     a          b          c</span>
+<span class="c1"># 0  1  [1, 2, 3]  [4, 5, 6]</span>
+
+<span class="n">exploded</span> <span class="o">=</span> <span class="n">explode_df</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;c&#39;</span><span class="p">])</span>
+
+<span class="n">exploded</span>
+<span class="c1">#    b  c  a</span>
+<span class="c1"># 0  1  4  1</span>
+<span class="c1"># 1  2  5  1</span>
+<span class="c1"># 2  3  6  1</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first simple">
+<li><strong>AttributeError</strong> – If a column included in <code class="docutils literal notranslate"><span class="pre">list_keywords</span></code> does not have arrays as elements.</li>
+<li><strong>ValueError</strong> – If targeted columns have elements with different lengths in the same row.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>df</strong> (<em>pandas.DataFrame</em>) – Input <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> with array elements.</li>
+<li><strong>list_keywords</strong> (<em>list</em>) – List of column-names that correspond to columns that should be expanded.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Exploded <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code>. Elements that were arrays are expanded to one element per row with non-array
+elements duplicated</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="monitor_helpers.absolute_time">
+<code class="descclassname">monitor_helpers.</code><code class="descname">absolute_time</code><span class="sig-paren">(</span><em>df=None</em>, <em>expstart=None</em>, <em>time=None</em>, <em>time_key=None</em>, <em>time_format='sec'</em><span class="sig-paren">)</span><a class="headerlink" href="#monitor_helpers.absolute_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the time sequence relative to the start of the exposure (EXPSTART).
+Can be computed from a DataFrame that contains an EXPSTART column and some other time array column, or from an
+EXPSTART array and time array pair.</p>
+<p>Absolute time = EXPSTART[i] + time[i]</p>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.monitor_helpers</span> <span class="kn">import</span> <span class="n">absolute_time</span>
+
+<span class="c1"># This is silly, but the expstart array will be converted to a Time object with the mjd format</span>
+<span class="c1">#  and the time array will be assumed to be in seconds</span>
+<span class="n">abstime</span> <span class="o">=</span> <span class="n">absolute_time</span><span class="p">(</span><span class="n">expstart</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">time</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
+
+<span class="c1"># From a DataFrame, df with EXPSTART and TIME columns</span>
+<span class="n">abstime</span> <span class="o">=</span> <span class="n">absolute_time</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">)</span>
+
+<span class="c1"># If the time column is named something different</span>
+<span class="n">abstime</span> <span class="o">=</span> <span class="n">absolute_time</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">time_key</span><span class="o">=</span><span class="s1">&#39;SomeOtherTime&#39;</span><span class="p">)</span>
+
+<span class="c1"># Use the result as a datetime object</span>
+<span class="n">absolute_datetime</span> <span class="o">=</span> <span class="n">abstime</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">()</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first simple">
+<li><strong>TypeError</strong> – If no values are given, or if one array is given without the other.</li>
+<li><strong>ValueError</strong> – If a <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> is given with arrays.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>df</strong> (<em>pandas.DataFrame</em>) – <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> with the relevant information. If the time array is under a column name
+other than “TIME”, then the column name must be specified with <code class="docutils literal notranslate"><span class="pre">time_key</span></code>.</li>
+<li><strong>expstart</strong> (<em>array-like</em>) – Exposure start time values.</li>
+<li><strong>time</strong> (<em>array-like</em>) – Time values (typically this indicates events within an exposure).</li>
+<li><strong>time_key</strong> (<em>str</em>) – Optional. Column-name of the time array. Required if the time values are not under “TIME”.</li>
+<li><strong>time_format</strong> (<em>str</em>) – Default, ‘sec’. Specify a different format for a different time unit (see astropy’s
+TimeDelta documentation for more format options).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Time relative to the start of the exposure.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">astropy.time.TimeDelta</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="monitor_helpers.create_visibility">
+<code class="descclassname">monitor_helpers.</code><code class="descname">create_visibility</code><span class="sig-paren">(</span><em>trace_lengths</em>, <em>visible_list</em><span class="sig-paren">)</span><a class="headerlink" href="#monitor_helpers.create_visibility" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a “visibility list” for use with constructing <code class="docutils literal notranslate"><span class="pre">plotly</span></code> buttons.
+Creates a list of <code class="docutils literal notranslate"><span class="pre">True</span></code> and <code class="docutils literal notranslate"><span class="pre">False</span></code> that corresponds to the traces in the monitors’ plotly figures.</p>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.monitor_helpers</span> <span class="kn">import</span> <span class="n">create_visibility</span>
+
+<span class="c1"># All traces for a figure will be in a single list, but &quot;sets&quot; of traces that should be active are usually kept</span>
+<span class="c1">#  track of by the length of the set, and the order in which the sets are created.</span>
+<span class="n">trace_legnths</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>  <span class="c1"># The figure has a total of 6 traces, with three distinct sets (ex: button options)</span>
+<span class="n">visible</span> <span class="o">=</span> <span class="p">[</span><span class="bp">True</span><span class="p">,</span> <span class="bp">False</span><span class="p">,</span> <span class="bp">False</span><span class="p">]</span>  <span class="c1"># For this setting, we only want the first set visible (True) and all others not</span>
+
+<span class="n">visibility</span> <span class="o">=</span> <span class="n">create_visibility</span><span class="p">(</span><span class="n">trace_lengths</span><span class="p">,</span> <span class="n">visible</span><span class="p">)</span>
+
+<span class="n">visibility</span>
+<span class="c1"># [True, False, False, False, False, False]</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>trace_lengths</strong> (<em>list</em>) – List of integer lengths that correspond to the number of traces that determine a “set”.</li>
+<li><strong>visible_list</strong> (<em>list</em>) – List of <code class="docutils literal notranslate"><span class="pre">bool</span></code> that determine which “sets” should be active (<code class="docutils literal notranslate"><span class="pre">True</span></code>) or not
+(<code class="docutils literal notranslate"><span class="pre">False</span></code>)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">List of visibility options for each trace, determined by the set lengths</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><code class="docutils literal notranslate"><span class="pre">list</span></code></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="monitor_helpers.detector_to_v2v3">
+<code class="descclassname">monitor_helpers.</code><code class="descname">detector_to_v2v3</code><span class="sig-paren">(</span><em>slew_x</em>, <em>slew_y</em><span class="sig-paren">)</span><a class="headerlink" href="#monitor_helpers.detector_to_v2v3" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert slews in detector coordinates to V2/V3 coordinates.</p>
+<p>v2 = x * cos(45degrees) + y * sin(45degrees)
+v3 = x * cos(45degrees) - y * sin(45degrees)</p>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">cosmo.monitor_helpers</span> <span class="kn">import</span> <span class="n">detector_to_v2v3</span><span class="p">(</span><span class="n">slew_x</span><span class="p">)</span>
+
+<span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+
+<span class="n">v2</span><span class="p">,</span> <span class="n">v3</span> <span class="o">=</span> <span class="n">v2v3</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+<span class="n">v2</span><span class="p">,</span> <span class="n">v3</span>
+<span class="c1"># (array([1.41421356, 2.82842712, 4.24264069]),</span>
+<span class="c1">#  array([1.11022302e-16, 2.22044605e-16, 4.44089210e-16]))</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>slew_x</strong> (<em>array-like</em>) – X-Slew values in detector coordinates</li>
+<li><strong>slew_y</strong> (<em>array-like</em>) – Y-Slew values in detector coordinates</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Slews in V2 and V3 coordinates</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><code class="docutils literal notranslate"><span class="pre">tuple</span></code> (V2, V3)</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="monitor_helpers.get_osm_data">
+<code class="descclassname">monitor_helpers.</code><code class="descname">get_osm_data</code><span class="sig-paren">(</span><em>datamodel</em>, <em>detector</em><span class="sig-paren">)</span><a class="headerlink" href="#monitor_helpers.get_osm_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Query for all OSM data and append any relevant new data.</p>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.monitors</span> <span class="kn">import</span> <span class="n">get_osm_data</span>
+<span class="kn">from</span> <span class="nn">cosmo.monitors.data_models</span> <span class="kn">import</span> <span class="n">OSMDatamodel</span>
+
+<span class="n">datamodel</span> <span class="o">=</span> <span class="n">OSMDatamodel</span><span class="p">()</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">get_osm_data</span><span class="p">(</span><span class="n">datamodel</span><span class="p">,</span> <span class="s1">&#39;FUV&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>datamodel</strong> (<em>OSMDatamodel</em>) – instance of the OSMDatamodel class</li>
+<li><strong>detector</strong> (<em>str</em>) – COS Detector name (used in filtering between the two OSM Monitors). “NUV” or “FUV”</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> with required data for the OSM monitors.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">pandas.DataFrame</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 </div>
 
 
@@ -162,7 +1659,7 @@
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
       
-        <a href="monitors.html" class="btn btn-neutral" title="COS Monitors" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="datamodels.html" class="btn btn-neutral" title="&lt;no title&gt;" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
