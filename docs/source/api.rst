@@ -524,6 +524,81 @@ Here we describe basic use of the ``sms`` subpackage.
 
             :return: None
 
+.. py:currentmodule:: sms_db
+
+.. py:class:: SMSFileStats
+
+    This class is a ``peewee.Model`` object that represents the ``SMSFileStats`` table in the SMS database.
+    This table includes information about the SMS files.
+
+    Columns include:
+
+    .. table::
+
+        =========== ============
+        Column      Description
+        =========== ============
+        SMSID       ID that describes a single SMS. Primary key.
+        VERSION     String of 2 or 3 characters that give the SMS version.
+        FILEID      Combination of the SMSID and the VERSION.
+        FILENAME    Filename of the ingested SMS file.
+        INGEST_DATE Date that the file was inserted into the database.
+        =========== ============
+
+    See `peewee's documentation <http://docs.peewee-orm.com/en/latest/peewee/querying.html#selecting-multiple-records>`_
+    for more examples on querying and filtering.
+
+    Example Usage:
+
+    .. code-block:: python
+
+        from cosmo.sms import SMSFileStats
+
+        query = SMSFileStats.select()  # Query for every SMS file in the database
+
+        results = list(query.dicts())  # convert the peewee records into a list of dictionaries: {col: value}
+
+        # You can also perform more complicated queries. See the peewee documentation for a complete description
+        import datetime
+
+        more_complicated = SMSFileStats.select(
+            SMSFileStats.SMSID).where(SMSFileStats.INGEST_DATE < datetime.datetime.today()
+        )
+
+        # Get the data associated with a particular SMS
+        sms = SMSFileStats.get(SMSFileStats.SMSID == '118537')
+
+        sms.exposures  # Rows in the SMSTable table that reference the particular SMS
+
+.. py:class:: SMSTable
+
+    This class is a ``peewee.Model`` object that represents the ``SMSTable`` table in the SMS database.
+    This table includes extracted data from the SMS files.
+
+    Columns include:
+
+    .. table::
+
+        ========== ============
+        Column     Description
+        ========== ============
+        EXPOSURE   String that describes an exposure based on Phase II information. Primary Key.
+        FILEID     Same field as in the SMSFileStats table. Allows for back-referencing.
+        ROOTNAME   Rootname of the exposure.
+        PROPOSID   Proposal ID of the exposure.
+        DETECTOR   Name of the detector used for the exposure.
+        OPMODE     ACCUM, TIME-TAG, or one of the other acquisition keys.
+        EXPTIME    Start time of the exposure (yyyy.ddd:hh:mm:ss).
+        FUVHVSTATE Commanded High-Voltage for FUV.
+        APERTURE   Aperture name.
+        OSM1POS    OSM1 position.
+        OSM2POS    OSM2 position.
+        CENWAVE    Cenwave of the exposure.
+        FPPOS      FPPOS position of the exposure.
+        TSINCEOSM1 Time since the last OSM1 move.
+        TSINCEOSM2 Time since the last OSM2 move.
+        ========== ============
+
 Other Modules
 -------------
 Cosmo also contains other modules used in supporting either the monitors or data acquisition.
