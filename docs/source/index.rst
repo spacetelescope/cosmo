@@ -25,9 +25,7 @@ COSMO
 
    getting_started
    monitors
-   data_models
-   utilities
-   retrieval
+   datamodels
    api
 
 
