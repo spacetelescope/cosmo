@@ -4,9 +4,9 @@ import pandas as pd
 
 from itertools import repeat
 
-from monitorframe import BaseMonitor
+from monitorframe.monitor import BaseMonitor
 from .dark_data_models import DarkDataModel
-from cosmo.monitor_helpers import fit_line, convert_day_of_year, explode_df, compute_absolute_time
+from ..monitor_helpers import fit_line, convert_day_of_year, explode_df, ExposureAbsoluteTime
 
 
 def dark_filter(df_row, filter_pha, location):
@@ -30,7 +30,8 @@ def dark_filter(df_row, filter_pha, location):
 
     counts = np.histogram(filtered_row.TIME_events, bins=time_bins)[0]
 
-    _, mjd = compute_absolute_time(expstart=df_row['EXPSTART'], time_array=time_bins)
+    _, mjd = ExposureAbsoluteTime.compute_from_arrays(expstart=df_row['EXPSTART'], time_array=time_bins)
+    # _, mjd = compute_absolute_time(expstart=df_row['EXPSTART'], time_array=time_bins)
     date = mjd.to_datetime()[:-1]
     dark_rate = counts / npix / time_step
 
@@ -42,7 +43,7 @@ class FUVALeftDarkMonitor(BaseMonitor):
     data_model = DarkDataModel
     labels = ['ROOTNAME']
     output = '/Users/dashtamirova/Desktop/test_dark.html'
-    location = (1060, 1260, 296, 734) #
+    location = (1060, 1260, 296, 734)  #
 
     def filter_data(self):
         filtered_rows = []
