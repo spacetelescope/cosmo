@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 
-from cosmo.monitor_helpers import convert_day_of_year, fit_line, explode_df, ExposureAbsoluteTime, create_visibility
+from cosmo.monitor_helpers import convert_day_of_year, fit_line, explode_df, absolute_time, create_visibility
 
 
 @pytest.fixture(params=[2017.301, '2017.301'])
@@ -107,29 +107,11 @@ class TestAbsoluteTime:
         df, expstart, time, error = bad_input
 
         with pytest.raises(error):
-            ExposureAbsoluteTime(df=df, expstart=expstart, time_array=time)
-
-    def test_ingest_works(self, good_input):
-        df, expstart, time, time_key = good_input
-        ExposureAbsoluteTime(df=df, expstart=expstart, time_array=time, time_array_key=time_key)
+            absolute_time(df=df, expstart=expstart, time=time)
 
     def test_compute_absolute_time(self, good_input):
         df, expstart, time, time_key = good_input
-        test_time = ExposureAbsoluteTime(df=df, expstart=expstart, time_array=time, time_array_key=time_key)
-
-        test_time.compute_absolute_time()
-
-    def test_compute_from_df(self, good_input):
-        df, expstart, time, time_key = good_input
-
-        if df is not None:
-            ExposureAbsoluteTime.compute_from_df(df, time_array_key=time_key)
-
-    def test_compute_from_arrays(self, good_input):
-        df, expstart, time, time_key = good_input
-
-        if expstart is not None and time is not None:
-            ExposureAbsoluteTime.compute_from_arrays(expstart=expstart, time_array=time)
+        absolute_time(df=df, expstart=expstart, time=time, time_key=time_key)
 
 
 class TestCreateVisibility:

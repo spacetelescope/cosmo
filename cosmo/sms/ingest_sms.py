@@ -17,7 +17,7 @@ SMS_FILE_LOC = SETTINGS['sms']['source']
 class SMSFile:
     """Class that encapsulates the SMS file data."""
     _db = DB
-    patterns = {
+    _patterns = {
         'ROOTNAME': r'l[a-z0-9]{7}',  # String of 7 alpha-numeric characters after 'l'
         'PROPOSID': r'(?<=l[a-z0-9]{7} )\d{5}',  # String of 5 digits occurring after a rootname.
         # Exposure: Group of three sets of alpha(caps)-numeric characters
@@ -37,7 +37,7 @@ class SMSFile:
     }
 
     # Keywords and dtypes for the sms_db table
-    table_keys = {
+    _table_keys = {
         'ROOTNAME': str,
         'PROPOSID': int,
         'EXPOSURE': str,
@@ -56,10 +56,10 @@ class SMSFile:
     }
 
     # Keys that should return a single item
-    single_value_keys = ['ROOTNAME', 'PROPOSID', 'DETECTOR', 'OPMODE', 'EXPTIME', 'EXPSTART']
+    _single_value_keys = ['ROOTNAME', 'PROPOSID', 'DETECTOR', 'OPMODE', 'EXPTIME', 'EXPSTART']
 
     # Keys that return a tuple of items
-    grouped_value_keys = [
+    _grouped_value_keys = [
         'FUVHVSTATE',
         'APERTURE',
         'OSM1POS',
@@ -80,19 +80,19 @@ class SMSFile:
         self.ingest_date = datetime.datetime.today()
 
         self._data = self.ingest_smsfile()
-        self.data: pd.DataFrame = pd.DataFrame(self._data).astype(self.table_keys)
+        self.data: pd.DataFrame = pd.DataFrame(self._data).astype(self._table_keys)
 
     @property
-    def single_value_patterns(self) -> dict:
+    def _single_value_patterns(self) -> dict:
         """Return a dictionary subset of the patterns dictionary for patterns that return a single value."""
-        return {key: self.patterns[key] for key in self.single_value_keys}
+        return {key: self._patterns[key] for key in self._single_value_keys}
 
     def ingest_smsfile(self) -> dict:
         """Collect data from the SMS file."""
         data = {}
 
         # Initialize keys that require breakdown of grouped matches
-        for key in self.grouped_value_keys:
+        for key in self._grouped_value_keys:
             data[key] = []
 
         filtered_lines = []
@@ -114,29 +114,29 @@ class SMSFile:
         data.update(
             {
                 key: re.findall(pattern, sms_string)
-                for key, pattern in self.single_value_patterns.items()
+                for key, pattern in self._single_value_patterns.items()
             }
         )
 
         # Ingest EXPOSURE
-        data['EXPOSURE'] = [''.join(item.split()) for item in re.findall(self.patterns['EXPOSURE'], sms_string)]
+        data['EXPOSURE'] = [''.join(item.split()) for item in re.findall(self._patterns['EXPOSURE'], sms_string)]
 
         # Ingest fuvhvstate since some values are empty
-        for item in re.findall(self.patterns['FUVHVSTATE'], sms_string):
+        for item in re.findall(self._patterns['FUVHVSTATE'], sms_string):
             data['FUVHVSTATE'].append(item if item.strip() else 'N/A')
 
         # Ingest aperture matches
-        for item in re.findall(self.patterns['APERTURE'], sms_string):
+        for item in re.findall(self._patterns['APERTURE'], sms_string):
             data['APERTURE'].append(' '.join(item).strip())
 
         # Ingest osm1 and osm2 positions
-        for item in re.findall(self.patterns['osm'], sms_string):
+        for item in re.findall(self._patterns['osm'], sms_string):
             osm1pos, osm2pos = item
             data['OSM1POS'].append(osm1pos)
             data['OSM2POS'].append(osm2pos if osm2pos.strip('-') else 'N/A')  # if osm2 isn't used, the value is -----
 
         # Ingest cenwave, fppos, tsinceosm1, and tsinceosm2
-        for item in re.findall(self.patterns['cenwave_fp_t1_t2'], sms_string):
+        for item in re.findall(self._patterns['cenwave_fp_t1_t2'], sms_string):
             cenwave, fpoffset, tsinceosm1, tsinceosm2 = item
             fppos = int(fpoffset) + 3  # fpoffset is relative to the third position
 
@@ -200,12 +200,10 @@ class SMSFile:
 
 class SMSFinder:
     """Class for finding sms files in the specified filesystem and the database."""
-    sms_pattern = r'\A\d{6}[a-z]{1}[a-z0-9]{1}'
+    _sms_pattern = r'\A\d{6}[a-z]{1}[a-z0-9]{1}'
 
     def __init__(self, source: str = SMS_FILE_LOC):
-        self.today = datetime.datetime.today()
         self.currently_ingested = None
-        self.last_ingest_date = self.today
 
         self.filesource = source
         if not os.path.exists(self.filesource):
@@ -260,7 +258,7 @@ class SMSFinder:
 
         for file in reduced_files:
             # There may be other files or directories in the sms source directory
-            match = re.findall(self.sms_pattern, os.path.basename(file))
+            match = re.findall(self._sms_pattern, os.path.basename(file))
             if match and os.path.isfile(file):
                 name = match[0]  # findall returns a list. There should only be one match per file
                 sms_id = name[:6]

@@ -10,7 +10,7 @@ from astropy.time import Time
 from typing import List, Union
 
 from .data_models import AcqDataModel
-from ..monitor_helpers import fit_line, convert_day_of_year, create_visibility, detector_to_v2v3
+from ..monitor_helpers import fit_line, convert_day_of_year, create_visibility, v2v3
 from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
@@ -21,11 +21,15 @@ def select_all_acq(model: Union[Model, None], exptype: str, new_data_df: pd.Data
     data = pd.DataFrame()
 
     if model is not None:
-        data = data.append(pd.DataFrame(model.select().where(model.EXPTYPE == exptype).dicts()))
+        data = data.append(
+            pd.DataFrame(model.select().where(model.EXPTYPE == exptype).dicts()),
+            sort=True,
+            ignore_index=True
+        )
 
     if not new_data_df.empty:
-        new_data = new_data_df[new_data_df.EXPTYPE == exptype]
-        data = data.append(new_data)
+        new_data = new_data_df[new_data_df.EXPTYPE == exptype].reset_index(drop=True)
+        data = data.append(new_data, sort=True, ignore_index=True)
 
     return data
 
@@ -148,7 +152,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
         things besides FGS trends (such as bad coordinates).
         """
         data = select_all_acq(self.model.model, 'ACQ/IMAGE', self.model.new_data)
-        data['V2SLEW'], data['V3SLEW'] = detector_to_v2v3(data.ACQSLEWX, data.ACQSLEWY)
+        data['V2SLEW'], data['V3SLEW'] = v2v3(data.ACQSLEWX, data.ACQSLEWY)
 
         # Filters determined by the team.
         # These options are meant to filter out most outliers to study FGS zero-point offsets and rate of change with
@@ -401,7 +405,9 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
 class SpecAcqBaseMonitor(BaseMonitor):
     """Base monitor class for the spectroscopic Acq types: PEAKD and PEAKXD"""
-    docs = "https://spacetelescope.github.io/cosmo/monitors.html#acqpeakd-monitor"  # TODO: refactor docs; combine specs
+    docs = (
+        "https://spacetelescope.github.io/cosmo/monitors.html#spectroscopic-acquisition-monitors-acqpeakd-and-acqpeakxd"
+    )
     labels = ['ROOTNAME', 'PROPOSID', 'LIFE_ADJ', 'OPT_ELEM', 'CENWAVE', 'DETECTOR']
     output = COS_MONITORING
     slew = None
@@ -452,7 +458,7 @@ class SpecAcqBaseMonitor(BaseMonitor):
 
                 self.figure.add_trace(scatter)
 
-                outliers = lp_group[self.outliers[lp_group.index.values]]
+                outliers = lp_group[self.outliers.iloc[lp_group.index.values]]
 
                 if not outliers.empty:
                     trace_count[name] += 1

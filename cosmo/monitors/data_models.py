@@ -52,8 +52,8 @@ class AcqDataModel(BaseDataModel):
             acq_keywords,
             acq_extensions,
             header_defaults=defaults,
-            spt_keys=spt_keywords,
-            spt_exts=spt_extensions,
+            spt_keywords=spt_keywords,
+            spt_extensions=spt_extensions,
         )
 
         dgestar_to_fgs(data_results)
@@ -94,8 +94,8 @@ class OSMDataModel(BaseDataModel):
                 files,
                 header_keys,
                 header_extensions,
-                data_keys=data_keys,
-                data_exts=data_extensions
+                data_keywords=data_keys,
+                data_extensions=data_extensions
             )
         )
 

@@ -9,7 +9,7 @@ BUILDDIR      = _build
 
 # For building the GitHub Pages branch
 GH_PAGES_SOURCES = source Makefile
-GH_PAGES_EXCLUDE = build _sources _static
+GH_PAGES_EXCLUDE = $(BUILDDIR) ../_sources ../_static
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)

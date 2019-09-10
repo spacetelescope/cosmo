@@ -3,12 +3,13 @@ import datetime
 import pandas as pd
 import os
 
+from astropy.time import Time
 from itertools import repeat
 from monitorframe.monitor import BaseMonitor
 from typing import Union, List
 
 from .data_models import OSMDataModel
-from ..monitor_helpers import ExposureAbsoluteTime, explode_df, create_visibility, get_osm_data
+from ..monitor_helpers import absolute_time, explode_df, create_visibility, get_osm_data
 from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
@@ -32,7 +33,7 @@ def compute_segment_diff(df: pd.DataFrame, shift: str, segment1: str, segment2: 
     for rootname, group in root_groups:
         if segment1 in group.SEGMENT.values and segment2 in group.SEGMENT.values:
             # absolute time calculated from FUVA
-            lamp_time = ExposureAbsoluteTime.compute_from_df(group[group.SEGMENT == segment1])
+            lamp_time = absolute_time(df=group[group.SEGMENT == segment1])
 
             segmnet1_df, segment2_df = group[group.SEGMENT == segment1], group[group.SEGMENT == segment2]
 
@@ -135,8 +136,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
             trace_number += 1
 
             grating, cenwave = name
-            absolute_time = ExposureAbsoluteTime(df=group)
-            lamp_time = absolute_time.compute_absolute_time()
+            lamp_time = absolute_time(df=group)
 
             self.figure.add_trace(
                 go.Scattergl(
@@ -154,7 +154,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
                         symbol=[fp_symbols[fp] for fp in group.FPPOS],
                         size=[
                             10 if time > LP_MOVES[4] and lp == 3 else 6
-                            for lp, time in zip(group.LIFE_ADJ, absolute_time.expstart_time.to_datetime())
+                            for lp, time in zip(group.LIFE_ADJ, Time(group.EXPSTART, format='mjd').to_datetime())
                         ]  # Set the size to distinguish exposures taken at LP3 after the move to LP4
                     )
                 ),
@@ -185,8 +185,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
                 trace_number += 1
 
                 grating, cenwave = name
-                absolute_time = ExposureAbsoluteTime(df=group)
-                lamp_time = absolute_time.compute_absolute_time()
+                lamp_time = absolute_time(df=group)
 
                 self.figure.add_trace(
                     go.Scattergl(
@@ -201,7 +200,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
                             symbol=[fp_symbols[fp] for fp in group.FPPOS],
                             size=[
                                 10 if time > LP_MOVES[4] and lp == 3 else 6
-                                for lp, time in zip(group.LIFE_ADJ, absolute_time.expstart_time.to_datetime())
+                                for lp, time in zip(group.LIFE_ADJ, Time(group.EXPSTART, format='mjd').to_datetime())
                             ]  # Set the size to distinguish exposures taken at LP3 after the move to LP4
                         )
                     ),
@@ -389,8 +388,8 @@ class NuvOsmShiftMonitor(BaseMonitor):
         for i, (grating, group) in enumerate(groups):
             trace_number += 2
 
-            absolute_time = ExposureAbsoluteTime(df=group)
-            group = group.set_index(absolute_time.compute_absolute_time().to_datetime())
+            abstime = absolute_time(df=group)
+            group = group.set_index(abstime.to_datetime())
             group = group.sort_index()
 
             rolling_mean = group.rolling('365D').mean()
@@ -457,8 +456,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
                 for grating, group in outlier_groups:
                     trace_number += 1
 
-                    absolute_time = ExposureAbsoluteTime(df=group)
-                    lamp_time = absolute_time.compute_absolute_time()
+                    lamp_time = absolute_time(df=group)
 
                     self.figure.add_trace(
                         go.Scattergl(
