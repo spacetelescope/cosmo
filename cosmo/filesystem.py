@@ -36,50 +36,53 @@ def find_files(file_pattern: str, data_dir: str = FILES_SOURCE, cosmo_layout: bo
     return results_as_list
 
 
-class FileData:
-    """Class that represents a single file's data."""
-    def __init__(self, filename: str, hdu: fits.HDUList, header_keywords: Sequence, header_extensions: Sequence,
+class FileData(dict):
+    """Class that acts as a dictionary, but with a constructor that grabs FITS file info"""
+
+    # noinspection PyMissingConstructor
+    def __init__(self, filename: str, header_keywords: Sequence, header_extensions: Sequence,
                  spt_suffix: str = 'spt.fits.gz', spt_keywords: Sequence = None, spt_extensions: Sequence = None,
                  data_keywords: Sequence = None, data_extensions: Sequence = None,
                  header_defaults: Dict[str, Any] = None):
         """Initialize and create the possible corresponding spt file name."""
-        self.filename = filename
-        self.hdu = hdu
-        self.header_keywords = header_keywords
-        self.header_extensions = header_extensions
-        self.header_defaults = header_defaults
-        self.spt_keywords = spt_keywords
-        self.spt_extensions = spt_extensions
-        self.data_keywords = data_keywords
-        self.data_extensions = data_extensions
-        self.spt_suffix = spt_suffix
-        self.spt_file = self._create_spt_filename()
-        self.data = {'FILENAME': self.filename}
+        super().__init__(self)
+
+        spt_file = self._create_spt_filename(filename, spt_suffix)
+
+        self.update({'FILENAME': filename})
 
         # Check that all keywords/extensions have corresponding extensions/keywords and that they're the same length
-        if len(self.header_keywords) != len(self.header_extensions):
+        if len(header_keywords) != len(header_extensions):
             raise ValueError('header_keywords and header_extensions must be the same length.')
 
-        if bool(self.spt_keywords or self.spt_extensions):
-            if not (self.spt_keywords and self.spt_extensions):
+        if bool(spt_keywords or spt_extensions):
+            if not (spt_keywords and spt_extensions):
                 raise ValueError('spt_keywords and spt_extensions must be used together.')
 
-            if len(self.spt_keywords) != len(self.spt_extensions):
+            if len(spt_keywords) != len(spt_extensions):
                 raise ValueError('spt_keywords and spt_extensions must be the same length.')
 
-        if bool(self.data_keywords or self.data_extensions):
-            if not (self.data_keywords and self.data_extensions):
+        if bool(data_keywords or data_extensions):
+            if not (data_keywords and data_extensions):
                 raise ValueError('data_keywords and data_extensions must be used together.')
 
-            if len(self.data_keywords) != len(self.data_extensions):
+            if len(data_keywords) != len(data_extensions):
                 raise ValueError('data_keywords and data_extensions must be the same length.')
 
-        self.get_file_data()
+        with fits.open(filename) as hdu:
+            self.get_header_data(hdu, header_keywords, header_extensions, header_defaults)
 
-    def _create_spt_filename(self) -> Union[str, None]:
+            if data_keywords:
+                self.get_table_data(hdu, data_keywords, data_extensions)
+
+        if spt_keywords:
+            self.get_spt_header_data(spt_file, spt_keywords, spt_extensions)
+
+    @staticmethod
+    def _create_spt_filename(filename, spt_suffix) -> Union[str, None]:
         """Create an spt filename based on the input filename."""
-        path, name = os.path.split(self.filename)
-        spt_name = '_'.join([name.split('_')[0], self.spt_suffix])
+        path, name = os.path.split(filename)
+        spt_name = '_'.join([name.split('_')[0], spt_suffix])
         spt_file = os.path.join(path, spt_name)
 
         if os.path.exists(spt_file):
@@ -87,57 +90,42 @@ class FileData:
 
         return
 
-    def get_file_data(self):
-        self.get_header_data()
-
-        if self.spt_keywords:
-            self.get_spt_header_data()
-
-        if self.data_keywords:
-            self.get_table_data()
-
-    def get_header_data(self):
+    def get_header_data(self, hdu, header_keywords, header_extensions, header_defaults=None):
         """Get header data."""
-        header_values = {}
-        for key, ext in zip(self.header_keywords, self.header_extensions):
-            if self.header_defaults is not None and key in self.header_defaults:
-                header_values[key] = self.hdu[ext].header.get(key, default=self.header_defaults[key])
+        for key, ext in zip(header_keywords, header_extensions):
+            if header_defaults is not None and key in header_defaults:
+                self.update({key: hdu[ext].header.get(key, default=header_defaults[key])})
 
             else:
-                header_values[key] = self.hdu[ext].header[key]
+                self.update({key: hdu[ext].header[key]})
 
-        self.data.update(header_values)
-
-    def get_spt_header_data(self):
+    def get_spt_header_data(self, spt_file, spt_keywords, spt_extensions):
         """Open the spt file and collect requested data."""
-        with fits.open(self.spt_file) as spt:
-            self.data.update({key: spt[ext].header[key] for key, ext in zip(self.spt_keywords, self.spt_extensions)})
+        with fits.open(spt_file) as spt:
+            self.update({key: spt[ext].header[key] for key, ext in zip(spt_keywords, spt_extensions)})
 
-    def get_table_data(self):
+    def get_table_data(self, hdu, data_keywords, data_extensions):
         """Get table data."""
-        self.data.update({key: self.hdu[ext].data[key] for key, ext in zip(self.data_keywords, self.data_extensions)})
+        self.update({key: hdu[ext].data[key] for key, ext in zip(data_keywords, data_extensions)})
 
 
-def get_file_data(fitsfiles: List[str], keys: Sequence, exts: Sequence, spt_keys: Sequence = None,
-                  spt_exts: Sequence = None, data_exts: Sequence = None,
-                  data_keys: Sequence = None, header_defaults: Dict[str, Any] = None) -> List[dict]:
+def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence, spt_keywords: Sequence = None,
+                  spt_extensions: Sequence = None, data_keywords: Sequence = None,
+                  data_extensions: Sequence = None, header_defaults: Dict[str, Any] = None) -> List[dict]:
     @dask.delayed
-    def _get_file_data(fitsfile: str, *args, **kwargs) -> Union[dict, None]:
+    def _get_file_data(fitsfile: str, *args, **kwargs) -> Union[FileData, None]:
         """Get specified data from a fitsfile and optionally its corresponding spt file."""
-        with fits.open(fitsfile, memmap=False) as file:
-            file_data = FileData(fitsfile, file, *args, **kwargs)
-
-        return file_data.data
+        return FileData(fitsfile, *args, **kwargs)
 
     delayed_results = [
         _get_file_data(
             fitsfile,
-            keys,
-            exts,
-            spt_keywords=spt_keys,
-            spt_extensions=spt_exts,
-            data_keywords=data_keys,
-            data_extensions=data_exts,
+            keywords,
+            extensions,
+            spt_keywords=spt_keywords,
+            spt_extensions=spt_extensions,
+            data_keywords=data_keywords,
+            data_extensions=data_extensions,
             header_defaults=header_defaults
         ) for fitsfile in fitsfiles
     ]

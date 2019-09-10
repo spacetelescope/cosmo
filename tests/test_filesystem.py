@@ -2,7 +2,6 @@ import pytest
 import os
 import numpy as np
 
-from astropy.io import fits
 from shutil import copy
 
 from cosmo.filesystem import get_file_data, FileData, find_files
@@ -32,10 +31,8 @@ def params(request):
 @pytest.fixture
 def testfiledata(data_dir):
     file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
-    hdu = fits.open(file)
     testfile = FileData(
         file,
-        hdu,
         ('ROOTNAME',),
         (0,),
         spt_keywords=('LQTDFINI',),
@@ -44,19 +41,7 @@ def testfiledata(data_dir):
         data_extensions=(1,)
     )
 
-    yield testfile
-
-    testfile.hdu.close()
-
-
-@pytest.fixture
-def testfile(data_dir):
-    file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
-    hdu = fits.open(file)
-
-    yield file, hdu
-
-    hdu.close()
+    return testfile
 
 
 @pytest.fixture
@@ -94,35 +79,30 @@ class TestFindFiles:
 class TestFileData:
 
     def test_spt_name(self, testfiledata, data_dir):
-        assert testfiledata.spt_file is not None
-        assert testfiledata.spt_file == os.path.join(data_dir, 'lb4c10niq_spt.fits.gz')
+        assert (
+                testfiledata._create_spt_filename(testfiledata['FILENAME'], 'spt.fits.gz') ==
+                os.path.join(data_dir, 'lb4c10niq_spt.fits.gz')
+        )
 
     def test_get_spt_header_data(self, testfiledata):
-        testfiledata.get_spt_header_data()
-
-        assert 'LQTDFINI' in testfiledata.data.keys()
-        assert testfiledata.data['LQTDFINI'] == 'TDF Up'
+        assert 'LQTDFINI' in testfiledata
+        assert testfiledata['LQTDFINI'] == 'TDF Up'
 
     def test_get_header_data(self, testfiledata):
-        testfiledata.get_header_data()
-
-        assert 'ROOTNAME' in testfiledata.data.keys()
-        assert testfiledata.data['ROOTNAME'] == 'lb4c10niq'
+        assert 'ROOTNAME' in testfiledata
+        assert testfiledata['ROOTNAME'] == 'lb4c10niq'
 
     def test_get_table_data(self, testfiledata):
-        testfiledata.get_table_data()
+        assert 'TIME' in testfiledata
+        assert isinstance(testfiledata['TIME'],  np.ndarray)
 
-        assert 'TIME' in testfiledata.data.keys()
-        assert isinstance(testfiledata.data['TIME'],  np.ndarray)
-
-    def test_fails_with_bad_input(self, testfile, params):
-        filename, hdu = testfile
+    def test_fails_with_bad_input(self, data_dir, params):
+        file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
         header_keys, header_exts, spt_keys, spt_exts, data_exts, data_keys = params
 
         with pytest.raises(ValueError):
             FileData(
-                filename,
-                hdu,
+                file,
                 header_keywords=header_keys,
                 header_extensions=header_exts,
                 spt_keywords=spt_keys,
@@ -141,10 +121,10 @@ class TestGetFileData:
             files,
             ('ROOTNAME',),
             (0,),
-            spt_keys=('LQTDFINI',),
-            spt_exts=(1,),
-            data_keys=('TIME',),
-            data_exts=(1,)
+            spt_keywords=('LQTDFINI',),
+            spt_extensions=(1,),
+            data_keywords=('TIME',),
+            data_extensions=(1,)
         )
 
         assert isinstance(result, list) and len(result) == 1
