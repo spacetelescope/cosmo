@@ -32,13 +32,12 @@ def retrieve():
     the data is public or proprietary
     7. Close all the permissions of the data
     """
-
     # Finding the current time
     now = datetime.datetime.now()
 
     # Creating a pickle file
     # TODO: do we want to create one single log
-    pkl_file = "cosmo_{}.p".format(now.strftime("%Y%m%d_%M%S"))
+    pkl_file = f"cosmo_{now.strftime('%Y%m%d_%M%S')}.p"
 
     # First, change permissions of the base directory so we can modify files.
     set_user_permissions("open", prl=True)
@@ -61,6 +60,5 @@ def retrieve():
 
     # Change permissions back to protect data
     set_user_permissions("close", prl=True)
-
 
 # --------------------------------------------------------------------------- #

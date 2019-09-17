@@ -22,10 +22,7 @@ from datetime import datetime
 import time
 import stat
 
-try:
-    from http.client import HTTPSConnection
-except ImportError:
-    from httplib import HTTPSConnection
+from http.client import HTTPSConnection
 
 from .SignStsciRequest import SignStsciRequest
 from .. import SETTINGS
@@ -34,6 +31,7 @@ BASE_DIR = SETTINGS["filesystem"]["source"]
 USERNAME = SETTINGS["retrieval"]["username"]
 MAX_RETRIEVAL = 20
 PERM_755 = stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
+
 REQUEST_TEMPLATE = string.Template('\
 <?xml version=\"1.0\"?> \n \
 <!DOCTYPE distributionRequest SYSTEM \"http://dmswww.stsci.edu/dtd/sso/distribution.dtd\"> \n \
@@ -95,9 +93,11 @@ def run_all_retrievals(prop_dict=None, pkl_file=None):
     """
     if pkl_file:
         prop_dict = pickle.load(open(pkl_file, "rb"))
+
     # if there is no pickle file and no prop_dict given, there will be a
     # problem
     prop_dict_keys = prop_dict.keys()
+
     if len(prop_dict_keys) == 0:
         return
 
@@ -106,21 +106,25 @@ def run_all_retrievals(prop_dict=None, pkl_file=None):
     int_num = 10  # should be 5
     # century = 3000  # should be 50
     all_tracking_ids = []
+
     # If less than pend programs were requested, do not enter while loop.
     if pend > len(prop_dict_keys):
         for prop in prop_dict_keys:
             # keep passing the tracking ids and accumulating the complete list
             all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
+
         counter = []
         # num_ids = len(all_tracking_ids)
         # sum(counter) will be equal to len(all_tracking_ids) when all data
         # has been delivered
         while sum(counter) < len(all_tracking_ids):
             counter, not_yet_retrieved = check_data_retrieval(all_tracking_ids)
+
             if sum(counter) < len(all_tracking_ids):
-                print(datetime.now())
-                print("Data not yet delivered for {0}. Checking again in "
-                      "5 minutes".format(not_yet_retrieved))
+                print(
+                    f"{datetime.now()}\n"
+                    f"Data not yet delivered for {not_yet_retrieved}. Checking again in 5 minutes"
+                )
                 time.sleep(350)
 
     # While the number of processed programs is less than total programs
@@ -134,10 +138,12 @@ def run_all_retrievals(prop_dict=None, pkl_file=None):
         #            print("Pausing retrieval to calibrate and
         #            zip current data")
         #            work_laboriously(prl, do_chmod)
+
         # For each proposal (prop) in the current grouping (total number
         # of programs split up for manageability), retrieve data for it.
         for prop in list(prop_dict_keys)[pstart:pend]:
             all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
+
         # This while loop keeps track of how many submitted programs in the
         # current group (defined as from pstart:pend) have been entirely
         # retrieved, stored in counter. Once the number of finished
@@ -146,32 +152,39 @@ def run_all_retrievals(prop_dict=None, pkl_file=None):
         # before checking again.
         counter = []
         num_ids = len(all_tracking_ids)
+
         while sum(counter) < (num_ids - int_num):
             counter = []
             # this is all basically what check_data_retrieval() does
+
             for tracking_id in all_tracking_ids:
                 status, badness = check_id_status(tracking_id)
                 counter.append(status)
+
                 if badness:
-                    print("!" * 70)
                     print(
-                        "RUH ROH!!! Request {0} was killed or cannot be "
-                        "connected!".format(tracking_id))
+                        f"!" * 70 + "\n" +
+                        f"RUH ROH!!! Request {tracking_id} was killed or cannot be connected!"
+                    )
+
                     counter.append(badness)
-            not_yet_retrieved = [all_tracking_ids[i] for i in
-                                 range(len(counter)) if not counter[i]]
+
+            not_yet_retrieved = [all_tracking_ids[i] for i in range(len(counter)) if not counter[i]]
+
             if sum(counter) < (num_ids - int_num):
-                print(datetime.now())
-                print("Data not yet delivered for {0}. Checking again in "
-                      "5 minutes".format(not_yet_retrieved))
+                print(
+                    f"{datetime.now()}\n"
+                    f"Data not yet delivered for {not_yet_retrieved}. Checking again in 5 minutes"
+                )
                 time.sleep(350)
+
         # When total# - int_num programs have been retrieved, add int_num more
         # to queue.
         else:
-            print("\nData delivered, adding {0} program(s) to queue".
-                  format(int_num))
+            print(f"\nData delivered, adding {int_num} program(s) to queue")
             pstart = pend
             pend += int_num
+
     # When pend > total # of programs, it does not mean all have been
     # retrieved. Check, and retrieve if so.
     else:
@@ -179,11 +192,9 @@ def run_all_retrievals(prop_dict=None, pkl_file=None):
         # it is unclear how many times pend += int_num
         if (len(prop_dict_keys) - (pend - int_num)) > 0:
             for prop in list(prop_dict_keys)[pend - int_num:]:
-                all_tracking_ids = cycle_thru(prop_dict, prop,
-                                              all_tracking_ids)
+                all_tracking_ids = cycle_thru(prop_dict, prop, all_tracking_ids)
 
-    print("All data from {} programs were successfully delivered.".format(
-        len(prop_dict_keys)))
+    print(f"All data from {len(prop_dict_keys)} programs were successfully delivered.")
 
 
 def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):  # IN USE
@@ -211,12 +222,15 @@ def cycle_thru(prop_dict, prop, all_tracking_ids_tmp):  # IN USE
         Updated tally of all tracking IDs for all proposals retrieved so far
     """
     prop_dir = os.path.join(BASE_DIR, str(prop))
+
     if not os.path.exists(prop_dir):
         os.mkdir(prop_dir)
-    print("Requesting {0} association(s) for {1}".format(len(prop_dict[prop]),
-                                                         prop))
+
+    print(f"Requesting {len(prop_dict[prop])} association(s) for {prop}")
+
     # retrieve_data() pretty much does everything
     ind_id = retrieve_data(prop_dir, prop_dict[prop])
+
     for item in ind_id:
         all_tracking_ids_tmp.append(item)
 
@@ -235,8 +249,8 @@ def retrieve_data(dest_dir, datasets):  # IN USE
     dest_dir : str
         The path to the directory to which the data will be downloaded
 
-    datasets : list
-        A list of datasets to be requested
+    datasets : Any
+        An array of datasets to be requested
 
     Returns
     -------
@@ -245,26 +259,33 @@ def retrieve_data(dest_dir, datasets):  # IN USE
     """
     if isinstance(datasets, str):
         datasets = [datasets]
+
     elif type(datasets) is not list:
         datasets = datasets.tolist()
-    dataset_lists = (datasets[i:i + MAX_RETRIEVAL]
-                     for i in range(0, len(datasets), MAX_RETRIEVAL))
+
+    dataset_lists = (datasets[i:i + MAX_RETRIEVAL] for i in range(0, len(datasets), MAX_RETRIEVAL))
+
     tracking_ids = []
+
     for item in dataset_lists:
         try:
             xml_string = build_xml_request(dest_dir, item)
             result0 = submit_xml_request(xml_string)
             result = result0.decode("utf-8")
             tmp_id = re.search("(" + USERNAME + "[0-9]{5})", result).group()
+
             if "FAILURE" in result:
-                print("Request {} for program {} failed.".format(tmp_id,
-                                                                 dest_dir))
+                print(f"Request {tmp_id} for program {dest_dir} failed.")
+
             tracking_ids.append(tmp_id)
+
         # If you can't get a ID, MAST is most likely down.
         except AttributeError:
-            print("\tSomething is wrong on the MAST side...")
-            print("\tUnsuccessful request for {} {}".format(dest_dir, item))
-            print("\tIgnoring this request and continuing to next.")
+            print(
+                f"\tSomething is wrong on the MAST side...\n"
+                f"\tUnsuccessful request for {dest_dir} {item}\n"
+                f"\tIgnoring this request and continuing to next.\n"
+            )
             pass
 
     return tracking_ids
@@ -295,8 +316,9 @@ def build_xml_request(dest_dir, datasets):  # IN USE
     # Not currently using suffix dependence.
     suffix = "<suffix name=\"*\" />"
     dataset_str = "\n"
+
     for item in datasets:
-        dataset_str = "{0}<rootname>{1}</rootname>\n".format(dataset_str, item)
+        dataset_str = f"{dataset_str}<rootname>{item}</rootname>\n"
 
     request_str = REQUEST_TEMPLATE.safe_substitute(
         archive_user=archive_user,
@@ -305,7 +327,9 @@ def build_xml_request(dest_dir, datasets):  # IN USE
         ftp_dir=ftp_dir,
         ftp_user=ftp_user,
         suffix=suffix,
-        datasets=dataset_str)
+        datasets=dataset_str
+    )
+
     xml_request = string.Template(request_str)
     xml_request = xml_request.template
 
@@ -332,18 +356,15 @@ def submit_xml_request(xml_string):  # IN USE
     # this is a module written by someone at ST. we don't touch what's
     # inside at all
     signer = SignStsciRequest()
-    request_xml_str = signer.signRequest("{0}/.ssh/privkey.pem".format(home),
-                                         xml_string)
-    params = urllib.parse.urlencode({
-        "dadshost": "dmsops1.stsci.edu",
-        "dadsport": 4703,
-        "mission": "HST",
-        "request": request_xml_str
-        })
-    headers = {
-        "Accept": "text/html",
-        "User-Agent": "{0}PythonScript".format(user)
-        }
+    request_xml_str = signer.signRequest(f"{home}/.ssh/privkey.pem", xml_string)
+
+    # noinspection PyUnresolvedReferences
+    params = urllib.parse.urlencode(
+        {"dadshost": "dmsops1.stsci.edu", "dadsport": 4703, "mission": "HST", "request": request_xml_str}
+    )
+
+    headers = {"Accept": "text/html", "User-Agent": f"{user}PythonScript"}
+
     req = HTTPSConnection("archive.stsci.edu")
     req.request("POST", "/cgi-bin/dads.cgi", params, headers)
     response = req.getresponse().read()
@@ -369,16 +390,19 @@ def check_data_retrieval(all_tracking_ids):  # IN USE
         IDs of all requests that have not yet completed
     """
     counter = []
+
     for tracking_id in all_tracking_ids:
         status, badness = check_id_status(tracking_id)
         counter.append(status)
+
         if badness:
-            print("!" * 70)
-            print("RUH ROH!!! Request {0} was killed, cannot be connected, or "
-                  "did not yield any data!!!".format(tracking_id))
+            print(
+                f"!" * 70 + "\n" +
+                f"RUH ROH!!! Request {tracking_id} was killed, cannot be connected, or did not yield any data!!!"
+            )
             counter.append(badness)
-    not_yet_retrieved = [all_tracking_ids[i] for i in range(len(counter)) if
-                         not counter[i]]
+
+    not_yet_retrieved = [all_tracking_ids[i] for i in range(len(counter)) if not counter[i]]
 
     return counter, not_yet_retrieved
 
@@ -402,32 +426,40 @@ def check_id_status(tracking_id):  # IN USE
     """
     done = False
     killed = False
-    status_url = "http://archive.stsci.edu/cgi-bin/reqstat?reqnum=={0}" \
-        .format(tracking_id)
+    status_url = f"http://archive.stsci.edu/cgi-bin/reqstat?reqnum=={tracking_id}"
+
     # In case connection to URL is down.
     tries = 5
+
     while tries > 0:
         try:
             urllines0 = urllib.request.urlopen(status_url).readlines()
             urllines = [x.decode("utf-8") for x in urllines0]
+
         except IOError:
-            print("Something went wrong connecting to {0}.".format(status_url))
+            print(f"Something went wrong connecting to {status_url}.")
             tries -= 1
             time.sleep(30)
             killed = True
+
         else:
             tries = -100
+
             for line in urllines:
                 if "State" in line:
+
                     if "COMPLETE" in line:
                         done = True
                         killed = False
+
                     elif "KILLED" in line:
                         killed = True
+
                 if "Request ID" in line and "was not found on the" in line:
                     # e.g. Request ID: jotaylor05221 was not found on the
                     # dmsops1.stsci.edu server
                     killed = True
+
     return done, killed
 
 
@@ -442,7 +474,6 @@ if __name__ == "__main__":
                         default=False, help="Parallelize functions")
     args = parser.parse_args()
 
-    run_all_retrievals(prop_dict=None, pkl_file=args.pkl_file, prl=args.prl)
-
+    run_all_retrievals(prop_dict=None, pkl_file=args.pkl_file)  # , prl=args.prl)
 
 # --------------------------------------------------------------------------- #

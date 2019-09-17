@@ -20,10 +20,12 @@ def config_logging(logfile):
     --------
         Nothing
     """
-    logging.basicConfig(filename=logfile,
-                        format='%(asctime)s %(levelname)s: %(message)s',
-                        datefmt='%m/%d/%Y %H:%M:%S %p',
-                        level=logging.WARNING)
+    logging.basicConfig(
+        filename=logfile,
+        format='%(asctime)s %(levelname)s: %(message)s',
+        datefmt='%m/%d/%Y %H:%M:%S %p',
+        level=logging.WARNING
+    )
 
 
 def log_function(func):
@@ -58,11 +60,13 @@ def log_function(func):
         modname = scriptname.split(".")[0]
         logfile = os.path.join(os.getcwd(), modname+".log")
         config_logging(logfile)
+
+        # noinspection PyBroadException
         try:
             func(*args, **kwargs)
-            logging.info("{0} completed successfully".format(funcname))
-        except Exception as err:
-            logging.exception("Error in function {0}.{1}: ".format(modname,
-                                                                   funcname))
+            logging.info(f"{funcname} completed successfully")
+
+        except Exception:
+            logging.exception(f"Error in function {modname}.{funcname}: ")
 
     return wrapper

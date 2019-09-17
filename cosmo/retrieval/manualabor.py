@@ -20,7 +20,8 @@ import glob
 import shutil
 import gzip
 from astropy.io import fits
-from multiprocessing import Queue, Process, Pool
+from multiprocessing import Pool  # Queue, Process
+# noinspection PyPackageRequirements
 import psutil
 import math
 import time
@@ -63,14 +64,14 @@ def timefunc(func):  # IN USE
         result = func(*args, **kw)
         t2 = datetime.datetime.now()
 
-        print("{0} executed in {1}".format(func.__name__, t2-t1))
+        print(f"{func.__name__} executed in {t2 - t1}")
 
         return result
+
     return wrapper
 
 
-def parallelize(func, iterable, chunksize="smart", nprocs="check_usage", *args,
-                **kwargs):  # IN USE
+def parallelize(func, iterable, chunksize="smart", nprocs="check_usage", *args, **kwargs):  # IN USE
     """
     This function is a decorator to parallelize other functions.
 
@@ -117,13 +118,13 @@ def parallelize(func, iterable, chunksize="smart", nprocs="check_usage", *args,
     if isinstance(iterable, dict):
         isdict = True
         chunks = chunkify_d(iterable, chunksize)
+
     else:
         isdict = False
-        chunks = [iterable[i:i+chunksize] for i in range(0, len(iterable),
-                                                         chunksize)]
+        chunks = [iterable[i:i+chunksize] for i in range(0, len(iterable), chunksize)]
 
     # create function args for the number of chunks
-    func_args = [(x,)+args for x in chunks]
+    func_args = [(x,) + args for x in chunks]
 
     # parallelize the function
     with Pool(processes=nprocs) as pool:
@@ -132,16 +133,17 @@ def parallelize(func, iterable, chunksize="smart", nprocs="check_usage", *args,
         results = [pool.apply_async(func, fargs, kwargs) for fargs in func_args]
 
         if results[0].get() is not None:
+
             if isdict:
                 funcout = {}
                 for d in results:
                     funcout.update(d.get())
+
             else:
-                funcout = [item for innerlist in results for item in
-                           innerlist.get()]
+                funcout = [item for innerlist in results for item in innerlist.get()]
 
     t2 = datetime.datetime.now()
-    print("\tparallelize({}) executed in {}".format(func.__name__, t2-t1))
+    print(f"\tparallelize({func.__name__}) executed in {t2 - t1}")
 
     return funcout
 
@@ -165,6 +167,7 @@ def check_usage(playnice=True):  # IN USE
     # Are we feeling charitable or not?
     if playnice is True:
         core_frac = 0.25
+
     else:
         core_frac = 0.5
 
@@ -176,15 +179,17 @@ def check_usage(playnice=True):  # IN USE
     # If too many cores are being used, wait 5 mins, and reassess.
     # Check if elapsed time > 15 mins- if so, just use 1 core.
     too_long = 0
+
     while loadavg >= (ncores-1):
-        print("Too many cores in usage, waiting 5 minutes before "
-              "continuing...")
+        print("Too many cores in usage, waiting 5 minutes before continuing...")
         time.sleep(300)
         too_long += 300
+
         if too_long >= 900:
             print("Continuing with one core...")
             nprocs = 1
             break
+
     else:
         avail = ncores - math.ceil(loadavg)
         nprocs = int(np.floor(avail * core_frac))
@@ -215,10 +220,12 @@ def smart_chunks(nelems, nprocs):  # IN USE
     chunksize: int
         The size of chunks that should be used for subdividing the elements
     """
-    if nelems <= 10*nprocs:
+    if nelems <= 10 * nprocs:
         chunksize = math.ceil(nelems/nprocs)
-    elif 10*nprocs < nelems <= 1000*nprocs:
+
+    elif 10 * nprocs < nelems <= 1000 * nprocs:
         chunksize = 10
+
     else:
         chunksize = 100
 
@@ -245,7 +252,7 @@ def chunkify_d(d, chunksize):  # IN USE
     it = iter(d)
     chunks = []
     for i in range(0, len(d), chunksize):
-        chunks.append({k:d[k] for k in islice(it, chunksize)})
+        chunks.append({k: d[k] for k in islice(it, chunksize)})
 
     return chunks
 
@@ -268,11 +275,14 @@ def combine_2dicts(dict1, dict2):  # IN USE
         dict2
     """
     combined = defaultdict(list)
+
     for k, v in dict1.items():
         if k in dict2:
             combined[k] += list(set(v) | set(dict2[k]))
+
         else:
             combined[k] += list(v)
+
     for k, v in dict2.items():
         if k not in combined:
             combined[k] += list(v)
@@ -286,10 +296,12 @@ def remove_outdirs():  # IN USE
     in BASE_DIR.
     """
     tmp_dirs = glob.glob(os.path.join(BASE_DIR, "*", CSUM_DIR))
+
     if tmp_dirs:
         for bad_dir in tmp_dirs:
             try:
                 shutil.rmtree(bad_dir)
+
             except OSError:
                 pass
 
@@ -307,33 +319,42 @@ def handle_nullfiles():  # IN USE
     """
 
     nullfiles = glob.glob(os.path.join(BASE_DIR, "NULL", "*fits*"))
+
     if len(nullfiles) == 0:
         return
+
     else:
-        print("Handling {0} NULL datasets...".format(len(nullfiles)))
+        print(f"Handling {len(nullfiles)} NULL datasets...")
 
     for item in nullfiles:
         with fits.open(item) as hdulist:
             hdr0 = hdulist[0].header
+
         try:
             # WHY
-            instrument = hdr0["instrume"]
+            _ = hdr0["instrume"]
+
             try:
                 pid = hdr0["proposid"]
+
                 if pid > 0:
                     pid = str(pid)
                     # These files have program IDs and should be moved.
                     if not os.path.exists(os.path.join(BASE_DIR, pid)):
                         os.mkdir(os.path.join(BASE_DIR, pid))
+
                     shutil.move(item, os.path.join(BASE_DIR, pid))
+
             except KeyError:
                 try:
                     # These files are reference files and should be removed.
                     # WHY
-                    useafter = hdr0["useafter"]
+                    _ = hdr0["useafter"]
                     os.remove(item)
+
                 except KeyError:
                     os.remove(item)
+
         except KeyError:
             # These files are not COS datasets and should be removed.
             os.remove(item)
@@ -351,10 +372,13 @@ def gzip_files(prl=True):  # IN USE
     # Get a list of all unzipped files and zip them.
     # everything else should theoretically end in .gz
     unzipped = glob.glob(os.path.join(BASE_DIR, "*", "*fits"))
+
     if unzipped:
-        print("Zipping {0} unzipped file(s)...".format(len(unzipped)))
+        print(f"Zipping {len(unzipped)} unzipped file(s)...")
+
         if prl:
             parallelize(compress_files, unzipped)
+
         else:
             compress_files(unzipped)
 
@@ -378,30 +402,31 @@ def compress_files(uz_files, outdir=None, remove_orig=True, verbose=False):
 
     if outdir is None:
         outdir = [os.path.dirname(x) for x in uz_files]
-    elif isinstance(outdir, str):
-        outdir = [outdir for x in uz_files]  # what
 
-    outdir = [os.path.dirname(x) if not os.path.isdir(x) else x
-              for x in outdir]
+    elif isinstance(outdir, str):
+        outdir = [outdir for _ in uz_files]  # what
+
+    outdir = [os.path.dirname(x) if not os.path.isdir(x) else x for x in outdir]
 
     if len(uz_files) != len(outdir):
-        print("ERROR: List uz_files needs to match length of list outdir, {} "
-              "vs {}, exiting".
-              format(len(uz_files), len(outdir)))
+        print(f"ERROR: List uz_files needs to match length of list outdir, {len(uz_files)} vs {len(outdir)}, exiting")
         sys.exit()
 
     for i in range(len(uz_files)):
         z_item = os.path.join(outdir[i], os.path.basename(uz_files[i]) + ".gz")
+
         with open(uz_files[i], "rb") as f_in, gzip.open(z_item, "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
+
             if verbose is True:
-                print("Compressing {} -> {}".format(uz_files[i], z_item))
+                print(f"Compressing {uz_files[i]} -> {z_item}")
+
         if remove_orig is True:
             if os.path.isfile(z_item):
                 os.remove(uz_files[i])
+
             else:
-                print("Something went terribly wrong zipping {}".format
-                      (uz_files[i]))
+                print(f"Something went terribly wrong zipping {uz_files[i]}")
 
 
 def get_unprocessed_data(prl=True):  # IN USE
@@ -423,15 +448,18 @@ def get_unprocessed_data(prl=True):  # IN USE
     to_calibrate = None
     # When calibrating zipped raw files, you need to calibrate both segments
     # separately since calcos can't find the original
-    zipped_raws = glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*fits.gz")) + \
-                  glob.glob(os.path.join(BASE_DIR, "*", "*rawacq*fits.gz")) + \
-                  glob.glob(os.path.join(BASE_DIR, "*", "*rawaccum*.fits.gz"))
+    zipped_raws = (
+            glob.glob(os.path.join(BASE_DIR, "*", "*rawtag*fits.gz")) +
+            glob.glob(os.path.join(BASE_DIR, "*", "*rawacq*fits.gz")) +
+            glob.glob(os.path.join(BASE_DIR, "*", "*rawaccum*.fits.gz"))
+    )
 
-    print("Checking which raw files need to be calibrated (this may take a "
-          "while)...")
+    print("Checking which raw files need to be calibrated (this may take a while)...")
+
     if zipped_raws:
         if prl:
             to_calibrate = parallelize(needs_processing, zipped_raws)
+
         else:
             to_calibrate = needs_processing(zipped_raws)
 
@@ -456,18 +484,24 @@ def needs_processing(zipped):  # IN USE
     """
     if isinstance(zipped, str):
         zipped = [zipped]
+
     files_to_calibrate = []
 
     for zfile in zipped:
         # figure if the file should be calibrated or deleted
         calibrate, badness = csum_existence(zfile)
+
         if badness is True:
-            print("="*72 + "\n" + "="*72)
-            print("The file is empty or corrupt: {0}".format(zfile))
-            print("Deleting file")
-            print("="*72 + "\n" + "="*72)
+            print(
+                f"="*72 + f"\n" + f"="*72 + f"\n" +
+                f"The file is empty or corrupt: {zfile}\n" +
+                f"Deleting file\n" +
+                f"=" * 72 + f"\n" + f"=" * 72 + "\n"
+            )
             os.remove(zfile)
+
             continue
+
         if calibrate is True:
             files_to_calibrate.append(zfile)
 
@@ -495,32 +529,41 @@ def csum_existence(filename):  # IN USE
     dirname = os.path.dirname(filename)
     calibrate = False
     badness = False
+
     # If getting one header keyword, getval is faster than opening.
     # The more you know.
+    # noinspection PyBroadException
     try:
         exptime = fits.getval(filename, "exptime", 1)
+
         if exptime == 0:
             return calibrate, badness
-    except:
+
+    except Exception:
         pass
 
     exptype = None
+
     try:
         exptype = fits.getval(filename, "exptype")
+
     except KeyError:  # EXPTYPE = None
         return calibrate, badness
+
     except Exception as e:
-        if type(e).__name__ == "IOError" and \
-           e.args[0] == "Empty or corrupt FITS file":
+        if type(e).__name__ == "IOError" and e.args[0] == "Empty or corrupt FITS file":
             badness = True
             return calibrate, badness
 
     bad_exptypes = ["ACQ/PEAKD", "ACQ/PEAKXD", "ACQ/SEARCH"]
+
     if exptype not in bad_exptypes:
         if "_a.fits" in filename:
             csums = glob.glob(os.path.join(dirname, rootname+"*csum_a*"))
+
         elif "_b.fits" in filename:
             csums = glob.glob(os.path.join(dirname, rootname+"*csum_b*"))
+
         else:
             csums = glob.glob(os.path.join(dirname, rootname+"*csum*"))
 
@@ -555,10 +598,10 @@ def clobber_calcos_csumgz(func):  # IN USE
     wrapper : func
         A wrapper to the modified function
     """
-    __author__ = "Jo Taylor"
-    __date__ = "02-25-2016"
-    __maintainer__ = "Jo Taylor"
-    __email__ = "jotaylor@stsci.edu"
+    # __author__ = "Jo Taylor"
+    # __date__ = "02-25-2016"
+    # __maintainer__ = "Jo Taylor"
+    # __email__ = "jotaylor@stsci.edu"
 
     import os
     import glob
@@ -567,22 +610,28 @@ def clobber_calcos_csumgz(func):  # IN USE
     def wrapper(*args, **kwargs):
         try:
             func(*args, **kwargs)
+
         except Exception as e:
             # If the reason for crashing is that the output files already exist
-            if type(e).__name__ == "RuntimeError" and \
-               e.args[0] == "output files already exist":
+            if type(e).__name__ == "RuntimeError" and e.args[0] == "output files already exist":
                 # If asntable defined in kwargs or just in args
                 if "asntable" in kwargs.keys():
                     asntable = kwargs["asntable"]
+
                 else:
                     asntable = args[0]
+
                 filename = os.path.basename(asntable)
+
                 if "outdir" in kwargs.keys():
                     outdir = kwargs["outdir"]
+
                 elif len(args) >= 2:
                     outdir = args[1]
+
                 else:
                     outdir = None
+
                 # If the asntable is an association file, not rawtag,
                 # get the member IDs
                 if "asn.fits" in filename:
@@ -590,35 +639,44 @@ def clobber_calcos_csumgz(func):  # IN USE
                         data = hdu[1].data
                         memnames = data["memname"]
                         f_to_remove = [root.lower() for root in memnames]
+
                     # If an output directory is specified, the asn file is
                     # is copied to there and must be removed as well.
                     if outdir:
                         os.remove(os.path.join(outdir, filename))
+
                 # if rawtag, just get the rawtag rootname to delete
                 else:
                     f_to_remove = [filename[:9]]
+
                 # If no outdir specified, it is the current directory
                 if not outdir:
                     outdir = "."
+
                 for item in f_to_remove:
-                    matching = glob.glob(os.path.join(outdir, item +
-                                                      "corrtag*fits*")) + \
-                               glob.glob(os.path.join(outdir,
-                                                      item+"csum*fits*"))
+                    matching = (
+                        glob.glob(os.path.join(outdir, item + "corrtag*fits*")) +
+                        glob.glob(os.path.join(outdir, item + "csum*fits*"))
+                    )
+
                     for match in matching:
                         ext = match.split("/")[-1].split("_")[1].split(".")[0]
-                        if ext not in ["asn", "pha", "rawaccum", "rawacq",
-                                       "rawtag", "spt"]:
+
+                        if ext not in ["asn", "pha", "rawaccum", "rawacq", "rawtag", "spt"]:
                             os.remove(match)
-                print("="*72 + "\n" + "="*72)
-                print("!!!WARNING!!! Deleting products for {} !!!".format(
-                      asntable))
-                print("CalCOS will now calibrate {}...".format(asntable))
-                print("="*72 + "\n" + "="*72)
+
+                print(
+                    f"="*72 + f"\n" + f"="*72 + f"\n" +
+                    f"!!!WARNING!!! Deleting products for {asntable} !!!\n" +
+                    f"CalCOS will now calibrate {asntable}...\n" +
+                    f"=" * 72 + f"\n" + f"=" * 72 + f"\n"
+                )
                 # actually running calcos here
                 func(*args, **kwargs)
+
             else:
                 raise e
+
     return wrapper
 
 
@@ -627,6 +685,7 @@ def copy_outdirs():  # IN USE
     Copy the csums from the temp CSUM dirs to the main subdir for each csum.
     """
     csums = glob.glob(os.path.join(BASE_DIR, "*", CSUM_DIR, "*csum*"))
+
     if csums:
         dest_dirs = [os.path.dirname(x).strip(CSUM_DIR) for x in csums]
         move_files(csums, dest_dirs)
@@ -647,10 +706,11 @@ def move_files(orig, dest):  # IN USE
     # why does this even exist as a function
     if isinstance(orig, str):
         orig = [orig]
+
     if isinstance(dest, str):
         dest = [dest]
+
     for i in range(len(orig)):
         shutil.move(orig[i], dest[i])
-
 
 # --------------------------------------------------------------------------- #

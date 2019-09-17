@@ -56,10 +56,11 @@ def calibrate_data(prl=True):  # IN USE
 
     # If there are files to calibrate, create csums for them.
     if to_calibrate:
-        print("There are {0} file(s) to calibrate, beginning now.".format(
-            len(to_calibrate)))
+        print(f"There are {len(to_calibrate)} file(s) to calibrate, beginning now.")
+
         if prl:
             parallelize(make_csum, to_calibrate)
+
         else:
             make_csum(to_calibrate)
     
@@ -75,7 +76,7 @@ def calibrate_data(prl=True):  # IN USE
     # and delete if present. 
     remove_outdirs()
 
-    print("\nFinished at {0}.".format(datetime.datetime.now()))
+    print(f"\nFinished at {datetime.datetime.now()}.")
 
 
 def make_csum(unzipped_raws):  # IN USE
@@ -92,29 +93,36 @@ def make_csum(unzipped_raws):  # IN USE
     """
     # creating a wrapper function for calcos that clobbers output files
     run_calcos = clobber_calcos_csumgz(calcos.calcos)
+
     if isinstance(unzipped_raws, str):
         unzipped_raws = [unzipped_raws]
+
     for item in unzipped_raws:
         dirname = os.path.dirname(item)
         outdirec = os.path.join(dirname, CSUM_DIR)
+
         if not os.path.exists(outdirec):
             try:
                 os.mkdir(outdirec)
+
             except FileExistsError:
                 pass
+
         try:
-            run_calcos(item, outdir=outdirec, verbosity=0,
-                       create_csum_image=True, only_csum=True,
-                       compress_csum=False)
+            run_calcos(item, outdir=outdirec, verbosity=0, create_csum_image=True, only_csum=True, compress_csum=False)
+
         except Exception as e:
-            if type(e).__name__ == "IOError" and \
-               e.args[0] == "Empty or corrupt FITS file":
-                print("="*72 + "\n" + "="*72)
-                print("The file is empty or corrupt: {0}".format(item))
-                print("Deleting file")
-                print("="*72 + "\n" + "="*72)
+            if type(e).__name__ == "IOError" and e.args[0] == "Empty or corrupt FITS file":
+                print(
+                        f"="*72 + f"\n" + f"="*72 + f"\n" +
+                        f"The file is empty or corrupt: {item}\n" +
+                        f"Deleting file\n" +
+                        f"="*72 + f"\n" + f"="*72 + f"\n"
+                )
+
                 os.remove(item)
                 pass
+
             else:
                 print(e)
                 pass
