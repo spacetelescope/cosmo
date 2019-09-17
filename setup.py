@@ -7,17 +7,16 @@ setup(
     keywords=['astronomy'],
     classifiers=[
         'Programming Language :: Python :: 3',
-        'License :: BSD-3 :: Association of Universities for Research in '
-        'Astronomy',
+        'License :: BSD-3 :: Association of Universities for Research in Astronomy',
         'Operating System :: Linux'
-        ],
+    ],
     python_requires='~=3.7',  # 3.7 and higher, but not 4
     packages=find_packages(),
     install_requires=[
         'setuptools',
         'numpy>=1.11.1',
         'astropy>=1.0.1',
-        'plotly',
+        'plotly>=4.0.0',
         'scipy',
         'pyfastcopy',
         'dask',
@@ -25,7 +24,8 @@ setup(
         'pytest',
         'pyyaml',
         'peewee',
-        'tqdm',
+        'calcos',
+        'crds',
         'monitorframe @ git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe'
         ],
     entry_points={

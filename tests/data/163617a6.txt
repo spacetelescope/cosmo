@@ -1,0 +1,122 @@
+
+COS Exposure Report: SMS 163617A6
+
+Data                                                          Exposure Start    FUV     Mechanism Positions     Cent    Tsince Tsince       Lamp    STIMs      Flash
+Filename Prop  Target     PRG OB AL EX Conf Opmode    ExpTime yyyy.ddd:hh:mm:ss State   Aper   OSM1     OSM2    Wave FP   OSM1   OSM2 Lamp  Curr    A   B  Dop # Dur T
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ldd509by 14521 DARK       DD5 09 01 01 NUV  TIME-TAG   1330.0 2016.361:03:30:12         PSA 1  G130M    MIRRORA 1850  0  12612  12612                      NO
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ldd315c9 14520 DARK       DD3 15 01 01 FUV  TIME-TAG   1330.0 2016.361:04:02:37 167/175 PSA 3  G130M    -----   1309  0  14557  14557              LOW LOW NO
+ldd316cu 14520 DARK       DD3 16 01 01 FUV  TIME-TAG   1330.0 2016.361:04:31:56 167/175 PSA 3  G130M    -----   1309  0  16316  16316              LOW LOW NO
+ldd317da 14520 DARK       DD3 17 01 01 FUV  TIME-TAG   1330.0 2016.361:05:01:15 167/175 PSA 3  G130M    -----   1309  0  18075  18075              LOW LOW NO
+ldd318dh 14520 DARK       DD3 18 01 01 FUV  TIME-TAG   1330.0 2016.361:05:30:34 167/175 PSA 3  G130M    -----   1309  0  19834  19834              LOW LOW NO
+ldd319e3 14520 DARK       DD3 19 01 01 FUV  TIME-TAG   1330.0 2016.361:05:59:58 167/175 PSA 3  G130M    -----   1309  0  21598  21598              LOW LOW NO
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ldcv03fy 14854 GD71       DCV 03 01 01 NUV  ACQ/IMAGE    90.0 2016.361:11:19:13         BOA 3  NCM1     MIRRORB    0  0    348    264                      NO
+ldcv03g0 14854 GD71       DCV 03 03 01 FUV  TIME-TAG    744.0 2016.361:11:25:34 100/175 PSA 2  G130M    -----   1096  0    160    645              OFF LOW NO
+ldcv03g2 14854 WAVE       DCV 03 06 01 FUV  TIME-TAG    140.0 2016.361:11:45:23 173/100 WCA 2  G130M    -----   1096  0   1349   1834 LINE1 MEDIUM LOW OFF NO
+ldcv03g4 14854 GD71       DCV 03 08 01 FUV  TIME-TAG    102.0 2016.361:11:52:53 167/100 PSA 3  G160M    -----   1577  0    155   2284              LOW OFF NO  1  12 S
+ldcv03g6 14854 GD71       DCV 03 0A 01 FUV  TIME-TAG    154.0 2016.361:11:58:59 167/100 PSA 3  G160M    -----   1623  0    521   2650              LOW OFF NO  1  12 S
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ldd50ag8 14521 DARK       DD5 0A 01 01 NUV  TIME-TAG   1330.0 2016.361:12:14:32         PSA 1  G130M    MIRRORA    0  0    594    516                      NO
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lddm01tb 14875 WD0308-565 DDM 01 01 01 NUV  ACQ/IMAGE    43.0 2016.364:00:56:21         BOA 3  NCM1     MIRRORA    0  0    225 219025                      NO
+lddm01te 14875 WD0308-565 DDM 01 03 01 FUV  TIME-TAG     25.0 2016.364:01:01:09 163/163 PSA 4  G130M    -----   1309  0    130 219313              MID MID NO  1  25 E
+         14875            DDM 01 05 01 COS  ALIGN/APER        2016.364:01:02:35                XAPER=-29 , YAPER=PREV                           
+lddm01tg 14875 WD0308-565 DDM 01 06 01 FUV  TIME-TAG     25.0 2016.364:01:03:48 163/163 REL    G130M    -----   1309  0    289 219472              MID MID NO  1  25 E
+         14875            DDM 01 08 01 COS  ALIGN/APER        2016.364:01:05:14                XAPER=-23 , YAPER=PREV                           
+lddm01tj 14875 WD0308-565 DDM 01 09 01 FUV  TIME-TAG     25.0 2016.364:01:06:27 163/163 REL    G130M    -----   1309  0    448 219631              MID MID NO  1  25 E
+         14875            DDM 01 0B 01 COS  ALIGN/APER        2016.364:01:07:53                XAPER=-18 , YAPER=PREV                           
+lddm01tl 14875 WD0308-565 DDM 01 0C 01 FUV  TIME-TAG     25.0 2016.364:01:09:06 163/163 REL    G130M    -----   1309  0    607 219790              MID MID NO  1  25 E
+         14875            DDM 01 0E 01 COS  ALIGN/APER        2016.364:01:10:32                XAPER=-14 , YAPER=PREV                           
+lddm01tn 14875 WD0308-565 DDM 01 0F 01 FUV  TIME-TAG     25.0 2016.364:01:11:45 163/163 REL    G130M    -----   1309  0    766 219949              MID MID NO  1  25 E
+         14875            DDM 01 0H 01 COS  ALIGN/APER        2016.364:01:13:11                XAPER=-10 , YAPER=PREV                           
+lddm01tp 14875 WD0308-565 DDM 01 0I 01 FUV  TIME-TAG     25.0 2016.364:01:14:24 163/163 REL    G130M    -----   1309  0    925 220108              MID MID NO  1  25 E
+         14875            DDM 01 0K 01 COS  ALIGN/APER        2016.364:01:15:50                XAPER=-6 , YAPER=PREV                            
+lddm01tr 14875 WD0308-565 DDM 01 0L 01 FUV  TIME-TAG     25.0 2016.364:01:17:03 163/163 REL    G130M    -----   1309  0   1084 220267              MID MID NO  1  25 E
+         14875            DDM 01 0N 01 COS  ALIGN/APER        2016.364:01:18:29                XAPER=-3 , YAPER=PREV                            
+lddm01tt 14875 WD0308-565 DDM 01 0O 01 FUV  TIME-TAG     25.0 2016.364:01:19:42 163/163 REL    G130M    -----   1309  0   1243 220426              MID MID NO  1  25 E
+         14875            DDM 01 0Q 01 COS  ALIGN/APER        2016.364:01:21:08                XAPER=0 , YAPER=PREV                             
+lddm01tv 14875 WD0308-565 DDM 01 0R 01 FUV  TIME-TAG     25.0 2016.364:01:22:21 163/163 REL    G130M    -----   1309  0   1402 220585              MID MID NO  1  25 E
+         14875            DDM 01 0T 01 COS  ALIGN/APER        2016.364:01:23:47                XAPER=3 , YAPER=PREV                             
+lddm01tx 14875 WD0308-565 DDM 01 0U 01 FUV  TIME-TAG     25.0 2016.364:01:25:00 163/163 REL    G130M    -----   1309  0   1561 220744              MID MID NO  1  25 E
+         14875            DDM 01 0W 01 COS  ALIGN/APER        2016.364:01:26:26                XAPER=6 , YAPER=PREV                             
+lddm01tz 14875 WD0308-565 DDM 01 0X 01 FUV  TIME-TAG     25.0 2016.364:01:27:39 163/163 REL    G130M    -----   1309  0   1720 220903              MID MID NO  1  25 E
+         14875            DDM 01 0Z 01 COS  ALIGN/APER        2016.364:01:29:05                XAPER=10 , YAPER=PREV                            
+lddm01u1 14875 WD0308-565 DDM 01 10 01 FUV  TIME-TAG     25.0 2016.364:01:30:18 163/163 REL    G130M    -----   1309  0   1879 221062              MID MID NO  1  25 E
+         14875            DDM 01 12 01 COS  ALIGN/APER        2016.364:01:31:44                XAPER=14 , YAPER=PREV                            
+lddm01u3 14875 WD0308-565 DDM 01 13 01 FUV  TIME-TAG     25.0 2016.364:01:32:57 163/163 REL    G130M    -----   1309  0   2038 221221              MID MID NO  1  25 E
+         14875            DDM 01 15 01 COS  ALIGN/APER        2016.364:01:34:23                XAPER=18 , YAPER=PREV                            
+lddm01u5 14875 WD0308-565 DDM 01 16 01 FUV  TIME-TAG     25.0 2016.364:01:35:36 163/163 REL    G130M    -----   1309  0   2197 221380              MID MID NO  1  25 E
+         14875            DDM 01 18 01 COS  ALIGN/APER        2016.364:01:37:02                XAPER=23 , YAPER=PREV                            
+lddm01u7 14875 WD0308-565 DDM 01 19 01 FUV  TIME-TAG     25.0 2016.364:01:38:15 163/163 REL    G130M    -----   1309  0   2356 221539              MID MID NO  1  25 E
+         14875            DDM 01 1B 01 COS  ALIGN/APER        2016.364:01:39:41                XAPER=29 , YAPER=PREV                            
+lddm01u9 14875 WD0308-565 DDM 01 1C 01 FUV  TIME-TAG     25.0 2016.364:01:40:54 163/163 REL    G130M    -----   1309  0   2515 221698              MID MID NO  1  25 E
+         14875            DDM 01 1E 01 COS  ALIGN/APER        2016.364:01:42:20                XAPER=0 , YAPER=PREV                             
+lddm01ub 14875 WD0308-565 DDM 01 1F 01 FUV  TIME-TAG     25.0 2016.364:01:43:33 163/163 REL    G130M    -----   1309  0   2674 221857              MID MID NO  1  25 E
+lddm01uy 14875 WD0308-565 DDM 01 1H 01 FUV  TIME-TAG     25.0 2016.364:02:28:52 163/163 REL    G130M    -----   1309  0   5393 224576              MID MID NO  1  25 E
+         14875            DDM 01 1J 01 COS  ALIGN/APER        2016.364:02:30:18                XAPER=PREV , YAPER=29                            
+lddm01v0 14875 WD0308-565 DDM 01 1K 01 FUV  TIME-TAG     25.0 2016.364:02:31:24 163/163 REL    G130M    -----   1309  0   5545 224728              MID MID NO  1  25 E
+         14875            DDM 01 1M 01 COS  ALIGN/APER        2016.364:02:32:50                XAPER=PREV , YAPER=23                            
+lddm01v2 14875 WD0308-565 DDM 01 1N 01 FUV  TIME-TAG     25.0 2016.364:02:33:56 163/163 REL    G130M    -----   1309  0   5697 224880              MID MID NO  1  25 E
+         14875            DDM 01 1P 01 COS  ALIGN/APER        2016.364:02:35:22                XAPER=PREV , YAPER=18                            
+lddm01v4 14875 WD0308-565 DDM 01 1Q 01 FUV  TIME-TAG     25.0 2016.364:02:36:28 163/163 REL    G130M    -----   1309  0   5849 225032              MID MID NO  1  25 E
+         14875            DDM 01 1S 01 COS  ALIGN/APER        2016.364:02:37:54                XAPER=PREV , YAPER=14                            
+lddm01v6 14875 WD0308-565 DDM 01 1T 01 FUV  TIME-TAG     25.0 2016.364:02:39:00 163/163 REL    G130M    -----   1309  0   6001 225184              MID MID NO  1  25 E
+         14875            DDM 01 1V 01 COS  ALIGN/APER        2016.364:02:40:26                XAPER=PREV , YAPER=10                            
+lddm01v8 14875 WD0308-565 DDM 01 1W 01 FUV  TIME-TAG     25.0 2016.364:02:41:32 163/163 REL    G130M    -----   1309  0   6153 225336              MID MID NO  1  25 E
+         14875            DDM 01 1Y 01 COS  ALIGN/APER        2016.364:02:42:58                XAPER=PREV , YAPER=6                             
+lddm01va 14875 WD0308-565 DDM 01 1Z 01 FUV  TIME-TAG     25.0 2016.364:02:44:04 163/163 REL    G130M    -----   1309  0   6305 225488              MID MID NO  1  25 E
+         14875            DDM 01 21 01 COS  ALIGN/APER        2016.364:02:45:30                XAPER=PREV , YAPER=3                             
+lddm01vc 14875 WD0308-565 DDM 01 22 01 FUV  TIME-TAG     25.0 2016.364:02:46:36 163/163 REL    G130M    -----   1309  0   6457 225640              MID MID NO  1  25 E
+         14875            DDM 01 24 01 COS  ALIGN/APER        2016.364:02:48:02                XAPER=PREV , YAPER=0                             
+lddm01ve 14875 WD0308-565 DDM 01 25 01 FUV  TIME-TAG     25.0 2016.364:02:49:08 163/163 REL    G130M    -----   1309  0   6609 225792              MID MID NO  1  25 E
+         14875            DDM 01 27 01 COS  ALIGN/APER        2016.364:02:50:34                XAPER=PREV , YAPER=-3                            
+lddm01vg 14875 WD0308-565 DDM 01 28 01 FUV  TIME-TAG     25.0 2016.364:02:51:40 163/163 REL    G130M    -----   1309  0   6761 225944              MID MID NO  1  25 E
+         14875            DDM 01 2A 01 COS  ALIGN/APER        2016.364:02:53:06                XAPER=PREV , YAPER=-6                            
+lddm01vi 14875 WD0308-565 DDM 01 2B 01 FUV  TIME-TAG     25.0 2016.364:02:54:12 163/163 REL    G130M    -----   1309  0   6913 226096              MID MID NO  1  25 E
+         14875            DDM 01 2D 01 COS  ALIGN/APER        2016.364:02:55:38                XAPER=PREV , YAPER=-10                           
+lddm01vk 14875 WD0308-565 DDM 01 2E 01 FUV  TIME-TAG     25.0 2016.364:02:56:44 163/163 REL    G130M    -----   1309  0   7065 226248              MID MID NO  1  25 E
+         14875            DDM 01 2G 01 COS  ALIGN/APER        2016.364:02:58:10                XAPER=PREV , YAPER=-14                           
+lddm01vm 14875 WD0308-565 DDM 01 2H 01 FUV  TIME-TAG     25.0 2016.364:02:59:16 163/163 REL    G130M    -----   1309  0   7217 226400              MID MID NO  1  25 E
+         14875            DDM 01 2J 01 COS  ALIGN/APER        2016.364:03:00:42                XAPER=PREV , YAPER=-18                           
+lddm01vo 14875 WD0308-565 DDM 01 2K 01 FUV  TIME-TAG     25.0 2016.364:03:01:48 163/163 REL    G130M    -----   1309  0   7369 226552              MID MID NO  1  25 E
+         14875            DDM 01 2M 01 COS  ALIGN/APER        2016.364:03:03:14                XAPER=PREV , YAPER=-23                           
+lddm01vq 14875 WD0308-565 DDM 01 2N 01 FUV  TIME-TAG     25.0 2016.364:03:04:20 163/163 REL    G130M    -----   1309  0   7521 226704              MID MID NO  1  25 E
+         14875            DDM 01 2P 01 COS  ALIGN/APER        2016.364:03:05:46                XAPER=PREV , YAPER=-29                           
+lddm01vs 14875 WD0308-565 DDM 01 2Q 01 FUV  TIME-TAG     15.0 2016.364:03:06:52 163/163 REL    G130M    -----   1309  0   7673 226856              MID MID NO  1  15 E
+         14875            DDM 01 2S 01 COS  ALIGN/APER        2016.364:03:07:58                XAPER=PREV , YAPER=0                             
+lddm01vu 14875 WD0308-565 DDM 01 2T 01 FUV  TIME-TAG     15.0 2016.364:03:09:04 163/163 REL    G130M    -----   1309  0   7805 226988              MID MID NO  1  15 E
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ldcv02yj 14854 WD0308-565 DCV 02 01 01 NUV  ACQ/IMAGE    45.0 2016.364:12:16:16         BOA 3  NCM1     MIRRORA    0  0    227 259820                      NO
+ldcv02yl 14854 WD0308-565 DCV 02 03 01 FUV  TIME-TAG    226.0 2016.364:12:21:17 171/175 PSA 3  G130M    -----   1222  0    141 260121              LOW LOW NO  2  52 S
+ldcv02yn 14854 WD0308-565 DCV 02 05 01 FUV  TIME-TAG    244.0 2016.364:12:29:25 167/175 PSA 3  G130M    -----   1291  0    629 260609              LOW LOW NO  1  12 S
+ldcv02yp 14854 WD0308-565 DCV 02 07 01 FUV  TIME-TAG    312.0 2016.364:12:37:34 167/175 PSA 3  G130M    -----   1327  0   1118 261098              LOW LOW NO  1  12 S
+ldcv02yr 14854 WD0308-565 DCV 02 09 01 FUV  TIME-TAG    334.0 2016.364:12:47:22 173/175 PSA 2  G130M    -----   1055  0   1706 261686              LOW LOW NO  1 142 S
+ldcv02yw 14854 WD0308-565 DCV 02 0B 01 FUV  TIME-TAG    290.0 2016.364:13:56:38 167/175 PSA 3  G160M    -----   1577  0    158 265842              LOW LOW NO  2  12 S
+ldcv02yy 14854 WD0308-565 DCV 02 0D 01 FUV  TIME-TAG    400.0 2016.364:14:05:14 167/175 PSA 3  G160M    -----   1623  0    674 266358              LOW LOW NO  2  12 S
+ldcv02z0 14854 WD0308-565 DCV 02 0F 01 FUV  TIME-TAG    280.0 2016.364:14:17:31 167/175 PSA 3  G140L    -----   1280  0    139 267095              LOW LOW NO  2   7 S
+ldcv02z9 14854 WD0308-565 DCV 02 0I 01 FUV  TIME-TAG    280.0 2016.364:15:36:38 167/100 PSA 3  G140L    -----   1105  0   4886 271842              LOW OFF NO  1   7 S
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcvv03db 14080 J021307    CVV 03 01 01 NUV  ACQ/IMAGE   208.0 2016.365:13:50:41         PSA 3  NCM1     MIRRORA    0  0    385 351885                      NO
+lcvv03de 14080 J021307    CVV 03 03 01 FUV  TIME-TAG   1012.0 2016.365:13:58:09 167/175 PSA 3  G130M    -----   1300 -2    127 352333              LOW LOW NO  3  12 S
+lcvv03dp 14080 J021307    CVV 03 05 01 FUV  TIME-TAG   1012.0 2016.365:15:25:08 167/175 PSA 3  G130M    -----   1300 -1   5346 357552              LOW LOW NO  2  12 S
+lcvv03e0 14080 J021307    CVV 03 07 01 FUV  TIME-TAG   1395.0 2016.365:17:04:41 167/175 PSA 3  G130M    -----   1300  0  11319 363525              LOW LOW NO  2  12 S
+lcvv03e2 14080 J021307    CVV 03 09 01 FUV  TIME-TAG   1395.0 2016.365:18:43:45 167/175 PSA 3  G130M    -----   1300  1  17263 369469              LOW LOW NO  2  12 S
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lbdobwm1 12046            BDO BW 01 01                        2017.001:02:29:46         COS MEMORY COPY -- DCE CODE IMAGE TO CS RAM
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lcut01qr 14246 VFTS-102   CUT 01 01 01 NUV  ACQ/IMAGE    51.0 2017.001:17:44:32         PSA 3  NCM1     MIRRORB    0  0    304    220                      NO
+lcut01qt 14246 VFTS-102   CUT 01 03 01 FUV  TIME-TAG    565.0 2017.001:18:25:07 167/175 PSA 3  G130M    -----   1309 -2    130   2655              LOW LOW NO  2  12 S
+lcut01r9 14246 VFTS-102   CUT 01 05 01 FUV  TIME-TAG    565.0 2017.001:18:37:33 167/175 PSA 3  G130M    -----   1309 -1    876   3401              LOW LOW NO  2  12 S
+lcut01rb 14246 VFTS-102   CUT 01 07 01 FUV  TIME-TAG    565.0 2017.001:19:19:02 167/175 PSA 3  G130M    -----   1309  0   3365   5890              LOW LOW NO  1  12 S
+lcut01re 14246 VFTS-102   CUT 01 09 01 FUV  TIME-TAG    565.0 2017.001:20:01:53 167/175 PSA 3  G130M    -----   1309  1   5936   8461              LOW LOW NO  1  12 S
+lcut01rh 14246 VFTS-102   CUT 01 0B 01 FUV  TIME-TAG    681.0 2017.001:20:15:32 167/175 PSA 3  G130M    -----   1300 -2   6755   9280              LOW LOW NO  1  12 S
+lcut01rj 14246 VFTS-102   CUT 01 0D 01 FUV  TIME-TAG    681.0 2017.001:20:54:14 167/175 PSA 3  G130M    -----   1300 -1   9077  11602              LOW LOW NO  1  12 S
+lcut01rm 14246 VFTS-102   CUT 01 0F 01 FUV  TIME-TAG    681.0 2017.001:21:38:59 167/175 PSA 3  G130M    -----   1300  0  11762  14287              LOW LOW NO  1  12 S
+lcut01ro 14246 VFTS-102   CUT 01 0H 01 FUV  TIME-TAG    681.0 2017.001:21:53:21 167/175 PSA 3  G130M    -----   1300  1  12624  15149              LOW LOW NO  1  12 S
+lcut01rq 14246 VFTS-102   CUT 01 0J 01 FUV  TIME-TAG    681.0 2017.001:22:29:26 167/175 PSA 3  G130M    -----   1318 -2  14789  17314              LOW LOW NO  1  12 S
+lcut01rs 14246 VFTS-102   CUT 01 0L 01 FUV  TIME-TAG    681.0 2017.001:22:43:48 167/175 PSA 3  G130M    -----   1318 -1  15651  18176              LOW LOW NO  1  12 S
+lcut01ru 14246 VFTS-102   CUT 01 0N 01 FUV  TIME-TAG    681.0 2017.001:22:58:10 167/175 PSA 3  G130M    -----   1318  0  16513  19038              LOW LOW NO  1  12 S
+lcut01rw 14246 VFTS-102   CUT 01 0P 01 FUV  TIME-TAG    681.0 2017.001:23:12:32 167/175 PSA 3  G130M    -----   1318  1  17375  19900              LOW LOW NO  1  12 S
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
