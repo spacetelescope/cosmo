@@ -26,6 +26,7 @@ setup(
         'peewee',
         'calcos',
         'crds',
+        'tqdm',
         'monitorframe @ git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe'
         ],
     entry_points={
