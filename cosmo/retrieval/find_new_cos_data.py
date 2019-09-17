@@ -179,8 +179,7 @@ def find_missing_exts(existing, existing_roots):  # IN USE
     -----------
     existing : list
         List of all existing files currently in COSMO, this includes
-            path name and filetype, e.g.
-            /grp/hst/cos2/cosmo/13974/lcqf15meq_counts.fits
+            path name and filetype
     existing_roots : list
         List of rootnames all existing files currently in COSMO.
 
