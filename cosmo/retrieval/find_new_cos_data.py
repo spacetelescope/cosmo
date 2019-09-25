@@ -213,7 +213,7 @@ def find_missing_exts(existing, existing_roots):  # IN USE
                 " AND ads_best_version='y'" \
                 " AND ads_generation_date= afi_generation_date" \
                 " AND ads_archive_class=afi_archive_class" \
-                " AND ads_archive_class IN ('cal','asn')" \
+                " AND ads_archive_class != 'EDT'" \
                 " AND ads_data_set_name IN {0}\ngo".format(tuple(chunk))
 
         # connecting to the MAST database and finding all the files that
@@ -223,10 +223,15 @@ def find_missing_exts(existing, existing_roots):  # IN USE
 
         # SQL query from janky_connect will return a list of file names. we
         # need this as a dictionary to be useable
-        expected_files_d = _sql_to_dict(filenames)
+        expected_files_d, bad_files = _sql_to_dict(filenames)
 
         # sorting the expected files
         expected_files_s = set([row[0] for row in filenames])
+
+        # Discard files with no corresponding PID
+        if bad_files:
+            for bad_file in bad_files:
+                expected_files_s.discard(bad_file)
 
         # sorting existing files passed to this function
         existing_files_s = set([os.path.basename(x).strip(".gz") for x in existing])
@@ -360,29 +365,32 @@ def _sql_to_dict(sql_list, groupbykey=True):  # IN USE
 
     # Store results as dictionaries. Don't get podfiles (LZ*)
     sql_dict = {row[0]: row[1] for row in sql_list if not row[0].startswith("LZ_")}
+    badfiles = []
 
     if groupbykey is True:
-        badfiles = []
 
-        for key in list(sql_dict):
-            if sql_dict[key] == "NULL":
+        for name in list(sql_dict):
+            key = name.split('_')[0].upper()
 
-                if key.startswith("LF") or key.startswith("LN") or key.startswith("L_"):
-                    sql_dict[key] = "CCI"
+            if sql_dict[name] == "NULL":
+
+                # Manually identify CCI files
+                if name.startswith("lf") or name.startswith("ln") or name.startswith("l_"):
+                    sql_dict[name] = "CCI"
 
                 elif len(key) == 9:
-                    prop = get_pid(key)
+                    prop = get_pid(key)  # attempt to find the PID
 
-                    if prop is None:
-                        badfiles.append(key)
+                    if prop is None or prop == 'NULL':
+                        badfiles.append(name)
 
                     else:
-                        sql_dict[key] = prop
+                        sql_dict[name] = prop
 
                 else:
-                    sql_dict.pop(key, None)
+                    sql_dict.pop(name, None)
 
-    return sql_dict
+    return sql_dict, badfiles
 
 
 def get_pid(rootname):  # IN USE
