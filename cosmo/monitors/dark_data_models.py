@@ -10,8 +10,10 @@ FILES_SOURCE = SETTINGS['filesystem']['source']
 
 
 class DarkDataModel(BaseDataModel):
+    cosmo_layout = False
+    program_id = ['15533/', '14940/', '14520/', '14436/', '13968/', '13521/', '13121/', '12716/', '12423/', '11895/']
 
-    def get_data(self):
+    def get_new_data(self):
         header_keys = (
             'ROOTNAME', 'EXPTIME', 'SEGMENT', 'EXPSTART'
         )
@@ -21,21 +23,27 @@ class DarkDataModel(BaseDataModel):
         data_extensions = ('timeline', 'timeline', 'timeline', 'events', 'events', 'events', 'events')
 
         results = []
-        program_id = ['15533/', '14940/', '14520/', '14436/', '13968/', '13521/', '13121/', '12716/', '12423/', '11895/']
-        for prog_id in program_id:
-            print(prog_id)
-            new_files_source = os.patch.join(FILES_SOURCE, prog_id)
-            files = find_files('*corrtag*', data_dir=new_files_source, cosmo_layout=self.cosmo_layout)
-            finder = FileDataFinder(
-                new_files_source,
-                '*corrtag*',
-                header_keys,
-                header_extensions,
-                data_keys=data_keys,
-                data_extensions=data_extensions,
-                cosmo_layout=False
-            )
-            results += finder.get_data_from_files()
-        df = pd.DataFrame(results)
 
-        return df
+        for prog_id in self.program_id:
+
+            new_files_source = os.path.join(FILES_SOURCE, prog_id)
+            results += find_files('*corrtag*', data_dir=new_files_source, cosmo_layout=self.cosmo_layout)
+
+        if self.model is not None:
+            currently_ingested = [item.FILENAME for item in self.model.select(self.model.FILENAME)]
+
+            for file in currently_ingested:
+                results.remove(file)
+
+        if not results:  # No new files
+            return pd.DataFrame()
+
+        file_data = get_file_data(
+            results,
+            header_keys,
+            header_extensions,
+            data_keywords=data_keys,
+            data_extensions=data_extensions
+        )
+
+        return file_data

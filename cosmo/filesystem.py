@@ -106,7 +106,13 @@ class FileData(dict):
 
     def get_table_data(self, hdu, data_keywords, data_extensions):
         """Get table data."""
-        self.update({key: hdu[ext].data[key] for key, ext in zip(data_keywords, data_extensions)})
+        table_data = {}
+        for key, ext in zip(data_keywords, data_extensions):
+            value = hdu[ext].data[key]
+            if key in table_data.keys():
+                key = f'{key}_{ext}'
+            table_data[key] = value
+        self.update(table_data)
 
 
 def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence, spt_keywords: Sequence = None,
