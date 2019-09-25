@@ -1,7 +1,4 @@
 #! /usr/bin/env python
-
-from __future__ import print_function, absolute_import, division
-
 """
 This module sets permissions and group ids appropriately.
 """

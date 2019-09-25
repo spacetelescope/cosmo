@@ -1,6 +1,4 @@
 #! /usr/bin/env python
-from __future__ import print_function, absolute_import, division
-
 """
 Re-request and process COS data to keep products up to date.
 """

@@ -1,7 +1,4 @@
 #! /usr/bin/env python
-
-from __future__ import print_function, absolute_import, division
-
 """
 This module is to store legacy functions that were meant to be implemented 
 in the retrieval process but are not currently used.

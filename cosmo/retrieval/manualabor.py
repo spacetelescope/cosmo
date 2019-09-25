@@ -1,7 +1,4 @@
 #! /usr/bin/env python
-
-from __future__ import print_function, absolute_import, division
-
 """
 This ia a program designed to calibrate COS rawfiles to create CSUMs. It 
 also sets permissions and group ids appropriately as well as zipping up any 

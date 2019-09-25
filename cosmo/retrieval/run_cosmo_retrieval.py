@@ -1,5 +1,4 @@
 #! /usr/bin/env python
-
 """
 This module commands all the other modules to run the retrieval process.
 There is an entry point set up for retrieve() in the setup for the package

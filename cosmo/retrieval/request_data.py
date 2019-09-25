@@ -1,7 +1,4 @@
 #! /usr/bin/env python
-
-from __future__ import print_function, absolute_import, division
-
 """
 Contains functions that facilitate the downloading of COS data
 via XML requests to MAST.

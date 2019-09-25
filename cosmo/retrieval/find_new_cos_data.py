@@ -1,6 +1,4 @@
 #! /usr/bin/env python
-from __future__ import print_function, absolute_import, division
-
 """
 This module compares what datasets are currently in COSMO versus all datasets 
 currently archived in MAST. All missing datasets will be requested and 
@@ -506,8 +504,8 @@ def get_all_mast_data():  # IN USE
     all_mast_sql_pub = all_cos_pub + all_l_pub
 
     # converting queries from SQL returned form into dictionaries
-    all_mast_priv = _sql_to_dict(all_mast_sql_priv)
-    all_mast_pub = _sql_to_dict(all_mast_sql_pub)
+    all_mast_priv, _ = _sql_to_dict(all_mast_sql_priv)
+    all_mast_pub, _ = _sql_to_dict(all_mast_sql_pub)
 
     return all_mast_priv, all_mast_pub
 
