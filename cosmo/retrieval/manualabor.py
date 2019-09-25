@@ -331,7 +331,6 @@ def handle_nullfiles():  # IN USE
             hdr0 = hdulist[0].header
 
         try:
-            # WHY
             _ = hdr0["instrume"]
 
             try:
@@ -348,7 +347,6 @@ def handle_nullfiles():  # IN USE
             except KeyError:
                 try:
                     # These files are reference files and should be removed.
-                    # WHY
                     _ = hdr0["useafter"]
                     os.remove(item)
 
@@ -444,7 +442,6 @@ def get_unprocessed_data(prl=True):  # IN USE
     to_calibrate: list
         List of files that need calibrating
     """
-    # this really does NOT need to be its own function
     to_calibrate = None
     # When calibrating zipped raw files, you need to calibrate both segments
     # separately since calcos can't find the original
