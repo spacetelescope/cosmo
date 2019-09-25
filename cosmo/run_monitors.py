@@ -8,7 +8,14 @@ from . import monitors
 from .sms import SMSFinder
 
 
-def collection():
+def collection() -> dict:
+    """Collect Monitor and DataModel classes. Monitors will only be collected if the monitors package structure is
+    maintained (i.e. ensuring that new monitors are included in monitors.__init__.py).
+
+    Monitors will only be collected if they adhere to the "*Monitor" naming conventions, and DataModels will only be
+    collected if they adhere to the "*DataModel" naming convention. Any class with "Base" in the name will be ignored as
+    it is assumed that these are not complete monitors and should not be executed by themselves.
+    """
     collection_set = {'monthly': [], 'daily': [], 'all': [], 'datamodels': []}
 
     for key, value in monitors.__dict__.items():
@@ -32,6 +39,7 @@ COLLECTION = collection()
 
 @pytest.fixture
 def monitor():
+    """Fixture-factory that creates a monitor instance from the input class."""
     def _monitor(monitor_class):
         active = monitor_class()
 
@@ -56,6 +64,7 @@ def monthly_monitor(request, monitor):
 
 @pytest.fixture(params=COLLECTION['daily'])
 def daily_monitor(request, monitor):
+    """Parametrized fixture for monitors that should be executed daily."""
     active = monitor(request.param)
 
     yield active
@@ -83,8 +92,7 @@ def datamodel(request):
     return active_model
 
 
-class RunMonitors:
-    """Class for organizing runners."""
+class RunIngestion:
 
     @pytest.mark.ingest
     @pytest.mark.monthly
@@ -99,6 +107,10 @@ class RunMonitors:
         """Execute DataModel new data discovery and ingestion. Included in the "ingest" group."""
         datamodel.ingest()
 
+
+class RunMonitors:
+    """Class for organizing runners."""
+
     @pytest.mark.monthly
     def run_monthly(self, monthly_monitor):
         """Execute monitors marked as monthly."""
@@ -106,9 +118,12 @@ class RunMonitors:
 
 
 def runner():
+    """Function for running the monitors with pytest. Intended as an entry-point for use via the commandline."""
     here = os.path.dirname(os.path.abspath(__file__))
-    default_args = f'{here}'
 
+    default_pytest_args = f'{here}'  # Any additional arguments that should be called with pytest.
+
+    # Parse commandline arguments
     parser = ArgumentParser()
 
     parser.add_argument('--monthly', '-mo', action='store_true')
@@ -116,14 +131,15 @@ def runner():
 
     args = parser.parse_args()
 
+    # Execute pytest
     if args.monthly:
-        pytest.main(shlex.split(default_args + ' -m monthly'))
+        pytest.main(shlex.split(default_pytest_args + ' -m monthly'))
 
         return
 
     if args.ingestion:
-        pytest.main(shlex.split(default_args + ' -m ingest'))
+        pytest.main(shlex.split(default_pytest_args + ' -m ingest'))
 
         return
 
-    pytest.main(shlex.split(default_args))
+    pytest.main(shlex.split(default_pytest_args))
