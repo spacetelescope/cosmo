@@ -1,3 +1,5 @@
+from typing import Any
+
 import numpy as np
 import plotly.graph_objs as go
 import pandas as pd
@@ -6,7 +8,7 @@ from itertools import repeat
 
 from monitorframe.monitor import BaseMonitor
 from .dark_data_models import DarkDataModel
-from ..monitor_helpers import fit_line, convert_day_of_year, explode_df, ExposureAbsoluteTime
+from ..monitor_helpers import fit_line, convert_day_of_year, explode_df, absolute_time
 
 
 def dark_filter(df_row, filter_pha, location):
@@ -30,7 +32,7 @@ def dark_filter(df_row, filter_pha, location):
 
     counts = np.histogram(filtered_row.TIME_events, bins=time_bins)[0]
 
-    _, mjd = ExposureAbsoluteTime.compute_from_arrays(expstart=df_row['EXPSTART'], time_array=time_bins)
+    _, mjd = absolute_time(expstart=df_row['EXPSTART'], time=time_bins)
     # _, mjd = compute_absolute_time(expstart=df_row['EXPSTART'], time_array=time_bins)
     date = mjd.to_datetime()[:-1]
     dark_rate = counts / npix / time_step
@@ -39,24 +41,28 @@ def dark_filter(df_row, filter_pha, location):
                         'file': df_row['ROOTNAME'], 'hover_text': df_row['hover_text']})
 
 
+def filter_data(self):
+    filtered_rows = []
+    for _, row in self.data.iterrows():
+        filtered_rows.append(dark_filter(row, True, self.location))
+    filtered_df = pd.concat(filtered_rows).reset_index(drop=True)
+
+    return explode_df(filtered_df, ['darks', 'date'])
+
+
 class FUVALeftDarkMonitor(BaseMonitor):
     data_model = DarkDataModel
     labels = ['ROOTNAME']
     output = '/Users/dashtamirova/Desktop/test_dark.html'
-    location = (1060, 1260, 296, 734)  #
+    location = (1060, 1260, 296, 734)
 
-    def filter_data(self):
-        filtered_rows = []
-        for _, row in self.data.iterrows():
-            filtered_rows.append(dark_filter(row, True, self.location))
-        filtered_df = pd.concat(filtered_rows).reset_index(drop=True)
+    def get_data(self) -> Any:
+        pass
 
-        return explode_df(filtered_df, ['darks', 'date'])
-
-    def define_plot(self):
+    def plot(self):
         self.plottype = 'scatter'
-        self.x = self.filtered_data.date
-        self.y = self.filtered_data.darks
+        self.x = filter_data(self).date
+        self.y = filter_data(self).darks
 
     def store_results(self):
         # TODO: Define results to store
