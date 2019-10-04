@@ -1,5 +1,6 @@
 import pytest
 import pandas as pd
+import numpy as np
 
 from cosmo.monitor_helpers import convert_day_of_year, fit_line, explode_df, absolute_time, create_visibility
 
@@ -85,9 +86,14 @@ ABSTIME_BAD_INPUT = [
 
 ABSTIME_GOOD_INPUT = [
         (pd.DataFrame({'EXPSTART': [58484.0, 58485.0, 58486.0], 'TIME': [1, 2, 3]}), None, None, None),
-        (pd.DataFrame({'EXPSTART': [58484.0, 58485.0, 58486.0], 'some_other_time': [1, 2, 3]}), None, None,
-         'some_other_time'),
-        (None, [1, 2, 3], [1, 2, 3], None)
+        (
+            pd.DataFrame({'EXPSTART': [58484.0, 58485.0, 58486.0], 'some_other_time': [1, 2, 3]}),
+            None,
+            None,
+            'some_other_time'
+        ),
+        (None, [1, 2, 3], [1, 2, 3], None),
+        (None, np.array([1, 2, 3]), np.array([1, 2, 3]), None)
     ]
 
 
