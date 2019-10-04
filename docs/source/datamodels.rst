@@ -7,7 +7,8 @@ Each monitor requires a DataModel to function and accesses data through the Data
 DataModels can also be used independently from the Monitor that they were intended for for exploring the data or
 ingesting new data outside of the monitoring workflow.
 
-For more detailed information on the DataModel, .. see the datmodel documentation.
+For more detailed information on the DataModel, see the
+`monitorframe documentation <https://spacetelescope.github.io/monitor-framework/creating_monitors.html#defining-a-new-data-model>`_.
 
 AcqDataModel
 ------------
