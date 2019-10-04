@@ -74,7 +74,7 @@ def create_osmshift_buttons(doc_link: str, button_labels: List[str], name: str, 
     ]
 
 
-class FuvOsmShiftMonitor(BaseMonitor):
+class BaseFuvOsmShiftMonitor(BaseMonitor):
     """Abstracted FUV OSM Shift monitor. This monitor class is not meant to be used directly, but rather inherited from
     by specific Shift1 and Shift2 monitors (which share the same plots, but differ in which shift value is plotted and
     how outliers are defined).
@@ -291,25 +291,29 @@ class FuvOsmShiftMonitor(BaseMonitor):
         outliers.to_csv(os.path.join(os.path.dirname(self.output), f'{self._filename}-outliers.csv'))
 
 
-class FuvOsmShift1Monitor(FuvOsmShiftMonitor):
+class FuvOsmShift1Monitor(BaseFuvOsmShiftMonitor):
     """FUV OSM Shift1 (SHIFT_DISP) monitor."""
     shift = 'SHIFT_DISP'  # shift1
+
+    run = 'monthly'
 
     def find_outliers(self):
         """Outliers for shift1 A-B are defined as any difference whose magnitude is greater than 10 pixels."""
         return self.results.seg_diff.abs() > 10
 
 
-class FuvOsmShift2Monitor(FuvOsmShiftMonitor):
+class FuvOsmShift2Monitor(BaseFuvOsmShiftMonitor):
     """FUV OSM Shift2 (SHIFT_XDISP) monitor."""
     shift = 'SHIFT_XDISP'  # shift 2
+
+    run = 'monthly'
 
     def find_outliers(self):
         """Outliers for shift2 A-B are defined as any difference whose magnitude is greater than 5 pixels."""
         return self.results.seg_diff.abs() > 5
 
 
-class NuvOsmShiftMonitor(BaseMonitor):
+class BaseNuvOsmShiftMonitor(BaseMonitor):
     """Abstracted NUV OSM Shift monitor. This monitor class is not meant to be used directly, but rather inherited from
     by specific Shift1 and Shift2 monitors (which share the same plots, but differ in which shift value is plotted and
     how outliers are defined)."""
@@ -518,17 +522,21 @@ class NuvOsmShiftMonitor(BaseMonitor):
         pass
 
 
-class NuvOsmShift1Monitor(NuvOsmShiftMonitor):
+class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
     """NUV OSM Shift1 (SHIFT_DISP) monitor."""
     shift = 'SHIFT_DISP'  # shift1
+
+    run = 'monthly'
 
     def find_outliers(self) -> dict:
         return {'B-C': self.results['B-C'].seg_diff.abs() >= 10, 'C-A': self.results['C-A'].seg_diff.abs() >= 10}
 
 
-class NuvOsmShift2Monitor(NuvOsmShiftMonitor):
+class NuvOsmShift2Monitor(BaseNuvOsmShiftMonitor):
     """NUV OSM Shift2 (SHIFT_XDISP) monitor."""
     shift = 'SHIFT_XDISP'  # shift2
+
+    run = 'monthly'
 
     def find_outliers(self) -> dict:
         return {'B-C': self.results['B-C'].seg_diff.abs() >= 5, 'C-A': self.results['C-A'].seg_diff.abs() >= 5}

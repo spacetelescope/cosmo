@@ -115,7 +115,11 @@ def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence
     @dask.delayed
     def _get_file_data(fitsfile: str, *args, **kwargs) -> Union[FileData, None]:
         """Get specified data from a fitsfile and optionally its corresponding spt file."""
-        return FileData(fitsfile, *args, **kwargs)
+        try:
+            return FileData(fitsfile, *args, **kwargs)
+
+        except ValueError:
+            return
 
     delayed_results = [
         _get_file_data(
