@@ -27,5 +27,10 @@ setup(
         'calcos',
         'crds',
         'monitorframe @ git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe'
-    ]
+    ],
+    entry_points={
+        'console_scripts':
+            ['run_monitors=cosmo.run_monitors:runner']
+    },
+    package_data={'cosmo': ['pytest.ini']}
 )
