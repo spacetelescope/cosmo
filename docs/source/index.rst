@@ -26,6 +26,7 @@ COSMO
    getting_started
    monitors
    datamodels
+   sms
    api
 
 
