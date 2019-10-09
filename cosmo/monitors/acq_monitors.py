@@ -40,6 +40,8 @@ class AcqImageMonitor(BaseMonitor):
     labels = ['ROOTNAME', 'PROPOSID', 'FGS']
     output = COS_MONITORING
 
+    run = 'monthly'
+
     def get_data(self):
         data = select_all_acq(self.model.model, 'ACQ/IMAGE', self.model.new_data)
 
@@ -112,6 +114,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
     subplots = True
     subplot_layout = (2, 1)
     output = COS_MONITORING
+
+    run = 'monthly'
 
     # Define break points for fitting lines; these correspond to important catalogue or FGS dates.
     # TODO Refactor this info into a better, more concise data structure
@@ -415,6 +419,8 @@ class SpecAcqBaseMonitor(BaseMonitor):
     # PEAKD vs PEAKXD need different annotations and shapes
     annotations = None
     shapes = None
+
+    run = 'monthly'
 
     def get_data(self):
         exptype = 'ACQ/PEAKD' if self.slew == 'ACQSLEWX' else 'ACQ/PEAKXD'
