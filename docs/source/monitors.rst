@@ -47,9 +47,10 @@ Outliers are defined as those Spectroscopic Acquisitions with slew magnitudes of
 Output
 ++++++
 Each Spectroscopic Acquisition Monitor produces similar output with some small differences:
- - For AcqPeakdMonitor, the Offset axis is created from the ACQSLEWX keyword, while AcqPeakxdMonitor uses the ACQSLEWY
-   key.
- - AcqPeakxdMonitor includes a vertical line that indicates with the ACQ/PEAKXD algorithm was changed.
+
+- For AcqPeakdMonitor, the Offset axis is created from the ACQSLEWX keyword, while AcqPeakxdMonitor uses the ACQSLEWY
+  key.
+- AcqPeakxdMonitor includes a vertical line that indicates with the ACQ/PEAKXD algorithm was changed.
 
 Apart from those differences, the outputs are the same, and so will be described together.
 
@@ -86,6 +87,7 @@ assess the observatories initial, or "blind" pointing, which can be affected by 
 The filters are as follows:
 
 To ensure that the data come from ACQ/IMAGE exposures that occur first in a sequence:
+
     - OBSTYPE = 'IMAGING'
     - LINENUM must end with a '1'; This is an indication that the ACQ/IMAGE occurred first in an observation sequence.
 
@@ -139,6 +141,12 @@ fit.
 
 The plots are also grouped by FGS via a drop down button on the right side of the figure.
 
+Hover text for each data point includes the following::
+
+    (x, y) or (Datetime, Offset)
+    ROOTNAME
+    PROPOSID
+
 .. note::
 
     This plot will come up empty at first.
@@ -160,8 +168,8 @@ a function of time.
 The OSM Shift monitors are broken up into FUV and NUV components and are also tracked both for the along-dispersion
 (SHIFT1) and cross-dispersion (SHIFT2) shifts for a total of four individual monitors.
 
-FUV
-+++
+FUV OSM Shift Monitors
+++++++++++++++++++++++
 Tracking
 ........
 For FUV, the OSM Shift monitors track the difference between the reported shift for the two FUV segments, FUVA and FUVB,
@@ -173,8 +181,9 @@ Outliers for the SHIFT1 and SHIFT2 Monitors are those exposures with a segment d
 Output
 ......
 FUV output for both SHIFT1 and SHIFT2 monitors consist of two subplots:
- - The shift measurement plotted as a function of time
- - The segment difference plotted as a function of time
+
+- The shift measurement plotted as a function of time
+- The segment difference plotted as a function of time
 
 .. note::
 
@@ -186,11 +195,36 @@ Each grating/cenwave combination is plotted as a different color, and each FPPOS
 Exposures that occurred at LP3 after the move to LP4 are slightly enlarged.
 Outliers are indicated with red.
 
-Additionally, there are button options to switch between viewing the shift vs time for all FPPOS and individual FPPOS.
+There are button options to switch between viewing the shift vs time for all FPPOS and individual FPPOS.
 Vertical lines are included to denote the beginning of each new Lifetime Position.
 
-NUV
-+++
+Hover text for each data point includes the following::
+
+    # For the Shift vs Time subplot
+    (x, y) or (Datetime, Shift)
+    ROOTNAME
+    LIFE_ADJ
+    FPPOS
+    PROPOSID
+    SEGMENT
+    CENWAVE
+
+    # For the FUVA - FUVB vs Time subplot
+    (x, y) or (Datetime, A - B)
+    ROOTNAME
+    LIFE_ADJ
+    FPPOS
+    PROPOSID
+    SEGMENT
+    CENWAVE
+
+.. note::
+
+    This figure will be empty at first.
+    A FPPOS option must be selected before the plots will be displayed.
+
+NUV OSM Shift Monitors
+++++++++++++++++++++++
 
 .. note::
 
@@ -206,44 +240,63 @@ and SHIFT2 for both OSM1 and OSM2 (since NUV settings can require the movement o
 
 Tracking
 ++++++++
-FUV
-...
 ``FUVOSMDriftMonitor`` tracks statistics for the SHIFT1 and SHIFT2 drifts for each Lifetime Position.
 
 Statistics include:
- - mean
- - min
- - max
- - 25:sup:`th` and 75:sup:`th` percentiles
- - standard deviation.
 
-NUV
-...
-The same statistics are recorded for ``NUVOSMDriftMonitor``, however, they're recorded for each stripe.
+- mean
+- min
+- max
+- 25 :sup:`th` and 75 :sup:`th` percentiles
+- standard deviation.
+
+The same statistics are recorded for ``NUVOSMDriftMonitor``, however, they're recorded for each NUV Stripe.
 
 Output
 ++++++
 Both OSM Drift Monitors produce similar output, but with different groupings and button options.
 
-FUV
-...
+FUV OSM Drift Output
+....................
 The output figure for FUVOSMDriftMonitor contains two subplots for SHIFT1 Drift and SHIFT2 Drift both vs Time since last
 OSM1 move.
 The subplots are grouped by grating, each of which can be selected/deselected via the legend and are colored by
 observation start time.
-Additionally, the plots are grouped by Lifetime Position via the drop-down menu on the left side of the figure.
 
-NUV
-...
+The plots are grouped by Lifetime Position via the drop-down menu on the left side of the figure.
+
+Hover text for each data point includes the following::
+
+    (x, y) or (Datetime, Driftrate)
+    ROOTNAME
+    LIFE_ADJ
+    FPPOS
+    PROPOSID
+    OPT_ELEM
+    SEGMENT
+
+NUV OSM Drift Output
+....................
 The figure for NUVOSMDriftMonoitor contains four subplots for the following:
- - SHIFT1 Drift vs Time since last OSM1 move
- - SHIFT2 Drift vs Time since last OSM1 move
- - SHFIT1 Drift vs Time since last OSM2 move
- - SHIFT2 Drift vs Time since last OSM2 move
+
+- SHIFT1 Drift vs Time since last OSM1 move
+- SHIFT2 Drift vs Time since last OSM1 move
+- SHFIT1 Drift vs Time since last OSM2 move
+- SHIFT2 Drift vs Time since last OSM2 move
 
 The suplots are grouped by grating, each of which can be selected/deselected via the legend and are colored by
 observation start time.
-The plots are also grouped by NUV Stripe via the drop-down menu on the left side of the figure.
+
+The plots are grouped by NUV Stripe via the drop-down menu on the left side of the figure.
+
+Hover text for each data point includes the following::
+
+    (x, y) (Datetime, Driftrate)
+    ROOTNAME
+    LIFE_ADJ
+    FPPOS
+    PROPOSID
+    OPT_ELEM
 
 Dark Rate Monitors
 ------------------

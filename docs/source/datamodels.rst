@@ -17,9 +17,9 @@ The ``AcqDataModel`` is used with the Target Acquisition monitors.
 AcqDataModel includes the following data:
 
 - ACQSLEWX: Slew value in the X direction.
-    Default of 0 for Acquisition types that don't record this keyword.
+  Default of 0 for Acquisition types that don't record this keyword.
 - ACQSLEWY: Slew value in the Y direction.
-    Default of 0 for Acquisition types that don't record this keyword.
+  Default of 0 for Acquisition types that don't record this keyword.
 - EXPSTART: Time at the start of the exposure (mjd).
 - ROOTNAME: Exposure rootname.
 - PROPOSID: Proposal ID.
@@ -36,10 +36,10 @@ AcqDataModel includes the following data:
 - CENWAVE: Cenwave of the observation.
 - DETECTOR: NUV or FUV.
 - EXPTYPE: Type of Acquisition.
-    ACQ/IMAGE, ACQ/PEAKD, ACQ/PEAKXD, or ACQ/SEARCH
+  ACQ/IMAGE, ACQ/PEAKD, ACQ/PEAKXD, or ACQ/SEARCH
 - DGESTAR: Dominant guide star used for the exposure.
 - FGS: Fine guidance sensor used during the exposure.
-    F1, F2, or F3
+  F1, F2, or F3
 
 These data are gathered from *rawacq* and *spt* files.
 
@@ -59,11 +59,11 @@ OSMDataModel includes the following data:
 - PROPOSID: Proposal ID.
 - OBSET_ID: Observation set ID.
 - TIME: The TIME column of a given exposure (s).
-    Time of shift measurement (relative to the start of the exposure).
+  Time of shift measurement (relative to the start of the exposure).
 - SHIFT_DISP: The SHIFT_DISP column of a given exposure (pix).
-    Shift values in the dispersion direction.
+  Shift values in the dispersion direction.
 - SHIFT_XDISP: The SHIFT_XDISP column of a given exposure (pix).
-    Shift values in the cross-dispersion direction.
+  Shift values in the cross-dispersion direction.
 - SEGMENT: The SEGMENT column of a given exposure.
 
 These data are gathered from *lampflash* files.
