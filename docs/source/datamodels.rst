@@ -38,7 +38,7 @@ AcqDataModel includes the following data:
 - EXPTYPE: Type of Acquisition.
     ACQ/IMAGE, ACQ/PEAKD, ACQ/PEAKXD, or ACQ/SEARCH
 - DGESTAR: Dominant guide star used for the exposure.
-- FGS: Fine guidance system used during the exposure.
+- FGS: Fine guidance sensor used during the exposure.
     F1, F2, or F3
 
 These data are gathered from *rawacq* and *spt* files.

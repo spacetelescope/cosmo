@@ -106,7 +106,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
     """V2V3 Offset Monitor."""
     name = 'V2V3 Offset Monitor'
     data_model = AcqDataModel
-    docs = "https://spacetelescope.github.io/cosmo/monitors.html#fgs-monitoring"
+    docs = "https://spacetelescope.github.io/cosmo/monitors.html#fgs-monitoring-v2v3-offset-monitor"
     labels = ['ROOTNAME', 'PROPOSID']
 
     subplots = True

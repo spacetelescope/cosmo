@@ -1,10 +1,5 @@
 API
 ===
-..  3. API for filesystem.py
-    4. API for monitor_helpers.py
-    5. API for the sms subpackage
-    6. API for retrieval
-
 Monitors and their DataModels
 -----------------------------
 Here, we give a brief description of the monitor and DataModel API.
