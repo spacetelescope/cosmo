@@ -17,20 +17,12 @@ setup(
         'numpy>=1.11.1',
         'astropy>=1.0.1',
         'plotly>=4.0.0',
-        'scipy',
-        'pyfastcopy',
         'dask',
         'pandas',
         'pytest',
         'pyyaml',
         'peewee',
-        'calcos',
-        'crds',
         'monitorframe @ git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe'
     ],
-    entry_points={
-        'console_scripts':
-            ['run_monitors=cosmo.run_monitors:runner']
-    },
     package_data={'cosmo': ['pytest.ini']}
 )
