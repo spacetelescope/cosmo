@@ -77,7 +77,7 @@ The hover text for each data point includes the following information::
 
 FGS Monitoring: V2V3 Offset Monitor
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-The ``AcqImageV2V3Monitor`` is used to monitor the performance of the FGS and determined if/when a realignment may be
+The ``AcqImageV2V3Monitor`` is used to monitor the performance of the FGS and determine if/when a realignment may be
 necessary.
 
 In order to keep track of the systematic trends that would be produced by the FGS, the ACQ/IMAGE data are filtered to
