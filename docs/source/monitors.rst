@@ -54,7 +54,7 @@ Each Spectroscopic Acquisition Monitor produces similar output with some small d
 
 Apart from those differences, the outputs are the same, and so will be described together.
 
-The figure produced for the Spectroscopic Acquisition Monitors plots Offset vs Datetime as a scatter plot.
+The figures produced for the Spectroscopic Acquisition Monitors plots Offset vs Datetime as a scatter plot.
 The Offset axis is the negative SLEW, while the Datetime axis is EXPSTART, or start time of the exposures converted from
 ``mjd`` to a date and time.
 Outliers are denoted as slightly enlarged, red X's, while FUV and NUV settings are denoted by circles and x's
