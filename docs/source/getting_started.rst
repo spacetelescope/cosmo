@@ -25,10 +25,6 @@ Then install using pip::
 
 Settings via a Configuration File
 ----------------------------------
-.. note::
-
-    Configuration settings for executing retrieval from MAST are not included here.
-
 To manage configurations, COSMO uses a ``yaml`` configuration file.
 Create a yaml configuration file with the following format:
 
