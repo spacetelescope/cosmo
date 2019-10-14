@@ -139,7 +139,7 @@ The legend includes information about the line-fit of the Offset vs Time scatter
 In particular, it includes the slope in arcseconds per year and the offset at the time of of the first data point in the
 fit.
 
-The plots are also grouped by FGS via a drop down button on the right side of the figure.
+The plots are also grouped by FGS via a drop-down button on the left side of the figure.
 
 Hover text for each data point includes the following::
 
