@@ -17,7 +17,7 @@ These monitors build off of a previous COS Branch monitoring program, an overvie
 
 Target Acquisition Monitors
 ---------------------------
-The goal of the Target Acquisition monitors is to assist in cases of failed acquisitions as well has keep track of
+The goal of the Target Acquisition monitors is to assist in cases of failed acquisitions as well as keep track of
 performance order to identify any systematic trends or issues with COS target acquisitions.
 
 ACQIMAGE Monitor
