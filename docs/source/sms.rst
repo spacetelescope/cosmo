@@ -80,7 +80,7 @@ information is stored.
 
 Ingestion rules are as follows:
  - If multiple versions of the same SMS is available, the most recent version is used (largest alpha-numeric Version ID).
- - If a new version of a SMS is found with a larger Version ID, that new report will supersede the current entry for
+ - If a new version of an SMS is found with a larger Version ID, that new report will supersede the current entry for
    that particular SMS.
  - If data (identified by the exposure key) from one SMS is also found in another SMS, the data will be ingested from
    the SMS report with the larger SMS ID (and therefore more recent), and will replace any existing matching records.
