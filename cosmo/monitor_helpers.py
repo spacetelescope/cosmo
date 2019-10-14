@@ -48,12 +48,12 @@ def absolute_time(df: pd.DataFrame = None, expstart: Union[Sequence, pd.Series] 
         raise TypeError('Computing and absolute time requires either a dataframe or set of arrays')
 
     # Check that expstart and time_array are used together
-    if bool(expstart or time) and not (expstart and time):
+    if bool(expstart is not None or time is not None) and not (expstart is not None and time is not None):
         raise TypeError('expstart and time must be used together.')
 
     # Ingest given dataframe if one is given and check that it's not used with arrays at the same time
     if df is not None:
-        if bool(expstart or time):
+        if bool(expstart is not None or time is not None):
             raise ValueError('Cannot use a dataframe and arrays as input at the same time. Use one or the other.')
 
         expstart = df.EXPSTART
@@ -78,8 +78,16 @@ def create_visibility(trace_lengths: List[int], visible_list: List[bool]) -> Lis
     return visibility
 
 
-def v2v3(slew_x, slew_y):
+def v2v3(slew_x: Union[np.ndarray, pd.Series, list], slew_y: Union[np.ndarray, pd.Series, list]
+         ) -> Tuple[Union[np.ndarray, pd.Series], Union[np.ndarray, pd.Series]]:
     """Detector coordinates to V2/V3 coordinates."""
+    # If input are lists, convert to np arrays so that the operations are completed as expected
+    if isinstance(slew_x, list):
+        slew_x = np.array(slew_x)
+
+    if isinstance(slew_y, list):
+        slew_y = np.array(slew_y)
+
     rotation_angle = np.radians(45.0)  # rotation angle in degrees converted to radians
     x_conversion = slew_x * np.cos(rotation_angle)
     y_conversion = slew_y * np.sin(rotation_angle)
