@@ -67,7 +67,7 @@ the left side of the figure.
 
 The hover text for each data point includes the following information::
 
-    (x, y) or (datetime, offset)
+    (Datetime, Offset)
     ROOTNAME
     PROPOSID
     LIFE_ADJ
