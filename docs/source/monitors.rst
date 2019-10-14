@@ -63,7 +63,7 @@ A green band spans +/- 1 arcsecond to help guide the eye and further separate ou
 
 The scatter plot is grouped in two different ways: Lifetime Position (LP) and FGS.
 Individual LPs can be selected or deselected via the legend while FGS groups are controlled via the drop-down button on
-the right side of the figure.
+the left side of the figure.
 
 The hover text for each data point includes the following information::
 
