@@ -78,8 +78,16 @@ def create_visibility(trace_lengths: List[int], visible_list: List[bool]) -> Lis
     return visibility
 
 
-def v2v3(slew_x, slew_y):
+def v2v3(slew_x: Union[np.ndarray, pd.Series, list], slew_y: Union[np.ndarray, pd.Series, list]
+         ) -> Tuple[Union[np.ndarray, pd.Series], Union[np.ndarray, pd.Series]]:
     """Detector coordinates to V2/V3 coordinates."""
+    # If input are lists, convert to np arrays so that the operations are completed as expected
+    if isinstance(slew_x, list):
+        slew_x = np.array(slew_x)
+
+    if isinstance(slew_y, list):
+        slew_y = np.array(slew_y)
+
     rotation_angle = np.radians(45.0)  # rotation angle in degrees converted to radians
     x_conversion = slew_x * np.cos(rotation_angle)
     y_conversion = slew_y * np.sin(rotation_angle)
