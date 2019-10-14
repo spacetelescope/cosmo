@@ -50,7 +50,7 @@ Each Spectroscopic Acquisition Monitor produces similar output with some small d
 
 - For AcqPeakdMonitor, the Offset axis is created from the ACQSLEWX keyword, while AcqPeakxdMonitor uses the ACQSLEWY
   key.
-- AcqPeakxdMonitor includes a vertical line that indicates with the ACQ/PEAKXD algorithm was changed.
+- AcqPeakxdMonitor includes a vertical line that indicates when the ACQ/PEAKXD algorithm was changed.
 
 Apart from those differences, the outputs are the same, and so will be described together.
 
