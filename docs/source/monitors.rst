@@ -143,7 +143,7 @@ The plots are also grouped by FGS via a drop-down button on the left side of the
 
 Hover text for each data point includes the following::
 
-    (x, y) or (Datetime, Offset)
+    (Datetime, Offset)
     ROOTNAME
     PROPOSID
 
