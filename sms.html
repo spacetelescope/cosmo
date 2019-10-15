@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>&lt;no title&gt; &mdash; COSMO 0.0.1 documentation</title>
+  <title>SMS Data Ingestion &mdash; COSMO 0.0.1 documentation</title>
   
 
   
@@ -27,7 +27,9 @@
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" /> 
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API" href="api.html" />
+    <link rel="prev" title="DataModels" href="datamodels.html" /> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -80,9 +82,17 @@
               
             
             
-              <ul>
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="monitors.html">COS Monitors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datamodels.html">DataModels</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">SMS Data Ingestion</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#sms-file-format-and-naming-conventions">SMS File Format and Naming Conventions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sms-database">SMS Database</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sms-ingestion-rules">SMS Ingestion Rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#finding-and-ingesting-sms-report-files">Finding and Ingesting SMS Report Files</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
 </ul>
 
@@ -129,7 +139,7 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>&lt;no title&gt;</li>
+      <li>SMS Data Ingestion</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -148,12 +158,136 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  
+  <div class="section" id="sms-data-ingestion">
+<h1>SMS Data Ingestion<a class="headerlink" href="#sms-data-ingestion" title="Permalink to this headline">¶</a></h1>
+<p>Some of the monitors in COSMO rely on data that are found in Science Mission Schedule (SMS) reports.
+These reports are produced outside of the COS Branch and supplied via <em>txt</em> files.</p>
+<p>A variety of data on exposures is provided in these report files, and in some cases can actually be used to verify
+information in the regular data products themselves.</p>
+<div class="section" id="sms-file-format-and-naming-conventions">
+<h2>SMS File Format and Naming Conventions<a class="headerlink" href="#sms-file-format-and-naming-conventions" title="Permalink to this headline">¶</a></h2>
+<p>The Report files use a human readable table format, which requires special processing to read since it’s not a “typical”
+table format (such as <em>csv</em>).</p>
+<dl class="docutils">
+<dt>The naming convention for these files are comprised of two different ID codes:</dt>
+<dd><ol class="first last arabic simple">
+<li>A “SMS ID” which uniquely identifies a particular SMS report</li>
+<li>A “Version ID” which identifies the version of a particular SMS</li>
+</ol>
+</dd>
+</dl>
+<p>The SMS ID is the start data of the SMS in the form YYDDD, and is the first six digits in the report filename.
+The Version ID is typically an incrementing group of two alpha-numeric characters (with some rare exceptions such as for
+when an SMS report is re-created, at which point an “r” will be added to the end of the normal Version ID) that occur
+after the SMS ID in the filename.
+For example, SMS 091403 version “b4” is a more recent version than “a1.”</p>
+<p>SMS reports can have multiple versions available.
+Reports are generated at a particular cadence, and can contain “working” versions of an observation schedule that can
+change across versions.
+The “largest” version alpha-numerically corresponds to the most up-to-date version of the SMS.
+This is the version that should be used for comparisons with COS data products.</p>
+</div>
+<div class="section" id="sms-database">
+<h2>SMS Database<a class="headerlink" href="#sms-database" title="Permalink to this headline">¶</a></h2>
+<p>The SMS Database is comprised of two tables, <code class="docutils literal notranslate"><span class="pre">SMSFileStats</span></code> and <code class="docutils literal notranslate"><span class="pre">SMSTable</span></code>.</p>
+<p>The SMSFileStats table records information about the report files themselves including the SMS ID, Version ID, date of
+ingestion and a “FILEID,” which is the combination of the SMS ID and Version ID and is used as a reference in SMSTable.</p>
+<p>SMSTable contains the data of the SMS reports.
+Each record is identified uniquely based on an exposure key that is generated out of a handful of columns from the
+report itself that identifies an exposure (the ROOTNAME cannot be used as this may actually change across SMS versions).
+These records are linked to a particular SMS report in the SMSFileStats table.</p>
+<p>SMSFileStats and SMSTable are both <code class="docutils literal notranslate"><span class="pre">peewee.Model</span></code> objects that can be used to query SMS data from the database.</p>
+<p>For example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">cosmo.sms</span> <span class="kn">import</span> <span class="n">SMSFileStats</span><span class="p">,</span> <span class="n">SMSTable</span>
+
+<span class="c1"># select all sms records</span>
+<span class="n">query</span> <span class="o">=</span> <span class="n">SMSFileStats</span><span class="o">.</span><span class="n">select</span><span class="p">()</span>  <span class="c1"># Returns a query object</span>
+
+ <span class="c1"># Put the data in a pandas DataFrame</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">query</span><span class="o">.</span><span class="n">dicts</span><span class="p">()))</span>
+
+<span class="c1"># Show data records from a single SMS report using the SMSID</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">SMSFileStats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">SMSFileStats</span><span class="o">.</span><span class="n">SMSID</span> <span class="o">==</span> <span class="s1">&#39;123456&#39;</span><span class="p">)</span>
+
+<span class="c1"># Or</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">SMSFileStats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;123456&#39;</span><span class="p">)</span>  <span class="c1"># The SMSID is the primary key for SMSFileStats, so this syntax also works</span>
+
+<span class="c1"># Or</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">SMSFileStats</span><span class="p">[</span><span class="s1">&#39;123456&#39;</span><span class="p">]</span>
+
+<span class="n">report</span><span class="o">.</span><span class="n">exposures</span>  <span class="c1"># returns a peewee.Query object</span>
+
+<span class="nb">list</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">exposures</span><span class="o">.</span><span class="n">dicts</span><span class="p">())</span>  <span class="c1"># returns a list of dictionaries of the table data</span>
+
+<span class="c1"># Query the SMS Data</span>
+<span class="n">all_data</span> <span class="o">=</span> <span class="n">SMSTable</span><span class="o">.</span><span class="n">select</span><span class="p">()</span>
+
+<span class="c1"># Query and filter SMS Data</span>
+<span class="n">fuv_data</span> <span class="o">=</span> <span class="n">SMSTable</span><span class="o">.</span><span class="n">select</span><span class="p">()</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">SMSTable</span><span class="o">.</span><span class="n">DETECTOR</span> <span class="o">==</span> <span class="s1">&#39;FUV&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="sms-ingestion-rules">
+<h2>SMS Ingestion Rules<a class="headerlink" href="#sms-ingestion-rules" title="Permalink to this headline">¶</a></h2>
+<p>SMS reports are ingested into the local SMS database, <code class="docutils literal notranslate"><span class="pre">sms.db</span></code> using a set of rules to ensure that the correct
+information is stored.</p>
+<dl class="docutils">
+<dt>Ingestion rules are as follows:</dt>
+<dd><ul class="first last simple">
+<li>If multiple versions of the same SMS are available, the most recent version is used (largest alpha-numeric Version ID).</li>
+<li>If a new version of an SMS is found with a larger Version ID, that new report will supersede the current entry for
+that particular SMS.</li>
+<li>If data (identified by the exposure key) from one SMS is also found in another SMS, the data will be ingested from
+the SMS report with the larger SMS ID (and therefore more recent), and will replace any existing matching records.</li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>These rules ensure that the data in SMSTable is accurate, but can also result in “stale” reports in SMSFileStats if
+data occurs in a more recent SMS report.</p>
+<p class="last">It’s also possible to have SMSTable records that don’t actually correspond to any COS dataset.
+This is due to the fact that the SMS reports reflect the observation schedule, which can change a number of times
+right up to the planned observation date.
+As this happens, ROOTNAMEs and other exposure information is updated accordingly, and since the ROOTNAME is based on
+an incrementing naming system, exposures can be assigned several ROOTNAMEs until the “final” schedule is established.
+Additionally, if an exposure does not execute (for example, when COS enters safe mode), those exposures will still
+appear in the SMS.</p>
+</div>
+</div>
+<div class="section" id="finding-and-ingesting-sms-report-files">
+<h2>Finding and Ingesting SMS Report Files<a class="headerlink" href="#finding-and-ingesting-sms-report-files" title="Permalink to this headline">¶</a></h2>
+<p>Reading and ingesting the data of the SMS Report files is done by the <code class="docutils literal notranslate"><span class="pre">SMSFile</span></code> class.
+SMSFile reads and ingests data from the <em>txt</em> files using a series of regular expressions (due to the irregular, human-
+readable format) and creates a <code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code> to contain the data.</p>
+<p>SMSFile can also ingest the data into the SMS database with the <code class="docutils literal notranslate"><span class="pre">ingest_smsfile</span></code> method.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If the file already exists in the database, the file will <em>not</em> be ingested.
+Additionally, the file will be ingested according to the rules described above, and will be ingested (or not)
+accordingly.</p>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">SMSFinder</span></code> class can be used for locating the most recent versions of any SMS report found in a given directory.
+SMSFinder also classifies the reports that it finds as “new” (not currently in the database) or “old” (currently in the
+database), and can ingest all “new” reports into the database.</p>
+</div>
+</div>
+
 
            </div>
            
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="api.html" class="btn btn-neutral float-right" title="API" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="datamodels.html" class="btn btn-neutral" title="DataModels" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>

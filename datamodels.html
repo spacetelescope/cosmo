@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>&lt;no title&gt; &mdash; COSMO 0.0.1 documentation</title>
+  <title>DataModels &mdash; COSMO 0.0.1 documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="API" href="api.html" />
+    <link rel="next" title="SMS Data Ingestion" href="sms.html" />
     <link rel="prev" title="COS Monitors" href="monitors.html" /> 
 
   
@@ -82,9 +82,15 @@
               
             
             
-              <ul>
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="monitors.html">COS Monitors</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">DataModels</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#acqdatamodel">AcqDataModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#osmdatamodel">OSMDataModel</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sms.html">SMS Data Ingestion</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
 </ul>
 
@@ -131,7 +137,7 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>&lt;no title&gt;</li>
+      <li>DataModels</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -150,7 +156,73 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  
+  <div class="section" id="datamodels">
+<h1>DataModels<a class="headerlink" href="#datamodels" title="Permalink to this headline">¶</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">monitorframe</span></code> framework uses <code class="docutils literal notranslate"><span class="pre">DataModel</span></code> classes (subclasses of the <code class="docutils literal notranslate"><span class="pre">BaseDataModel</span></code>) to find new data and
+interact with the monitor data database.
+Each monitor requires a DataModel to function and accesses data through the DataModel object.</p>
+<p>DataModels can also be used independently from the Monitor that they were intended for for exploring the data or
+ingesting new data outside of the monitoring workflow.</p>
+<p>For more detailed information on the DataModel, see the
+<a class="reference external" href="https://spacetelescope.github.io/monitor-framework/creating_monitors.html#defining-a-new-data-model">monitorframe documentation</a>.</p>
+<div class="section" id="acqdatamodel">
+<h2>AcqDataModel<a class="headerlink" href="#acqdatamodel" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">AcqDataModel</span></code> is used with the Target Acquisition monitors.</p>
+<p>AcqDataModel includes the following data:</p>
+<ul class="simple">
+<li>ACQSLEWX: Slew value in the X direction.
+Default of 0 for Acquisition types that don’t record this keyword.</li>
+<li>ACQSLEWY: Slew value in the Y direction.
+Default of 0 for Acquisition types that don’t record this keyword.</li>
+<li>EXPSTART: Time at the start of the exposure (mjd).</li>
+<li>ROOTNAME: Exposure rootname.</li>
+<li>PROPOSID: Proposal ID.</li>
+<li>OBSTYPE: Imaging or Spectroscopic.</li>
+<li>NEVENTS: Number of events recorded during the exposure.</li>
+<li>SHUTTER: Open or Closed.</li>
+<li>LAMPEVNT: Number of events recorded from the internal lamp exposure.</li>
+<li>ACQSTAT: Success or Failure.</li>
+<li>EXTENDED: Yes or No.</li>
+<li>LINENUM: Line number where the exposure occurs on the observation schedule.</li>
+<li>APERTURE: Aperture used during the observation.</li>
+<li>OPT_ELEM: Grating or Mirror used during the observation.</li>
+<li>LIFE_ADJ: Lifetime Position.</li>
+<li>CENWAVE: Cenwave of the observation.</li>
+<li>DETECTOR: NUV or FUV.</li>
+<li>EXPTYPE: Type of Acquisition.
+ACQ/IMAGE, ACQ/PEAKD, ACQ/PEAKXD, or ACQ/SEARCH</li>
+<li>DGESTAR: Dominant guide star used for the exposure.</li>
+<li>FGS: Fine guidance sensor used during the exposure.
+F1, F2, or F3</li>
+</ul>
+<p>These data are gathered from <em>rawacq</em> and <em>spt</em> files.</p>
+</div>
+<div class="section" id="osmdatamodel">
+<h2>OSMDataModel<a class="headerlink" href="#osmdatamodel" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">OSMDataModel</span></code> is used with the OSM Monitors.</p>
+<p>OSMDataModel includes the following data:</p>
+<ul class="simple">
+<li>ROOTNAME: Exposure rootname.</li>
+<li>EXPSTART: Time at the start of the exposure (mjd).</li>
+<li>DETECTOR: NUV or FUV.</li>
+<li>LIFE_ADJ: Lifetime Position.</li>
+<li>OPT_ELEM: Grating or Mirror used during the observation.</li>
+<li>CENWAVE: Cenwave of the observation.</li>
+<li>FPPOS: FPPOS used for the observation.</li>
+<li>PROPOSID: Proposal ID.</li>
+<li>OBSET_ID: Observation set ID.</li>
+<li>TIME: The TIME column of a given exposure (s).
+Time of shift measurement (relative to the start of the exposure).</li>
+<li>SHIFT_DISP: The SHIFT_DISP column of a given exposure (pix).
+Shift values in the dispersion direction.</li>
+<li>SHIFT_XDISP: The SHIFT_XDISP column of a given exposure (pix).
+Shift values in the cross-dispersion direction.</li>
+<li>SEGMENT: The SEGMENT column of a given exposure.</li>
+</ul>
+<p>These data are gathered from <em>lampflash</em> files.</p>
+</div>
+</div>
+
 
            </div>
            
@@ -159,7 +231,7 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="api.html" class="btn btn-neutral float-right" title="API" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="sms.html" class="btn btn-neutral float-right" title="SMS Data Ingestion" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="monitors.html" class="btn btn-neutral" title="COS Monitors" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

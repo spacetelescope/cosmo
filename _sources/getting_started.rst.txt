@@ -1,6 +1,6 @@
 Getting Started
 ===============
-COSMO is intended to installed and it's monitors run either manually or via cronjob.
+COSMO is intended to be installed and its monitors run either manually or via cronjob.
 Use of COSMO outside of the scope of executing the monitors that are defined is not recommended, however, the data
 models and their API can be used to access the monitoring data for use outside the scope of this project if needed.
 
