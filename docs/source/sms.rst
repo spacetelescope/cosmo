@@ -79,7 +79,7 @@ SMS reports are ingested into the local SMS database, ``sms.db`` using a set of 
 information is stored.
 
 Ingestion rules are as follows:
- - If multiple versions of the same SMS is available, the most recent version is used (largest alpha-numeric Version ID).
+ - If multiple versions of the same SMS are available, the most recent version is used (largest alpha-numeric Version ID).
  - If a new version of an SMS is found with a larger Version ID, that new report will supersede the current entry for
    that particular SMS.
  - If data (identified by the exposure key) from one SMS is also found in another SMS, the data will be ingested from
