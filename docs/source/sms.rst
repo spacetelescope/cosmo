@@ -95,6 +95,8 @@ Ingestion rules are as follows:
     right up to the planned observation date.
     As this happens, ROOTNAMEs and other exposure information is updated accordingly, and since the ROOTNAME is based on
     an incrementing naming system, exposures can be assigned several ROOTNAMEs until the "final" schedule is established.
+    Additionally, if an exposure does not execute (for example, when COS enters safe mode), those exposures will still
+    appear in the SMS.
 
 Finding and Ingesting SMS Report Files
 --------------------------------------
