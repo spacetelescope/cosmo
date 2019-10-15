@@ -42,7 +42,8 @@ install:
     - hash -r
     - conda config --set always_yes yes --set changeps1 no
     - conda config --add channels http://ssb.stsci.edu/astroconda
-    - conda update -q conda  # Brute update base packages
+    - conda install -c anaconda setuptools  # Add setuptools install
+    - conda update -q -n base -c defaults conda # Update base packages
     - conda info -a # Check the environment in case there are any issues
 
     # Create and activate the test environment
