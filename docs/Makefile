@@ -70,8 +70,8 @@ gh-pages:
 	make html
 	mv -fv $(BUILDDIR)/html/* ../
 	rm -rf $(GH_PAGES_SOURCES) $(BUILDDIR)
-	mv -fv .nojekyll ../
-	rm -rf .nojekyll
+# 	mv -fv .nojekyll ../
+# 	rm -rf .nojekyll
 	git add -A
 	git commit --no-verify -m "Generated gh-pages for `git log master -1 --pretty=short --abbrev-commit`" && git push origin gh-pages ; git checkout master
 
