@@ -15,6 +15,23 @@ Currently, COSMO supports monitoring in three areas of COS operations:
 These monitors build off of a previous COS Branch monitoring program, an overview of which is given in
 `Technical Instrument Report COS 2014-04 <https://innerspace.stsci.edu/download/attachments/166755094/TIR2014_04.pdf?version=1&modificationDate=1557948271236&api=v2>`_.
 
+Monitor Cadence
+---------------
+The following monitors are executed at a *monthly* cadence:
+
+- ``AcqImageMonitor``
+- ``AcqPeakdMonitor``
+- ``AcqPeakxdMonitor``
+- ``AcqImageV2V3Monitor``
+- ``FuvOsmShift1Moniotr``
+- ``FuvOsmShift2Monitor``
+- ``NuvOsmShift1Monitor``
+- ``NuvOsmShift2Monitor``
+- ``FUVOSMDriftMonitor``
+- ``NUVOSMDriftMonitor``
+
+.. eventually there will be daily monitors
+
 Target Acquisition Monitors
 ---------------------------
 The goal of the Target Acquisition monitors is to assist in cases of failed acquisitions as well as keep track of
@@ -29,8 +46,6 @@ ACQIMAGE Monitor
 
 The ``AcqImage`` monitor is intended to be a more generalized monitor that keeps track of acquisition statuses and slew
 statistics.
-
-This monitor is run at a monthly cadence.
 
 Spectroscopic Acquisition Monitors: ACQPEAKD and ACQPEAKXD
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
