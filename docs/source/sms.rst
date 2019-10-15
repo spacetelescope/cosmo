@@ -15,7 +15,7 @@ The naming convention for these files are comprised of two different ID codes:
  1. A "SMS ID" which uniquely identifies a particular SMS report
  2. A "Version ID" which identifies the version of a particular SMS
 
-The SMS ID is based on the date that the report was created, and is the first six digits in the report filename.
+The SMS ID is the start data of the SMS in the form YYDDD, and is the first six digits in the report filename.
 The Version ID is typically an incrementing group of two alpha-numeric characters (with some rare exceptions such as for
 when an SMS report is re-created, at which point an "r" will be added to the end of the normal Version ID) that occur
 after the SMS ID in the filename.
@@ -79,7 +79,7 @@ SMS reports are ingested into the local SMS database, ``sms.db`` using a set of 
 information is stored.
 
 Ingestion rules are as follows:
- - If multiple versions of the same SMS is available, the most recent version is used (largest alpha-numeric Version ID).
+ - If multiple versions of the same SMS are available, the most recent version is used (largest alpha-numeric Version ID).
  - If a new version of an SMS is found with a larger Version ID, that new report will supersede the current entry for
    that particular SMS.
  - If data (identified by the exposure key) from one SMS is also found in another SMS, the data will be ingested from
