@@ -248,7 +248,7 @@ NUV OSM Shift Monitors
 OSM Drift Monitors
 ^^^^^^^^^^^^^^^^^^
 The OSM Drift Monitors keep track of the drift rate vs the time since the last OSM movement in order to detect changes
-in how the OSMs move.
+in how the OSMs drift during observations.
 
 The FUV monitor tracks the drift for SHIFT1 and SHIFT2 for OSM1 moves, while the NUV monitor tracks the drift for SHIFT1
 and SHIFT2 for both OSM1 and OSM2 (since NUV settings can require the movement of both mechanisms).
