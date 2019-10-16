@@ -126,8 +126,8 @@ def runner():
     # Parse commandline arguments
     parser = ArgumentParser()
 
-    parser.add_argument('--monthly', '-mo', action='store_true')
-    parser.add_argument('--ingest', '-in', action='store_true')
+    parser.add_argument('--monthly', '-mo', action='store_true', help='Execute Monitors marked as "monthly"')
+    parser.add_argument('--ingest', '-in', action='store_true', help='Execute data ingestion for DataModels and SMS')
 
     args = parser.parse_args()
 
