@@ -396,7 +396,7 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
             group = group.set_index(abstime.to_datetime())
             group = group.sort_index()
 
-            rolling_mean = group.rolling('365D').mean()
+            rolling_mean = group.rolling('180D').mean()
 
             self.figure.add_trace(
                 go.Scattergl(
@@ -529,7 +529,10 @@ class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
     run = 'monthly'
 
     def find_outliers(self) -> dict:
-        return {'B-C': self.results['B-C'].seg_diff.abs() >= 10, 'C-A': self.results['C-A'].seg_diff.abs() >= 10}
+        bc_results = self.results['B-C'].seg_diff
+        ca_results = self.results['C-A'].seg_diff
+
+        return {'B-C': bc_results.abs() >= 2 * bc_results.std(), 'C-A': ca_results.abs() >= 2 * ca_results.std()}
 
 
 class NuvOsmShift2Monitor(BaseNuvOsmShiftMonitor):
@@ -539,4 +542,7 @@ class NuvOsmShift2Monitor(BaseNuvOsmShiftMonitor):
     run = 'monthly'
 
     def find_outliers(self) -> dict:
-        return {'B-C': self.results['B-C'].seg_diff.abs() >= 5, 'C-A': self.results['C-A'].seg_diff.abs() >= 5}
+        bc_results = self.results['B-C'].seg_diff
+        ca_results = self.results['C-A'].seg_diff
+
+        return {'B-C': bc_results.abs() >= 2 * bc_results.std(), 'C-A': ca_results.abs() >= 2 * ca_results.std()}
