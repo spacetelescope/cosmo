@@ -79,7 +79,7 @@ class FileData(dict):
             self.get_spt_header_data(spt_file, spt_keywords, spt_extensions)
 
     @staticmethod
-    def _create_spt_filename(filename, spt_suffix) -> Union[str, None]:
+    def _create_spt_filename(filename: str, spt_suffix: str) -> Union[str, None]:
         """Create an spt filename based on the input filename."""
         path, name = os.path.split(filename)
         spt_name = '_'.join([name.split('_')[0], spt_suffix])
@@ -90,7 +90,8 @@ class FileData(dict):
 
         return
 
-    def get_header_data(self, hdu, header_keywords, header_extensions, header_defaults=None):
+    def get_header_data(self, hdu: fits.HDUList, header_keywords: Sequence,
+                        header_extensions: Sequence, header_defaults: dict = None):
         """Get header data."""
         for key, ext in zip(header_keywords, header_extensions):
             if header_defaults is not None and key in header_defaults:
@@ -99,12 +100,12 @@ class FileData(dict):
             else:
                 self.update({key: hdu[ext].header[key]})
 
-    def get_spt_header_data(self, spt_file, spt_keywords, spt_extensions):
+    def get_spt_header_data(self, spt_file: str, spt_keywords: Sequence, spt_extensions: Sequence):
         """Open the spt file and collect requested data."""
         with fits.open(spt_file) as spt:
             self.update({key: spt[ext].header[key] for key, ext in zip(spt_keywords, spt_extensions)})
 
-    def get_table_data(self, hdu, data_keywords, data_extensions):
+    def get_table_data(self, hdu: fits.HDUList, data_keywords: Sequence, data_extensions: Sequence):
         """Get table data."""
         self.update({key: hdu[ext].data[key] for key, ext in zip(data_keywords, data_extensions)})
 
@@ -118,7 +119,7 @@ def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence
         try:
             return FileData(fitsfile, *args, **kwargs)
 
-        except ValueError:
+        except (ValueError, OSError):
             return
 
     delayed_results = [

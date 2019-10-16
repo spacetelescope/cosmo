@@ -22,7 +22,6 @@ Then install using pip::
     cd cosmo
     pip install .
 
-
 Settings via a Configuration File
 ----------------------------------
 To manage configurations, COSMO uses a ``yaml`` configuration file.
@@ -98,4 +97,25 @@ If you're in the project directory, you can execute the tests with::
 For executing the tests with coverage (after ``coverage`` has been installed), use::
 
     coverage run -m pytest
+
+Executing Monitors
+------------------
+Monitors can be executed by using the monitoring classes directly:
+
+.. code-block:: python
+
+    from cosmo.monitors import AcqImageMonitor
+
+    monitor = AcqImageMonitor()
+
+    # Run it
+    monitor.monitor()
+
+Or, they can be executed from the command line::
+
+    (cosmoenv) mycomputer:~ user$ cosmo --monthly
+
+For more command line options::
+
+    (cosmoenv) mycomputer:~ user$ cosmo --help
 
