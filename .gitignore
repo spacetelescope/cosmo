@@ -68,3 +68,6 @@ target/
 
 # Config
 *config.yaml
+
+# Finder
+.DS_Store
