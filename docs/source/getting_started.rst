@@ -118,3 +118,4 @@ Or, they can be executed from the command line::
 For more command line options::
 
     (cosmoenv) mycomputer:~ user$ cosmo --help
+
