@@ -87,6 +87,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#installing">Installing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#settings-via-a-configuration-file">Settings via a Configuration File</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#running-tests">Running Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#executing-monitors">Executing Monitors</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="monitors.html">COS Monitors</a></li>
@@ -246,6 +247,26 @@ For developers, it’s a good idea to execute these tests whenever there are cha
 </div>
 <p>For executing the tests with coverage (after <code class="docutils literal notranslate"><span class="pre">coverage</span></code> has been installed), use:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">coverage</span> <span class="n">run</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="executing-monitors">
+<h2>Executing Monitors<a class="headerlink" href="#executing-monitors" title="Permalink to this headline">¶</a></h2>
+<p>Monitors can be executed by using the monitoring classes directly:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.monitors</span> <span class="kn">import</span> <span class="n">AcqImageMonitor</span>
+
+<span class="n">monitor</span> <span class="o">=</span> <span class="n">AcqImageMonitor</span><span class="p">()</span>
+
+<span class="c1"># Run it</span>
+<span class="n">monitor</span><span class="o">.</span><span class="n">monitor</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Or, they can be executed from the command line:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>(cosmoenv) mycomputer:~ user$ cosmo --monthly
+</pre></div>
+</div>
+<p>For more command line options:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>(cosmoenv) mycomputer:~ user$ cosmo --help
 </pre></div>
 </div>
 </div>

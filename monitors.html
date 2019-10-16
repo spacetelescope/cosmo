@@ -86,6 +86,7 @@
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">COS Monitors</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#monitor-cadence">Monitor Cadence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-monitor-runner">The Monitor Runner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#target-acquisition-monitors">Target Acquisition Monitors</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#acqimage-monitor">ACQIMAGE Monitor</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#spectroscopic-acquisition-monitors-acqpeakd-and-acqpeakxd">Spectroscopic Acquisition Monitors: ACQPEAKD and ACQPEAKXD</a><ul>
@@ -217,6 +218,36 @@ products and scientific capabilities to the astronomical community.</p>
 <li><code class="docutils literal notranslate"><span class="pre">FUVOSMDriftMonitor</span></code></li>
 <li><code class="docutils literal notranslate"><span class="pre">NUVOSMDriftMonitor</span></code></li>
 </ul>
+</div>
+<div class="section" id="the-monitor-runner">
+<h2>The Monitor Runner<a class="headerlink" href="#the-monitor-runner" title="Permalink to this headline">¶</a></h2>
+<p>In order to execute collections of Monitors, COSMO uses <code class="docutils literal notranslate"><span class="pre">pytest</span></code>.</p>
+<p>Collections are determined based on the <code class="docutils literal notranslate"><span class="pre">run</span></code> attribute of the Monitor classes, and should reflect the cadence that
+the monitor should be executed with.</p>
+<p>Supported cadences:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">monthly</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">daily</span></code></li>
+</ul>
+<p>By default, all Monitors are also included in an <code class="docutils literal notranslate"><span class="pre">all</span></code> collection, which is the default collection if no other options
+are provided.</p>
+<p>An <code class="docutils literal notranslate"><span class="pre">ingest</span></code>  collection is available for executed data ingestion into the Monitor Data database and the
+SMS database independently of executing the Monitors themselves.</p>
+<p>When developing COSMO, Monitors can be collected and run via <code class="docutils literal notranslate"><span class="pre">pytest</span></code> from the commandline in the typical pytest
+fashion (after cloning the repository into “cosmo”:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>(cosmoenv) mycomputer:cosmo user$ pytest cosmo/run_monitors.py
+</pre></div>
+</div>
+<p>This basic example will execute all monitors available and attempt to ingest new data into their respective databases.</p>
+<p>To execute a collection of monitors (again, from a local “cosmo” repository):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>(cosmoenv) mycomputer:cosmo user$ pytest cosmo/run_monitors.py -m monthly
+</pre></div>
+</div>
+<p>COSMO also provides a command line option for executing the monitors without calling <code class="docutils literal notranslate"><span class="pre">pytest</span></code> directly, and without
+the need to specify the location of the <code class="docutils literal notranslate"><span class="pre">run_monitors</span></code> module:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>(cosmoenv) mycomputer:~ user$ cosmo --monthly
+</pre></div>
+</div>
 </div>
 <div class="section" id="target-acquisition-monitors">
 <h2>Target Acquisition Monitors<a class="headerlink" href="#target-acquisition-monitors" title="Permalink to this headline">¶</a></h2>

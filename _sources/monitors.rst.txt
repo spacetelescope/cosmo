@@ -32,6 +32,40 @@ The following monitors are executed at a *monthly* cadence:
 
 .. eventually there will be daily monitors
 
+The Monitor Runner
+------------------
+In order to execute collections of Monitors, COSMO uses ``pytest``.
+
+Collections are determined based on the ``run`` attribute of the Monitor classes, and should reflect the cadence that
+the monitor should be executed with.
+
+Supported cadences:
+
+- ``monthly``
+- ``daily``
+
+By default, all Monitors are also included in an ``all`` collection, which is the default collection if no other options
+are provided.
+
+An ``ingest``  collection is available for executed data ingestion into the Monitor Data database and the
+SMS database independently of executing the Monitors themselves.
+
+When developing COSMO, Monitors can be collected and run via ``pytest`` from the commandline in the typical pytest
+fashion (after cloning the repository into "cosmo"::
+
+    (cosmoenv) mycomputer:cosmo user$ pytest cosmo/run_monitors.py
+
+This basic example will execute all monitors available and attempt to ingest new data into their respective databases.
+
+To execute a collection of monitors (again, from a local "cosmo" repository)::
+
+    (cosmoenv) mycomputer:cosmo user$ pytest cosmo/run_monitors.py -m monthly
+
+COSMO also provides a command line option for executing the monitors without calling ``pytest`` directly, and without
+the need to specify the location of the ``run_monitors`` module::
+
+    (cosmoenv) mycomputer:~ user$ cosmo --monthly
+
 Target Acquisition Monitors
 ---------------------------
 The goal of the Target Acquisition monitors is to assist in cases of failed acquisitions as well as keep track of
