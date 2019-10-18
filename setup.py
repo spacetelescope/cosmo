@@ -22,6 +22,7 @@ setup(
         'pytest',
         'pyyaml',
         'peewee',
+        'crds',
         'monitorframe @ git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe'
     ],
     package_data={'cosmo': ['pytest.ini']},
