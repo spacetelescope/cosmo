@@ -2,6 +2,7 @@ import pandas as pd
 
 from typing import List
 from monitorframe.datamodel import BaseDataModel
+from peewee import OperationalError
 
 from ..filesystem import find_files, get_file_data
 from ..sms import SMSTable
@@ -78,6 +79,12 @@ class OSMDataModel(BaseDataModel):
         data_keys = ('TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT')
         data_extensions = (1, 1, 1, 1)
 
+        reference_request = {
+            'reference': 'LAMPTAB',
+            'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],
+            'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
+        }
+
         files = find_files('*lampflash*', data_dir=self.files_source, cosmo_layout=self.cosmo_layout)
 
         if self.model is not None:
@@ -95,7 +102,8 @@ class OSMDataModel(BaseDataModel):
                 header_keys,
                 header_extensions,
                 data_keywords=data_keys,
-                data_extensions=data_extensions
+                data_extensions=data_extensions,
+                reference_request=reference_request
             )
         )
 
@@ -105,11 +113,15 @@ class OSMDataModel(BaseDataModel):
         ).reset_index(drop=True)
 
         # Add tsince data from SMSTable.
-        sms_data = pd.DataFrame(
-                SMSTable.select(SMSTable.ROOTNAME, SMSTable.TSINCEOSM1, SMSTable.TSINCEOSM2).where(
-                    # x << y -> x IN y (y must be a list)
-                    SMSTable.ROOTNAME + 'q' << data_results.ROOTNAME.to_list()).dicts()
-        )
+        try:
+            sms_data = pd.DataFrame(
+                    SMSTable.select(SMSTable.ROOTNAME, SMSTable.TSINCEOSM1, SMSTable.TSINCEOSM2).where(
+                        # x << y -> x IN y (y must be a list)
+                        SMSTable.ROOTNAME + 'q' << data_results.ROOTNAME.to_list()).dicts()
+            )
+
+        except OperationalError as e:
+            raise type(e)(str(e) + '\nSMS database is required.')
 
         # It's possible that there could be a lag in between when the SMS data is updated and when new lampflashes
         # are added.
