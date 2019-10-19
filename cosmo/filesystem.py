@@ -46,7 +46,7 @@ class FileData(dict):
     def __init__(self, filename: str, header_keywords: Sequence, header_extensions: Sequence,
                  spt_suffix: str = 'spt.fits.gz', spt_keywords: Sequence = None, spt_extensions: Sequence = None,
                  data_keywords: Sequence = None, data_extensions: Sequence = None,
-                 header_defaults: Dict[str, Any] = None, reference_request: dict = None):
+                 header_defaults: Dict[str, Any] = None, reference_request: Dict[str, Dict[str, list]] = None):
         """Initialize and create the possible corresponding spt file name."""
         super().__init__(self)
 
@@ -73,18 +73,15 @@ class FileData(dict):
                 raise ValueError('data_keywords and data_extensions must be the same length.')
 
         if reference_request:
-            condition = (
-                    'reference' in reference_request and 'columns' in reference_request and 'match' in reference_request
-            )
+            for reference in reference_request.keys():
+                if not ('match' in reference_request[reference] and 'columns' in reference_request[reference]):
+                    raise ValueError('reference_requests require "columns", and "match" keys.')
 
-            if not condition:
-                raise ValueError('reference_request requires "reference", "columns", and "match" keys.')
+                if not isinstance(reference_request[reference]['columns'], list):
+                    raise TypeError('"columns" value in reference_request must be a list')
 
-            if not isinstance(reference_request['columns'], list):
-                raise TypeError('"columns" value in reference_request must be a list')
-
-            if not isinstance(reference_request['match'], list):
-                raise TypeError('"match" value in reference_request must be a list')
+                if not isinstance(reference_request[reference]['match'], list):
+                    raise TypeError('"match" value in reference_request must be a list')
 
         with fits.open(filename) as hdu:
             self.get_header_data(hdu, header_keywords, header_extensions, header_defaults)
@@ -147,37 +144,43 @@ class FileData(dict):
         reference_path = cos_mapping.locate_file(hdu[0].header[reference_name].split('$')[-1])
         return Table.read(reference_path)
 
-    def get_reference_data(self, hdu: fits.HDUList, reference_request: dict):
-        ref_data = self._get_reference_table(hdu, reference_request['reference'])
-        match_values = self._get_match_values(hdu, reference_request['match'])
-
+    def _get_matching_values(self, match_values, reference_table, request):
         for key, value in match_values.items():
             try:
-                ref_data = ref_data[ref_data[key] == value]
+                reference_table = reference_table[reference_table[key] == value]
 
             except KeyError:
                 continue
 
-        if not len(ref_data):
+        if not len(reference_table):
             raise ValueError(
-                f'A matching row could not be determined with the given parameters: {reference_request["match"]}'
-                f'\nAvailable columns: {ref_data.keys()}'
+                f'A matching row could not be determined with the given parameters: {request["match"]}'
+                f'\nAvailable columns: {reference_table.keys()}'
             )
 
-        for column in reference_request['columns']:
+        for column in request['columns']:
             if column in self:
                 try:
-                    self[f'{column}_ref'] = ref_data[column].data
+                    self[f'{column}_ref'] = reference_table[column].data
 
                 except KeyError:
                     self[f'{column}_ref'] = np.array([])
 
             else:
                 try:
-                    self[column] = ref_data[column].data
+                    self[column] = reference_table[column].data
 
                 except KeyError:
                     self[column] = np.array([])
+
+    def get_reference_data(self, hdu: fits.HDUList, reference_request: Dict[str, Dict[str, list]]):
+        for reference in reference_request.keys():
+            request = reference_request[reference]
+
+            ref_data = self._get_reference_table(hdu, reference)
+            match_values = self._get_match_values(hdu, request['match'])
+
+            self._get_matching_values(match_values, ref_data, request)
 
 
 def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence, spt_keywords: Sequence = None,

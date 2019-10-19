@@ -87,9 +87,10 @@ def testfiledata(data_dir):
         data_keywords=('TIME', 'SEGMENT'),
         data_extensions=(1, 1),
         reference_request={
-            'reference': 'LAMPTAB',
-            'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],
-            'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
+            'LAMPTAB': {
+                'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],
+                'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
+            }
         }
     )
 
@@ -170,11 +171,35 @@ class TestFileData:
                 data_keywords=('TIME', 'SEGMENT'),
                 data_extensions=(1, 1),
                 reference_request={
-                    'reference': 'LAMPTAB',
-                    'match': ['SEGMENT'],  # SEGMENT is N/A for the test file; lamptab doesn't have a N/A entry
-                    'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
+                    'LAMPTAB': {
+                        'match': ['SEGMENT'],  # SEGMENT is N/A for the test file; lamptab doesn't have a N/A entry
+                        'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
+                    }
                 }
             )
+
+    def test_get_multiple_references(self, data_dir):
+        file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
+
+        FileData(
+            file,
+            ('ROOTNAME',),
+            (0,),
+            spt_keywords=('LQTDFINI',),
+            spt_extensions=(1,),
+            data_keywords=('TIME', 'SEGMENT'),
+            data_extensions=(1, 1),
+            reference_request={
+                'LAMPTAB': {
+                    'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],
+                    'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
+                },
+                'XTRACTAB': {
+                    'match': ['OPT_ELEM', 'CENWAVE', 'APERTURE'],
+                    'columns': ['SLOPE', 'HEIGHT', 'SEGMENT']
+                }
+            }
+        )
 
     def test_fails_with_bad_input(self, data_dir, params):
         file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
