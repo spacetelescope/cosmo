@@ -2,6 +2,7 @@ import plotly.graph_objs as go
 import datetime
 import pandas as pd
 import os
+import numpy as np
 
 from astropy.time import Time
 from itertools import repeat
@@ -328,10 +329,8 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
     shift = None  # SHIFT_DISP or SHIFT_XDISP
 
     def get_data(self):
-        """Filter on detector."""
-        data = get_osm_data(self.model, 'NUV')
-
-        return explode_df(data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+        # Shift1 and Shift2 require different steps
+        pass
 
     def track(self) -> dict:
         """Track the difference in shift between stripes. B-C and C-A."""
@@ -340,7 +339,7 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
             'C-A': compute_segment_diff(self.data, self.shift, 'NUVC', 'NUVA'),
         }
 
-    def _plot_per_grating(self, df: pd.DataFrame, shift: str):
+    def _plot_per_grating(self, df: pd.DataFrame):
         trace_number = 0  # Keep track of the number of traces created and added
 
         all_b_c_outliers = self.results['B-C'][self.outliers['B-C']]
@@ -401,7 +400,7 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
             self.figure.add_trace(
                 go.Scattergl(
                     x=group.index,
-                    y=group[shift],
+                    y=group[self.shift],
                     name=grating,
                     mode='markers',
                     text=group.hover_text,
@@ -423,7 +422,7 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
             self.figure.add_trace(
                 go.Scattergl(
                     x=rolling_mean.index,
-                    y=rolling_mean[shift],
+                    y=rolling_mean[self.shift],
                     name='Rolling Mean',
                     mode='lines',
                     visible=False,
@@ -465,7 +464,7 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
                     self.figure.add_trace(
                         go.Scattergl(
                             x=lamp_time.to_datetime(),
-                            y=group[shift],
+                            y=group[self.shift],
                             name=f'{grating} {label}',
                             mode='markers',
                             text=group.hover_text,
@@ -481,14 +480,14 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
 
     def plot(self):
         """Plot shift v time per grating/cenwave."""
-        all_stripes_traces = self._plot_per_grating(self.data, self.shift)
+        all_stripes_traces = self._plot_per_grating(self.data)
 
         # Plot traces per FPPOS for the other buttons
         stripe_groups = self.data.groupby('SEGMENT')
 
         stripe_trace_lengths = {}  # track the number of traces produced per stripe; this differs between stripe
         for stripe, group in stripe_groups:
-            n_stripe_traces = self._plot_per_grating(group, self.shift)
+            n_stripe_traces = self._plot_per_grating(group)
             stripe_trace_lengths[stripe] = n_stripe_traces
 
         # For each stripe, set the visibility to True for the appropriate number of traces in the appropriate position.
@@ -528,6 +527,24 @@ class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
 
     run = 'monthly'
 
+    def get_data(self):
+        data = get_osm_data(self.model, 'NUV')
+
+        # Expand the data frame's data columns
+        exploded = explode_df(data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+
+        # Apply the OSM pixel offset to the SHIFT_DISP values. If there's no FP_PIXEL_SHIFT, subtract 0 (Some older
+        # reference files don't have the FP_PIXEL_SHIFT column).
+        # Note: the SEGMENT_ref and FP_PIXEL_SHIFT arrays are in the same order, so the segment is used to find the
+        # offset to subtract.
+        exploded.SHIFT_DISP = exploded.apply(
+            lambda x: x.SHIFT_DISP - x.FP_PIXEL_SHIFT[np.where(x.SEGMENT_ref == x.SEGMENT.encode())][0]
+            if bool(len(x.FP_PIXEL_SHIFT)) else x.SHIFT_DISP - 0,
+            axis=1
+        )
+
+        return exploded
+
     def find_outliers(self) -> dict:
         bc_results = self.results['B-C'].seg_diff
         ca_results = self.results['C-A'].seg_diff
@@ -540,6 +557,12 @@ class NuvOsmShift2Monitor(BaseNuvOsmShiftMonitor):
     shift = 'SHIFT_XDISP'  # shift2
 
     run = 'monthly'
+
+    def get_data(self):
+        """Filter on detector."""
+        data = get_osm_data(self.model, 'NUV')
+
+        return explode_df(data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
 
     def find_outliers(self) -> dict:
         bc_results = self.results['B-C'].seg_diff
