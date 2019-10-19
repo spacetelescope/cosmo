@@ -2,6 +2,7 @@ import os
 import dask
 import re
 import crds
+import numpy as np
 
 from glob import glob
 from astropy.io import fits
@@ -151,7 +152,11 @@ class FileData(dict):
         match_values = self._get_match_values(hdu, reference_request['match'])
 
         for key, value in match_values.items():
-            ref_data = ref_data[ref_data[key] == value]
+            try:
+                ref_data = ref_data[ref_data[key] == value]
+
+            except KeyError:
+                continue
 
         if not len(ref_data):
             raise ValueError(
@@ -161,15 +166,24 @@ class FileData(dict):
 
         for column in reference_request['columns']:
             if column in self:
-                self[f'{column}_ref'] = ref_data[column].data
+                try:
+                    self[f'{column}_ref'] = ref_data[column].data
+
+                except KeyError:
+                    self[f'{column}_ref'] = np.array([])
 
             else:
-                self[column] = ref_data[column].data
+                try:
+                    self[column] = ref_data[column].data
+
+                except KeyError:
+                    self[column] = np.array([])
 
 
 def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence, spt_keywords: Sequence = None,
                   spt_extensions: Sequence = None, data_keywords: Sequence = None,
-                  data_extensions: Sequence = None, header_defaults: Dict[str, Any] = None) -> List[dict]:
+                  data_extensions: Sequence = None, header_defaults: Dict[str, Any] = None,
+                  reference_request: dict = None) -> List[dict]:
     @dask.delayed
     def _get_file_data(fitsfile: str, *args, **kwargs) -> Union[FileData, None]:
         """Get specified data from a fitsfile and optionally its corresponding spt file."""
@@ -188,7 +202,8 @@ def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence
             spt_extensions=spt_extensions,
             data_keywords=data_keywords,
             data_extensions=data_extensions,
-            header_defaults=header_defaults
+            header_defaults=header_defaults,
+            reference_request=reference_request
         ) for fitsfile in fitsfiles
     ]
 
