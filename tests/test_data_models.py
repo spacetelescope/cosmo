@@ -51,7 +51,10 @@ class TestOSMDataModel:
             'TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT',
 
             # Data from the SMS files
-            'TSINCEOSM1', 'TSINCEOSM2'
+            'TSINCEOSM1', 'TSINCEOSM2',
+            
+            # Reference file data
+            'SEGMENT_ref', 'FP_PIXEL_SHIFT'
         )
 
         for key in keys_that_should_be_there:
@@ -62,6 +65,12 @@ class TestOSMDataModel:
 
     def test_data_extension_data(self):
         data_extension_keys = ('TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT')
+
+        for key in data_extension_keys:
+            assert isinstance(self.osmmodel.new_data[key].values, np.ndarray)
+
+    def test_reference_data(self):
+        data_extension_keys = ('SEGMENT_ref', 'FP_PIXEL_SHIFT')
 
         for key in data_extension_keys:
             assert isinstance(self.osmmodel.new_data[key].values, np.ndarray)
