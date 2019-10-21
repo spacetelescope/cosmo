@@ -80,9 +80,14 @@ class OSMDataModel(BaseDataModel):
         data_extensions = (1, 1, 1, 1)
 
         reference_request = {
-            'reference': 'LAMPTAB',
-            'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],
-            'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
+            'LAMPTAB': {
+                'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],
+                'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
+            },
+            'WCPTAB': {
+                'match': ['OPT_ELEM'],
+                'columns': ['XC_RANGE']
+            }
         }
 
         files = find_files('*lampflash*', data_dir=self.files_source, cosmo_layout=self.cosmo_layout)

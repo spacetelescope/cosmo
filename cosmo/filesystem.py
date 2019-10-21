@@ -3,6 +3,7 @@ import dask
 import re
 import crds
 import numpy as np
+import warnings
 
 from glob import glob
 from astropy.io import fits
@@ -137,17 +138,29 @@ class FileData(dict):
         return {key: hdu[0].header[key] for key in match_list}
 
     @staticmethod
-    def _get_reference_table(hdu: fits.HDUList, reference_name) -> Table:
+    def _get_reference_table(hdu: fits.HDUList, reference_name) -> Union[Table, None]:
         # noinspection PyUnresolvedReferences
         cos_mapping = crds.rmap.get_cached_mapping('hst_cos.imap')
 
         reference_path = cos_mapping.locate_file(hdu[0].header[reference_name].split('$')[-1])
-        return Table.read(reference_path)
+        try:  # Some older reference files actually have bad formats for some columns and are unreadable.
+            return Table.read(reference_path)
 
-    def _get_matching_values(self, match_values, reference_table, request):
+        except ValueError:
+            return
+
+    def _get_matching_values(self, match_values, reference_table, request, reference_name):
         for key, value in match_values.items():
             try:
-                reference_table = reference_table[reference_table[key] == value]
+                if isinstance(value, str):  # Different "generations" of ref files stored strings in different ways...
+                    reference_table = reference_table[
+                        (reference_table[key] == value) |
+                        (reference_table[key] == value + '   ') |
+                        (reference_table[key] == value.encode())
+                    ]
+
+                else:
+                    reference_table = reference_table[reference_table[key] == value]
 
             except KeyError:
                 continue
@@ -161,10 +174,10 @@ class FileData(dict):
         for column in request['columns']:
             if column in self:
                 try:
-                    self[f'{column}_ref'] = reference_table[column].data
+                    self[f'{column}_{reference_name}'] = reference_table[column].data
 
                 except KeyError:
-                    self[f'{column}_ref'] = np.array([])
+                    self[f'{column}_{reference_name}'] = np.array([])
 
             else:
                 try:
@@ -178,9 +191,19 @@ class FileData(dict):
             request = reference_request[reference]
 
             ref_data = self._get_reference_table(hdu, reference)
-            match_values = self._get_match_values(hdu, request['match'])
 
-            self._get_matching_values(match_values, ref_data, request)
+            if ref_data is not None:  # Unreadable reference files are set to empty numpy arrays
+                match_values = self._get_match_values(hdu, request['match'])
+
+                self._get_matching_values(match_values, ref_data, request, reference)
+
+            else:
+                for column in request['columns']:
+                    if column in self:
+                        self[f'{column}_{reference}'] = np.array([])
+
+                    else:
+                        self[column] = np.array([])
 
 
 def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence, spt_keywords: Sequence = None,
@@ -193,7 +216,11 @@ def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence
         try:
             return FileData(fitsfile, *args, **kwargs)
 
-        except (ValueError, OSError):
+        # Occasionally there are empty or corrupt files that will throw an OSError; This shouldn't break the process,
+        # but users should be warned.
+        except OSError as e:
+            warnings.warn(f'Bad file found: {fitsfile}\n{str(e)}', Warning)
+
             return
 
     delayed_results = [
