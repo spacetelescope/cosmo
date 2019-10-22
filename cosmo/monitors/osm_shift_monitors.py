@@ -508,6 +508,65 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
         button_labels = ['All Stripes', 'NUVA', 'NUVB', 'NUVC']
         updatemenus = create_osmshift_buttons(self.docs, button_labels, self.name, visibilities)
 
+        # Set layout
+        layout = go.Layout(
+            xaxis=dict(title='Datetime', matches='x2'),
+            xaxis2=dict(title='Datetime', matches='x3'),
+            xaxis3=dict(title='Datetime', matches='x1'),
+            yaxis=dict(title='Shift (B -C) [pix]', domain=[0, 0.18]),
+            yaxis2=dict(title='Shift (C - A) [pix]', domain=[0.3, .48]),
+            yaxis3=dict(title='Shift [pix]', domain=[0.6, 1]),
+            updatemenus=updatemenus,
+        )
+
+        self.figure.update_layout(layout)
+
+    def store_results(self):
+        # TODO: decide on what results to store and how
+        pass
+
+
+class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
+    """NUV OSM Shift1 (SHIFT_DISP) monitor."""
+    shift = 'SHIFT_DISP'  # shift1
+
+    run = 'monthly'
+
+    def get_data(self):
+        data = get_osm_data(self.model, 'NUV')
+
+        # Expand the data frame's data columns
+        exploded = explode_df(data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+
+        # Apply the OSM pixel offset to the SHIFT_DISP values. If there's no FP_PIXEL_SHIFT, do nothing (Some older
+        # reference files don't have the FP_PIXEL_SHIFT column).
+        # Note: the SEGMENT_LAMPTAB and FP_PIXEL_SHIFT arrays are in the same order, so the segment is used to find the
+        # offset to subtract.
+        # Also note: segment values are byte-strings in the LAMPTAB files, so encode the segment value from lampflash
+        exploded.SHIFT_DISP = exploded.apply(
+            lambda x: x.SHIFT_DISP - x.FP_PIXEL_SHIFT[np.where(x.SEGMENT_LAMPTAB == x.SEGMENT.encode())][0]
+            if bool(len(x.FP_PIXEL_SHIFT)) else x.SHIFT_DISP,
+            axis=1
+        )
+
+        # "Unpack" the array items in the XC_RANGE column and SEARCH_OFFSET column
+        exploded.XC_RANGE = exploded.apply(lambda x: x.XC_RANGE[0] if bool(len(x.XC_RANGE)) else 0, axis=1)
+        exploded.SEARCH_OFFSET = exploded.apply(
+            lambda x: x.SEARCH_OFFSET[0] if bool(len(x.SEARCH_OFFSET)) else 0,
+            axis=1
+        )
+
+        return exploded
+
+    def find_outliers(self) -> dict:
+        bc_results = self.results['B-C'].seg_diff
+        ca_results = self.results['C-A'].seg_diff
+
+        return {'B-C': bc_results.abs() >= 2 * bc_results.std(), 'C-A': ca_results.abs() >= 2 * ca_results.std()}
+
+    def plot(self):
+        super().plot()
+
         # Construct search range boxes.
         ranges = [item for item in self.data.groupby(['SEARCH_OFFSET', 'XC_RANGE']).groups.keys() if item[-1] != 0]
 
@@ -532,62 +591,7 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
             ) for offset, xc_range in ranges
         ]
 
-        # Set layout
-        layout = go.Layout(
-            xaxis=dict(title='Datetime', matches='x2'),
-            xaxis2=dict(title='Datetime', matches='x3'),
-            xaxis3=dict(title='Datetime', matches='x1'),
-            yaxis=dict(title='Shift (B -C) [pix]', domain=[0, 0.18]),
-            yaxis2=dict(title='Shift (C - A) [pix]', domain=[0.3, .48]),
-            yaxis3=dict(title='Shift [pix]', domain=[0.6, 1]),
-            updatemenus=updatemenus,
-            shapes=shapes
-        )
-
-        self.figure.update_layout(layout)
-
-    def store_results(self):
-        # TODO: decide on what results to store and how
-        pass
-
-
-class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
-    """NUV OSM Shift1 (SHIFT_DISP) monitor."""
-    shift = 'SHIFT_DISP'  # shift1
-
-    run = 'monthly'
-
-    def get_data(self):
-        data = get_osm_data(self.model, 'NUV')
-
-        # Expand the data frame's data columns
-        exploded = explode_df(data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
-
-        # Apply the OSM pixel offset to the SHIFT_DISP values. If there's no FP_PIXEL_SHIFT, subtract 0 (Some older
-        # reference files don't have the FP_PIXEL_SHIFT column).
-        # Note: the SEGMENT_LAMPTAB and FP_PIXEL_SHIFT arrays are in the same order, so the segment is used to find the
-        # offset to subtract.
-        # Also note: segment values are byte-strings in the LAMPTAB files, so encode the segment value from lampflash
-        exploded.SHIFT_DISP = exploded.apply(
-            lambda x: x.SHIFT_DISP - x.FP_PIXEL_SHIFT[np.where(x.SEGMENT_LAMPTAB == x.SEGMENT.encode())][0]
-            if bool(len(x.FP_PIXEL_SHIFT)) else x.SHIFT_DISP - 0,
-            axis=1
-        )
-
-        # "Unpack" the array items in the XC_RANGE column and SEARCH_OFFSET column
-        exploded.XC_RANGE = exploded.apply(lambda x: x.XC_RANGE[0] if bool(len(x.XC_RANGE)) else 0, axis=1)
-        exploded.SEARCH_OFFSET = exploded.apply(
-            lambda x: x.SEARCH_OFFSET[0] if bool(len(x.SEARCH_OFFSET)) else 0,
-            axis=1
-        )
-
-        return exploded
-
-    def find_outliers(self) -> dict:
-        bc_results = self.results['B-C'].seg_diff
-        ca_results = self.results['C-A'].seg_diff
-
-        return {'B-C': bc_results.abs() >= 2 * bc_results.std(), 'C-A': ca_results.abs() >= 2 * ca_results.std()}
+        self.figure.update_layout(shapes=shapes)
 
 
 class NuvOsmShift2Monitor(BaseNuvOsmShiftMonitor):
