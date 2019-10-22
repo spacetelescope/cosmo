@@ -140,9 +140,8 @@ class FileData(dict):
     @staticmethod
     def _get_reference_table(hdu: fits.HDUList, reference_name) -> Union[Table, None]:
         # noinspection PyUnresolvedReferences
-        cos_mapping = crds.rmap.get_cached_mapping('hst_cos.imap')
+        reference_path = crds.locate_file(hdu[0].header[reference_name].split('$')[-1], 'hst')
 
-        reference_path = cos_mapping.locate_file(hdu[0].header[reference_name].split('$')[-1])
         try:  # Some older reference files actually have bad formats for some columns and are unreadable.
             return Table.read(reference_path)
 
