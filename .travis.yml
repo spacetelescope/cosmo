@@ -28,6 +28,8 @@ env:
         - SETUP_CMD='test'
         - COSMO_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
         - MONITOR_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
+        - CRDS_SERVER_URL='https://hst-crds.stsci.edu'
+        - CRDS_PATH='/tmp/crds_cache'
 
 install:
     # USE UTF8 ENCODING. SHOULD BE DEFAULT, BUT THIS IS INSURANCE AGAINST FUTURE CHANGES
