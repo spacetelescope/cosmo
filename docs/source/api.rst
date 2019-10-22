@@ -630,8 +630,7 @@ Cosmo also contains other modules used in supporting either the monitors or data
     :return: List of paths to files found.
     :rtype: ``list``
 
-.. py:class:: FileData(filename, hdu, header_keywords, header_extensions, spt_suffix='spt.fits.gz', \
-    spt_keywords=None, spt_extensions=None, data_keywords=None, data_extensions=None, header_defaults=None)
+.. py:class:: FileData(*args, **kwargs)
 
     Class used for ingesting and collecting the specified data from a particular COS FITS file.
     This class is a data container that subclasses python's ``dict`` object to create a dictionary-like object that's
@@ -663,6 +662,20 @@ Cosmo also contains other modules used in supporting either the monitors or data
         # FILENAME somefitsfile.fits
         # ROOTNAME lb4c10niq
         # DETECTOR NUV
+
+        # To grab info from a reference file:
+        reference_request = {
+            'LAMPTAB': {
+                'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],  # Specify columns that determine a match
+                'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']  # Specify the desired column data
+            },
+            'WCPTAB': {
+                'match': ['OPT_ELEM'],
+                'columns': ['XC_RANGE', 'SEARCH_OFFSET']
+            }
+        }
+
+        filedata = FileData('somefitsfile.fits', ('ROOTNAME', 'DETECTOR'), (0, 0), reference_request=reference_request)
 
     .. py:method:: get_header_data(hdu, header_keywords, header_extensions, header_defaults=None)
 
@@ -700,6 +713,33 @@ Cosmo also contains other modules used in supporting either the monitors or data
         :params list data_keywords: List of column-name keywords to extract.
         :params list data_extensions: Corresponding list of extensions for the keywords.
         :return: ``None``. Updates the instance's dictionary.
+
+    .. py:method:: get_reference_data(hdu, reference_request)
+
+        Get the requested data from the specified reference files.
+
+        The expected dictionary structure is as follows:
+
+        .. code-block:: python
+
+            request = {
+                'Reference1_name': {
+                    'match': ['matching_col1', 'matching_col2', ...],
+                    'columns': ['want_col1', 'want_col2']
+                },
+                'Reference2_name': ...
+            }
+
+        Where the reference names are not the *file names*, but the designated name that corresponds to COS keyword for
+        that reference file.
+
+        :params astropy.io.fits.HDUList hdu: HDUList of the data file.
+        :reference_request dict: Dictionary specifying what data to gather from which reference files.
+            The ``match`` and ``columns`` keys must be lists.
+        :return: ``None``. Updates the instance's dictionary. If there's a problem with reading the reference file, or
+            if requested keys cannont be found, empty arrays will be used for that entry.
+            This is due to the fact that reference file format and content has changed over time, and requested data may
+            be valid for some versions of files, but not others.
 
 .. py:function:: get_file_data(fitsfiles, keywords, extensions, spt_keywords=None, spt_extensions=None, \
     data_keywords=None, data_extensionsSequence=None, header_defaults=None)

@@ -65,5 +65,14 @@ OSMDataModel includes the following data:
 - SHIFT_XDISP: The SHIFT_XDISP column of a given exposure (pix).
   Shift values in the cross-dispersion direction.
 - SEGMENT: The SEGMENT column of a given exposure.
+- SEGMENT_LAMPTAB: The SEGMENT column of the matched row in the LAMPTAB file.
+- FP_PIXEL_SHIFT: the FP_PIXEL_SHIFT column of the matched rows (all segments) in the LAMPTAB file.
+  The FP_PIXEL_SHIFT is the offset in pixels for each FPPOS.
+- XC_RANGE: The XC_RANGE column of the matched row in the WCPTAB file.
+  XC_RANGE is the maximum pixel offset to use when doing a cross correlation between the observed data and the template
+  wavecal.
+- SEARCH_OFFSET: The SEARCH_OFFSET column of the matched row in the WCPTAB file.
+  The SEARCH_OFFSET is the zero-point offset for the search range.
+
 
 These data are gathered from *lampflash* files.

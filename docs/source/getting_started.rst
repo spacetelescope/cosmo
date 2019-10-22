@@ -22,8 +22,10 @@ Then install using pip::
     cd cosmo
     pip install .
 
-Settings via a Configuration File
-----------------------------------
+Configuration
+--------------
+COSMO Settings with a configuration file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 To manage configurations, COSMO uses a ``yaml`` configuration file.
 Create a yaml configuration file with the following format:
 
@@ -84,6 +86,32 @@ You can store these configurations in the same file and have both of the environ
     It may or may not contain sensitive information, so please ensure that permissions on that file are restricted to
     the intended users.
     DON'T push it to GitHub!
+
+CRDS
+^^^^
+Some of the COSMO DataModels utilize data from reference files, and take advantage of ``crds`` to do so.
+For configuration and setup instructions for using ``crds``, see
+`the crds user manual <https://hst-crds.stsci.edu/static/users_guide/environment.html>`_.
+
+At minimum, users will need access to a CRDS cache with the following reference file types:
+
+- LAMPTAB
+- WCPTAB
+
+Since the COSMO monitors use data from reference files across time, it would be best to get all files of those types
+available in the *active context*.
+
+The easiest way to ensure that the local CRDS cache has everything required, users can use::
+
+    crds sync --contexts hst-cos-operational --fetch-references
+
+This command with download *all* COS reference files and mappings to the ``CRDS_CACHE`` (see the instructions mentioned
+above).
+
+.. warning::
+
+    The command given above works well, but there's a caveat: it requires a large amount of available storage space at
+    the cache location.
 
 Running Tests
 -------------
