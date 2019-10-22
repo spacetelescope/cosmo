@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='cosmo',
-    version='1.0.1',
+    version='1.1.0',
     description='Monitors for HST/COS',
     keywords=['astronomy'],
     classifiers=[
