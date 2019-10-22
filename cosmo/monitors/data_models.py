@@ -86,7 +86,7 @@ class OSMDataModel(BaseDataModel):
             },
             'WCPTAB': {
                 'match': ['OPT_ELEM'],
-                'columns': ['XC_RANGE']
+                'columns': ['XC_RANGE', 'SEARCH_OFFSET']
             }
         }
 

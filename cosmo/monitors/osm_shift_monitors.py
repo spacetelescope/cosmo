@@ -45,6 +45,11 @@ def compute_segment_diff(df: pd.DataFrame, shift: str, segment1: str, segment2: 
 
             diff_df['lamp_time'] = lamp_time.to_datetime()
 
+            # Remove SEGMENT from the hover text
+            diff_df.hover_text = diff_df.apply(
+                lambda x: x.hover_text.replace(f'<br>SEGMENT          {x.SEGMENT}', ''), axis=1
+            )
+
             # Drop "segment specific" info
             diff_df.drop(columns=['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT', 'DETECTOR'], inplace=True)
             results_list.append(diff_df)
@@ -83,7 +88,7 @@ class BaseFuvOsmShiftMonitor(BaseMonitor):
     data_model = OSMDataModel
     output = COS_MONITORING
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-shift-monitors"
-    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'SEGMENT', 'CENWAVE']
+    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'CENWAVE', 'SEGMENT']
 
     subplots = True
     subplot_layout = (2, 1)
@@ -321,7 +326,7 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
     data_model = OSMDataModel
     output = COS_MONITORING
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-shift-monitors"
-    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'CENWAVE']
+    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'CENWAVE', 'SEGMENT']
 
     subplots = True,
     subplot_layout = (3, 1)
@@ -483,15 +488,15 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
         all_stripes_traces = self._plot_per_grating(self.data)
 
         # Plot traces per FPPOS for the other buttons
-        stripe_groups = self.data.groupby('SEGMENT')
+        stripe_groups = self.data.groupby('SEGMENT')  # Group keys are sorted
 
-        stripe_trace_lengths = {}  # track the number of traces produced per stripe; this differs between stripe
+        stripe_trace_lengths = []  # track the number of traces produced per stripe; this differs between stripe
         for stripe, group in stripe_groups:
             n_stripe_traces = self._plot_per_grating(group)
-            stripe_trace_lengths[stripe] = n_stripe_traces
+            stripe_trace_lengths.append(n_stripe_traces)
 
         # For each stripe, set the visibility to True for the appropriate number of traces in the appropriate position.
-        trace_lengths = [all_stripes_traces] + list(stripe_trace_lengths.values())
+        trace_lengths = [all_stripes_traces] + stripe_trace_lengths
 
         visibilities = [
             create_visibility(trace_lengths, [True, False, False, False]),  # All stripes
@@ -503,6 +508,30 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
         button_labels = ['All Stripes', 'NUVA', 'NUVB', 'NUVC']
         updatemenus = create_osmshift_buttons(self.docs, button_labels, self.name, visibilities)
 
+        # Construct search range boxes.
+        ranges = [item for item in self.data.groupby(['SEARCH_OFFSET', 'XC_RANGE']).groups.keys() if item[-1] != 0]
+
+        shapes = [
+            go.layout.Shape(
+                type='rect',
+                xref='x3',
+                yref='y3',
+                x0=Time(
+                    self.data[(self.data.XC_RANGE == xc_range) & (self.data.SEARCH_OFFSET == offset)].EXPSTART.min(),
+                    format='mjd'
+                ).to_datetime(),
+                x1=Time(
+                    self.data[(self.data.XC_RANGE == xc_range) & (self.data.SEARCH_OFFSET == offset)].EXPSTART.max(),
+                    format='mjd'
+                ).to_datetime(),
+                y0=offset - xc_range,
+                y1=offset + xc_range,
+                fillcolor='gray',
+                opacity=0.3,
+                layer='below'
+            ) for offset, xc_range in ranges
+        ]
+
         # Set layout
         layout = go.Layout(
             xaxis=dict(title='Datetime', matches='x2'),
@@ -511,7 +540,8 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
             yaxis=dict(title='Shift (B -C) [pix]', domain=[0, 0.18]),
             yaxis2=dict(title='Shift (C - A) [pix]', domain=[0.3, .48]),
             yaxis3=dict(title='Shift [pix]', domain=[0.6, 1]),
-            updatemenus=updatemenus
+            updatemenus=updatemenus,
+            shapes=shapes
         )
 
         self.figure.update_layout(layout)
@@ -535,11 +565,19 @@ class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
 
         # Apply the OSM pixel offset to the SHIFT_DISP values. If there's no FP_PIXEL_SHIFT, subtract 0 (Some older
         # reference files don't have the FP_PIXEL_SHIFT column).
-        # Note: the SEGMENT_ref and FP_PIXEL_SHIFT arrays are in the same order, so the segment is used to find the
+        # Note: the SEGMENT_LAMPTAB and FP_PIXEL_SHIFT arrays are in the same order, so the segment is used to find the
         # offset to subtract.
+        # Also note: segment values are byte-strings in the LAMPTAB files, so encode the segment value from lampflash
         exploded.SHIFT_DISP = exploded.apply(
-            lambda x: x.SHIFT_DISP - x.FP_PIXEL_SHIFT[np.where(x.SEGMENT_ref == x.SEGMENT.encode())][0]
+            lambda x: x.SHIFT_DISP - x.FP_PIXEL_SHIFT[np.where(x.SEGMENT_LAMPTAB == x.SEGMENT.encode())][0]
             if bool(len(x.FP_PIXEL_SHIFT)) else x.SHIFT_DISP - 0,
+            axis=1
+        )
+
+        # "Unpack" the array items in the XC_RANGE column and SEARCH_OFFSET column
+        exploded.XC_RANGE = exploded.apply(lambda x: x.XC_RANGE[0] if bool(len(x.XC_RANGE)) else 0, axis=1)
+        exploded.SEARCH_OFFSET = exploded.apply(
+            lambda x: x.SEARCH_OFFSET[0] if bool(len(x.SEARCH_OFFSET)) else 0,
             axis=1
         )
 
