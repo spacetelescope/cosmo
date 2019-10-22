@@ -61,6 +61,8 @@ install:
     # Install package with pip
     - pip install .
 
-script: coverage run -m pytest
+script:
+    - crds sync --contexts hst-cos-operational --fetch-references
+    - coverage run -m pytest
 
 after_success: codecov
