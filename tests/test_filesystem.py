@@ -155,7 +155,7 @@ class TestFileData:
         assert isinstance(testfiledata['TIME'],  np.ndarray)
 
     def test_get_reference_data(self, testfiledata):
-        assert 'SEGMENT' in testfiledata and 'SEGMENT_ref' in testfiledata
+        assert 'SEGMENT' in testfiledata and 'SEGMENT_LAMPTAB' in testfiledata
         assert 'FP_PIXEL_SHIFT' in testfiledata
 
     def test_get_reference_data_fails_match(self, data_dir):
