@@ -542,10 +542,11 @@ class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
         # reference files don't have the FP_PIXEL_SHIFT column).
         # Note: the SEGMENT_LAMPTAB and FP_PIXEL_SHIFT arrays are in the same order, so the segment is used to find the
         # offset to subtract.
-        # Also note: segment values are byte-strings in the LAMPTAB files, so encode the segment value from lampflash
         exploded.SHIFT_DISP = exploded.apply(
-            lambda x: x.SHIFT_DISP - x.FP_PIXEL_SHIFT[np.where(x.SEGMENT_LAMPTAB == x.SEGMENT.encode())][0]
-            if bool(len(x.FP_PIXEL_SHIFT)) else x.SHIFT_DISP,
+            (
+                lambda x: x.SHIFT_DISP - x.FP_PIXEL_SHIFT[np.where(x.SEGMENT_LAMPTAB == x.SEGMENT)][0]
+                if bool(len(x.FP_PIXEL_SHIFT)) else x.SHIFT_DISP
+            ),
             axis=1
         )
 

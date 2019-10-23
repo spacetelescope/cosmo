@@ -96,6 +96,17 @@ class FileData(dict):
         if spt_keywords:
             self.get_spt_header_data(spt_file, spt_keywords, spt_extensions)
 
+        self._convert_bytes_to_strings()
+
+    def _convert_bytes_to_strings(self):
+        """Convert byte-string arrays to strings. This affects reference files in particular, but can also be an issue
+        for older COS datatypes.
+        """
+        for key, value in self.items():
+            if isinstance(value, np.ndarray):
+                if value.dtype in ['S3', 'S4']:
+                    self[key] = value.astype(str)
+
     @staticmethod
     def _create_spt_filename(filename: str, spt_suffix: str) -> Union[str, None]:
         """Create an spt filename based on the input filename."""
@@ -135,10 +146,12 @@ class FileData(dict):
 
     @staticmethod
     def _get_match_values(hdu: fits.HDUList, match_list: list):
+        """Get match key values from the input data."""
         return {key: hdu[0].header[key] for key in match_list}
 
     @staticmethod
     def _get_reference_table(hdu: fits.HDUList, reference_name) -> Union[Table, None]:
+        """Locate and read the requested reference file."""
         # noinspection PyUnresolvedReferences
         reference_path = crds.locate_file(hdu[0].header[reference_name].split('$')[-1], 'hst')
 
