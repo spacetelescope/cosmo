@@ -37,23 +37,7 @@ def set_osmmonitor(request, data_dir, here):
 
 class TestOSMDriftMonitors:
 
-    @pytest.fixture(
-        autouse=True,
-        params=[
-            pytest.param(
-                FUVOSMDriftMonitor,
-                marks=pytest.mark.xfail(
-                    reason='Fails in Travis build with strings pulled from test db coming back as hexadecimal binary'
-                )
-            ),
-            pytest.param(
-                NUVOSMDriftMonitor,
-                marks=pytest.mark.xfail(
-                    reason='Fails in Travis build with strings pulled from test db coming back as hexadecimal binary'
-                )
-            )
-        ]
-    )
+    @pytest.fixture(autouse=True, params=[FUVOSMDriftMonitor, NUVOSMDriftMonitor])
     def osmdriftmonitor(self, request, set_osmmonitor):
         osmdriftmonitor = set_osmmonitor(request.param, OSMDataModel)
 
@@ -78,32 +62,7 @@ class TestOsmShiftMonitors:
 
     @pytest.fixture(
         autouse=True,
-        params=[
-            pytest.param(
-                FuvOsmShift1Monitor,
-                marks=pytest.mark.xfail(
-                    reason='Fails in Travis build with strings pulled from test db coming back as hexadecimal binary'
-                )
-            ),
-            pytest.param(
-                FuvOsmShift2Monitor,
-                marks=pytest.mark.xfail(
-                    reason='Fails in Travis build with strings pulled from test db coming back as hexadecimal binary'
-                )
-            ),
-            pytest.param(
-                NuvOsmShift1Monitor,
-                marks=pytest.mark.xfail(
-                    reason='Fails in Travis build with strings pulled from test db coming back as hexadecimal binary'
-                )
-            ),
-            pytest.param(
-                NuvOsmShift2Monitor,
-                marks=pytest.mark.xfail(
-                    reason='Fails in Travis build with strings pulled from test db coming back as hexadecimal binary'
-                )
-            )
-        ]
+        params=[FuvOsmShift1Monitor, FuvOsmShift2Monitor, NuvOsmShift1Monitor, NuvOsmShift2Monitor]
     )
     def osmshiftmonitor(self, request, set_osmmonitor):
         osmshiftmonitor = set_osmmonitor(request.param, OSMDataModel)

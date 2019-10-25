@@ -96,7 +96,7 @@ class FileData(dict):
         if spt_keywords:
             self.get_spt_header_data(spt_file, spt_keywords, spt_extensions)
 
-        # self._convert_bytes_to_strings()
+        self._convert_bytes_to_strings()
 
     def _convert_bytes_to_strings(self):
         """Convert byte-string arrays to strings. This affects reference files in particular, but can also be an issue
@@ -105,7 +105,7 @@ class FileData(dict):
         for key, value in self.items():
             if isinstance(value, np.ndarray):
                 if value.dtype in ['S3', 'S4']:
-                    self[key] = value.astype(str)
+                    self[key] = [item.decode() for item in value]
 
     @staticmethod
     def _create_spt_filename(filename: str, spt_suffix: str) -> Union[str, None]:
