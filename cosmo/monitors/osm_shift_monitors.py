@@ -544,7 +544,10 @@ class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
         # offset to subtract.
         exploded.SHIFT_DISP = exploded.apply(
             (
-                lambda x: x.SHIFT_DISP - x.FP_PIXEL_SHIFT[np.where(x.SEGMENT_LAMPTAB == x.SEGMENT)][0]
+                lambda x: x.SHIFT_DISP -
+                x.FP_PIXEL_SHIFT[  # Need to check for both encoded and decoded strings
+                    np.where((x.SEGMENT_LAMPTAB == x.SEGMENT) | (x.SEGMENT_LAMPTAB == x.SEGMENT.encode()))
+                ][0]
                 if bool(len(x.FP_PIXEL_SHIFT)) else x.SHIFT_DISP
             ),
             axis=1
