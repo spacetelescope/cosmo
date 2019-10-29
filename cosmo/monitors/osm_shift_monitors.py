@@ -16,9 +16,9 @@ from .. import SETTINGS
 COS_MONITORING = SETTINGS['output']
 
 LP_MOVES = {
-        i + 2: datetime.datetime.strptime(date, '%Y-%m-%d')
-        for i, date in enumerate(['2012-07-23', '2015-02-09', '2017-10-02'])
-    }
+    i + 2: datetime.datetime.strptime(date, '%Y-%m-%d')
+    for i, date in enumerate(['2012-07-23', '2015-02-09', '2017-10-02'])
+}
 
 
 def match_dfs(df1: pd.DataFrame, df2: pd.DataFrame, key: str) -> pd.DataFrame:

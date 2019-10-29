@@ -105,7 +105,7 @@ class FileData(dict):
         for key, value in self.items():
             if isinstance(value, np.ndarray):
                 if value.dtype in ['S3', 'S4']:
-                    self[key] = [item.decode() for item in value]
+                    self[key] = value.astype(np.unicode_)
 
     @staticmethod
     def _create_spt_filename(filename: str, spt_suffix: str) -> Union[str, None]:
