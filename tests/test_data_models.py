@@ -52,7 +52,7 @@ class TestOSMDataModel:
             'TSINCEOSM1', 'TSINCEOSM2',
             
             # Reference file data
-            # 'SEGMENT_LAMPTAB', 'FP_PIXEL_SHIFT', 'XC_RANGE'
+            'SEGMENT_LAMPTAB', 'FP_PIXEL_SHIFT', 'XC_RANGE'
         )
 
         for key in keys_that_should_be_there:
@@ -67,11 +67,11 @@ class TestOSMDataModel:
         for key in data_extension_keys:
             assert isinstance(self.osmmodel.new_data[key].values, np.ndarray)
 
-    # def test_reference_data(self):
-    #     data_extension_keys = ('SEGMENT_LAMPTAB', 'FP_PIXEL_SHIFT', 'XC_RANGE')
-    #
-    #     for key in data_extension_keys:
-    #         assert isinstance(self.osmmodel.new_data[key].values, np.ndarray)
+    def test_reference_data(self):
+        data_extension_keys = ('SEGMENT_LAMPTAB', 'FP_PIXEL_SHIFT', 'XC_RANGE')
+
+        for key in data_extension_keys:
+            assert isinstance(self.osmmodel.new_data[key].values, np.ndarray)
 
     def test_data_ingest(self):
         self.osmmodel.ingest()

@@ -154,29 +154,29 @@ class TestFileData:
         assert 'TIME' in testfiledata and 'SEGMENT' in testfiledata
         assert isinstance(testfiledata['TIME'],  np.ndarray)
 
-    # def test_get_reference_data(self, testfiledata):
-    #     assert 'SEGMENT' in testfiledata and 'SEGMENT_LAMPTAB' in testfiledata
-    #     assert 'FP_PIXEL_SHIFT' in testfiledata
-    #
-    # def test_get_reference_data_fails_match(self, data_dir):
-    #     file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
-    #
-    #     with pytest.raises(ValueError):
-    #         FileData(
-    #             file,
-    #             ('ROOTNAME',),
-    #             (0,),
-    #             spt_keywords=('LQTDFINI',),
-    #             spt_extensions=(1,),
-    #             data_keywords=('TIME', 'SEGMENT'),
-    #             data_extensions=(1, 1),
-    #             reference_request={
-    #                 'LAMPTAB': {
-    #                     'match': ['SEGMENT'],  # SEGMENT is N/A for the test file; lamptab doesn't have a N/A entry
-    #                     'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
-    #                 }
-    #             }
-    #         )
+    def test_get_reference_data(self, testfiledata):
+        assert 'SEGMENT' in testfiledata and 'SEGMENT_LAMPTAB' in testfiledata
+        assert 'FP_PIXEL_SHIFT' in testfiledata
+
+    def test_get_reference_data_fails_match(self, data_dir):
+        file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
+
+        with pytest.raises(ValueError):
+            FileData(
+                file,
+                ('ROOTNAME',),
+                (0,),
+                spt_keywords=('LQTDFINI',),
+                spt_extensions=(1,),
+                data_keywords=('TIME', 'SEGMENT'),
+                data_extensions=(1, 1),
+                reference_request={
+                    'LAMPTAB': {
+                        'match': ['SEGMENT'],  # SEGMENT is N/A for the test file; lamptab doesn't have a N/A entry
+                        'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
+                    }
+                }
+            )
 
     def test_get_multiple_references(self, data_dir):
         file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
@@ -194,7 +194,7 @@ class TestFileData:
                     'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],
                     'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
                 },
-                'XTRACTAB': {
+                'WCPTAB': {
                     'match': ['OPT_ELEM', 'CENWAVE', 'APERTURE'],
                     'columns': ['SLOPE', 'HEIGHT', 'SEGMENT']
                 }

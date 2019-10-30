@@ -542,20 +542,20 @@ class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
         # reference files don't have the FP_PIXEL_SHIFT column).
         # Note: the SEGMENT_LAMPTAB and FP_PIXEL_SHIFT arrays are in the same order, so the segment is used to find the
         # offset to subtract.
-        # exploded.SHIFT_DISP = exploded.apply(
-        #     (
-        #         lambda x: x.SHIFT_DISP - x.FP_PIXEL_SHIFT[np.where(x.SEGMENT_LAMPTAB == x.SEGMENT)][0]
-        #         if bool(len(x.FP_PIXEL_SHIFT)) else x.SHIFT_DISP
-        #     ),
-        #     axis=1
-        # )
-        #
-        # # "Unpack" the array items in the XC_RANGE column and SEARCH_OFFSET column
-        # exploded.XC_RANGE = exploded.apply(lambda x: x.XC_RANGE[0] if bool(len(x.XC_RANGE)) else 0, axis=1)
-        # exploded.SEARCH_OFFSET = exploded.apply(
-        #     lambda x: x.SEARCH_OFFSET[0] if bool(len(x.SEARCH_OFFSET)) else 0,
-        #     axis=1
-        # )
+        exploded.SHIFT_DISP = exploded.apply(
+            (
+                lambda x: x.SHIFT_DISP - x.FP_PIXEL_SHIFT[np.where(x.SEGMENT_LAMPTAB == x.SEGMENT)][0]
+                if bool(len(x.FP_PIXEL_SHIFT)) else x.SHIFT_DISP
+            ),
+            axis=1
+        )
+
+        # "Unpack" the array items in the XC_RANGE column and SEARCH_OFFSET column
+        exploded.XC_RANGE = exploded.apply(lambda x: x.XC_RANGE[0] if bool(len(x.XC_RANGE)) else 0, axis=1)
+        exploded.SEARCH_OFFSET = exploded.apply(
+            lambda x: x.SEARCH_OFFSET[0] if bool(len(x.SEARCH_OFFSET)) else 0,
+            axis=1
+        )
 
         return exploded
 
@@ -569,30 +569,30 @@ class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
         super().plot()
 
         # Construct search range boxes.
-        # ranges = [item for item in self.data.groupby(['SEARCH_OFFSET', 'XC_RANGE']).groups.keys() if item[-1] != 0]
-        #
-        # shapes = [
-        #     go.layout.Shape(
-        #         type='rect',
-        #         xref='x3',
-        #         yref='y3',
-        #         x0=Time(
-        #             self.data[(self.data.XC_RANGE == xc_range) & (self.data.SEARCH_OFFSET == offset)].EXPSTART.min(),
-        #             format='mjd'
-        #         ).to_datetime(),
-        #         x1=Time(
-        #             self.data[(self.data.XC_RANGE == xc_range) & (self.data.SEARCH_OFFSET == offset)].EXPSTART.max(),
-        #             format='mjd'
-        #         ).to_datetime(),
-        #         y0=offset - xc_range,
-        #         y1=offset + xc_range,
-        #         fillcolor='gray',
-        #         opacity=0.3,
-        #         layer='below'
-        #     ) for offset, xc_range in ranges
-        # ]
-        #
-        # self.figure.update_layout(shapes=shapes)
+        ranges = [item for item in self.data.groupby(['SEARCH_OFFSET', 'XC_RANGE']).groups.keys() if item[-1] != 0]
+
+        shapes = [
+            go.layout.Shape(
+                type='rect',
+                xref='x3',
+                yref='y3',
+                x0=Time(
+                    self.data[(self.data.XC_RANGE == xc_range) & (self.data.SEARCH_OFFSET == offset)].EXPSTART.min(),
+                    format='mjd'
+                ).to_datetime(),
+                x1=Time(
+                    self.data[(self.data.XC_RANGE == xc_range) & (self.data.SEARCH_OFFSET == offset)].EXPSTART.max(),
+                    format='mjd'
+                ).to_datetime(),
+                y0=offset - xc_range,
+                y1=offset + xc_range,
+                fillcolor='gray',
+                opacity=0.3,
+                layer='below'
+            ) for offset, xc_range in ranges
+        ]
+
+        self.figure.update_layout(shapes=shapes)
 
 
 class NuvOsmShift2Monitor(BaseNuvOsmShiftMonitor):
