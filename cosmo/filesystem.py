@@ -189,14 +189,14 @@ class FileData(dict):
                     self[f'{column}_{reference_name}'] = reference_table[column].data
 
                 except KeyError:
-                    self[f'{column}_{reference_name}'] = np.array([])
+                    self[f'{column}_{reference_name}'] = []
 
             else:
                 try:
                     self[column] = reference_table[column].data
 
                 except KeyError:
-                    self[column] = np.array([])
+                    self[column] = []
 
     def get_reference_data(self, hdu: fits.HDUList, reference_request: Dict[str, Dict[str, list]]):
         for reference in reference_request.keys():
@@ -212,10 +212,10 @@ class FileData(dict):
             else:
                 for column in request['columns']:
                     if column in self:
-                        self[f'{column}_{reference}'] = np.array([])
+                        self[f'{column}_{reference}'] = []
 
                     else:
-                        self[column] = np.array([])
+                        self[column] = []
 
 
 def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence, spt_keywords: Sequence = None,
