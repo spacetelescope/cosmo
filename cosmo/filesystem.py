@@ -90,8 +90,8 @@ class FileData(dict):
             if data_keywords:
                 self.get_table_data(hdu, data_keywords, data_extensions)
 
-            if reference_request:
-                self.get_reference_data(hdu, reference_request)
+            # if reference_request:
+            #     self.get_reference_data(hdu, reference_request)
 
         if spt_keywords:
             self.get_spt_header_data(spt_file, spt_keywords, spt_extensions)

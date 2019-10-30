@@ -108,7 +108,7 @@ class OSMDataModel(BaseDataModel):
                 header_extensions,
                 data_keywords=data_keys,
                 data_extensions=data_extensions,
-                reference_request=reference_request
+                # reference_request=reference_request
             )
         )
 
