@@ -29,7 +29,7 @@ env:
         - COSMO_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
         - MONITOR_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
         - CRDS_SERVER_URL='https://hst-crds.stsci.edu'
-        - CRDS_PATH='/tmp/crds_cache'
+        - CRDS_PATH='/home/travis/build/spacetelescope/cosmo/tests/data/test_crds_cache'
 
 install:
     # USE UTF8 ENCODING. SHOULD BE DEFAULT, BUT THIS IS INSURANCE AGAINST FUTURE CHANGES
@@ -51,7 +51,6 @@ install:
     # Create and activate the test environment
     - conda create $CONDA_ARGS -n test python=$TRAVIS_PYTHON_VERSION $AP_SELECT $NP_SELECT $CR_SELECT $CONDA_DEPS
     - source activate test
-    - conda install -c conda-forge peewee
 
     # DOCUMENTATION DEPENDENCIES
     - if [[ $SETUP_CMD == build_sphinx* ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION $CONDA_DOC_DEPS; fi
@@ -63,7 +62,6 @@ install:
     - pip install .
 
 script:
-    - crds sync --contexts hst-cos-operational --fetch-references
     - coverage run -m pytest
 
 after_success: codecov
