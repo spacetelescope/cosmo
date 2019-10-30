@@ -545,17 +545,14 @@ class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
         exploded.SHIFT_DISP = exploded.apply(
             (
                 lambda x: x.SHIFT_DISP - x.FP_PIXEL_SHIFT[np.where(x.SEGMENT_LAMPTAB == x.SEGMENT)][0]
-                if bool(len(x.FP_PIXEL_SHIFT)) else x.SHIFT_DISP
+                if len(x.FP_PIXEL_SHIFT) == len(x.SEGMENT_LAMPTAB) else x.SHIFT_DISP
             ),
             axis=1
         )
 
         # "Unpack" the array items in the XC_RANGE column and SEARCH_OFFSET column
-        exploded.XC_RANGE = exploded.apply(lambda x: x.XC_RANGE[0] if bool(len(x.XC_RANGE)) else 0, axis=1)
-        exploded.SEARCH_OFFSET = exploded.apply(
-            lambda x: x.SEARCH_OFFSET[0] if bool(len(x.SEARCH_OFFSET)) else 0,
-            axis=1
-        )
+        exploded.XC_RANGE = exploded.apply(lambda x: x.XC_RANGE[0], axis=1)
+        exploded.SEARCH_OFFSET = exploded.apply(lambda x: x.SEARCH_OFFSET[0], axis=1)
 
         return exploded
 
