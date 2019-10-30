@@ -155,6 +155,13 @@ class FileData(dict):
         # noinspection PyUnresolvedReferences
         reference_path = crds.locate_file(hdu[0].header[reference_name].split('$')[-1], 'hst')
 
+        # Check for gzipped files
+        if not os.path.exists(reference_path):
+            reference_path += '.gz'
+
+        if not os.path.exists(reference_path):
+            return
+
         try:  # Some older reference files actually have bad formats for some columns and are unreadable.
             return Table.read(reference_path)
 
