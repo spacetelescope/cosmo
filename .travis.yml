@@ -51,6 +51,7 @@ install:
     # Create and activate the test environment
     - conda create $CONDA_ARGS -n test python=$TRAVIS_PYTHON_VERSION $AP_SELECT $NP_SELECT $CR_SELECT $CONDA_DEPS
     - source activate test
+    - conda install -c conda-forge peewee
 
     # DOCUMENTATION DEPENDENCIES
     - if [[ $SETUP_CMD == build_sphinx* ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION $CONDA_DOC_DEPS; fi

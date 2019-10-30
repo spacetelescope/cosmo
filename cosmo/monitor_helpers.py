@@ -118,7 +118,6 @@ def get_osm_data(datamodel, detector: str) -> pd.DataFrame:
                     'SEARCH_OFFSET',
                     'FP_PIXEL_SHIFT'
                 ],
-                array_dtypes=[float, float, float, str, float, str, float, float]
             ),
             sort=True,
             ignore_index=True
