@@ -193,14 +193,14 @@ class FileData(dict):
         for column in request['columns']:
             if column in self:
                 try:
-                    self[f'{column}_{reference_name}'] = np.array(reference_table[column].data)  # No masked arrays
+                    self[f'{column}_{reference_name}'] = np.array(reference_table[column])  # No masked arrays
 
                 except KeyError:
                     self[f'{column}_{reference_name}'] = np.zeros(1)
 
             else:
                 try:
-                    self[column] = np.array(reference_table[column].data)
+                    self[column] = np.array(reference_table[column])
 
                 except KeyError:
                     self[column] = np.zeros(1)
