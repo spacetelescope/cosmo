@@ -565,8 +565,12 @@ class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
     def plot(self):
         super().plot()
 
-        # Construct search range boxes.
-        ranges = [item for item in self.data.groupby(['SEARCH_OFFSET', 'XC_RANGE']).groups.keys() if item[-1] != 0]
+        # Construct search range boxes. If the search range is 0, skip (indicates missing data)
+        ranges = [
+            item for item in self.data.groupby(['OPT_ELEM', 'SEARCH_OFFSET', 'XC_RANGE']).groups.keys() if item[-1] != 0
+        ]
+
+        colors = {'G185M': 'purple', 'G225M': 'blue', 'G230L': 'green', 'G285M': 'yellow'}
 
         shapes = [
             go.layout.Shape(
@@ -583,10 +587,9 @@ class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
                 ).to_datetime(),
                 y0=offset - xc_range,
                 y1=offset + xc_range,
-                fillcolor='gray',
-                opacity=0.3,
+                line=dict(color=colors[grating]),
                 layer='below'
-            ) for offset, xc_range in ranges
+            ) for grating, offset, xc_range in ranges
         ]
 
         self.figure.update_layout(shapes=shapes)
