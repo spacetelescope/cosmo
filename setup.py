@@ -23,7 +23,7 @@ setup(
         'pyyaml',
         'peewee',
         'crds',
-        'monitorframe @ git+https://github.com/spacetelescope/monitor-framework@use-blobs#egg=monitorframe'
+        'monitorframe @ git+https://github.com/spacetelescope/monitor-framework@v1.2.0#egg=monitorframe'
     ],
     package_data={'cosmo': ['pytest.ini']},
     entry_points={
