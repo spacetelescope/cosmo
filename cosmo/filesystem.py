@@ -7,7 +7,6 @@ import warnings
 
 from glob import glob
 from astropy.io import fits
-from astropy.table import Table
 from typing import Sequence, Union, List, Dict, Any
 
 from . import SETTINGS
@@ -136,7 +135,7 @@ class FileData(dict):
                 self[key] = spt[ext].header[key]
 
     def get_table_data(self, hdu: fits.HDUList, data_keywords: Sequence, data_extensions: Sequence):
-        """Get table data."""
+        """Get table data from the TableHDU."""
         for key, ext in zip(data_keywords, data_extensions):
             if key in self:
                 self[f'{key}_{ext}'] = hdu[ext].data[key]
@@ -150,7 +149,7 @@ class FileData(dict):
         return {key: hdu[0].header[key] for key in match_list}
 
     @staticmethod
-    def _get_reference_table(hdu: fits.HDUList, reference_name) -> Union[Table, None]:
+    def _get_reference_table(hdu: fits.HDUList, reference_name: str) -> Union[fits.fitsrec.FITS_rec, None]:
         """Locate and read the requested reference file."""
         # noinspection PyUnresolvedReferences
         reference_path = crds.locate_file(hdu[0].header[reference_name].split('$')[-1], 'hst')
@@ -163,12 +162,14 @@ class FileData(dict):
             return
 
         try:  # Some older reference files actually have bad formats for some columns and are unreadable.
-            return Table.read(reference_path)
+            return fits.getdata(reference_path)
 
         except ValueError:
             return
 
-    def _get_matching_values(self, match_values, reference_table, request, reference_name):
+    def _get_matching_values(self, match_values: dict, reference_table: fits.fitsrec.FITS_rec, request: dict,
+                             reference_name: str):
+        """Find the row in the reference file data that corresponds to the values provided in match_values."""
         for key, value in match_values.items():
             try:
                 if isinstance(value, str):  # Different "generations" of ref files stored strings in different ways...
@@ -187,7 +188,7 @@ class FileData(dict):
         if not len(reference_table):
             raise ValueError(
                 f'A matching row could not be determined with the given parameters: {request["match"]}'
-                f'\nAvailable columns: {reference_table.keys()}'
+                f'\nAvailable columns: {reference_table.names}'
             )
 
         for column in request['columns']:
@@ -206,6 +207,7 @@ class FileData(dict):
                     self[column] = np.zeros(1)
 
     def get_reference_data(self, hdu: fits.HDUList, reference_request: Dict[str, Dict[str, list]]):
+        """Get data from requested reference files."""
         for reference in reference_request.keys():
             request = reference_request[reference]
 
