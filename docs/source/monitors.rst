@@ -348,7 +348,7 @@ The plots are grouped by Lifetime Position via the drop-down menu on the left si
 
 Hover text for each data point includes the following::
 
-    (x, y) or (Datetime, Driftrate)
+    (x, y) or (Datetime, Drift rate)
     ROOTNAME
     LIFE_ADJ
     FPPOS
@@ -358,21 +358,21 @@ Hover text for each data point includes the following::
 
 NUV OSM Drift Output
 ....................
-The figure for NUVOSMDriftMonoitor contains four subplots for the following:
+The figure for NUVOSMDriftMonitor contains four subplots for the following:
 
 - SHIFT1 Drift vs Time since last OSM1 move
 - SHIFT2 Drift vs Time since last OSM1 move
-- SHFIT1 Drift vs Time since last OSM2 move
+- SHIFT1 Drift vs Time since last OSM2 move
 - SHIFT2 Drift vs Time since last OSM2 move
 
-The suplots are grouped by grating, each of which can be selected/deselected via the legend and are colored by
+The subplots are grouped by grating, each of which can be selected/deselected via the legend and are colored by
 observation start time.
 
 The plots are grouped by NUV Stripe via the drop-down menu on the left side of the figure.
 
 Hover text for each data point includes the following::
 
-    (x, y) (Datetime, Driftrate)
+    (x, y) (Datetime, Drift rate)
     ROOTNAME
     LIFE_ADJ
     FPPOS

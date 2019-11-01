@@ -15,7 +15,7 @@ The naming convention for these files are comprised of two different ID codes:
  1. A "SMS ID" which uniquely identifies a particular SMS report
  2. A "Version ID" which identifies the version of a particular SMS
 
-The SMS ID is the start data of the SMS in the form YYDDD, and is the first six digits in the report filename.
+The SMS ID is the start date of the SMS in the form "YYDDD", and is the first six digits in the report filename.
 The Version ID is typically an incrementing group of two alpha-numeric characters (with some rare exceptions such as for
 when an SMS report is re-created, at which point an "r" will be added to the end of the normal Version ID) that occur
 after the SMS ID in the filename.
@@ -93,8 +93,8 @@ Ingestion rules are as follows:
     It's also possible to have SMSTable records that don't actually correspond to any COS dataset.
     This is due to the fact that the SMS reports reflect the observation schedule, which can change a number of times
     right up to the planned observation date.
-    As this happens, ROOTNAMEs and other exposure information is updated accordingly, and since the ROOTNAME is based on
-    an incrementing naming system, exposures can be assigned several ROOTNAMEs until the "final" schedule is established.
+    As this happens, ROOTNAME and other exposure information is updated accordingly, and since the ROOTNAME is based on
+    an incrementing naming system, exposures can be assigned several ROOTNAME until the "final" schedule is established.
     Additionally, if an exposure does not execute (for example, when COS enters safe mode), those exposures will still
     appear in the SMS.
 
