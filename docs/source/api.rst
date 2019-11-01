@@ -742,10 +742,10 @@ Cosmo also contains other modules used in supporting either the monitors or data
             be valid for some versions of files, but not others.
 
 .. py:function:: get_file_data(fitsfiles, keywords, extensions, spt_keywords=None, spt_extensions=None, \
-    data_keywords=None, data_extensionsSequence=None, header_defaults=None)
+    data_keywords=None, data_extensionsSequence=None, header_defaults=None, reference_request=None)
 
-    Get data from the specified FITS files (and optionally, any information needed from the corresponding `spt` file) in
-    parallel with ``dask``
+    Get data from the specified FITS files and optionally, any information needed from the corresponding `spt` file or
+    particular reference files in parallel with ``dask``.
 
     Example Usage:
 
@@ -756,7 +756,7 @@ Cosmo also contains other modules used in supporting either the monitors or data
 
         files = glob.glob('*fits')  # Some list of files.
 
-        # Retrive a bunch of data
+        # Retrieve a bunch of data
         results = get_file_data(files, ('ROOTNAME', 'APERTURE'), (0, 0))
 
     :param list fitsfiles: List of files from which to retrieve data.

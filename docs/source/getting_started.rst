@@ -6,7 +6,7 @@ models and their API can be used to access the monitoring data for use outside t
 
 Installing
 ----------
-Before installing COSMO, be sure to create an environment with python 3.7+ at the minimum.
+Before installing COSMO, be sure to create an environment with python 3.7+ at minimum.
 A good starting point would be::
 
     conda create -n cosmo_env python=3.7 stsci
@@ -78,7 +78,8 @@ Once the file is ready, set it as an environment variable, ``COSMO_CONFIG``.
 
 This configuration file should be set to an environment variable called ``MONITOR_CONFIG``.
 
-You can store these configurations in the same file and have both of the environment variables point to the same file.
+You can store both of these configurations in one file and have both of the environment variables point to that single
+file.
 
 .. warning::
 
@@ -111,12 +112,20 @@ above).
 .. warning::
 
     The command given above works well, but there's a caveat: it requires a large amount of available storage space at
-    the cache location.
+    the cache location (between 2-3 GB).
 
 Running Tests
 -------------
 COSMO includes a suite of tests for the package.
 For developers, it's a good idea to execute these tests whenever there are changes to the code or environment.
+
+Before executing tests, set the ``MONITOR_CONFIG`` and ``COSMO_CONFIG`` environment variables to the test configuration
+that's included with the repository: ``cosmo/tests/cosmoconfig_tests.yaml``.
+
+.. note::
+
+    If tests are executed before setting the ``MONITOR_CONFIG`` and ``COSMO_CONFIG`` environment variables to the test
+    configuration file, the tests *will not execute*.
 
 If you're in the project directory, you can execute the tests with::
 

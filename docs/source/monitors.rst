@@ -264,7 +264,6 @@ Hover text for each data point includes the following::
     LIFE_ADJ
     FPPOS
     PROPOSID
-    SEGMENT
     CENWAVE
 
 .. note::
@@ -274,10 +273,43 @@ Hover text for each data point includes the following::
 
 NUV OSM Shift Monitors
 ++++++++++++++++++++++
+Tracking
+........
+The NUV OSM Shift Monitors track the difference between the NUV Stripes: NUVB - NUVC and NUVC - NUVA.
+Outliers for both SHIFT1 and SHIFT2 are those stripe differences that are greater than or equal to 2sigma.
 
-.. note::
+Output
+......
+Like the FUV OSM Shift Monitors, the NUV OSM Shift Monitors outputs are figures with subplots: Shift vs Time at the top
+and B - C and C - A in two additional subplots.
+For both Shift1 and Shift2, Shift vs Time is plotted per grating and outliers are marked with red.
+In addition, a rolling average line is plotted per grating (with matching colors), where the rolling average is taken
+over 180 days, or approximately 6 months.
 
-    These monitors are in the process of being finalized.
+For the NUV OSM Shift1 Monitor, the shift values are corrected for the appropriate FPPOS offset, and for each grating,
+a box is drawn that indicates the search range used by CalCOS to determine the shift between the wavecal spectrum and
+its template (the box color matches the grating colors.
+
+There are button options available to switch between viewing the plots for all NUV Stripes, or for individual stripes.
+
+Hover text for each data point includes the following::
+
+    # For the Shift vs Time subplot
+    (x, y) or (Datetime, Shift)
+    ROOTNAME
+    LIFE_ADJ
+    FPPOS
+    PROPOSID
+    SEGMENT
+    CENWAVE
+
+    # For the Stripe difference vs Time subplots (B-C and C-A)
+    (x, y) or (Datetime, B - C or C - A)
+    ROOTNAME
+    LIFE_ADJ
+    FPPOS
+    PROPOSID
+    CENWAVE
 
 OSM Drift Monitors
 ^^^^^^^^^^^^^^^^^^

@@ -75,4 +75,5 @@ OSMDataModel includes the following data:
   The SEARCH_OFFSET is the zero-point offset for the search range.
 
 
-These data are gathered from *lampflash* files.
+These data are gathered from *lampflash* files, LAMPTAB files and WCPTAB files (the LAMPTAB and WCPTAB used depends on
+the *lampflash* file).
