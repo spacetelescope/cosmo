@@ -28,6 +28,8 @@ env:
         - SETUP_CMD='test'
         - COSMO_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
         - MONITOR_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
+        - CRDS_SERVER_URL='https://hst-crds.stsci.edu'
+        - CRDS_PATH='/home/travis/build/spacetelescope/cosmo/tests/data/test_crds_cache'
 
 install:
     # USE UTF8 ENCODING. SHOULD BE DEFAULT, BUT THIS IS INSURANCE AGAINST FUTURE CHANGES
@@ -59,6 +61,7 @@ install:
     # Install package with pip
     - pip install .
 
-script: coverage run -m pytest
+script:
+    - coverage run -m pytest
 
 after_success: codecov

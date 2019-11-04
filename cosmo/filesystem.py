@@ -1,6 +1,9 @@
 import os
 import dask
 import re
+import crds
+import numpy as np
+import warnings
 import abc
 
 from glob import glob
@@ -34,7 +37,7 @@ class FileData(FileDataInterface):
     def __init__(self, filename: str, header_keywords: Sequence, header_extensions: Sequence,
                  spt_suffix: str = 'spt.fits.gz', spt_keywords: Sequence = None, spt_extensions: Sequence = None,
                  data_keywords: Sequence = None, data_extensions: Sequence = None,
-                 header_defaults: Dict[str, Any] = None):
+                 header_defaults: Dict[str, Any] = None, reference_request: Dict[str, Dict[str, list]] = None):
         """Initialize and create the possible corresponding spt file name."""
         super().__init__()
 
@@ -60,14 +63,39 @@ class FileData(FileDataInterface):
             if len(data_keywords) != len(data_extensions):
                 raise ValueError('data_keywords and data_extensions must be the same length.')
 
+        if reference_request:
+            for reference in reference_request.keys():
+                if not ('match' in reference_request[reference] and 'columns' in reference_request[reference]):
+                    raise ValueError('reference_requests require "columns", and "match" keys.')
+
+                if not isinstance(reference_request[reference]['columns'], list):
+                    raise TypeError('"columns" value in reference_request must be a list')
+
+                if not isinstance(reference_request[reference]['match'], list):
+                    raise TypeError('"match" value in reference_request must be a list')
+
         with fits.open(filename) as hdu:
             self.get_header_data(hdu, header_keywords, header_extensions, header_defaults)
 
             if data_keywords:
                 self.get_table_data(hdu, data_keywords, data_extensions)
 
+            if reference_request:
+                self.get_reference_data(hdu, reference_request)
+
         if spt_keywords:
             self.get_spt_header_data(spt_file, spt_keywords, spt_extensions)
+
+        self._convert_bytes_to_strings()
+
+    def _convert_bytes_to_strings(self):
+        """Convert byte-string arrays to strings. This affects reference files in particular, but can also be an issue
+        for older COS datatypes.
+        """
+        for key, value in self.items():
+            if isinstance(value, np.ndarray):
+                if value.dtype in ['S3', 'S4']:
+                    self[key] = value.astype(np.unicode_)
 
     @staticmethod
     def _create_spt_filename(filename: str, spt_suffix: str) -> Union[str, None]:
@@ -81,24 +109,113 @@ class FileData(FileDataInterface):
 
         return
 
-    def get_header_data(self, hdu: fits.HDUList, header_keywords: Sequence,
-                        header_extensions: Sequence, header_defaults: dict = None):
+    def get_header_data(self, hdu: fits.HDUList, header_keywords: Sequence, header_extensions: Sequence,
+                        header_defaults: dict = None):
         """Get header data."""
         for key, ext in zip(header_keywords, header_extensions):
             if header_defaults is not None and key in header_defaults:
-                self.update({key: hdu[ext].header.get(key, default=header_defaults[key])})
+                self[key] = hdu[ext].header.get(key, default=header_defaults[key])
 
             else:
-                self.update({key: hdu[ext].header[key]})
+                self[key] = hdu[ext].header[key]
 
     def get_spt_header_data(self, spt_file: str, spt_keywords: Sequence, spt_extensions: Sequence):
         """Open the spt file and collect requested data."""
         with fits.open(spt_file) as spt:
-            self.update({key: spt[ext].header[key] for key, ext in zip(spt_keywords, spt_extensions)})
+            for key, ext in zip(spt_keywords, spt_extensions):
+                self[key] = spt[ext].header[key]
 
     def get_table_data(self, hdu: fits.HDUList, data_keywords: Sequence, data_extensions: Sequence):
-        """Get table data."""
-        self.update({key: hdu[ext].data[key] for key, ext in zip(data_keywords, data_extensions)})
+        """Get table data from the TableHDU."""
+        for key, ext in zip(data_keywords, data_extensions):
+            if key in self:
+                self[f'{key}_{ext}'] = hdu[ext].data[key]
+
+            else:
+                self[key] = hdu[ext].data[key]
+
+    @staticmethod
+    def _get_match_values(hdu: fits.HDUList, match_list: list):
+        """Get match key values from the input data."""
+        return {key: hdu[0].header[key] for key in match_list}
+
+    @staticmethod
+    def _get_reference_table(hdu: fits.HDUList, reference_name: str) -> Union[fits.fitsrec.FITS_rec, None]:
+        """Locate and read the requested reference file."""
+        # noinspection PyUnresolvedReferences
+        reference_path = crds.locate_file(hdu[0].header[reference_name].split('$')[-1], 'hst')
+
+        # Check for gzipped files
+        if not os.path.exists(reference_path):
+            reference_path += '.gz'
+
+        if not os.path.exists(reference_path):
+            return
+
+        try:  # Some older reference files actually have bad formats for some columns and are unreadable.
+            return fits.getdata(reference_path)
+
+        except ValueError:
+            return
+
+    def _get_matching_values(self, match_values: dict, reference_table: fits.fitsrec.FITS_rec, request: dict,
+                             reference_name: str):
+        """Find the row in the reference file data that corresponds to the values provided in match_values."""
+        for key, value in match_values.items():
+            try:
+                if isinstance(value, str):  # Different "generations" of ref files stored strings in different ways...
+                    reference_table = reference_table[
+                        (reference_table[key] == value) |
+                        (reference_table[key] == value + '   ') |
+                        (reference_table[key] == value.encode())
+                    ]
+
+                else:
+                    reference_table = reference_table[reference_table[key] == value]
+
+            except KeyError:
+                continue
+
+        if not len(reference_table):
+            raise ValueError(
+                f'A matching row could not be determined with the given parameters: {request["match"]}'
+                f'\nAvailable columns: {reference_table.names}'
+            )
+
+        for column in request['columns']:
+            if column in self:
+                try:
+                    self[f'{column}_{reference_name}'] = np.array(reference_table[column])  # No masked arrays
+
+                except KeyError:
+                    self[f'{column}_{reference_name}'] = np.zeros(1)
+
+            else:
+                try:
+                    self[column] = np.array(reference_table[column])
+
+                except KeyError:
+                    self[column] = np.zeros(1)
+
+    def get_reference_data(self, hdu: fits.HDUList, reference_request: Dict[str, Dict[str, list]]):
+        """Get data from requested reference files."""
+        for reference in reference_request.keys():
+            request = reference_request[reference]
+
+            ref_data = self._get_reference_table(hdu, reference)
+
+            if ref_data is not None:  # Unreadable reference files are set to empty numpy arrays
+                match_values = self._get_match_values(hdu, request['match'])
+
+                self._get_matching_values(match_values, ref_data, request, reference)
+
+            else:
+                for column in request['columns']:
+                    if column in self:
+                        self[f'{column}_{reference}'] = np.zeros(1)
+
+                    else:
+                        self[column] = np.zeros(1)
 
 
 class JitterFileData(FileDataInterface):
@@ -192,14 +309,19 @@ def find_files(file_pattern: str, data_dir: str = FILES_SOURCE, cosmo_layout: bo
 
 def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence, spt_keywords: Sequence = None,
                   spt_extensions: Sequence = None, data_keywords: Sequence = None,
-                  data_extensions: Sequence = None, header_defaults: Dict[str, Any] = None) -> List[dict]:
+                  data_extensions: Sequence = None, header_defaults: Dict[str, Any] = None,
+                  reference_request: dict = None) -> List[dict]:
     @dask.delayed
     def _get_file_data(fitsfile: str, *args, **kwargs) -> Union[FileData, None]:
         """Get specified data from a fitsfile and optionally its corresponding spt file."""
         try:
             return FileData(fitsfile, *args, **kwargs)
 
-        except (ValueError, OSError):
+        # Occasionally there are empty or corrupt files that will throw an OSError; This shouldn't break the process,
+        # but users should be warned.
+        except OSError as e:
+            warnings.warn(f'Bad file found: {fitsfile}\n{str(e)}', Warning)
+
             return
 
     delayed_results = [
@@ -211,7 +333,8 @@ def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence
             spt_extensions=spt_extensions,
             data_keywords=data_keywords,
             data_extensions=data_extensions,
-            header_defaults=header_defaults
+            header_defaults=header_defaults,
+            reference_request=reference_request
         ) for fitsfile in fitsfiles
     ]
 
