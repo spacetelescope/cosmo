@@ -410,7 +410,6 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
                     mode='markers',
                     text=group.hover_text,
                     visible=False,
-                    legendgroup=grating,
                     marker=dict(
                         cmax=len(df.OPT_ELEM.unique()) - 1,  # Individual plots need to be on the same scale
                         cmin=0,
@@ -428,10 +427,9 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
                 go.Scattergl(
                     x=rolling_mean.index,
                     y=rolling_mean[self.shift],
-                    name='Rolling Mean',
+                    name=f'{grating} Rolling Mean',
                     mode='lines',
-                    visible=False,
-                    legendgroup=grating
+                    visible=False
                 ),
                 row=3,
                 col=1
