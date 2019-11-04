@@ -6,7 +6,7 @@ together.
 
 What is COSMO?
 --------------
-COSMO is a software package of monitors and interfaces for their data for the Cosmic Origins Spectrogragh (COS) at Space
+COSMO is a software package of monitors and interfaces for their data for the Cosmic Origins Spectrograph (COS) at Space
 Telescope Science Institute (STScI).
 These monitors are important for ensuring that COS is operating nominally as well as extending its mission lifetime.
 

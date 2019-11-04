@@ -61,7 +61,8 @@ class TestOSMDriftMonitors:
 class TestOsmShiftMonitors:
 
     @pytest.fixture(
-        autouse=True, params=[FuvOsmShift1Monitor, FuvOsmShift2Monitor, NuvOsmShift1Monitor, NuvOsmShift2Monitor]
+        autouse=True,
+        params=[FuvOsmShift1Monitor, FuvOsmShift2Monitor, NuvOsmShift1Monitor, NuvOsmShift2Monitor]
     )
     def osmshiftmonitor(self, request, set_osmmonitor):
         osmshiftmonitor = set_osmmonitor(request.param, OSMDataModel)

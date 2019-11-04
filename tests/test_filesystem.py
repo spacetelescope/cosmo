@@ -9,17 +9,64 @@ from cosmo.filesystem import get_file_data, FileData, find_files
 
 BAD_INPUT = [
     # Different lengths in the data
-    (['key1', 'key2'], [1], None, None, None, None),
-    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1], None, None),
-    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], [1], ['key1', 'key2']),
+    (['key1', 'key2'], [1], None, None, None, None, None),
+    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1], None, None, None),
+    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], [1], ['key1', 'key2'], None),
 
     # Input is missing corresponding extension argument with the keyword argument given
-    (['key1', 'key2'], [1, 1], ['key1', 'key2'], None, None, None),
-    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], None, ['key1', 'key2']),
+    (['key1', 'key2'], [1, 1], ['key1', 'key2'], None, None, None, None),
+    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], None, ['key1', 'key2'], None),
 
     # Input is missing corresponding keyword argument with the extension argument given
-    (['key1', 'key2'], [1, 1], None, [1, 1], None, None),
-    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], [1, 1], None),
+    (['key1', 'key2'], [1, 1], None, [1, 1], None, None, None),
+    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], [1, 1], None, None),
+
+    # Input has bad reference_request dictionary
+    (
+        ['key1', 'key2'],
+        [1, 1],
+        ['key1', 'key2'],
+        [1, 1],
+        [1, 1],
+        ['key1', 'key2'],
+        {'reference': 'test', 'match': ['test']}
+    ),
+    (
+        ['key1', 'key2'],
+        [1, 1],
+        ['key1', 'key2'],
+        [1, 1],
+        [1, 1],
+        ['key1', 'key2'],
+        {'match': ['test'], 'columns': ['test']}
+    ),
+    (
+        ['key1', 'key2'],
+        [1, 1],
+        ['key1', 'key2'],
+        [1, 1],
+        [1, 1],
+        ['key1', 'key2'],
+        {'reference': 'test', 'columns': ['test']}
+    ),
+    (
+        ['key1', 'key2'],
+        [1, 1],
+        ['key1', 'key2'],
+        [1, 1],
+        [1, 1],
+        ['key1', 'key2'],
+        {'reference': 'test', 'match': ['test'], 'columns': 'test'}
+    ),
+    (
+        ['key1', 'key2'],
+        [1, 1],
+        ['key1', 'key2'],
+        [1, 1],
+        [1, 1],
+        ['key1', 'key2'],
+        {'reference': 'test', 'match': 'test', 'columns': ['test']}
+    ),
 ]
 
 
@@ -37,8 +84,14 @@ def testfiledata(data_dir):
         (0,),
         spt_keywords=('LQTDFINI',),
         spt_extensions=(1,),
-        data_keywords=('TIME',),
-        data_extensions=(1,)
+        data_keywords=('TIME', 'SEGMENT'),
+        data_extensions=(1, 1),
+        reference_request={
+            'LAMPTAB': {
+                'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],
+                'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
+            }
+        }
     )
 
     return testfile
@@ -84,6 +137,11 @@ class TestFileData:
                 os.path.join(data_dir, 'lb4c10niq_spt.fits.gz')
         )
 
+    def test_missing_spt_returns_none(self, data_dir):
+        file = os.path.join(data_dir, 'lbhx26fmq_lampflash.fits.gz')  # This file doesn't have a matching spt file
+
+        assert FileData._create_spt_filename(file, 'spt.fits.gz') is None
+
     def test_get_spt_header_data(self, testfiledata):
         assert 'LQTDFINI' in testfiledata
         assert testfiledata['LQTDFINI'] == 'TDF Up'
@@ -93,14 +151,62 @@ class TestFileData:
         assert testfiledata['ROOTNAME'] == 'lb4c10niq'
 
     def test_get_table_data(self, testfiledata):
-        assert 'TIME' in testfiledata
+        assert 'TIME' in testfiledata and 'SEGMENT' in testfiledata
         assert isinstance(testfiledata['TIME'],  np.ndarray)
+
+    def test_get_reference_data(self, testfiledata):
+        assert 'SEGMENT' in testfiledata and 'SEGMENT_LAMPTAB' in testfiledata
+        assert 'FP_PIXEL_SHIFT' in testfiledata
+
+    def test_get_reference_data_fails_match(self, data_dir):
+        file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
+
+        with pytest.raises(ValueError):
+            FileData(
+                file,
+                ('ROOTNAME',),
+                (0,),
+                spt_keywords=('LQTDFINI',),
+                spt_extensions=(1,),
+                data_keywords=('TIME', 'SEGMENT'),
+                data_extensions=(1, 1),
+                reference_request={
+                    'LAMPTAB': {
+                        'match': ['SEGMENT'],  # SEGMENT is N/A for the test file; lamptab doesn't have a N/A entry
+                        'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
+                    }
+                }
+            )
+
+    def test_get_multiple_references(self, data_dir):
+        file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
+
+        FileData(
+            file,
+            ('ROOTNAME',),
+            (0,),
+            spt_keywords=('LQTDFINI',),
+            spt_extensions=(1,),
+            data_keywords=('TIME', 'SEGMENT'),
+            data_extensions=(1, 1),
+            reference_request={
+                'LAMPTAB': {
+                    'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],
+                    'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
+                },
+                'WCPTAB': {
+                    'match': ['OPT_ELEM', 'CENWAVE', 'APERTURE'],
+                    'columns': ['SLOPE', 'HEIGHT', 'SEGMENT']
+                }
+            }
+        )
 
     def test_fails_with_bad_input(self, data_dir, params):
         file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
-        header_keys, header_exts, spt_keys, spt_exts, data_exts, data_keys = params
+        header_keys, header_exts, spt_keys, spt_exts, data_exts, data_keys, reference_request = params
 
-        with pytest.raises(ValueError):
+        # noinspection PyTypeChecker
+        with pytest.raises((ValueError, TypeError)):
             FileData(
                 file,
                 header_keywords=header_keys,
@@ -108,7 +214,8 @@ class TestFileData:
                 spt_keywords=spt_keys,
                 spt_extensions=spt_exts,
                 data_keywords=data_keys,
-                data_extensions=data_exts
+                data_extensions=data_exts,
+                reference_request=reference_request
             )
 
 
