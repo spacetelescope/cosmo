@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>COS Monitors &mdash; COSMO 1.0.1 documentation</title>
+  <title>COS Monitors &mdash; COSMO 1.1.0 documentation</title>
   
 
   
@@ -17,34 +17,36 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="DataModels" href="datamodels.html" />
     <link rel="prev" title="Getting Started" href="getting_started.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -58,7 +60,7 @@
             
             
               <div class="version">
-                1.0.1
+                1.1.0
               </div>
             
           
@@ -108,8 +110,8 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#osm-drift-monitors">OSM Drift Monitors</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#id5">Tracking</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#id6">Output</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">Tracking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id8">Output</a></li>
 </ul>
 </li>
 </ul>
@@ -197,9 +199,9 @@ data quality quickly as well as track the evolution of the instrument over time 
 products and scientific capabilities to the astronomical community.</p>
 <p>Currently, COSMO supports monitoring in three areas of COS operations:</p>
 <ul class="simple">
-<li>Target Acquisitions</li>
-<li>Optics Select Mechanism (OSM) trends/evolution</li>
-<li>Dark rate trends/evolution</li>
+<li><p>Target Acquisitions</p></li>
+<li><p>Optics Select Mechanism (OSM) trends/evolution</p></li>
+<li><p>Dark rate trends/evolution</p></li>
 </ul>
 <p>These monitors build off of a previous COS Branch monitoring program, an overview of which is given in
 <a class="reference external" href="https://innerspace.stsci.edu/download/attachments/166755094/TIR2014_04.pdf?version=1&amp;modificationDate=1557948271236&amp;api=v2">Technical Instrument Report COS 2014-04</a>.</p>
@@ -207,16 +209,16 @@ products and scientific capabilities to the astronomical community.</p>
 <h2>Monitor Cadence<a class="headerlink" href="#monitor-cadence" title="Permalink to this headline">¶</a></h2>
 <p>The following monitors are executed at a <em>monthly</em> cadence:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">AcqImageMonitor</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">AcqPeakdMonitor</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">AcqPeakxdMonitor</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">AcqImageV2V3Monitor</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">FuvOsmShift1Moniotr</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">FuvOsmShift2Monitor</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">NuvOsmShift1Monitor</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">NuvOsmShift2Monitor</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">FUVOSMDriftMonitor</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">NUVOSMDriftMonitor</span></code></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">AcqImageMonitor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">AcqPeakdMonitor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">AcqPeakxdMonitor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">AcqImageV2V3Monitor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FuvOsmShift1Moniotr</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FuvOsmShift2Monitor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">NuvOsmShift1Monitor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">NuvOsmShift2Monitor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FUVOSMDriftMonitor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">NUVOSMDriftMonitor</span></code></p></li>
 </ul>
 </div>
 <div class="section" id="the-monitor-runner">
@@ -226,8 +228,8 @@ products and scientific capabilities to the astronomical community.</p>
 the monitor should be executed with.</p>
 <p>Supported cadences:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">monthly</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">daily</span></code></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">monthly</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">daily</span></code></p></li>
 </ul>
 <p>By default, all Monitors are also included in an <code class="docutils literal notranslate"><span class="pre">all</span></code> collection, which is the default collection if no other options
 are provided.</p>
@@ -256,8 +258,8 @@ performance order to identify any systematic trends or issues with COS target ac
 <div class="section" id="acqimage-monitor">
 <h3>ACQIMAGE Monitor<a class="headerlink" href="#acqimage-monitor" title="Permalink to this headline">¶</a></h3>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">This monitor is still in development.
+<p class="admonition-title">Note</p>
+<p>This monitor is still in development.
 Output and tracking will be described in more detail once it is finalized.</p>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">AcqImage</span></code> monitor is intended to be a more generalized monitor that keeps track of acquisition statuses and slew
@@ -277,9 +279,9 @@ AcqPeakdMonitor and ACQSLEWY for AcqPeakxdMonitor) for each Fine Guidance Sensor
 <h4>Output<a class="headerlink" href="#output" title="Permalink to this headline">¶</a></h4>
 <p>Each Spectroscopic Acquisition Monitor produces similar output with some small differences:</p>
 <ul class="simple">
-<li>For AcqPeakdMonitor, the Offset axis is created from the ACQSLEWX keyword, while AcqPeakxdMonitor uses the ACQSLEWY
-key.</li>
-<li>AcqPeakxdMonitor includes a vertical line that indicates when the ACQ/PEAKXD algorithm was changed.</li>
+<li><p>For AcqPeakdMonitor, the Offset axis is created from the ACQSLEWX keyword, while AcqPeakxdMonitor uses the ACQSLEWY
+key.</p></li>
+<li><p>AcqPeakxdMonitor includes a vertical line that indicates when the ACQ/PEAKXD algorithm was changed.</p></li>
 </ul>
 <p>Apart from those differences, the outputs are the same, and so will be described together.</p>
 <p>The figures produced for the Spectroscopic Acquisition Monitors plots Offset vs Datetime as a scatter plot.
@@ -314,19 +316,19 @@ assess the observatories initial, or “blind” pointing, which can be affected
 <p>To ensure that the data come from ACQ/IMAGE exposures that occur first in a sequence:</p>
 <blockquote>
 <div><ul class="simple">
-<li>OBSTYPE = ‘IMAGING’</li>
-<li>LINENUM must end with a ‘1’; This is an indication that the ACQ/IMAGE occurred first in an observation sequence.</li>
+<li><p>OBSTYPE = ‘IMAGING’</p></li>
+<li><p>LINENUM must end with a ‘1’; This is an indication that the ACQ/IMAGE occurred first in an observation sequence.</p></li>
 </ul>
 </div></blockquote>
 <p>To ensure that the ACQ/IMAGE data being used come from more “typical” exposures:</p>
 <blockquote>
 <div><ul class="simple">
-<li>NEVENTS &gt;= 2000; filter out “dark” acquisitions or those with very dim sources.</li>
-<li>Total slew distances &lt; 2 arcseconds; Slews on ACQ/IMAGEs that are greater than 2 arcseconds usually have other
-issues such as user coordinate errors.</li>
-<li>SHUTTER is ‘Open’ and ACQSTAT is ‘Success’; to filter out failed acquisitions.</li>
-<li>EXTENDED is ‘No’; Extended targets may have less-reliable centering.</li>
-<li>LAMPEVNT &gt;= 500; The internal lamp is used to calculate the position of the object on the detector.</li>
+<li><p>NEVENTS &gt;= 2000; filter out “dark” acquisitions or those with very dim sources.</p></li>
+<li><p>Total slew distances &lt; 2 arcseconds; Slews on ACQ/IMAGEs that are greater than 2 arcseconds usually have other
+issues such as user coordinate errors.</p></li>
+<li><p>SHUTTER is ‘Open’ and ACQSTAT is ‘Success’; to filter out failed acquisitions.</p></li>
+<li><p>EXTENDED is ‘No’; Extended targets may have less-reliable centering.</p></li>
+<li><p>LAMPEVNT &gt;= 500; The internal lamp is used to calculate the position of the object on the detector.</p></li>
 </ul>
 </div></blockquote>
 <p>From these ACQ/IMAGE data, the ACQSLEWX and ACQSLEWY values are converted from detector coordinates to observatory
@@ -370,8 +372,8 @@ fit.</p>
 </pre></div>
 </div>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">This plot will come up empty at first.
+<p class="admonition-title">Note</p>
+<p>This plot will come up empty at first.
 An FGS option must be selected before plots will be shown.</p>
 </div>
 </div>
@@ -399,12 +401,12 @@ Outliers for the SHIFT1 and SHIFT2 Monitors are those exposures with a segment d
 <h5>Output<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h5>
 <p>FUV output for both SHIFT1 and SHIFT2 monitors consist of two subplots:</p>
 <ul class="simple">
-<li>The shift measurement plotted as a function of time</li>
-<li>The segment difference plotted as a function of time</li>
+<li><p>The shift measurement plotted as a function of time</p></li>
+<li><p>The segment difference plotted as a function of time</p></li>
 </ul>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The FPPOS offset is <em>not</em> removed from the SHIFT1/SHIFT2 value.
+<p class="admonition-title">Note</p>
+<p>The FPPOS offset is <em>not</em> removed from the SHIFT1/SHIFT2 value.
 This is intentional so that trends per FPPOS can be directly compared against each other.</p>
 </div>
 <p>Each grating/cenwave combination is plotted as a different color, and each FPPOS is plotted with a different symbol
@@ -429,22 +431,53 @@ Vertical lines are included to denote the beginning of each new Lifetime Positio
 <span class="n">LIFE_ADJ</span>
 <span class="n">FPPOS</span>
 <span class="n">PROPOSID</span>
-<span class="n">SEGMENT</span>
 <span class="n">CENWAVE</span>
 </pre></div>
 </div>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">This figure will be empty at first.
+<p class="admonition-title">Note</p>
+<p>This figure will be empty at first.
 A FPPOS option must be selected before the plots will be displayed.</p>
 </div>
 </div>
 </div>
 <div class="section" id="nuv-osm-shift-monitors">
 <h4>NUV OSM Shift Monitors<a class="headerlink" href="#nuv-osm-shift-monitors" title="Permalink to this headline">¶</a></h4>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">These monitors are in the process of being finalized.</p>
+<div class="section" id="id5">
+<h5>Tracking<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h5>
+<p>The NUV OSM Shift Monitors track the difference between the NUV Stripes: NUVB - NUVC and NUVC - NUVA.
+Outliers for both SHIFT1 and SHIFT2 are those stripe differences that are greater than or equal to 2sigma.</p>
+</div>
+<div class="section" id="id6">
+<h5>Output<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h5>
+<p>Like the FUV OSM Shift Monitors, the NUV OSM Shift Monitors outputs are figures with subplots: Shift vs Time at the top
+and B - C and C - A in two additional subplots.
+For both Shift1 and Shift2, Shift vs Time is plotted per grating and outliers are marked with red.
+In addition, a rolling average line is plotted per grating (with matching colors), where the rolling average is taken
+over 180 days, or approximately 6 months.</p>
+<p>For the NUV OSM Shift1 Monitor, the shift values are corrected for the appropriate FPPOS offset, and for each grating,
+a box is drawn that indicates the search range used by CalCOS to determine the shift between the wavecal spectrum and
+its template (the box color matches the grating colors.</p>
+<p>There are button options available to switch between viewing the plots for all NUV Stripes, or for individual stripes.</p>
+<p>Hover text for each data point includes the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># For the Shift vs Time subplot</span>
+<span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">Datetime</span><span class="p">,</span> <span class="n">Shift</span><span class="p">)</span>
+<span class="n">ROOTNAME</span>
+<span class="n">LIFE_ADJ</span>
+<span class="n">FPPOS</span>
+<span class="n">PROPOSID</span>
+<span class="n">SEGMENT</span>
+<span class="n">CENWAVE</span>
+
+<span class="c1"># For the Stripe difference vs Time subplots (B-C and C-A)</span>
+<span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">Datetime</span><span class="p">,</span> <span class="n">B</span> <span class="o">-</span> <span class="n">C</span> <span class="ow">or</span> <span class="n">C</span> <span class="o">-</span> <span class="n">A</span><span class="p">)</span>
+<span class="n">ROOTNAME</span>
+<span class="n">LIFE_ADJ</span>
+<span class="n">FPPOS</span>
+<span class="n">PROPOSID</span>
+<span class="n">CENWAVE</span>
+</pre></div>
+</div>
 </div>
 </div>
 </div>
@@ -454,21 +487,21 @@ A FPPOS option must be selected before the plots will be displayed.</p>
 in how the OSMs drift during observations.</p>
 <p>The FUV monitor tracks the drift for SHIFT1 and SHIFT2 for OSM1 moves, while the NUV monitor tracks the drift for SHIFT1
 and SHIFT2 for both OSM1 and OSM2 (since NUV settings can require the movement of both mechanisms).</p>
-<div class="section" id="id5">
-<h4>Tracking<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h4>
+<div class="section" id="id7">
+<h4>Tracking<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h4>
 <p><code class="docutils literal notranslate"><span class="pre">FUVOSMDriftMonitor</span></code> tracks statistics for the SHIFT1 and SHIFT2 drifts for each Lifetime Position.</p>
 <p>Statistics include:</p>
 <ul class="simple">
-<li>mean</li>
-<li>min</li>
-<li>max</li>
-<li>25 <sup>th</sup> and 75 <sup>th</sup> percentiles</li>
-<li>standard deviation.</li>
+<li><p>mean</p></li>
+<li><p>min</p></li>
+<li><p>max</p></li>
+<li><p>25 <sup>th</sup> and 75 <sup>th</sup> percentiles</p></li>
+<li><p>standard deviation.</p></li>
 </ul>
 <p>The same statistics are recorded for <code class="docutils literal notranslate"><span class="pre">NUVOSMDriftMonitor</span></code>, however, they’re recorded for each NUV Stripe.</p>
 </div>
-<div class="section" id="id6">
-<h4>Output<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h4>
+<div class="section" id="id8">
+<h4>Output<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h4>
 <p>Both OSM Drift Monitors produce similar output, but with different groupings and button options.</p>
 <div class="section" id="fuv-osm-drift-output">
 <h5>FUV OSM Drift Output<a class="headerlink" href="#fuv-osm-drift-output" title="Permalink to this headline">¶</a></h5>
@@ -478,7 +511,7 @@ The subplots are grouped by grating, each of which can be selected/deselected vi
 observation start time.</p>
 <p>The plots are grouped by Lifetime Position via the drop-down menu on the left side of the figure.</p>
 <p>Hover text for each data point includes the following:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">Datetime</span><span class="p">,</span> <span class="n">Driftrate</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">Datetime</span><span class="p">,</span> <span class="n">Drift</span> <span class="n">rate</span><span class="p">)</span>
 <span class="n">ROOTNAME</span>
 <span class="n">LIFE_ADJ</span>
 <span class="n">FPPOS</span>
@@ -490,18 +523,18 @@ observation start time.</p>
 </div>
 <div class="section" id="nuv-osm-drift-output">
 <h5>NUV OSM Drift Output<a class="headerlink" href="#nuv-osm-drift-output" title="Permalink to this headline">¶</a></h5>
-<p>The figure for NUVOSMDriftMonoitor contains four subplots for the following:</p>
+<p>The figure for NUVOSMDriftMonitor contains four subplots for the following:</p>
 <ul class="simple">
-<li>SHIFT1 Drift vs Time since last OSM1 move</li>
-<li>SHIFT2 Drift vs Time since last OSM1 move</li>
-<li>SHFIT1 Drift vs Time since last OSM2 move</li>
-<li>SHIFT2 Drift vs Time since last OSM2 move</li>
+<li><p>SHIFT1 Drift vs Time since last OSM1 move</p></li>
+<li><p>SHIFT2 Drift vs Time since last OSM1 move</p></li>
+<li><p>SHIFT1 Drift vs Time since last OSM2 move</p></li>
+<li><p>SHIFT2 Drift vs Time since last OSM2 move</p></li>
 </ul>
-<p>The suplots are grouped by grating, each of which can be selected/deselected via the legend and are colored by
+<p>The subplots are grouped by grating, each of which can be selected/deselected via the legend and are colored by
 observation start time.</p>
 <p>The plots are grouped by NUV Stripe via the drop-down menu on the left side of the figure.</p>
 <p>Hover text for each data point includes the following:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="p">(</span><span class="n">Datetime</span><span class="p">,</span> <span class="n">Driftrate</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="p">(</span><span class="n">Datetime</span><span class="p">,</span> <span class="n">Drift</span> <span class="n">rate</span><span class="p">)</span>
 <span class="n">ROOTNAME</span>
 <span class="n">LIFE_ADJ</span>
 <span class="n">FPPOS</span>
@@ -518,15 +551,15 @@ observation start time.</p>
 <div class="section" id="fuv-dark-rate-monitors">
 <h3>FUV Dark Rate Monitors<a class="headerlink" href="#fuv-dark-rate-monitors" title="Permalink to this headline">¶</a></h3>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">This monitor is under construction.</p>
+<p class="admonition-title">Note</p>
+<p>This monitor is under construction.</p>
 </div>
 </div>
 <div class="section" id="nuv-dark-rate-monitors">
 <h3>NUV Dark Rate Monitors<a class="headerlink" href="#nuv-dark-rate-monitors" title="Permalink to this headline">¶</a></h3>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">This monitor is under construction.</p>
+<p class="admonition-title">Note</p>
+<p>This monitor is under construction.</p>
 </div>
 </div>
 </div>
@@ -543,7 +576,7 @@ observation start time.</p>
         <a href="datamodels.html" class="btn btn-neutral float-right" title="DataModels" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="getting_started.html" class="btn btn-neutral" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -569,26 +602,16 @@ observation start time.</p>
   
 
 
-  
-
-    
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-    
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
+
+  
+  
+    
+   
 
 </body>
 </html>

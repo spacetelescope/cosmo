@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>DataModels &mdash; COSMO 1.0.1 documentation</title>
+  <title>DataModels &mdash; COSMO 1.1.0 documentation</title>
   
 
   
@@ -17,34 +17,36 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="SMS Data Ingestion" href="sms.html" />
     <link rel="prev" title="COS Monitors" href="monitors.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -58,7 +60,7 @@
             
             
               <div class="version">
-                1.0.1
+                1.1.0
               </div>
             
           
@@ -170,30 +172,30 @@ ingesting new data outside of the monitoring workflow.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">AcqDataModel</span></code> is used with the Target Acquisition monitors.</p>
 <p>AcqDataModel includes the following data:</p>
 <ul class="simple">
-<li>ACQSLEWX: Slew value in the X direction.
-Default of 0 for Acquisition types that don’t record this keyword.</li>
-<li>ACQSLEWY: Slew value in the Y direction.
-Default of 0 for Acquisition types that don’t record this keyword.</li>
-<li>EXPSTART: Time at the start of the exposure (mjd).</li>
-<li>ROOTNAME: Exposure rootname.</li>
-<li>PROPOSID: Proposal ID.</li>
-<li>OBSTYPE: Imaging or Spectroscopic.</li>
-<li>NEVENTS: Number of events recorded during the exposure.</li>
-<li>SHUTTER: Open or Closed.</li>
-<li>LAMPEVNT: Number of events recorded from the internal lamp exposure.</li>
-<li>ACQSTAT: Success or Failure.</li>
-<li>EXTENDED: Yes or No.</li>
-<li>LINENUM: Line number where the exposure occurs on the observation schedule.</li>
-<li>APERTURE: Aperture used during the observation.</li>
-<li>OPT_ELEM: Grating or Mirror used during the observation.</li>
-<li>LIFE_ADJ: Lifetime Position.</li>
-<li>CENWAVE: Cenwave of the observation.</li>
-<li>DETECTOR: NUV or FUV.</li>
-<li>EXPTYPE: Type of Acquisition.
-ACQ/IMAGE, ACQ/PEAKD, ACQ/PEAKXD, or ACQ/SEARCH</li>
-<li>DGESTAR: Dominant guide star used for the exposure.</li>
-<li>FGS: Fine guidance sensor used during the exposure.
-F1, F2, or F3</li>
+<li><p>ACQSLEWX: Slew value in the X direction.
+Default of 0 for Acquisition types that don’t record this keyword.</p></li>
+<li><p>ACQSLEWY: Slew value in the Y direction.
+Default of 0 for Acquisition types that don’t record this keyword.</p></li>
+<li><p>EXPSTART: Time at the start of the exposure (mjd).</p></li>
+<li><p>ROOTNAME: Exposure rootname.</p></li>
+<li><p>PROPOSID: Proposal ID.</p></li>
+<li><p>OBSTYPE: Imaging or Spectroscopic.</p></li>
+<li><p>NEVENTS: Number of events recorded during the exposure.</p></li>
+<li><p>SHUTTER: Open or Closed.</p></li>
+<li><p>LAMPEVNT: Number of events recorded from the internal lamp exposure.</p></li>
+<li><p>ACQSTAT: Success or Failure.</p></li>
+<li><p>EXTENDED: Yes or No.</p></li>
+<li><p>LINENUM: Line number where the exposure occurs on the observation schedule.</p></li>
+<li><p>APERTURE: Aperture used during the observation.</p></li>
+<li><p>OPT_ELEM: Grating or Mirror used during the observation.</p></li>
+<li><p>LIFE_ADJ: Lifetime Position.</p></li>
+<li><p>CENWAVE: Cenwave of the observation.</p></li>
+<li><p>DETECTOR: NUV or FUV.</p></li>
+<li><p>EXPTYPE: Type of Acquisition.
+ACQ/IMAGE, ACQ/PEAKD, ACQ/PEAKXD, or ACQ/SEARCH</p></li>
+<li><p>DGESTAR: Dominant guide star used for the exposure.</p></li>
+<li><p>FGS: Fine guidance sensor used during the exposure.
+F1, F2, or F3</p></li>
 </ul>
 <p>These data are gathered from <em>rawacq</em> and <em>spt</em> files.</p>
 </div>
@@ -202,24 +204,33 @@ F1, F2, or F3</li>
 <p>The <code class="docutils literal notranslate"><span class="pre">OSMDataModel</span></code> is used with the OSM Monitors.</p>
 <p>OSMDataModel includes the following data:</p>
 <ul class="simple">
-<li>ROOTNAME: Exposure rootname.</li>
-<li>EXPSTART: Time at the start of the exposure (mjd).</li>
-<li>DETECTOR: NUV or FUV.</li>
-<li>LIFE_ADJ: Lifetime Position.</li>
-<li>OPT_ELEM: Grating or Mirror used during the observation.</li>
-<li>CENWAVE: Cenwave of the observation.</li>
-<li>FPPOS: FPPOS used for the observation.</li>
-<li>PROPOSID: Proposal ID.</li>
-<li>OBSET_ID: Observation set ID.</li>
-<li>TIME: The TIME column of a given exposure (s).
-Time of shift measurement (relative to the start of the exposure).</li>
-<li>SHIFT_DISP: The SHIFT_DISP column of a given exposure (pix).
-Shift values in the dispersion direction.</li>
-<li>SHIFT_XDISP: The SHIFT_XDISP column of a given exposure (pix).
-Shift values in the cross-dispersion direction.</li>
-<li>SEGMENT: The SEGMENT column of a given exposure.</li>
+<li><p>ROOTNAME: Exposure rootname.</p></li>
+<li><p>EXPSTART: Time at the start of the exposure (mjd).</p></li>
+<li><p>DETECTOR: NUV or FUV.</p></li>
+<li><p>LIFE_ADJ: Lifetime Position.</p></li>
+<li><p>OPT_ELEM: Grating or Mirror used during the observation.</p></li>
+<li><p>CENWAVE: Cenwave of the observation.</p></li>
+<li><p>FPPOS: FPPOS used for the observation.</p></li>
+<li><p>PROPOSID: Proposal ID.</p></li>
+<li><p>OBSET_ID: Observation set ID.</p></li>
+<li><p>TIME: The TIME column of a given exposure (s).
+Time of shift measurement (relative to the start of the exposure).</p></li>
+<li><p>SHIFT_DISP: The SHIFT_DISP column of a given exposure (pix).
+Shift values in the dispersion direction.</p></li>
+<li><p>SHIFT_XDISP: The SHIFT_XDISP column of a given exposure (pix).
+Shift values in the cross-dispersion direction.</p></li>
+<li><p>SEGMENT: The SEGMENT column of a given exposure.</p></li>
+<li><p>SEGMENT_LAMPTAB: The SEGMENT column of the matched row in the LAMPTAB file.</p></li>
+<li><p>FP_PIXEL_SHIFT: the FP_PIXEL_SHIFT column of the matched rows (all segments) in the LAMPTAB file.
+The FP_PIXEL_SHIFT is the offset in pixels for each FPPOS.</p></li>
+<li><p>XC_RANGE: The XC_RANGE column of the matched row in the WCPTAB file.
+XC_RANGE is the maximum pixel offset to use when doing a cross correlation between the observed data and the template
+wavecal.</p></li>
+<li><p>SEARCH_OFFSET: The SEARCH_OFFSET column of the matched row in the WCPTAB file.
+The SEARCH_OFFSET is the zero-point offset for the search range.</p></li>
 </ul>
-<p>These data are gathered from <em>lampflash</em> files.</p>
+<p>These data are gathered from <em>lampflash</em> files, LAMPTAB files and WCPTAB files (the LAMPTAB and WCPTAB used depends on
+the <em>lampflash</em> file).</p>
 </div>
 </div>
 
@@ -234,7 +245,7 @@ Shift values in the cross-dispersion direction.</li>
         <a href="sms.html" class="btn btn-neutral float-right" title="SMS Data Ingestion" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="monitors.html" class="btn btn-neutral" title="COS Monitors" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="monitors.html" class="btn btn-neutral float-left" title="COS Monitors" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -260,26 +271,16 @@ Shift values in the cross-dispersion direction.</li>
   
 
 
-  
-
-    
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-    
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
+
+  
+  
+    
+   
 
 </body>
 </html>
