@@ -1,6 +1,7 @@
 import os
 import dask
 import re
+import abc
 
 from glob import glob
 from astropy.io import fits
@@ -36,16 +37,31 @@ def find_files(file_pattern: str, data_dir: str = FILES_SOURCE, cosmo_layout: bo
     return results_as_list
 
 
-class FileData(dict):
-    """Class that acts as a dictionary, but with a constructor that grabs FITS file info"""
+class FileDataInterface(dict):
 
-    # noinspection PyMissingConstructor
+    def __init__(self):
+        """Initialize and create the possible corresponding spt file name."""
+        super().__init__(self)
+
+    @abc.abstractmethod
+    def get_header_data(self, *args, **kwargs):
+        """Get header data."""
+        pass
+
+    @abc.abstractmethod
+    def get_table_data(self, *args, **kwargs):
+        """Get table data."""
+        pass
+
+
+class FileData(FileDataInterface):
+    """Class that acts as a dictionary, but with a constructor that grabs FITS file info"""
     def __init__(self, filename: str, header_keywords: Sequence, header_extensions: Sequence,
                  spt_suffix: str = 'spt.fits.gz', spt_keywords: Sequence = None, spt_extensions: Sequence = None,
                  data_keywords: Sequence = None, data_extensions: Sequence = None,
                  header_defaults: Dict[str, Any] = None):
         """Initialize and create the possible corresponding spt file name."""
-        super().__init__(self)
+        super().__init__()
 
         spt_file = self._create_spt_filename(filename, spt_suffix)
 
@@ -108,6 +124,43 @@ class FileData(dict):
     def get_table_data(self, hdu: fits.HDUList, data_keywords: Sequence, data_extensions: Sequence):
         """Get table data."""
         self.update({key: hdu[ext].data[key] for key, ext in zip(data_keywords, data_extensions)})
+
+
+# TODO: Jitter files may produce multiple "filedata" sets due to the way Jitter file associations are organized: one
+#  jitter set per extension.. may need to implement this from a per-extension perspective instead of a per-file
+#  perspective.
+class JitterFileData(FileDataInterface):
+    """Class that acts as a dictionary, but gets data from COS Jitter Files."""
+    def __init__(self, filename: str, hdu: fits.HDUList, header_keywords: Sequence, data_keywords: Sequence):
+        super().__init__()
+
+        self.update({'FILENAME': filename})
+        self.get_header_data(hdu, header_keywords)
+        self.get_expstart()
+        self.get_table_data(hdu, data_keywords)
+
+    def get_expstart(self):
+        rawacq = 'rawacq.fits.gz'
+        rawtag = 'rawtag.fits.gz'
+        rawtag_a = 'rawtag_a.fits.gz'
+        rawtag_b = 'rawtag_b.fits.gz'
+
+        exposure = self['EXPNAME'].strip('j') + 'q'
+
+        for possible_file in [rawacq, rawtag, rawtag_a, rawtag_b]:
+            co_file = os.path.join(self['FILENAME'], f'{exposure}_{possible_file}')
+
+            try:
+                self['EXPSTART'] = fits.getval(co_file, 'EXPSTART', 1)
+
+            except FileNotFoundError:
+                continue
+
+        if 'EXPSTART' not in self:
+            self['EXPSTART'] = 0
+
+    def get_header_data(self, hdu, header_keywords):
+        # TODO: get header keys from each extension or the primary extension.. use a dict perhaps?
 
 
 def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence, spt_keywords: Sequence = None,
