@@ -12,31 +12,6 @@ from . import SETTINGS
 FILES_SOURCE = SETTINGS['filesystem']['source']
 
 
-def find_files(file_pattern: str, data_dir: str = FILES_SOURCE, cosmo_layout: bool = True) -> list:
-    """Find COS data files from a source directory. The default is the cosmo data directory. If another source is
-    used, it's assumed that that directory only contains the data files.
-    """
-    if not os.path.exists(data_dir):
-        raise OSError(f'data_dir, {data_dir} does not exist.')
-
-    if not cosmo_layout:
-        return glob(os.path.join(data_dir, file_pattern))
-
-    pattern = r'\d{5}'  # Match subdirectories named with program ids.
-    programs = os.listdir(data_dir)
-
-    # Glob files from all directories in parallel
-    result = [
-        dask.delayed(glob)(os.path.join(data_dir, program, file_pattern))
-        for program in programs if re.match(pattern, program)
-    ]
-
-    results = dask.compute(result)[0]
-    results_as_list = [file for file_list in results for file in file_list]   # Unpack list of lists into one list
-
-    return results_as_list
-
-
 class FileDataInterface(dict):
 
     def __init__(self):
@@ -126,29 +101,30 @@ class FileData(FileDataInterface):
         self.update({key: hdu[ext].data[key] for key, ext in zip(data_keywords, data_extensions)})
 
 
-# TODO: Jitter files may produce multiple "filedata" sets due to the way Jitter file associations are organized: one
-#  jitter set per extension.. may need to implement this from a per-extension perspective instead of a per-file
-#  perspective.
 class JitterFileData(FileDataInterface):
     """Class that acts as a dictionary, but gets data from COS Jitter Files."""
-    def __init__(self, filename: str, hdu: fits.HDUList, header_keywords: Sequence, data_keywords: Sequence):
+    def __init__(self, filename: str, hdu: fits.HDUList, hdu_index: int, primary_hdr_keywords: Sequence[str],
+                 extension_hdr_keywords: Sequence[str], data_keywords: Sequence[str], get_expstart: bool = True):
         super().__init__()
 
+        if hdu_index == 0:
+            raise ValueError('The hdu_index must be greater than 0.')
+
         self.update({'FILENAME': filename})
-        self.get_header_data(hdu, header_keywords)
-        self.get_expstart()
-        self.get_table_data(hdu, data_keywords)
+        self.get_header_data(hdu, hdu_index, primary_hdr_keywords, extension_hdr_keywords)
+
+        if get_expstart:
+            self.get_expstart()
+
+        self.get_table_data(hdu, hdu_index, data_keywords)
 
     def get_expstart(self):
-        rawacq = 'rawacq.fits.gz'
-        rawtag = 'rawtag.fits.gz'
-        rawtag_a = 'rawtag_a.fits.gz'
-        rawtag_b = 'rawtag_b.fits.gz'
+        possible_files = ('rawacq.fits.gz', 'rawtag.fits.gz', 'rawtag_a.fits.gz', 'rawtag_b.fits.gz')
 
         exposure = self['EXPNAME'].strip('j') + 'q'
 
-        for possible_file in [rawacq, rawtag, rawtag_a, rawtag_b]:
-            co_file = os.path.join(self['FILENAME'], f'{exposure}_{possible_file}')
+        for possible_file in possible_files:
+            co_file = os.path.join(os.path.dirname(self['FILENAME']), f'{exposure}_{possible_file}')
 
             try:
                 self['EXPSTART'] = fits.getval(co_file, 'EXPSTART', 1)
@@ -159,8 +135,59 @@ class JitterFileData(FileDataInterface):
         if 'EXPSTART' not in self:
             self['EXPSTART'] = 0
 
-    def get_header_data(self, hdu, header_keywords):
-        # TODO: get header keys from each extension or the primary extension.. use a dict perhaps?
+    def get_header_data(self, hdu: fits.HDUList, hdu_index: int, primary_hdr_keywords: Sequence[str],
+                        extension_hdr_keywords: Sequence[str]):
+        for key in primary_hdr_keywords:
+            self[key] = hdu[0].header[key]
+
+        for key in extension_hdr_keywords:
+            self[key] = hdu[hdu_index].header[key]
+
+    def get_table_data(self, hdu: fits.HDUList, hdu_index: int, data_keywords: Sequence[str]):
+        for column in data_keywords:
+            self[column] = hdu[hdu_index].data[column]
+
+    def reduce_to_stat(self, keys: Sequence[str], stats: Sequence[str]):
+        supported = ('mean', 'std')
+
+        if len(keys) != len(stats):
+            raise ValueError('keys and stats must be the same length.')
+
+        for key, stat in zip(keys, stats):
+            if stat not in supported:
+                raise ValueError(f'{stat} not one of {supported}. Please select a statistic from {supported}.')
+
+            if stat == 'mean':
+                self[key] = self[key].mean()
+
+            if stat == 'std':
+                self[key] = self[key].std()
+
+
+def find_files(file_pattern: str, data_dir: str = FILES_SOURCE, cosmo_layout: bool = True) -> list:
+    """Find COS data files from a source directory. The default is the cosmo data directory. If another source is
+    used, it's assumed that that directory only contains the data files.
+    """
+    if not os.path.exists(data_dir):
+        raise OSError(f'data_dir, {data_dir} does not exist.')
+
+    if not cosmo_layout:
+        return glob(os.path.join(data_dir, file_pattern))
+
+    pattern = r'\d{5}'  # Match subdirectories named with program ids.
+    programs = os.listdir(data_dir)
+
+    # Glob files from all directories in parallel
+    result = [
+        dask.delayed(glob)(os.path.join(data_dir, program, file_pattern))
+        for program in programs if re.match(pattern, program)
+    ]
+
+    results = dask.compute(result)[0]
+    results_as_list = [file for file_list in results for file in
+                       file_list]  # Unpack list of lists into one list
+
+    return results_as_list
 
 
 def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence, spt_keywords: Sequence = None,
@@ -189,3 +216,46 @@ def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence
     ]
 
     return [item for item in dask.compute(*delayed_results, scheduler='multiprocessing') if item is not None]
+
+
+def get_jitter_data(jitter_files: List[str], primary_hdr_keywords: Sequence[str], extension_hdr_keywords: Sequence[str],
+                    data_keywords: Sequence[str], get_expstart: bool = True, reduce_keys: Sequence[str] = None,
+                    reduce_stats: Sequence[str] = None):
+
+    @dask.delayed
+    def _get_jitter_data(jitter_file, *args, **kwargs):
+        keys = kwargs.get('reduce_keys')
+        stats = kwargs.get('reduce_stats')
+        get_expstart_ = kwargs.get('get_expstart')
+
+        try:
+            jitter_results = []
+
+            with fits.open(jitter_file) as jit:
+                for i in range(len(jit)):
+                    jitter_data = JitterFileData(jitter_file, jit, i, *args, **kwargs)
+
+                    if get_expstart_ and jitter_data['EXPSTART'] == 0:
+                        continue
+
+                    if keys:
+                        jitter_data.reduce_to_stat(keys, stats)
+
+                    jitter_results.append(jitter_data)
+
+        except (ValueError, OSError):
+            return
+
+        delayed_results = [
+            _get_jitter_data(
+                jitter_file,
+                primary_hdr_keywords,
+                extension_hdr_keywords,
+                data_keywords,
+                get_expstart=get_expstart,
+                reduce_keys=reduce_keys,
+                reduce_stats=reduce_stats
+            ) for jitter_file in jitter_files
+        ]
+
+        return [item for item in dask.compute(*delayed_results, scheduler='multiprocessing') if item is not None]
