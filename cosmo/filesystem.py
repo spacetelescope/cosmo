@@ -16,9 +16,8 @@ FILES_SOURCE = SETTINGS['filesystem']['source']
 
 
 class FileDataInterface(dict):
-
+    """Partial implementation for classes used to get data from COS FITS files that subclasses the python dictionary."""
     def __init__(self):
-        """Initialize and create the possible corresponding spt file name."""
         super().__init__(self)
 
     @abc.abstractmethod
@@ -33,7 +32,9 @@ class FileDataInterface(dict):
 
 
 class FileData(FileDataInterface):
-    """Class that acts as a dictionary, but with a constructor that grabs FITS file info"""
+    """Class that acts as a dictionary, but with a constructor that grabs FITS file info from typical COS data
+    products.
+    """
     def __init__(self, filename: str, header_keywords: Sequence, header_extensions: Sequence,
                  spt_suffix: str = 'spt.fits.gz', spt_keywords: Sequence = None, spt_extensions: Sequence = None,
                  data_keywords: Sequence = None, data_extensions: Sequence = None,
@@ -224,6 +225,9 @@ class JitterFileData(FileDataInterface):
                  extension_hdr_keywords: Sequence[str], data_keywords: Sequence[str], get_expstart: bool = True):
         super().__init__()
 
+        self.setdefault('EXPSTART', 0)
+        self.setdefault('EXPTYPE', 'N/A')
+
         if hdu_index == 0:
             raise ValueError('The hdu_index must be greater than 0.')
 
@@ -236,49 +240,59 @@ class JitterFileData(FileDataInterface):
         self.get_table_data(hdu, hdu_index, data_keywords)
 
     def get_expstart(self):
+        """Get the EXPSTART from a corresponding 'raw' file."""
         possible_files = ('rawacq.fits.gz', 'rawtag.fits.gz', 'rawtag_a.fits.gz', 'rawtag_b.fits.gz')
 
+        # jitter file rootnames are identical to typical rootnames apart from the last character
         exposure = self['EXPNAME'].strip('j') + 'q'
 
         for possible_file in possible_files:
             co_file = os.path.join(os.path.dirname(self['FILENAME']), f'{exposure}_{possible_file}')
 
             try:
-                self['EXPSTART'] = fits.getval(co_file, 'EXPSTART', 1)
+                with fits.open(co_file) as co:
+                    self['EXPSTART'] = co[1].header['EXPSTART']
+                    self['EXPTYPE'] = co[0].header['EXPTYPE']
 
             except FileNotFoundError:
                 continue
 
-        if 'EXPSTART' not in self:
-            self['EXPSTART'] = 0
-
     def get_header_data(self, hdu: fits.HDUList, hdu_index: int, primary_hdr_keywords: Sequence[str],
                         extension_hdr_keywords: Sequence[str]):
+        """Get data from the header(s)."""
         for key in primary_hdr_keywords:
             self[key] = hdu[0].header[key]
 
         for key in extension_hdr_keywords:
             self[key] = hdu[hdu_index].header[key]
 
+    @staticmethod
+    def _remove_bad_values(input_array):
+        """Remove any placeholder entries from the jitter data arrays."""
+        return input_array[input_array < 1e30]  # If data recording is interrupted, the software adds a placeholder
+
     def get_table_data(self, hdu: fits.HDUList, hdu_index: int, data_keywords: Sequence[str]):
         for column in data_keywords:
-            self[column] = hdu[hdu_index].data[column]
+            self[column] = self._remove_bad_values(hdu[hdu_index].data[column])
 
-    def reduce_to_stat(self, keys: Sequence[str], stats: Sequence[str]):
-        supported = ('mean', 'std')
+    def reduce_to_stat(self, description: dict):
+        supported = ('mean', 'std', 'max')
 
-        if len(keys) != len(stats):
-            raise ValueError('keys and stats must be the same length.')
+        for key, stats in description.items():
+            for stat in stats:
+                if stat not in supported:
+                    raise ValueError(f'{stat} not one of {supported}. Please select a statistic from {supported}.')
 
-        for key, stat in zip(keys, stats):
-            if stat not in supported:
-                raise ValueError(f'{stat} not one of {supported}. Please select a statistic from {supported}.')
+                if stat == 'mean':
+                    self[f'{key}_{stat}'] = self[key].mean()
 
-            if stat == 'mean':
-                self[key] = self[key].mean()
+                if stat == 'std':
+                    self[f'{key}_{stat}'] = self[key].std()
 
-            if stat == 'std':
-                self[key] = self[key].std()
+                if stat == 'max':
+                    self[f'{key}_{stat}'] = self[key].max()
+
+            del self[key]
 
 
 def find_files(file_pattern: str, data_dir: str = FILES_SOURCE, cosmo_layout: bool = True) -> list:
@@ -341,44 +355,61 @@ def get_file_data(fitsfiles: List[str], keywords: Sequence, extensions: Sequence
     return [item for item in dask.compute(*delayed_results, scheduler='multiprocessing') if item is not None]
 
 
+# TODO: This takes forever.. may need to optimize
 def get_jitter_data(jitter_files: List[str], primary_hdr_keywords: Sequence[str], extension_hdr_keywords: Sequence[str],
-                    data_keywords: Sequence[str], get_expstart: bool = True, reduce_keys: Sequence[str] = None,
-                    reduce_stats: Sequence[str] = None):
+                    data_keywords: Sequence[str], get_expstart: bool = True, reduce_to_stats: dict = None):
+    """Get data from COS Jitter Files in parallel. Optionally get a corresponding EXPSTART and reduce specified data
+    keys to a representative statistic instead of returning the entire array.
+    """
 
     @dask.delayed
     def _get_jitter_data(jitter_file, *args, **kwargs):
-        keys = kwargs.get('reduce_keys')
-        stats = kwargs.get('reduce_stats')
+        """Get specified data from jitter_file."""
+        description = kwargs.pop('reduce_to_stats')
         get_expstart_ = kwargs.get('get_expstart')
 
         try:
             jitter_results = []
 
             with fits.open(jitter_file) as jit:
-                for i in range(len(jit)):
+                # Loop through data extensions, skipping 0; association jitters represent multiple exposures
+                for i in range(1, len(jit)):
                     jitter_data = JitterFileData(jitter_file, jit, i, *args, **kwargs)
 
+                    # If retrieving a corresponding EXPSTART, skip jitter files where a corresponding raw file was
+                    # not found.
                     if get_expstart_ and jitter_data['EXPSTART'] == 0:
                         continue
 
-                    if keys:
-                        jitter_data.reduce_to_stat(keys, stats)
+                    if description:
+                        try:
+                            jitter_data.reduce_to_stat(description)
+
+                        except ValueError:   # Sometimes, the jitter file is empty
+                            continue
 
                     jitter_results.append(jitter_data)
 
-        except (ValueError, OSError):
+            return jitter_results
+
+        except OSError as e:
+            warnings.warn(f'Bad file found: {jitter_file}\n{str(e)}', Warning)
+
             return
 
-        delayed_results = [
-            _get_jitter_data(
-                jitter_file,
-                primary_hdr_keywords,
-                extension_hdr_keywords,
-                data_keywords,
-                get_expstart=get_expstart,
-                reduce_keys=reduce_keys,
-                reduce_stats=reduce_stats
-            ) for jitter_file in jitter_files
-        ]
+    delayed_results = [
+        _get_jitter_data(
+            jitter_file,
+            primary_hdr_keywords,
+            extension_hdr_keywords,
+            data_keywords,
+            get_expstart=get_expstart,
+            reduce_to_stats=reduce_to_stats
+        ) for jitter_file in jitter_files
+    ]
 
-        return [item for item in dask.compute(*delayed_results, scheduler='multiprocessing') if item is not None]
+    # Each jitter file will result in a list; need to unpack that list
+    return [
+        item for sublist in dask.compute(*delayed_results, scheduler='multiprocessing') if sublist is not None
+        for item in sublist
+    ]

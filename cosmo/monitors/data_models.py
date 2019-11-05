@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 from typing import List
 from monitorframe.datamodel import BaseDataModel
@@ -155,7 +156,7 @@ class JitterDataModel(BaseDataModel):
         extension_header_keys = ('EXPNAME',)
 
         data_keys = ('SI_V2_AVG', 'SI_V3_AVG')
-        reduce, stats = ('SI_V2_AVG', 'SI_V3_AVG'), ('std', 'std')
+        reduce = {'SI_V2_AVG': ('mean', 'std', 'max'), 'SI_V3_AVG': ('mean', 'std', 'max')}
 
         files = find_files('*jit*', data_dir=self.files_source, cosmo_layout=self.cosmo_layout)
 
@@ -168,13 +169,17 @@ class JitterDataModel(BaseDataModel):
         if not files:   # No new files
             return pd.DataFrame()
 
-        return pd.DataFrame(
+        data_results = pd.DataFrame(
             get_jitter_data(
                 files,
                 primary_header_keys,
                 extension_header_keys,
                 data_keys,
-                reduce_keys=reduce,
-                reduce_stats=stats
+                reduce_to_stats=reduce
             )
         )
+
+        # Remove any NaNs or inf that may occur from the statistics calculations.
+        data_results = data_results.replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
+
+        return data_results[~data_results.EXPTYPE.str.contains('ACQ')]
