@@ -5,7 +5,7 @@ from typing import List
 from monitorframe.datamodel import BaseDataModel
 from peewee import OperationalError
 
-from ..filesystem import find_files, get_file_data, get_jitter_data
+from ..filesystem import find_files, data_from_exposures, data_from_jitters
 from ..sms import SMSTable
 from .. import SETTINGS
 
@@ -21,24 +21,39 @@ def dgestar_to_fgs(results: List[dict]) -> None:
 class AcqDataModel(BaseDataModel):
     """Datamodel for Acq files."""
     files_source = FILES_SOURCE
-    cosmo_layout = True
-
+    subdir_pattern = '?????'
     primary_key = 'ROOTNAME'
 
     def get_new_data(self):
-        acq_keywords = (
-            'ACQSLEWX', 'ACQSLEWY', 'EXPSTART', 'ROOTNAME', 'PROPOSID', 'OBSTYPE', 'NEVENTS', 'SHUTTER', 'LAMPEVNT',
-            'ACQSTAT', 'EXTENDED', 'LINENUM', 'APERTURE', 'OPT_ELEM', 'LIFE_ADJ', 'CENWAVE', 'DETECTOR', 'EXPTYPE'
-        )
+        header_request = {
+            0: [
+                'ACQSLEWX',
+                'ACQSLEWY',
+                'ROOTNAME',
+                'PROPOSID',
+                'OBSTYPE',
+                'SHUTTER',
+                'LAMPEVNT',
+                'ACQSTAT',
+                'EXTENDED',
+                'LINENUM',
+                'APERTURE',
+                'OPT_ELEM',
+                'LIFE_ADJ',
+                'CENWAVE',
+                'DETECTOR',
+                'EXPTYPE'
+            ],
+            1: ['EXPSTART', 'NEVENTS']
+        }
 
-        acq_extensions = (0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-
-        defaults = {'ACQSLEWX': 0.0, 'ACQSLEWY': 0.0, 'NEVENTS': 0.0, 'LAMPEVNT': 0.0}
+        # Different ACQ types may not have the full set
+        header_defaults = {'ACQSLEWX': 0.0, 'ACQSLEWY': 0.0, 'NEVENTS': 0.0, 'LAMPEVNT': 0.0}
 
         # SPT file header keys, extensions
-        spt_keywords, spt_extensions = ('DGESTAR',), (0,)
+        spt_header_request = {0: ['DGESTAR']}
 
-        files = find_files('*rawacq*', data_dir=self.files_source, cosmo_layout=self.cosmo_layout)
+        files = find_files('*rawacq*', data_dir=self.files_source, subdir_pattern=self.subdir_pattern)
 
         if self.model is not None:
             currently_ingested = [item.FILENAME for item in self.model.select(self.model.FILENAME)]
@@ -49,13 +64,11 @@ class AcqDataModel(BaseDataModel):
         if not files:  # No new files
             return pd.DataFrame()
 
-        data_results = get_file_data(
+        data_results = data_from_exposures(
             files,
-            acq_keywords,
-            acq_extensions,
-            header_defaults=defaults,
-            spt_keywords=spt_keywords,
-            spt_extensions=spt_extensions,
+            header_request=header_request,
+            header_defaults=header_defaults,
+            spt_header_request=spt_header_request,
         )
 
         dgestar_to_fgs(data_results)
@@ -66,32 +79,30 @@ class AcqDataModel(BaseDataModel):
 class OSMDataModel(BaseDataModel):
     """Data model for all OSM Shift monitors."""
     files_source = FILES_SOURCE
+    subdir_pattern = '?????'
+
     cosmo_layout = True
 
     primary_key = 'ROOTNAME'
 
     def get_new_data(self):
         """Retrieve data."""
-        header_keys = (
-            'ROOTNAME', 'EXPSTART', 'DETECTOR', 'LIFE_ADJ', 'OPT_ELEM', 'CENWAVE', 'FPPOS', 'PROPOSID', 'OBSET_ID'
-        )
-        header_extensions = (0, 1, 0, 0, 0, 0, 0, 0, 0)
+        header_request = {
+            0: ['ROOTNAME', 'DETECTOR', 'LIFE_ADJ', 'OPT_ELEM', 'CENWAVE', 'FPPOS', 'PROPOSID', 'OBSET_ID'],
+            1: ['EXPSTART']
+        }
 
-        data_keys = ('TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT')
-        data_extensions = (1, 1, 1, 1)
+        table_request = {1: ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT']}
 
         reference_request = {
             'LAMPTAB': {
-                'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],
-                'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
+                'match_keys': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],
+                'table_request': {1: ['SEGMENT', 'FP_PIXEL_SHIFT']},
             },
-            'WCPTAB': {
-                'match': ['OPT_ELEM'],
-                'columns': ['XC_RANGE', 'SEARCH_OFFSET']
-            }
+            'WCPTAB': {'match_keys': ['OPT_ELEM'], 'table_request': {1: ['XC_RANGE', 'SEARCH_OFFSET']}}
         }
 
-        files = find_files('*lampflash*', data_dir=self.files_source, cosmo_layout=self.cosmo_layout)
+        files = find_files('*lampflash*', data_dir=self.files_source, subdir_pattern=self.subdir_pattern)
 
         if self.model is not None:
             currently_ingested = [item.FILENAME for item in self.model.select(self.model.FILENAME)]
@@ -103,12 +114,10 @@ class OSMDataModel(BaseDataModel):
             return pd.DataFrame()
 
         data_results = pd.DataFrame(
-            get_file_data(
+            data_from_exposures(
                 files,
-                header_keys,
-                header_extensions,
-                data_keywords=data_keys,
-                data_extensions=data_extensions,
+                header_request=header_request,
+                table_request=table_request,
                 reference_request=reference_request
             )
         )
@@ -149,7 +158,7 @@ class OSMDataModel(BaseDataModel):
 
 class JitterDataModel(BaseDataModel):
     files_source = FILES_SOURCE
-    cosmo_layout = True
+    subdir_pattern = '?????'
 
     def get_new_data(self):
         primary_header_keys = ('PROPOSID', 'CONFIG')
@@ -158,7 +167,7 @@ class JitterDataModel(BaseDataModel):
         data_keys = ('SI_V2_AVG', 'SI_V3_AVG')
         reduce = {'SI_V2_AVG': ('mean', 'std', 'max'), 'SI_V3_AVG': ('mean', 'std', 'max')}
 
-        files = find_files('*jit*', data_dir=self.files_source, cosmo_layout=self.cosmo_layout)
+        files = find_files('*jit*', data_dir=self.files_source, subdir_pattern=self.subdir_pattern)
 
         if self.model is not None:
             currently_ingested = [item.FILENAME for item in self.model.select(self.model.FILENAME)]
@@ -170,7 +179,7 @@ class JitterDataModel(BaseDataModel):
             return pd.DataFrame()
 
         data_results = pd.DataFrame(
-            get_jitter_data(
+            data_from_jitters(
                 files,
                 primary_header_keys,
                 extension_header_keys,
@@ -182,4 +191,4 @@ class JitterDataModel(BaseDataModel):
         # Remove any NaNs or inf that may occur from the statistics calculations.
         data_results = data_results.replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
 
-        return data_results[~data_results.EXPTYPE.str.contains('ACQ')]
+        return data_results[~data_results.EXPTYPE.str.contains('ACQ|DARK|FLAT')]
