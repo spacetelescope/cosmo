@@ -2,99 +2,59 @@ import pytest
 import os
 import numpy as np
 
+from astropy.io import fits
 from shutil import copy
 
-from cosmo.filesystem import get_file_data, FileData, find_files
+from cosmo.filesystem import (
+    data_from_exposures,
+    data_from_jitters,
+    FileData,
+    SPTData,
+    ReferenceData,
+    JitterFileData,
+    find_files,
+    get_exposure_data,
+    get_jitter_data
+)
 
 
-BAD_INPUT = [
-    # Different lengths in the data
-    (['key1', 'key2'], [1], None, None, None, None, None),
-    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1], None, None, None),
-    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], [1], ['key1', 'key2'], None),
+@pytest.fixture(scope='class')
+def file_data(data_dir):
+    file = os.path.join(data_dir, 'ld1ce4dkq_lampflash.fits.gz')
+    header_request = {0: ['ROOTNAME'], 1: ['EXPSTART']}
+    table_request = {1: ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP']}
 
-    # Input is missing corresponding extension argument with the keyword argument given
-    (['key1', 'key2'], [1, 1], ['key1', 'key2'], None, None, None, None),
-    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], None, ['key1', 'key2'], None),
+    with fits.open(file) as f:
+        test_data = FileData(f, header_request=header_request, table_request=table_request)
 
-    # Input is missing corresponding keyword argument with the extension argument given
-    (['key1', 'key2'], [1, 1], None, [1, 1], None, None, None),
-    (['key1', 'key2'], [1, 1], ['key1', 'key2'], [1, 1], [1, 1], None, None),
-
-    # Input has bad reference_request dictionary
-    (
-        ['key1', 'key2'],
-        [1, 1],
-        ['key1', 'key2'],
-        [1, 1],
-        [1, 1],
-        ['key1', 'key2'],
-        {'reference': 'test', 'match': ['test']}
-    ),
-    (
-        ['key1', 'key2'],
-        [1, 1],
-        ['key1', 'key2'],
-        [1, 1],
-        [1, 1],
-        ['key1', 'key2'],
-        {'match': ['test'], 'columns': ['test']}
-    ),
-    (
-        ['key1', 'key2'],
-        [1, 1],
-        ['key1', 'key2'],
-        [1, 1],
-        [1, 1],
-        ['key1', 'key2'],
-        {'reference': 'test', 'columns': ['test']}
-    ),
-    (
-        ['key1', 'key2'],
-        [1, 1],
-        ['key1', 'key2'],
-        [1, 1],
-        [1, 1],
-        ['key1', 'key2'],
-        {'reference': 'test', 'match': ['test'], 'columns': 'test'}
-    ),
-    (
-        ['key1', 'key2'],
-        [1, 1],
-        ['key1', 'key2'],
-        [1, 1],
-        [1, 1],
-        ['key1', 'key2'],
-        {'reference': 'test', 'match': 'test', 'columns': ['test']}
-    ),
-]
+    return test_data
 
 
-@pytest.fixture(params=BAD_INPUT)
-def params(request):
-    return request.param
+@pytest.fixture(scope='class')
+def ref_data(data_dir):
+    file = os.path.join(data_dir, 'ld1ce4dkq_lampflash.fits.gz')
+    match_keys = ['OPT_ELEM', 'CENWAVE', 'FPOFFSET']
+    header_request = {0: ['DETECTOR']}
+    table_request = {1: ['SEGMENT', 'FP_PIXEL_SHIFT']}
+
+    with fits.open(file) as f:
+        ref_data = ReferenceData(
+            f,
+            'LAMPTAB',
+            match_keys=match_keys,
+            header_request=header_request,
+            table_request=table_request
+        )
+
+    return ref_data
 
 
-@pytest.fixture
-def testfiledata(data_dir):
-    file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
-    testfile = FileData(
-        file,
-        ('ROOTNAME',),
-        (0,),
-        spt_keywords=('LQTDFINI',),
-        spt_extensions=(1,),
-        data_keywords=('TIME', 'SEGMENT'),
-        data_extensions=(1, 1),
-        reference_request={
-            'LAMPTAB': {
-                'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],
-                'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
-            }
-        }
-    )
+@pytest.fixture(scope='class')
+def spt_data(data_dir):
+    file = os.path.join(data_dir, 'ld3la1csq_rawacq.fits.gz')
+    header_request = {0: ['INSTRUME']}
 
-    return testfile
+    return SPTData(file, header_request=header_request)
 
 
 @pytest.fixture
@@ -114,128 +74,105 @@ def cosmo_layout_testdir(data_dir):
 class TestFindFiles:
 
     def test_fails_for_bad_dir(self):
-        with pytest.raises(OSError):
-            find_files('*', 'doesnotexist', cosmo_layout=False)
+        assert not find_files('*', 'doesnotexist', subdir_pattern=None)
 
     def test_finds_files(self, data_dir):
-        files = find_files('*lampflash*', data_dir=data_dir, cosmo_layout=False)
+        files = find_files('*lampflash*', data_dir=data_dir, subdir_pattern=None)
 
         assert len(files) == 11
 
     @pytest.mark.usefixtures("cosmo_layout_testdir")
     def test_finds_files_cosmo_layout(self, data_dir):
-        files = find_files('*', data_dir=data_dir, cosmo_layout=True)
+        files = find_files('*', data_dir=data_dir)
 
         assert len(files) == 1  # only one "program" directory with only one file in it
 
 
 class TestFileData:
 
-    def test_spt_name(self, testfiledata, data_dir):
-        assert (
-                testfiledata._create_spt_filename(testfiledata['FILENAME'], 'spt.fits.gz') ==
-                os.path.join(data_dir, 'lb4c10niq_spt.fits.gz')
-        )
+    def test_header_request(self, test_data):
+        assert 'ROOTNAME' in test_data
+        assert test_data['ROOTNAME'] == 'ld1ce4dkq'
 
-    def test_missing_spt_returns_none(self, data_dir):
-        file = os.path.join(data_dir, 'lbhx26fmq_lampflash.fits.gz')  # This file doesn't have a matching spt file
+    def test_table_request(self, test_data):
+        assert 'TIME' in test_data and 'SHIFT_DISP' in test_data and 'SHIFT_XDISP' in test_data
+        assert isinstance(test_data['TIME'],  np.ndarray)
 
-        assert FileData._create_spt_filename(file, 'spt.fits.gz') is None
-
-    def test_get_spt_header_data(self, testfiledata):
-        assert 'LQTDFINI' in testfiledata
-        assert testfiledata['LQTDFINI'] == 'TDF Up'
-
-    def test_get_header_data(self, testfiledata):
-        assert 'ROOTNAME' in testfiledata
-        assert testfiledata['ROOTNAME'] == 'lb4c10niq'
-
-    def test_get_table_data(self, testfiledata):
-        assert 'TIME' in testfiledata and 'SEGMENT' in testfiledata
-        assert isinstance(testfiledata['TIME'],  np.ndarray)
-
-    def test_get_reference_data(self, testfiledata):
-        assert 'SEGMENT' in testfiledata and 'SEGMENT_LAMPTAB' in testfiledata
-        assert 'FP_PIXEL_SHIFT' in testfiledata
-
-    def test_get_reference_data_fails_match(self, data_dir):
+    def test_header_request_fails_without_defaults(self, data_dir):
         file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
+        header_request = {0: 'fake'}
 
-        with pytest.raises(ValueError):
-            FileData(
-                file,
-                ('ROOTNAME',),
-                (0,),
-                spt_keywords=('LQTDFINI',),
-                spt_extensions=(1,),
-                data_keywords=('TIME', 'SEGMENT'),
-                data_extensions=(1, 1),
-                reference_request={
-                    'LAMPTAB': {
-                        'match': ['SEGMENT'],  # SEGMENT is N/A for the test file; lamptab doesn't have a N/A entry
-                        'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
-                    }
-                }
-            )
+        with pytest.raises(KeyError):
+            with fits.open(file) as f:
+                FileData(f, header_request=header_request)
 
-    def test_get_multiple_references(self, data_dir):
+    def test_header_request_defaults(self, data_dir):
         file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
+        header_request = {0: 'fake'}
+        header_defaults = {'fake': 'definitely fake'}
 
-        FileData(
-            file,
-            ('ROOTNAME',),
-            (0,),
-            spt_keywords=('LQTDFINI',),
-            spt_extensions=(1,),
-            data_keywords=('TIME', 'SEGMENT'),
-            data_extensions=(1, 1),
-            reference_request={
-                'LAMPTAB': {
-                    'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],
-                    'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']
-                },
-                'WCPTAB': {
-                    'match': ['OPT_ELEM', 'CENWAVE', 'APERTURE'],
-                    'columns': ['SLOPE', 'HEIGHT', 'SEGMENT']
-                }
-            }
-        )
+        with fits.open(file) as f:
+            test_data = FileData(f, header_request=header_request, header_defaults=header_defaults)
 
-    def test_fails_with_bad_input(self, data_dir, params):
+        assert 'fake' in test_data
+        assert test_data['fake'] == 'definitely fake'
+
+    def test_bytestr_conversion(self, data_dir):
         file = os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')
-        header_keys, header_exts, spt_keys, spt_exts, data_exts, data_keys, reference_request = params
+        header_request = {0: 'byte'}
+        header_defaults = {'byte': np.array([b'here be bytes'])}
 
-        # noinspection PyTypeChecker
-        with pytest.raises((ValueError, TypeError)):
-            FileData(
-                file,
-                header_keywords=header_keys,
-                header_extensions=header_exts,
-                spt_keywords=spt_keys,
-                spt_extensions=spt_exts,
-                data_keywords=data_keys,
-                data_extensions=data_exts,
-                reference_request=reference_request
-            )
+        with fits.open(file) as f:
+            test_data = FileData(f, header_request=header_request, header_defaults=header_defaults)
+
+        assert 'byte' in test_data
+        assert test_data['byte'].dtype == np.unicode_
+
+    def test_combine(self, test_data):
+        to_combine = {'ROOTNAME': 'otherone'}
+
+        combined = test_data.combine(to_combine, 'other')
+
+        assert 'ROOTNAME' in combined and 'ROOTNAME_other' in combined
+        assert combined['ROOTNAME'] == 'ld1ce4dkq' and combined['ROOTNAME_other'] == 'otherone'
+        assert 'EXPSTART' in combined and 'TIME' in combined and 'SHIFT_DISP' in combined and 'SHIFT_XDISP' in combined
 
 
-class TestGetFileData:
+class TestReferenceData:
 
-    def test_compute_result(self, data_dir):
-        files = [os.path.join(data_dir, 'lb4c10niq_lampflash.fits.gz')]
+    def test_ref_data_match(self, ref_data):
+        assert 'MATCH_COL' in ref_data and 'MATCH_VAL' in ref_data
+        assert 'MATCH_VAL' == 'G230L'
 
-        result = get_file_data(
-            files,
-            ('ROOTNAME',),
-            (0,),
-            spt_keywords=('LQTDFINI',),
-            spt_extensions=(1,),
-            data_keywords=('TIME',),
-            data_extensions=(1,)
-        )
+    def test_header_request(self, ref_data):
+        assert 'DETECTOR' in ref_data and ref_data['DETECTOR'] == 'NUV'
 
-        assert isinstance(result, list) and len(result) == 1
-        assert 'ROOTNAME' in result[0] and 'LQTDFINI' in result[0] and 'TIME' in result[0]
-        assert result[0]['ROOTNAME'] == 'lb4c10niq'
-        assert result[0]['LQTDFINI'] == 'TDF Up'
-        assert isinstance(result[0]['TIME'], np.ndarray)
+    def test_table_request(self, ref_data):
+        assert 'SEGMENT' in ref_data and 'FP_PIXEL_SHIFT' in ref_data
+
+        # With the match keys provided, three rows should be returned from the reference file.
+        assert len(ref_data['SEGMENT']) == len(ref_data['FP_PIXEL_SHIFT']) == 3
+
+    def test_bytestr_conversion(self, ref_data):
+        assert ref_data['SEGMENT'].dtype == np.unicode_  # Default configuration converts the bytestr column to unicode
+
+
+class TestSPTData:
+
+    def test_header_request(self, spt_data):
+        assert 'INSTRUME' in spt_data and spt_data['INSTRUME'] == 'COS'
+
+    def test_filename_creation(self, data_dir):
+        file = os.path.join(data_dir, 'ld3la1csq_rawacq.fits.gz')
+        target = os.path.join(data_dir, 'ld3la1csq_spt.fits.gz')
+        assert SPTData._create_spt_filename(file) == target
+
+        file_without_gzip = os.path.join(data_dir, 'ld3la1csq_rawacq.fits')
+        assert SPTData._create_spt_filename(file_without_gzip) == target
+
+# TODO:
+#  Add JitterFileData tests and test data.
+#  Add get_exposure_data tests
+#  Add get_jitter_data tests
+#  Add data_from_exposures tests
+#  Add data_from_jitters tests
