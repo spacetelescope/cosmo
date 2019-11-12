@@ -114,7 +114,7 @@ def get_osm_data(datamodel, detector: str) -> pd.DataFrame:
                     'SHIFT_XDISP',
                     'SEGMENT',
                     'XC_RANGE',
-                    'SEGMENT_LAMPTAB',
+                    'LAMPTAB_SEGMENT',
                     'SEARCH_OFFSET',
                     'FP_PIXEL_SHIFT'
                 ],

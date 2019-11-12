@@ -53,8 +53,8 @@ class FileData(FileDataInterface):
         """Convert byte-string arrays to strings."""
         for key, value in self.items():
             if isinstance(value, np.ndarray):
-                if value.dtype in ['S3', 'S4']:
-                    self[key] = value.astype(np.unicode_)
+                if value.dtype.char == 'S':
+                    self[key] = value.astype(str)
 
     @classmethod
     def from_file(cls, filename, *args, **kwargs):
@@ -93,11 +93,11 @@ class FileData(FileDataInterface):
 class ReferenceData(FileData):
     def __init__(self, input_hdu: Union[str, fits.HDUList], reference_name: str, match_keys: Sequence[str],
                  header_request: REQUEST = None, table_request: REQUEST = None, header_defaults: Dict[str, Any] = None):
-        self[reference_name] = input_hdu[0].header[reference_name].split('$')[-1]
-        self[f'MATCH_COL'] = match_keys
-        self['MATCH_VAL'] = self._get_input_match_values(input_hdu)
+        self.reference = input_hdu[0].header[reference_name].split('$')[-1]
+        self.match_keys = match_keys
+        self.match_values = self._get_input_match_values(input_hdu)
 
-        path = crds.locate_file(self[reference_name], 'hst')
+        path = crds.locate_file(self.reference, 'hst')
 
         # Check for gzipped files
         if not os.path.exists(path):
@@ -108,12 +108,12 @@ class ReferenceData(FileData):
 
     def _get_input_match_values(self, input_hdu: fits.HDUList):
         """Get match key values from the input data."""
-        return {key: input_hdu[0].header[key] for key in self['MATCH_COL']}
+        return {key: input_hdu[0].header[key] for key in self.match_keys}
 
-    def _get_matched_table_values(self, matched_values: dict, reference_table: fits.fitsrec.FITS_rec,
+    def _get_matched_table_values(self, reference_table: fits.fitsrec.FITS_rec,
                                   column_names: Sequence[str], extension: int):
         """Find the row in the reference file data that corresponds to the values provided in match_values."""
-        for key, value in matched_values.items():
+        for key, value in self.match_values.items():
             try:
                 if isinstance(value, str):  # Different "generations" of ref files stored strings in different ways...
                     reference_table = reference_table[
@@ -130,7 +130,7 @@ class ReferenceData(FileData):
 
         if not len(reference_table):
             raise ValueError(
-                f'A matching row could not be determined with the given parameters: {self["MATCH_COL"]}'
+                f'A matching row could not be determined with the given parameters: {self.match_keys}'
                 f'\nAvailable columns: {reference_table.names}'
             )
 
@@ -147,15 +147,15 @@ class ReferenceData(FileData):
     def get_table_data(self, hdu: fits.HDUList, table_request: REQUEST):
         """Get data from requested reference files."""
         for ext, keys in table_request.items():
-            self._get_matched_table_values(self['MATCH_VAL'], hdu[ext].data, keys, ext)
+            self._get_matched_table_values(hdu[ext].data, keys, ext)
 
 
 class SPTData(FileData):
     def __init__(self, input_filename: str, header_request: REQUEST = None, table_request: REQUEST = None,
                  header_defaults: Dict[str, Any] = None):
-        self['SPTFILE'] = self._create_spt_filename(input_filename)
+        self.sptfile = self._create_spt_filename(input_filename)
 
-        with fits.open(self['SPTFILE']) as spt:
+        with fits.open(self.sptfile) as spt:
             super().__init__(spt, header_request, table_request, header_defaults)
 
     @staticmethod
@@ -234,13 +234,12 @@ class JitterFileData(list):
             for possible_file in possible_files:
                 co_file = os.path.join(os.path.dirname(filedata['FILENAME']), f'{exposure}_{possible_file}')
 
-                try:
-                    with fits.open(co_file) as co:
-                        filedata['EXPSTART'] = co[1].header['EXPSTART']
-                        filedata['EXPTYPE'] = co[0].header['EXPTYPE']
-
-                except FileNotFoundError:
+                if not os.path.exists(co_file):
                     continue
+
+                with fits.open(co_file) as co:
+                    filedata['EXPSTART'] = co[1].header['EXPSTART']
+                    filedata['EXPTYPE'] = co[0].header['EXPTYPE']
 
     def _remove_bad_values(self, table_keys):
         """Remove any placeholder entries from the jitter data arrays."""
@@ -283,15 +282,16 @@ def find_files(file_pattern: str, data_dir: str = FILES_SOURCE, subdir_pattern: 
     return glob(os.path.join(data_dir, file_pattern))
 
 
-def get_exposure_data(filename: str, header_request: Dict[int, str] = None, table_request: Dict[int, str] = None,
-                      header_defaults: Dict[str, Any] = None, spt_header_request: Dict[int, str] = None,
-                      spt_table_request: Dict[int, str] = None, spt_header_defaults: Dict[str, Any] = None,
-                      reference_request: dict = None):
+def get_exposure_data(filename: str, header_request: REQUEST = None, table_request: REQUEST = None,
+                      header_defaults: Dict[str, Any] = None, spt_header_request: REQUEST = None,
+                      spt_table_request: REQUEST = None, spt_header_defaults: Dict[str, Any] = None,
+                      reference_request: Dict[str, Dict[str, Union[Sequence[str], REQUEST]]] = None):
 
     try:
         with fits.open(filename) as hdu:
             if header_request or table_request:
                 data = FileData(hdu, header_request, table_request, header_defaults)
+                data['FILENAME'] = filename
 
             if reference_request:
                 for reference, request in reference_request.items():
@@ -299,7 +299,7 @@ def get_exposure_data(filename: str, header_request: Dict[int, str] = None, tabl
                         ReferenceData(
                             hdu,
                             reference,
-                            request.get('match_keys', None),
+                            request['match_keys'],
                             request.get('header_request', None),
                             request.get('table_request', None),
                             request.get('header_defaults', None)
@@ -328,7 +328,7 @@ def get_exposure_data(filename: str, header_request: Dict[int, str] = None, tabl
 
 def get_jitter_data(jitter_file: str, primary_header_keys: Sequence[str] = None,
                     ext_header_keys: Sequence[str] = None, table_keys: Sequence[str] = None,
-                    get_expstart: bool = True, reduce_to_stats: Dict[str, str] = None):
+                    get_expstart: bool = True, reduce_to_stats: Dict[str, Sequence[str]] = None):
     try:
         jit = JitterFileData(jitter_file, primary_header_keys, ext_header_keys, table_keys, get_expstart)
 
@@ -346,7 +346,7 @@ def get_jitter_data(jitter_file: str, primary_header_keys: Sequence[str] = None,
 def data_from_exposures(fitsfiles: List[str], header_request: REQUEST = None, table_request: REQUEST = None,
                         header_defaults: Dict[str, Any] = None, spt_header_request: REQUEST = None,
                         spt_table_request: REQUEST = None, spt_header_defaults: Dict[str, Any] = None,
-                        reference_request: dict = None):
+                        reference_request: Dict[str, Dict[str, Union[Sequence[str], REQUEST]]] = None):
     delayed_results = [
         dask.delayed(get_exposure_data)(
             file,
