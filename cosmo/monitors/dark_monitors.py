@@ -12,7 +12,7 @@ from ..monitor_helpers import fit_line, convert_day_of_year, explode_df, absolut
 
 
 def dark_filter(df_row, filter_pha, location):
-    good_pha = (2,23)
+    good_pha = (2, 23)
     time_step = 25
     time_bins = df_row['TIME'][::time_step]
     lat = df_row['LATITUDE'][::time_step][:-1]
@@ -32,37 +32,35 @@ def dark_filter(df_row, filter_pha, location):
 
     counts = np.histogram(filtered_row.TIME_events, bins=time_bins)[0]
 
-    _, mjd = absolute_time(expstart=df_row['EXPSTART'], time=time_bins)
+    date = absolute_time(
+        expstart=list(repeat(df_row['EXPSTART'], len(time_bins))), time=time_bins.tolist()
+    ).to_datetime()[:-1]
     # _, mjd = compute_absolute_time(expstart=df_row['EXPSTART'], time_array=time_bins)
-    date = mjd.to_datetime()[:-1]
     dark_rate = counts / npix / time_step
 
     return pd.DataFrame({'segment': df_row['SEGMENT'], 'darks': [dark_rate], 'date': [date],
-                        'file': df_row['ROOTNAME'], 'hover_text': df_row['hover_text']})
-
-
-def filter_data(self):
-    filtered_rows = []
-    for _, row in self.data.iterrows():
-        filtered_rows.append(dark_filter(row, True, self.location))
-    filtered_df = pd.concat(filtered_rows).reset_index(drop=True)
-
-    return explode_df(filtered_df, ['darks', 'date'])
+                        'ROOTNAME': df_row['ROOTNAME']})
 
 
 class FUVALeftDarkMonitor(BaseMonitor):
+    name = 'FUVA Dark Monitor - Left'
     data_model = DarkDataModel
     labels = ['ROOTNAME']
-    output = '/Users/dashtamirova/Desktop/test_dark.html'
+    # output = add your own path
     location = (1060, 1260, 296, 734)
+    plottype = 'scatter'
+    x = 'date'
+    y = 'darks'
 
     def get_data(self) -> Any:
-        pass
+        filtered_rows = []
+        for _, row in self.model.new_data.iterrows():
+            if row.EXPSTART == 0:
+                continue
+            filtered_rows.append(dark_filter(row, True, self.location))
+        filtered_df = pd.concat(filtered_rows).reset_index(drop=True)
 
-    def plot(self):
-        self.plottype = 'scatter'
-        self.x = filter_data(self).date
-        self.y = filter_data(self).darks
+        return explode_df(filtered_df, ['darks', 'date'])
 
     def store_results(self):
         # TODO: Define results to store

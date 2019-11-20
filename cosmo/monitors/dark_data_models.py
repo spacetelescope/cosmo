@@ -11,7 +11,8 @@ FILES_SOURCE = SETTINGS['filesystem']['source']
 
 class DarkDataModel(BaseDataModel):
     cosmo_layout = False
-    program_id = ['15533/', '14940/', '14520/', '14436/', '13968/', '13521/', '13121/', '12716/', '12423/', '11895/']
+    program_id = ['15771', '15533/', '14940/', '14520/', '14436/', '13968/', '13521/', '13121/', '12716/', '12423/',
+                  '11895/']
 
     def get_new_data(self):
         header_keys = (
