@@ -15,7 +15,7 @@ def make_datamodel(data_dir):
             test_finder.ingest_files()
 
         model.files_source = data_dir
-        model.cosmo_layout = False
+        model.subdir_pattern = None
         test_model = model()
 
         return test_model
@@ -52,7 +52,7 @@ class TestOSMDataModel:
             'TSINCEOSM1', 'TSINCEOSM2',
             
             # Reference file data
-            'SEGMENT_LAMPTAB', 'FP_PIXEL_SHIFT', 'XC_RANGE'
+            'LAMPTAB_SEGMENT', 'FP_PIXEL_SHIFT', 'XC_RANGE'
         )
 
         for key in keys_that_should_be_there:
@@ -68,7 +68,7 @@ class TestOSMDataModel:
             assert isinstance(self.osmmodel.new_data[key].values, np.ndarray)
 
     def test_reference_data(self):
-        data_extension_keys = ('SEGMENT_LAMPTAB', 'FP_PIXEL_SHIFT', 'XC_RANGE')
+        data_extension_keys = ('LAMPTAB_SEGMENT', 'FP_PIXEL_SHIFT', 'XC_RANGE')
 
         for key in data_extension_keys:
             assert isinstance(self.osmmodel.new_data[key].values, np.ndarray)

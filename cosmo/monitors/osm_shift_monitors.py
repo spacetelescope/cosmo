@@ -538,12 +538,12 @@ class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
 
         # Apply the OSM pixel offset to the SHIFT_DISP values. If there's no FP_PIXEL_SHIFT, do nothing (Some older
         # reference files don't have the FP_PIXEL_SHIFT column).
-        # Note: the SEGMENT_LAMPTAB and FP_PIXEL_SHIFT arrays are in the same order, so the segment is used to find the
+        # Note: the LAMPTAB_SEGMENT and FP_PIXEL_SHIFT arrays are in the same order, so the segment is used to find the
         # offset to subtract.
         exploded.SHIFT_DISP = exploded.apply(
             (
-                lambda x: x.SHIFT_DISP - x.FP_PIXEL_SHIFT[np.where(x.SEGMENT_LAMPTAB == x.SEGMENT)][0]
-                if len(x.FP_PIXEL_SHIFT) == len(x.SEGMENT_LAMPTAB) else x.SHIFT_DISP
+                lambda x: x.SHIFT_DISP - x.FP_PIXEL_SHIFT[np.where(x.LAMPTAB_SEGMENT == x.SEGMENT)][0]
+                if len(x.FP_PIXEL_SHIFT) == len(x.LAMPTAB_SEGMENT) else x.SHIFT_DISP
             ),
             axis=1
         )
