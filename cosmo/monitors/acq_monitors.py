@@ -121,20 +121,22 @@ class AcqImageV2V3Monitor(BaseMonitor):
     # TODO Refactor this info into a better, more concise data structure
     break_points = {
         'F1': [
-            (None, 2011.172),
+            (None, 2011.172),  # FGS realignment
             (2011.172, 2013.205),  # FGS realignment
-            (2013.205, 2014.055),  # FGS realignment
-            (2014.055, None)  # SIAF update
+            (2013.205, 2014.055),  # SIAF update
+            (2014.055, 2019.352),  # FGS realignment
+            (2019.352, None)
         ],
 
         'F2': [
             (None, 2013.205),  # FGS2 turned back on + FGS realignment
             (2013.205, 2014.055),  # FGS realignment
             (2014.055, 2015.327),  # SIAF update
-            (2016.123, None)
+            (2016.123, 2019.352),  # FGS realignment
+            (2019.352, None)
         ],
 
-        'F3': []  # No current break points for F3 yet
+        'F3': [(None, 2019.352), (2019.352, None)]
     }
 
     # Define important events for vertical line placement.
@@ -146,10 +148,12 @@ class AcqImageV2V3Monitor(BaseMonitor):
         'FGS2 Deactivated': 2015.327,
         'FGS2 Reactivated': 2016.123,
         'GAIA Guide Stars': 2017.272,
+        'FGS Realignment 3': 2019.352
     }
 
-    fgs1_breaks = ['FGS Realignment 1', 'FGS Realignment 2', 'SIAF Update']
-    fgs2_breaks = ['FGS Realignment 2', 'SIAF Update', 'FGS2 Deactivated', 'FGS2 Reactivated']
+    fgs1_breaks = ['FGS Realignment 1', 'FGS Realignment 2', 'SIAF Update', 'FGS Realignment 3']
+    fgs2_breaks = ['FGS Realignment 2', 'SIAF Update', 'FGS2 Deactivated', 'FGS2 Reactivated', 'FGS Realignment 3']
+    fgs3_breaks = ['FGS Realignment 3']
 
     def get_data(self):
         """Filter ACQIMAGE data for V2V3 plot. These filter options attempt to weed out outliers that might result from
@@ -182,12 +186,12 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
         last_updated_results = {}
         for name, group in groups:
-            if name == 'F3':  # Skip F3; not enough data points for meaningful analysis for now.
-                continue
-
             t_start = convert_day_of_year(self.break_points[name][-1][0]).mjd  # Last update date
 
             df = group[group.EXPSTART >= t_start]
+
+            if df.empty:
+                continue
 
             # Track V2V3 fit and fit-line since the last update for each FGS
             v2_fit, v2_line = fit_line(Time(df.EXPSTART, format='mjd').byear, -df.V2SLEW)
@@ -296,11 +300,6 @@ class AcqImageV2V3Monitor(BaseMonitor):
         traces_per_fgs = {'F1': 0, 'F2': 0, 'F3': 0}
 
         for name, group in fgs_groups:
-            if name == 'F3':
-                traces_per_fgs[name] += 4
-                self._create_traces(group, 0)
-                continue
-
             # Filter dataframe by time per breakpoint
             for i_breaks, points in enumerate(self.break_points[name]):
                 t_start, t_end = points
@@ -344,6 +343,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
         # Create vertical lines that are a different style for breakpoints (per FGS)
         fgs1_breaks = self._create_breakpoint_lines(self.fgs1_breaks)
         fgs2_breaks = self._create_breakpoint_lines(self.fgs2_breaks)
+        fgs3_breaks = self._create_breakpoint_lines(self.fgs3_breaks)
 
         annotations = [
             {
@@ -355,7 +355,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 'showarrow': True,
                 'ax': ax,
                 'ay': -30,
-            } for item, ax in zip(self.fgs_events.items(), [-60, 50, -20, 20, -50, 20, 50])
+            } for item, ax in zip(self.fgs_events.items(), [-60, 50, -20, 20, -50, 20, 50, 60])
             for xref, yaxis in zip(['x1', 'x2'], ['yaxis1', 'yaxis2'])
         ]
 
@@ -371,7 +371,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
         labels = ['FGS1', 'FGS2', 'FGS3']
         titles = [f'<a href="{self.docs}">{fgs + self.name}</a>' for fgs in labels]
-        shapes = [lines + fgs1_breaks, lines + fgs2_breaks, lines]
+        shapes = [lines + fgs1_breaks, lines + fgs2_breaks, lines + fgs3_breaks]
 
         # Create buttons
         updatemenus = [
