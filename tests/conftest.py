@@ -38,7 +38,10 @@ def db_cleanup():
 
 @pytest.fixture(scope='session')
 def data_dir():
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
+    test_data = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
+    os.environ['CRDS_PATH'] = os.path.join(test_data, 'test_crds_cache')
+
+    return test_data
 
 
 @pytest.fixture(scope='session')

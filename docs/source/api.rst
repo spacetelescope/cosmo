@@ -1,10 +1,5 @@
 API
 ===
-..  3. API for filesystem.py
-    4. API for monitor_helpers.py
-    5. API for the sms subpackage
-    6. API for retrieval
-
 Monitors and their DataModels
 -----------------------------
 Here, we give a brief description of the monitor and DataModel API.
@@ -318,7 +313,7 @@ The monitor class that will be used as an example looks like this:
     .. py:method:: run_analysis
 
         Set the ``results``, ``outliers``, and ``notification`` attributes via executing
-        ``track``, ``find_outliers``, and ``set_notification`` respectivelly.
+        ``track``, ``find_outliers``, and ``set_notification`` respectively.
 
         :return: None
 
@@ -331,7 +326,7 @@ The monitor class that will be used as an example looks like this:
 
     .. py:method:: write_figure
 
-        Write the output figure to an htnml file using the ``output`` directory and/or name provided.
+        Write the output figure to an html file using the ``output`` directory and/or name provided.
 
         :return: None
 
@@ -635,8 +630,7 @@ Cosmo also contains other modules used in supporting either the monitors or data
     :return: List of paths to files found.
     :rtype: ``list``
 
-.. py:class:: FileData(filename, hdu, header_keywords, header_extensions, spt_suffix='spt.fits.gz', \
-    spt_keywords=None, spt_extensions=None, data_keywords=None, data_extensions=None, header_defaults=None)
+.. py:class:: FileData(*args, **kwargs)
 
     Class used for ingesting and collecting the specified data from a particular COS FITS file.
     This class is a data container that subclasses python's ``dict`` object to create a dictionary-like object that's
@@ -652,28 +646,42 @@ Cosmo also contains other modules used in supporting either the monitors or data
 
         from cosmo.filesystem import FileData
 
-        # Get the desired data from somefitsfile.fits
-        filedata = FileData('somefitsfile.fits', ('ROOTNAME', 'DETECTOR'), (0, 0))
+        # Get the desired data from some_fitsfile.fits
+        file_data = FileData('some_fitsfile.fits', ('ROOTNAME', 'DETECTOR'), (0, 0))
 
-        # filedata is basically a dictionary with an alternate construction method
+        # file_data is basically a dictionary with an alternate construction method
 
-        filedata.keys()
+        file_data.keys()
         # dict_keys(['FILENAME', 'ROOTNAME', 'DETECTOR'])  # Note, FILENAME is automatically included
 
-        filedata.values()
-        # dict_values(['somefitsfile.fits', 'lb4c10niq', 'NUV'])
+        file_data.values()
+        # dict_values(['some_fitsfile.fits', 'lb4c10niq', 'NUV'])
 
-        for key, value in filedata.items():
+        for key, value in file_data.items():
             print(key, value)
-        # FILENAME somefitsfile.fits
+        # FILENAME some_fitsfile.fits
         # ROOTNAME lb4c10niq
         # DETECTOR NUV
+
+        # To grab info from a reference file:
+        reference_request = {
+            'LAMPTAB': {
+                'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],  # Specify columns that determine a match
+                'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']  # Specify the desired column data
+            },
+            'WCPTAB': {
+                'match': ['OPT_ELEM'],
+                'columns': ['XC_RANGE', 'SEARCH_OFFSET']
+            }
+        }
+
+        file_data = FileData('some_fitsfile.fits', ('ROOTNAME', 'DETECTOR'), (0, 0), reference_request=reference_request)
 
     .. py:method:: get_header_data(hdu, header_keywords, header_extensions, header_defaults=None)
 
         Retrieve the specified header data from the input FITS file.
 
-        :param astropy.io.fits.HDUList hdu: FTIS HDUList object.
+        :param astropy.io.fits.HDUList hdu: FITS HDUList object.
         :param list header_keywords: ``list`` or ``tuple`` of header keywords to extract.
         :param list header_extensions: corresponding `list`` or ``tuple`` of extensions to the keywords.
             Must be the same length as ``header_keywords``
@@ -706,11 +714,38 @@ Cosmo also contains other modules used in supporting either the monitors or data
         :params list data_extensions: Corresponding list of extensions for the keywords.
         :return: ``None``. Updates the instance's dictionary.
 
-.. py:function:: get_file_data(fitsfiles, keywords, extensions, spt_keywords=None, spt_extensions=None, \
-    data_keywords=None, data_extensionsSequence=None, header_defaults=None)
+    .. py:method:: get_reference_data(hdu, reference_request)
 
-    Get data from the specified FITS files (and optionally, any information needed from the corresponding `spt` file) in
-    parallel with ``dask``
+        Get the requested data from the specified reference files.
+
+        The expected dictionary structure is as follows:
+
+        .. code-block:: python
+
+            request = {
+                'Reference1_name': {
+                    'match': ['matching_col1', 'matching_col2', ...],
+                    'columns': ['want_col1', 'want_col2']
+                },
+                'Reference2_name': ...
+            }
+
+        Where the reference names are not the *file names*, but the designated name that corresponds to COS keyword for
+        that reference file.
+
+        :params astropy.io.fits.HDUList hdu: HDUList of the data file.
+        :reference_request dict: Dictionary specifying what data to gather from which reference files.
+            The ``match`` and ``columns`` keys must be lists.
+        :return: ``None``. Updates the instance's dictionary. If there's a problem with reading the reference file, or
+            if requested keys cannot be found, empty arrays will be used for that entry.
+            This is due to the fact that reference file format and content has changed over time, and requested data may
+            be valid for some versions of files, but not others.
+
+.. py:function:: get_file_data(fits_files, keywords, extensions, spt_keywords=None, spt_extensions=None, \
+    data_keywords=None, data_extensionsSequence=None, header_defaults=None, reference_request=None)
+
+    Get data from the specified FITS files and optionally, any information needed from the corresponding `spt` file or
+    particular reference files in parallel with ``dask``.
 
     Example Usage:
 
@@ -721,7 +756,7 @@ Cosmo also contains other modules used in supporting either the monitors or data
 
         files = glob.glob('*fits')  # Some list of files.
 
-        # Retrive a bunch of data
+        # Retrieve a bunch of data
         results = get_file_data(files, ('ROOTNAME', 'APERTURE'), (0, 0))
 
     :param list fitsfiles: List of files from which to retrieve data.
@@ -838,16 +873,16 @@ Cosmo also contains other modules used in supporting either the monitors or data
 
         # This is silly, but the expstart array will be converted to a Time object with the mjd format
         #  and the time array will be assumed to be in seconds
-        abstime = absolute_time(expstart=[1, 2, 3], time=[4, 5, 6])
+        abs_time = absolute_time(expstart=[1, 2, 3], time=[4, 5, 6])
 
         # From a DataFrame, df with EXPSTART and TIME columns
-        abstime = absolute_time(df=df)
+        abs_time = absolute_time(df=df)
 
         # If the time column is named something different
-        abstime = absolute_time(df=df, time_key='SomeOtherTime')
+        abs_time = absolute_time(df=df, time_key='SomeOtherTime')
 
         # Use the result as a datetime object
-        absolute_datetime = abstime.to_datetime()
+        absolute_datetime = abs_time.to_datetime()
 
     :raises TypeError: If no values are given, or if one array is given without the other.
     :raises ValueError: If a ``DataFrame`` is given with arrays.
@@ -874,7 +909,7 @@ Cosmo also contains other modules used in supporting either the monitors or data
 
         # All traces for a figure will be in a single list, but "sets" of traces that should be active are usually kept
         #  track of by the length of the set, and the order in which the sets are created.
-        trace_legnths = [1, 2, 3]  # The figure has a total of 6 traces, with three distinct sets (ex: button options)
+        trace_lengths = [1, 2, 3]  # The figure has a total of 6 traces, with three distinct sets (ex: button options)
         visible = [True, False, False]  # For this setting, we only want the first set visible (True) and all others not
 
         visibility = create_visibility(trace_lengths, visible)

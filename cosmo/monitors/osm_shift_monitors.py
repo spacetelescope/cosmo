@@ -2,6 +2,7 @@ import plotly.graph_objs as go
 import datetime
 import pandas as pd
 import os
+import numpy as np
 
 from astropy.time import Time
 from itertools import repeat
@@ -15,9 +16,9 @@ from .. import SETTINGS
 COS_MONITORING = SETTINGS['output']
 
 LP_MOVES = {
-        i + 2: datetime.datetime.strptime(date, '%Y-%m-%d')
-        for i, date in enumerate(['2012-07-23', '2015-02-09', '2017-10-02'])
-    }
+    i + 2: datetime.datetime.strptime(date, '%Y-%m-%d')
+    for i, date in enumerate(['2012-07-23', '2015-02-09', '2017-10-02'])
+}
 
 
 def match_dfs(df1: pd.DataFrame, df2: pd.DataFrame, key: str) -> pd.DataFrame:
@@ -43,6 +44,11 @@ def compute_segment_diff(df: pd.DataFrame, shift: str, segment1: str, segment2: 
             ).reset_index(drop=True)
 
             diff_df['lamp_time'] = lamp_time.to_datetime()
+
+            # Remove SEGMENT from the hover text
+            diff_df.hover_text = diff_df.apply(
+                lambda x: x.hover_text.replace(f'<br>SEGMENT          {x.SEGMENT}', ''), axis=1
+            )
 
             # Drop "segment specific" info
             diff_df.drop(columns=['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT', 'DETECTOR'], inplace=True)
@@ -74,7 +80,7 @@ def create_osmshift_buttons(doc_link: str, button_labels: List[str], name: str, 
     ]
 
 
-class FuvOsmShiftMonitor(BaseMonitor):
+class BaseFuvOsmShiftMonitor(BaseMonitor):
     """Abstracted FUV OSM Shift monitor. This monitor class is not meant to be used directly, but rather inherited from
     by specific Shift1 and Shift2 monitors (which share the same plots, but differ in which shift value is plotted and
     how outliers are defined).
@@ -82,7 +88,7 @@ class FuvOsmShiftMonitor(BaseMonitor):
     data_model = OSMDataModel
     output = COS_MONITORING
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-shift-monitors"
-    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'SEGMENT', 'CENWAVE']
+    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'CENWAVE', 'SEGMENT']
 
     subplots = True
     subplot_layout = (2, 1)
@@ -291,32 +297,36 @@ class FuvOsmShiftMonitor(BaseMonitor):
         outliers.to_csv(os.path.join(os.path.dirname(self.output), f'{self._filename}-outliers.csv'))
 
 
-class FuvOsmShift1Monitor(FuvOsmShiftMonitor):
+class FuvOsmShift1Monitor(BaseFuvOsmShiftMonitor):
     """FUV OSM Shift1 (SHIFT_DISP) monitor."""
     shift = 'SHIFT_DISP'  # shift1
+
+    run = 'monthly'
 
     def find_outliers(self):
         """Outliers for shift1 A-B are defined as any difference whose magnitude is greater than 10 pixels."""
         return self.results.seg_diff.abs() > 10
 
 
-class FuvOsmShift2Monitor(FuvOsmShiftMonitor):
+class FuvOsmShift2Monitor(BaseFuvOsmShiftMonitor):
     """FUV OSM Shift2 (SHIFT_XDISP) monitor."""
     shift = 'SHIFT_XDISP'  # shift 2
+
+    run = 'monthly'
 
     def find_outliers(self):
         """Outliers for shift2 A-B are defined as any difference whose magnitude is greater than 5 pixels."""
         return self.results.seg_diff.abs() > 5
 
 
-class NuvOsmShiftMonitor(BaseMonitor):
+class BaseNuvOsmShiftMonitor(BaseMonitor):
     """Abstracted NUV OSM Shift monitor. This monitor class is not meant to be used directly, but rather inherited from
     by specific Shift1 and Shift2 monitors (which share the same plots, but differ in which shift value is plotted and
     how outliers are defined)."""
     data_model = OSMDataModel
     output = COS_MONITORING
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-shift-monitors"
-    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'CENWAVE']
+    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'CENWAVE', 'SEGMENT']
 
     subplots = True,
     subplot_layout = (3, 1)
@@ -324,10 +334,8 @@ class NuvOsmShiftMonitor(BaseMonitor):
     shift = None  # SHIFT_DISP or SHIFT_XDISP
 
     def get_data(self):
-        """Filter on detector."""
-        data = get_osm_data(self.model, 'NUV')
-
-        return explode_df(data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+        # Shift1 and Shift2 require different steps
+        pass
 
     def track(self) -> dict:
         """Track the difference in shift between stripes. B-C and C-A."""
@@ -336,7 +344,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
             'C-A': compute_segment_diff(self.data, self.shift, 'NUVC', 'NUVA'),
         }
 
-    def _plot_per_grating(self, df: pd.DataFrame, shift: str):
+    def _plot_per_grating(self, df: pd.DataFrame):
         trace_number = 0  # Keep track of the number of traces created and added
 
         all_b_c_outliers = self.results['B-C'][self.outliers['B-C']]
@@ -392,17 +400,16 @@ class NuvOsmShiftMonitor(BaseMonitor):
             group = group.set_index(abstime.to_datetime())
             group = group.sort_index()
 
-            rolling_mean = group.rolling('365D').mean()
+            rolling_mean = group.rolling('180D').mean()
 
             self.figure.add_trace(
                 go.Scattergl(
                     x=group.index,
-                    y=group[shift],
+                    y=group[self.shift],
                     name=grating,
                     mode='markers',
                     text=group.hover_text,
                     visible=False,
-                    legendgroup=grating,
                     marker=dict(
                         cmax=len(df.OPT_ELEM.unique()) - 1,  # Individual plots need to be on the same scale
                         cmin=0,
@@ -419,11 +426,10 @@ class NuvOsmShiftMonitor(BaseMonitor):
             self.figure.add_trace(
                 go.Scattergl(
                     x=rolling_mean.index,
-                    y=rolling_mean[shift],
-                    name='Rolling Mean',
+                    y=rolling_mean[self.shift],
+                    name=f'{grating} Rolling Mean',
                     mode='lines',
-                    visible=False,
-                    legendgroup=grating
+                    visible=False
                 ),
                 row=3,
                 col=1
@@ -461,7 +467,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
                     self.figure.add_trace(
                         go.Scattergl(
                             x=lamp_time.to_datetime(),
-                            y=group[shift],
+                            y=group[self.shift],
                             name=f'{grating} {label}',
                             mode='markers',
                             text=group.hover_text,
@@ -477,18 +483,18 @@ class NuvOsmShiftMonitor(BaseMonitor):
 
     def plot(self):
         """Plot shift v time per grating/cenwave."""
-        all_stripes_traces = self._plot_per_grating(self.data, self.shift)
+        all_stripes_traces = self._plot_per_grating(self.data)
 
         # Plot traces per FPPOS for the other buttons
-        stripe_groups = self.data.groupby('SEGMENT')
+        stripe_groups = self.data.groupby('SEGMENT')  # Group keys are sorted
 
-        stripe_trace_lengths = {}  # track the number of traces produced per stripe; this differs between stripe
+        stripe_trace_lengths = []  # track the number of traces produced per stripe; this differs between stripe
         for stripe, group in stripe_groups:
-            n_stripe_traces = self._plot_per_grating(group, self.shift)
-            stripe_trace_lengths[stripe] = n_stripe_traces
+            n_stripe_traces = self._plot_per_grating(group)
+            stripe_trace_lengths.append(n_stripe_traces)
 
         # For each stripe, set the visibility to True for the appropriate number of traces in the appropriate position.
-        trace_lengths = [all_stripes_traces] + list(stripe_trace_lengths.values())
+        trace_lengths = [all_stripes_traces] + stripe_trace_lengths
 
         visibilities = [
             create_visibility(trace_lengths, [True, False, False, False]),  # All stripes
@@ -508,7 +514,7 @@ class NuvOsmShiftMonitor(BaseMonitor):
             yaxis=dict(title='Shift (B -C) [pix]', domain=[0, 0.18]),
             yaxis2=dict(title='Shift (C - A) [pix]', domain=[0.3, .48]),
             yaxis3=dict(title='Shift [pix]', domain=[0.6, 1]),
-            updatemenus=updatemenus
+            updatemenus=updatemenus,
         )
 
         self.figure.update_layout(layout)
@@ -518,17 +524,89 @@ class NuvOsmShiftMonitor(BaseMonitor):
         pass
 
 
-class NuvOsmShift1Monitor(NuvOsmShiftMonitor):
+class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
     """NUV OSM Shift1 (SHIFT_DISP) monitor."""
     shift = 'SHIFT_DISP'  # shift1
 
+    run = 'monthly'
+
+    def get_data(self):
+        data = get_osm_data(self.model, 'NUV')
+
+        # Expand the data frame's data columns
+        exploded = explode_df(data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+
+        # Apply the OSM pixel offset to the SHIFT_DISP values. If there's no FP_PIXEL_SHIFT, do nothing (Some older
+        # reference files don't have the FP_PIXEL_SHIFT column).
+        # Note: the LAMPTAB_SEGMENT and FP_PIXEL_SHIFT arrays are in the same order, so the segment is used to find the
+        # offset to subtract.
+        exploded.SHIFT_DISP = exploded.apply(
+            (
+                lambda x: x.SHIFT_DISP - x.FP_PIXEL_SHIFT[np.where(x.LAMPTAB_SEGMENT == x.SEGMENT)][0]
+                if len(x.FP_PIXEL_SHIFT) == len(x.LAMPTAB_SEGMENT) else x.SHIFT_DISP
+            ),
+            axis=1
+        )
+
+        # "Unpack" the array items in the XC_RANGE column and SEARCH_OFFSET column
+        exploded.XC_RANGE = exploded.apply(lambda x: x.XC_RANGE[0], axis=1)
+        exploded.SEARCH_OFFSET = exploded.apply(lambda x: x.SEARCH_OFFSET[0], axis=1)
+
+        return exploded
+
     def find_outliers(self) -> dict:
-        return {'B-C': self.results['B-C'].seg_diff.abs() >= 10, 'C-A': self.results['C-A'].seg_diff.abs() >= 10}
+        bc_results = self.results['B-C'].seg_diff
+        ca_results = self.results['C-A'].seg_diff
+
+        return {'B-C': bc_results.abs() >= 2 * bc_results.std(), 'C-A': ca_results.abs() >= 2 * ca_results.std()}
+
+    def plot(self):
+        super().plot()
+
+        # Construct search range boxes. If the search range is 0, skip (indicates missing data)
+        ranges = [
+            item for item in self.data.groupby(['OPT_ELEM', 'SEARCH_OFFSET', 'XC_RANGE']).groups.keys() if item[-1] != 0
+        ]
+
+        colors = {'G185M': 'purple', 'G225M': 'blue', 'G230L': 'green', 'G285M': 'yellow'}
+
+        shapes = [
+            go.layout.Shape(
+                type='rect',
+                xref='x3',
+                yref='y3',
+                x0=Time(
+                    self.data[(self.data.XC_RANGE == xc_range) & (self.data.SEARCH_OFFSET == offset)].EXPSTART.min(),
+                    format='mjd'
+                ).to_datetime(),
+                x1=Time(
+                    self.data[(self.data.XC_RANGE == xc_range) & (self.data.SEARCH_OFFSET == offset)].EXPSTART.max(),
+                    format='mjd'
+                ).to_datetime(),
+                y0=offset - xc_range,
+                y1=offset + xc_range,
+                line=dict(color=colors[grating]),
+                layer='below'
+            ) for grating, offset, xc_range in ranges
+        ]
+
+        self.figure.update_layout(shapes=shapes)
 
 
-class NuvOsmShift2Monitor(NuvOsmShiftMonitor):
+class NuvOsmShift2Monitor(BaseNuvOsmShiftMonitor):
     """NUV OSM Shift2 (SHIFT_XDISP) monitor."""
     shift = 'SHIFT_XDISP'  # shift2
 
+    run = 'monthly'
+
+    def get_data(self):
+        """Filter on detector."""
+        data = get_osm_data(self.model, 'NUV')
+
+        return explode_df(data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+
     def find_outliers(self) -> dict:
-        return {'B-C': self.results['B-C'].seg_diff.abs() >= 5, 'C-A': self.results['C-A'].seg_diff.abs() >= 5}
+        bc_results = self.results['B-C'].seg_diff
+        ca_results = self.results['C-A'].seg_diff
+
+        return {'B-C': bc_results.abs() >= 2 * bc_results.std(), 'C-A': ca_results.abs() >= 2 * ca_results.std()}
