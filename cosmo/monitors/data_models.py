@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
+import os
 
 from typing import List
+from glob import glob
 from monitorframe.datamodel import BaseDataModel
 from peewee import OperationalError
 
@@ -192,3 +194,56 @@ class JitterDataModel(BaseDataModel):
         data_results = data_results.replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
 
         return data_results[~data_results.EXPTYPE.str.contains('ACQ|DARK|FLAT')]
+
+
+class NUVDarkDataModel(BaseDataModel):
+    """Datamodel for NUV Dark files."""
+    files_source = FILES_SOURCE
+    subdir_pattern = '?????'
+
+    def get_new_data(self):
+        header_request = {
+            0: ['ROOTNAME'],
+            1: [
+                'EXPSTART',
+                'EXPTIME'
+                ]
+            }
+
+        table_request = {
+            1: [
+                'TIME',
+                'XCORR',
+                'YCORR'
+                ],
+            3: [
+                'LATITUDE',
+                'LONGITUDE'
+                ]
+
+            }
+        # TODO: add gross counts, don't need PHA, lat or long right now
+
+        # any special data requests
+        # TODO: add spt support for temp, sun_lat, sun_long
+        # TODO: is this a good place to add solar data scraping in the future?
+
+        # this is temporary to find the files from the dark programs until
+        # we can add the dark files to the monitor_data database
+        files = []
+        program_ids = ['15776/']
+        for program in program_ids:
+            new_files_source = os.path.join(FILES_SOURCE, program)
+            subfiles = glob(os.path.join(new_files_source, "*corrtag*"))
+            # TODO: figure out why this wasn't working with find_files()
+            files += subfiles
+
+        if not files:  # No new files
+            return pd.DataFrame()
+
+        # need to add any other keywords that need to be set
+        data_results = data_from_exposures(files,
+                                           header_request=header_request,
+                                           table_request=table_request)
+
+        return data_results
