@@ -35,6 +35,7 @@ def dark_filter(df_row, filter_pha, location):
     date = absolute_time(
         expstart=list(repeat(df_row['EXPSTART'], len(time_bins))), time=time_bins.tolist()
     ).to_datetime()[:-1]
+
     # _, mjd = compute_absolute_time(expstart=df_row['EXPSTART'], time_array=time_bins)
     dark_rate = counts / npix / time_step
 
@@ -46,7 +47,7 @@ class FUVALeftDarkMonitor(BaseMonitor):
     name = 'FUVA Dark Monitor - Left'
     data_model = DarkDataModel
     labels = ['ROOTNAME']
-    # output = add your own path
+    # output = enter_a_path
     location = (1060, 1260, 296, 734)
     plottype = 'scatter'
     x = 'date'
