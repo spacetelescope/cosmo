@@ -28,7 +28,7 @@ class DarkDataModel(BaseDataModel):
         for prog_id in self.program_id:
 
             new_files_source = os.path.join(FILES_SOURCE, prog_id)
-            results += find_files('*corrtag*', data_dir=new_files_source, cosmo_layout=self.cosmo_layout)
+            results += find_files('*corrtag*', data_dir=new_files_source)
 
         if self.model is not None:
             currently_ingested = [item.FILENAME for item in self.model.select(self.model.FILENAME)]
