@@ -55,6 +55,8 @@ class FUVOSMDriftMonitor(BaseMonitor):
     # [ (1,1)  x1,y1 ]
     # [ (2,1) x2,y2 ]
 
+    run = 'monthly'
+
     def get_data(self):
         return get_osmdrift_data(self.model, 'FUV')
 
@@ -185,6 +187,8 @@ class NUVOSMDriftMonitor(BaseMonitor):
     # This is the format of your plot grid:
     # [ (1,1) x1,y1 ]  [ (1,2) x2,y2 ]
     # [ (2,1) x3,y3 ]  [ (2,2) x4,y4 ]  The axes labels and x/y combinations need to match this layout.
+
+    run = 'monthly'
 
     def get_data(self):
         return get_osmdrift_data(self.model, 'NUV')

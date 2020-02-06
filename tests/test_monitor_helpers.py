@@ -1,7 +1,8 @@
 import pytest
 import pandas as pd
+import numpy as np
 
-from cosmo.monitor_helpers import convert_day_of_year, fit_line, explode_df, absolute_time, create_visibility
+from cosmo.monitor_helpers import convert_day_of_year, fit_line, explode_df, absolute_time, create_visibility, v2v3
 
 
 @pytest.fixture(params=[2017.301, '2017.301'])
@@ -85,9 +86,14 @@ ABSTIME_BAD_INPUT = [
 
 ABSTIME_GOOD_INPUT = [
         (pd.DataFrame({'EXPSTART': [58484.0, 58485.0, 58486.0], 'TIME': [1, 2, 3]}), None, None, None),
-        (pd.DataFrame({'EXPSTART': [58484.0, 58485.0, 58486.0], 'some_other_time': [1, 2, 3]}), None, None,
-         'some_other_time'),
-        (None, [1, 2, 3], [1, 2, 3], None)
+        (
+            pd.DataFrame({'EXPSTART': [58484.0, 58485.0, 58486.0], 'some_other_time': [1, 2, 3]}),
+            None,
+            None,
+            'some_other_time'
+        ),
+        (None, [1, 2, 3], [1, 2, 3], None),
+        (None, np.array([1, 2, 3]), np.array([1, 2, 3]), None)
     ]
 
 
@@ -124,3 +130,23 @@ class TestCreateVisibility:
 
         assert len(visible_options) == 6
         assert visible_options == [True, False, False, False, False, False]
+
+
+class TestV2V3:
+
+    def test_list_input(self):
+        x = y = [1, 2, 3]
+        v2, v3 = v2v3(x, y)
+
+        assert isinstance(v2, np.ndarray) and isinstance(v3, np.ndarray)
+
+    def test_calculation(self):
+        x = y = np.array([1, 2, 3])
+        v2, v3 = v2v3(x, y)
+
+        # Given the conversion, v2 should be [sqrt(2), 2*sqrt(2), 3*sqrt(2)] and y should be [0, 0, 0]
+        for item, expected in zip(v2, [np.sqrt(2), np.sqrt(2) * 2, np.sqrt(2) * 3]):
+            assert item == pytest.approx(expected)
+
+        for item in v3:
+            assert item == pytest.approx(0)

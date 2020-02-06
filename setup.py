@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='cosmo',
-    version='0.0.1',
+    version='1.1.0',
     description='Monitors for HST/COS',
     keywords=['astronomy'],
     classifiers=[
@@ -17,15 +17,17 @@ setup(
         'numpy>=1.11.1',
         'astropy>=1.0.1',
         'plotly>=4.0.0',
-        'scipy',
-        'pyfastcopy',
         'dask',
-        'pandas',
+        'pandas>=0.25.0',
         'pytest',
         'pyyaml',
         'peewee',
-        'calcos',
         'crds',
-        'monitorframe @ git+https://github.com/spacetelescope/monitor-framework#egg=monitorframe'
-    ]
+        'monitorframe @ git+https://github.com/spacetelescope/monitor-framework@v1.2.0#egg=monitorframe'
+    ],
+    package_data={'cosmo': ['pytest.ini']},
+    entry_points={
+        'console_scripts':
+            ['cosmo=cosmo.run_monitors:runner']
+    }
 )

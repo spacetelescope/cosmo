@@ -13,7 +13,7 @@ def set_acqmonitor(request, data_dir, here):
 
     def _set_monitor(monitor):
         AcqDataModel.files_source = data_dir
-        AcqDataModel.cosmo_layout = False
+        AcqDataModel.subdir_pattern = None
 
         monitor.data_model = AcqDataModel
         monitor.output = here

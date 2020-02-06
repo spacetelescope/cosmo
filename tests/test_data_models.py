@@ -5,8 +5,6 @@ import pytest
 from cosmo.monitors.data_models import AcqDataModel, OSMDataModel
 from cosmo.sms import SMSFinder
 
-# TODO: Write tests for data model ingest()
-
 
 @pytest.fixture
 def make_datamodel(data_dir):
@@ -17,7 +15,7 @@ def make_datamodel(data_dir):
             test_finder.ingest_files()
 
         model.files_source = data_dir
-        model.cosmo_layout = False
+        model.subdir_pattern = None
         test_model = model()
 
         return test_model
@@ -51,7 +49,10 @@ class TestOSMDataModel:
             'TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT',
 
             # Data from the SMS files
-            'TSINCEOSM1', 'TSINCEOSM2'
+            'TSINCEOSM1', 'TSINCEOSM2',
+            
+            # Reference file data
+            'LAMPTAB_SEGMENT', 'FP_PIXEL_SHIFT', 'XC_RANGE'
         )
 
         for key in keys_that_should_be_there:
@@ -62,6 +63,12 @@ class TestOSMDataModel:
 
     def test_data_extension_data(self):
         data_extension_keys = ('TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT')
+
+        for key in data_extension_keys:
+            assert isinstance(self.osmmodel.new_data[key].values, np.ndarray)
+
+    def test_reference_data(self):
+        data_extension_keys = ('LAMPTAB_SEGMENT', 'FP_PIXEL_SHIFT', 'XC_RANGE')
 
         for key in data_extension_keys:
             assert isinstance(self.osmmodel.new_data[key].values, np.ndarray)
