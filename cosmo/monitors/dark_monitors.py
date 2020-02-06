@@ -47,7 +47,7 @@ class FUVALeftDarkMonitor(BaseMonitor):
     name = 'FUVA Dark Monitor - Left'
     data_model = DarkDataModel
     labels = ['ROOTNAME']
-    # output = enter_a_path
+    # output = enter_a_path_here
     location = (1060, 1260, 296, 734)
     plottype = 'scatter'
     x = 'date'
