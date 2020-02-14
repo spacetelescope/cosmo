@@ -7,18 +7,18 @@ import pandas as pd
 from itertools import repeat
 
 from monitorframe.monitor import BaseMonitor
-from .dark_data_models import DarkDataModel
-from ..monitor_helpers import fit_line, convert_day_of_year, explode_df, absolute_time
+from .data_models import FUVDarkDataModel
+from ..monitor_helpers import explode_df, absolute_time
 
 
 def dark_filter(df_row, filter_pha, location):
     good_pha = (2, 23)
     time_step = 25
-    time_bins = df_row['TIME'][::time_step]
+    time_bins = df_row['TIME_3'][::time_step]
     lat = df_row['LATITUDE'][::time_step][:-1]
     lon = df_row['LONGITUDE'][::time_step][:-1]
-    event_df = df_row[['SEGMENT', 'XCORR', 'YCORR', 'PHA', 'TIME_events']].to_frame().T
-    event_df = explode_df(event_df, ['XCORR', 'YCORR', 'PHA', 'TIME_events'])
+    event_df = df_row[['SEGMENT', 'XCORR', 'YCORR', 'PHA', 'TIME']].to_frame().T
+    event_df = explode_df(event_df, ['XCORR', 'YCORR', 'PHA', 'TIME'])
     npix = (location[1] - location[0]) * (location[3] - location[2])
     index = np.where((event_df['SEGMENT'] == 'FUVA') &
                      (event_df['XCORR'] > location[0]) &
@@ -30,13 +30,12 @@ def dark_filter(df_row, filter_pha, location):
     if filter_pha:
         filtered_row = filtered_row[(filtered_row['PHA'] > good_pha[0]) & (filtered_row['PHA'] < good_pha[1])]
 
-    counts = np.histogram(filtered_row.TIME_events, bins=time_bins)[0]
+    counts = np.histogram(filtered_row.TIME, bins=time_bins)[0]
 
     date = absolute_time(
         expstart=list(repeat(df_row['EXPSTART'], len(time_bins))), time=time_bins.tolist()
     ).to_datetime()[:-1]
 
-    # _, mjd = compute_absolute_time(expstart=df_row['EXPSTART'], time_array=time_bins)
     dark_rate = counts / npix / time_step
 
     return pd.DataFrame({'segment': df_row['SEGMENT'], 'darks': [dark_rate], 'date': [date],
@@ -45,9 +44,10 @@ def dark_filter(df_row, filter_pha, location):
 
 class FUVALeftDarkMonitor(BaseMonitor):
     name = 'FUVA Dark Monitor - Left'
-    data_model = DarkDataModel
+    data_model = FUVDarkDataModel
     labels = ['ROOTNAME']
-    # output = enter_a_path
+    # output = path to directory
+
     location = (1060, 1260, 296, 734)
     plottype = 'scatter'
     x = 'date'
