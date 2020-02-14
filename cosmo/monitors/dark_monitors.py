@@ -46,7 +46,7 @@ class FUVALeftDarkMonitor(BaseMonitor):
     name = 'FUVA Dark Monitor - Left'
     data_model = FUVDarkDataModel
     labels = ['ROOTNAME']
-    # output = path to directory
+    # output = add path
 
     location = (1060, 1260, 296, 734)
     plottype = 'scatter'
@@ -58,7 +58,8 @@ class FUVALeftDarkMonitor(BaseMonitor):
         for _, row in self.model.new_data.iterrows():
             if row.EXPSTART == 0:
                 continue
-            filtered_rows.append(dark_filter(row, True, self.location))
+            if row.SEGMENT == 'FUVA':
+                filtered_rows.append(dark_filter(row, True, self.location))
         filtered_df = pd.concat(filtered_rows).reset_index(drop=True)
 
         return explode_df(filtered_df, ['darks', 'date'])
