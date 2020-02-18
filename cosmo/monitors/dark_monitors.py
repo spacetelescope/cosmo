@@ -9,6 +9,9 @@ from itertools import repeat
 from monitorframe.monitor import BaseMonitor
 from .data_models import FUVDarkDataModel
 from ..monitor_helpers import explode_df, absolute_time
+from .. import SETTINGS
+
+COS_MONITORING = SETTINGS['output']
 
 
 def dark_filter(df_row, filter_pha, location):
@@ -45,7 +48,7 @@ class FUVALeftDarkMonitor(BaseMonitor):
     name = 'FUVA Dark Monitor - Left'
     data_model = FUVDarkDataModel
     labels = ['ROOTNAME']
-    output = # path
+    output = COS_MONITORING
 
     location = (1060, 1260, 296, 734)
     plottype = 'scatter'
@@ -76,7 +79,7 @@ class FUVABottomDarkMonitor(BaseMonitor):
     name = 'FUVA Dark Monitor - Bottom'
     data_model = FUVDarkDataModel
     labels = ['ROOTNAME']
-    output = # path
+    output = COS_MONITORING
 
     location = (1060, 15250, 296, 375)
     plottype = 'scatter'
@@ -101,3 +104,5 @@ class FUVABottomDarkMonitor(BaseMonitor):
     def track(self):
         # TODO: Define something to track
         pass
+
+
