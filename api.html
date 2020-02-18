@@ -186,7 +186,7 @@ For more help with the configuration file, see this section: <span class="xref s
 
 <span class="k">class</span> <span class="nc">DataModel</span><span class="p">(</span><span class="n">BaseDataModel</span><span class="p">):</span>
     <span class="n">files_source</span> <span class="o">=</span> <span class="n">FILES_SOURCE</span>  <span class="c1"># The source of the COS data files is defined in the configuration file</span>
-    <span class="n">cosmo_layout</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">cosmo_layout</span> <span class="o">=</span> <span class="kc">True</span>
 
     <span class="n">primary_key</span> <span class="o">=</span> <span class="s1">&#39;SomeKeyWord&#39;</span>
 
@@ -208,14 +208,14 @@ For more help with the configuration file, see this section: <span class="xref s
 <code class="docutils literal notranslate"><span class="pre">ingest</span></code> method will create them.</p>
 </div>
 <p>Example Usage:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 
 <span class="c1"># Using the defined example model above...</span>
 <span class="c1"># Create a model instance</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">DataModel</span><span class="p">()</span>  <span class="c1"># by default this will attempt to find new data</span>
 
 <span class="c1"># Create an instance without finding new data</span>
-<span class="n">model</span> <span class="o">=</span> <span class="n">DataModel</span><span class="p">(</span><span class="n">find_new</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">DataModel</span><span class="p">(</span><span class="n">find_new</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
 <span class="c1"># Ingest data into a corresponding database table; Also creates a SQLite database and corresponding table if</span>
 <span class="c1">#  they don&#39;t exist.</span>
@@ -335,7 +335,7 @@ The monitor class that will be used as an example looks like this:</p>
     <span class="n">data_model</span> <span class="o">=</span> <span class="n">DataModel</span>  <span class="c1"># Same example as described above</span>
     <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Some&#39;</span><span class="p">,</span> <span class="s1">&#39;List&#39;</span><span class="p">,</span> <span class="s1">&#39;Of&#39;</span><span class="p">,</span> <span class="s1">&#39;Header&#39;</span><span class="p">,</span> <span class="s1">&#39;Keywords&#39;</span><span class="p">]</span>
     <span class="n">output</span> <span class="o">=</span> <span class="n">COS_MONITORING</span>  <span class="c1"># Typically, the output path is given via the configuration file</span>
-    <span class="n">notification_settings</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;active&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="s1">&#39;username&#39;</span><span class="p">:</span> <span class="s1">&#39;user&#39;</span><span class="p">,</span> <span class="s1">&#39;recipients&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;user2&#39;</span><span class="p">,</span> <span class="s1">&#39;user3&#39;</span><span class="p">]}</span>
+    <span class="n">notification_settings</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;active&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">&#39;username&#39;</span><span class="p">:</span> <span class="s1">&#39;user&#39;</span><span class="p">,</span> <span class="s1">&#39;recipients&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;user2&#39;</span><span class="p">,</span> <span class="s1">&#39;user3&#39;</span><span class="p">]}</span>
 
     <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="o">...</span>  <span class="c1"># May include filtering, mixing of old and new data, etc</span>
@@ -1048,7 +1048,7 @@ program ID like the cosmo data cache.</p>
 <span class="n">lamps</span> <span class="o">=</span> <span class="n">find_files</span><span class="p">(</span><span class="s1">&#39;*lampflash*&#39;</span><span class="p">)</span>
 
 <span class="c1"># Using a different data source with the data not organized in subdirectories</span>
-<span class="n">results</span> <span class="o">=</span> <span class="n">find_files</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="n">data_dir</span><span class="o">=</span><span class="s1">&#39;some/file/directory/&#39;</span><span class="p">,</span> <span class="n">cosmo_layout</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">find_files</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="n">data_dir</span><span class="o">=</span><span class="s1">&#39;some/file/directory/&#39;</span><span class="p">,</span> <span class="n">cosmo_layout</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
 <dl class="field-list simple">
@@ -1100,7 +1100,7 @@ extensions or if the keywords and extensions are of different lengths.</p>
 <span class="c1"># dict_values([&#39;some_fitsfile.fits&#39;, &#39;lb4c10niq&#39;, &#39;NUV&#39;])</span>
 
 <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">file_data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-    <span class="k">print</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 <span class="c1"># FILENAME some_fitsfile.fits</span>
 <span class="c1"># ROOTNAME lb4c10niq</span>
 <span class="c1"># DETECTOR NUV</span>
@@ -1338,7 +1338,7 @@ object.</p>
 the dataframe to one row per array element.
 Each row in list_keywords must be the same length.</p>
 <p>Example Usage:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">from</span> <span class="nn">cosmo.monitor_helpers</span> <span class="kn">import</span> <span class="n">explode_df</span>
 
 <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]],</span> <span class="s1">&#39;c&#39;</span><span class="p">:</span> <span class="p">[[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]]})</span>
@@ -1438,7 +1438,7 @@ Creates a list of <code class="docutils literal notranslate"><span class="pre">T
 <span class="c1"># All traces for a figure will be in a single list, but &quot;sets&quot; of traces that should be active are usually kept</span>
 <span class="c1">#  track of by the length of the set, and the order in which the sets are created.</span>
 <span class="n">trace_lengths</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>  <span class="c1"># The figure has a total of 6 traces, with three distinct sets (ex: button options)</span>
-<span class="n">visible</span> <span class="o">=</span> <span class="p">[</span><span class="bp">True</span><span class="p">,</span> <span class="bp">False</span><span class="p">,</span> <span class="bp">False</span><span class="p">]</span>  <span class="c1"># For this setting, we only want the first set visible (True) and all others not</span>
+<span class="n">visible</span> <span class="o">=</span> <span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">]</span>  <span class="c1"># For this setting, we only want the first set visible (True) and all others not</span>
 
 <span class="n">visibility</span> <span class="o">=</span> <span class="n">create_visibility</span><span class="p">(</span><span class="n">trace_lengths</span><span class="p">,</span> <span class="n">visible</span><span class="p">)</span>
 
@@ -1470,7 +1470,7 @@ Creates a list of <code class="docutils literal notranslate"><span class="pre">T
 <p>v2 = x * cos(45degrees) + y * sin(45degrees)
 v3 = x * cos(45degrees) - y * sin(45degrees)</p>
 <p>Example Usage:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">cosmo.monitor_helpers</span> <span class="kn">import</span> <span class="n">detector_to_v2v3</span><span class="p">(</span><span class="n">slew_x</span><span class="p">)</span>
 
 <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="p">,</span><span class="mi">3</span><span class="p">])</span>
