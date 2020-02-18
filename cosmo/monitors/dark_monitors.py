@@ -45,11 +45,13 @@ def dark_filter(df_row, filter_pha, location):
 
 
 class FUVDarkMonitor(BaseMonitor):
+    """Abstracted FUV Dark Monitor. Not meant to be used directly but rather inherited by specific segment and region
+    dark monitors"""
+    labels = ['ROOTNAME']
     output = COS_MONITORING
+    docs = "https://spacetelescope.github.io/cosmo/monitors.html#fuv-dark-rate-monitors"
     segment = None
     location = None
-
-    labels = ['ROOTNAME']
     plottype = 'scatter'
     x = 'date'
     y = 'darks'
@@ -76,10 +78,10 @@ class FUVDarkMonitor(BaseMonitor):
 
 class FUVABottomDarkMonitor(FUVDarkMonitor):
     """FUVA dark monitor for bottom edge"""
-    name = 'FUVA Dark Monitor - Bottom'
     data_model = FUVDarkDataModel
     segment = 'FUVA'
     location = (1060, 15250, 296, 375)
+    name = f'FUVA Dark Monitor - Bottom'
 
 
 class FUVALeftDarkMonitor(FUVDarkMonitor):
