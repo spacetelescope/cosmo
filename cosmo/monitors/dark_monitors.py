@@ -70,3 +70,34 @@ class FUVALeftDarkMonitor(BaseMonitor):
     def track(self):
         # TODO: Define something to track
         pass
+
+
+class FUVABottomDarkMonitor(BaseMonitor):
+    name = 'FUVA Dark Monitor - Bottom'
+    data_model = FUVDarkDataModel
+    labels = ['ROOTNAME']
+    output = # path
+
+    location = (1060, 15250, 296, 375)
+    plottype = 'scatter'
+    x = 'date'
+    y = 'darks'
+
+    def get_data(self) -> Any:
+        filtered_rows = []
+        for _, row in self.model.new_data.iterrows():
+            if row.EXPSTART == 0:
+                continue
+            if row.SEGMENT == 'FUVA':
+                filtered_rows.append(dark_filter(row, True, self.location))
+        filtered_df = pd.concat(filtered_rows).reset_index(drop=True)
+
+        return explode_df(filtered_df, ['darks', 'date'])
+
+    def store_results(self):
+        # TODO: Define results to store
+        pass
+
+    def track(self):
+        # TODO: Define something to track
+        pass
