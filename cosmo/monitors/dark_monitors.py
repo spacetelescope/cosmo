@@ -44,13 +44,12 @@ def dark_filter(df_row, filter_pha, location):
                         'ROOTNAME': df_row['ROOTNAME']})
 
 
-class FUVALeftDarkMonitor(BaseMonitor):
-    name = 'FUVA Dark Monitor - Left'
-    data_model = FUVDarkDataModel
-    labels = ['ROOTNAME']
+class FUVDarkMonitor(BaseMonitor):
     output = COS_MONITORING
+    segment = None
+    location = None
 
-    location = (1060, 1260, 296, 734)
+    labels = ['ROOTNAME']
     plottype = 'scatter'
     x = 'date'
     y = 'darks'
@@ -60,7 +59,7 @@ class FUVALeftDarkMonitor(BaseMonitor):
         for _, row in self.model.new_data.iterrows():
             if row.EXPSTART == 0:
                 continue
-            if row.SEGMENT == 'FUVA':
+            if row.SEGMENT == self.segment:
                 filtered_rows.append(dark_filter(row, True, self.location))
         filtered_df = pd.concat(filtered_rows).reset_index(drop=True)
 
@@ -75,34 +74,81 @@ class FUVALeftDarkMonitor(BaseMonitor):
         pass
 
 
-class FUVABottomDarkMonitor(BaseMonitor):
+class FUVABottomDarkMonitor(FUVDarkMonitor):
+    """FUVA dark monitor for bottom edge"""
     name = 'FUVA Dark Monitor - Bottom'
     data_model = FUVDarkDataModel
-    labels = ['ROOTNAME']
-    output = COS_MONITORING
-
+    segment = 'FUVA'
     location = (1060, 15250, 296, 375)
-    plottype = 'scatter'
-    x = 'date'
-    y = 'darks'
-
-    def get_data(self) -> Any:
-        filtered_rows = []
-        for _, row in self.model.new_data.iterrows():
-            if row.EXPSTART == 0:
-                continue
-            if row.SEGMENT == 'FUVA':
-                filtered_rows.append(dark_filter(row, True, self.location))
-        filtered_df = pd.concat(filtered_rows).reset_index(drop=True)
-
-        return explode_df(filtered_df, ['darks', 'date'])
-
-    def store_results(self):
-        # TODO: Define results to store
-        pass
-
-    def track(self):
-        # TODO: Define something to track
-        pass
 
 
+class FUVALeftDarkMonitor(FUVDarkMonitor):
+    """FUVA dark monitor for left edge"""
+    name = 'FUVA Dark Monitor - Left'
+    data_model = FUVDarkDataModel
+    segment = 'FUVA'
+    location = (1060, 1260, 296, 734)
+
+
+class FUVATopDarkMonitor(FUVDarkMonitor):
+    """FUVA dark monitor for top edge"""
+    name = 'FUVA Dark Monitor - Top'
+    data_model = FUVDarkDataModel
+    segment = 'FUVA'
+    location = (1060, 15250, 660, 734)
+
+
+class FUVARightDarkMonitor(FUVDarkMonitor):
+    """FUVA dark monitor for right edge"""
+    name = 'FUVA Dark Monitor - Right'
+    data_model = FUVDarkDataModel
+    segment = 'FUVA'
+    location = (15119, 15250, 296, 734)
+
+
+class FUVAInnerDarkMonitor(FUVDarkMonitor):
+    """FUVA dark monitor for inner region"""
+    name = 'FUVA Dark Monitor - Inner'
+    data_model = FUVDarkDataModel
+    segment = 'FUVA'
+    location = (1260, 15119, 375, 660)
+
+
+class FUVBBottomDarkMonitor(FUVDarkMonitor):
+    """FUVB dark monitor for bottom edge"""
+    name = 'FUVB Dark Monitor - Bottom'
+    data_model = FUVDarkDataModel
+    segment = 'FUVB'
+    location = (809, 15182, 360, 405)
+
+
+class FUVBLeftDarkMonitor(FUVDarkMonitor):
+    """FUVB dark monitor for left edge"""
+    name = 'FUVB Dark Monitor - Left'
+    data_model = FUVDarkDataModel
+    segment = 'FUVB'
+    location = (809, 1000, 360, 785)
+
+
+class FUVBTopDarkMonitor(FUVDarkMonitor):
+    """FUVB dark monitor for top edge"""
+    name = 'FUVB Dark Monitor - Top'
+    data_model = FUVDarkDataModel
+    segment = 'FUVB'
+    location = (809, 15182, 740, 785)
+
+
+class FUVBRightDarkMonitor(FUVDarkMonitor):
+    """FUVB dark monitor for right edge"""
+    name = 'FUVB Dark Monitor - Right'
+    data_model = FUVDarkDataModel
+    segment = 'FUVB'
+    location = (14990, 15182, 360, 785)
+
+
+class FUVBInnerDarkMonitor(FUVDarkMonitor):
+    """FUVB dark monitor for inner region"""
+    name = 'FUVB Dark Monitor - Inner'
+    data_model = FUVDarkDataModel
+    segment = 'FUVB'
+    location = (1000, 14990, 405, 740)

@@ -200,8 +200,9 @@ class FUVDarkDataModel(BaseDataModel):
     files_source = FILES_SOURCE
     cosmo_layout = False
 
-    program_ids = ['15771/', '15533/', '14940/', '14520/', '14436/', '13968/', '13521/', '13121/', '12716/', '12423/',
-                   '11895/']
+    """program_ids = ['15771/', '15533/', '14940/', '14520/', '14436/', '13968/', '13521/', '13121/', '12716/', '12423/',
+                   '11895/']"""
+    program_ids = ['15771/', '15533/']
 
     primary_key = 'ROOTNAME'
 
