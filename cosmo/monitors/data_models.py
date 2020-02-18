@@ -198,11 +198,10 @@ class JitterDataModel(BaseDataModel):
 
 class FUVDarkDataModel(BaseDataModel):
     files_source = FILES_SOURCE
-    subdir_pattern = '?????'
     cosmo_layout = False
 
-    # program_id = ['15771/', '15533/', '14940/', '14520/', '14436/', '13968/', '13521/', '13121/', '12716/', '12423/',
-    #               '11895/']
+    program_id = ['15771/', '15533/', '14940/', '14520/', '14436/', '13968/', '13521/', '13121/', '12716/', '12423/',
+                  '11895/']
 
     primary_key = 'ROOTNAME'
 
@@ -217,26 +216,19 @@ class FUVDarkDataModel(BaseDataModel):
             1: ['PHA', 'XCORR', 'YCORR', 'TIME'],
             3: ['TIME', 'LATITUDE', 'LONGITUDE']
         }
-        """
+
         files = []
 
         for prog_id in self.program_id:
 
             new_files_source = os.path.join(FILES_SOURCE, prog_id)
-            files += find_files('*corrtag*', data_dir=new_files_source, subdir_pattern=self.subdir_pattern)
+            files += find_files('*corrtag*', data_dir=new_files_source, subdir_pattern=None)
 
         if self.model is not None:
             currently_ingested = [item.FILENAME for item in self.model.select(self.model.FILENAME)]
 
             for file in currently_ingested:
                 files.remove(file)
-        """
-        files = []
-        program_ids = ['15771/']
-        for program in program_ids:
-            new_files_source = os.path.join(FILES_SOURCE, program)
-            subfiles = glob(os.path.join(new_files_source, "*corrtag*"))
-            files += subfiles
 
         if not files:   # No new files
             return pd.DataFrame()

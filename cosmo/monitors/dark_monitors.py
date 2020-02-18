@@ -20,8 +20,7 @@ def dark_filter(df_row, filter_pha, location):
     event_df = df_row[['SEGMENT', 'XCORR', 'YCORR', 'PHA', 'TIME']].to_frame().T
     event_df = explode_df(event_df, ['XCORR', 'YCORR', 'PHA', 'TIME'])
     npix = (location[1] - location[0]) * (location[3] - location[2])
-    index = np.where((event_df['SEGMENT'] == 'FUVA') &
-                     (event_df['XCORR'] > location[0]) &
+    index = np.where((event_df['XCORR'] > location[0]) &
                      (event_df['XCORR'] < location[1]) &
                      (event_df['YCORR'] > location[2]) &
                      (event_df['YCORR'] < location[3]))
@@ -46,7 +45,7 @@ class FUVALeftDarkMonitor(BaseMonitor):
     name = 'FUVA Dark Monitor - Left'
     data_model = FUVDarkDataModel
     labels = ['ROOTNAME']
-    # output = add path
+    output = # path
 
     location = (1060, 1260, 296, 734)
     plottype = 'scatter'
