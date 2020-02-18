@@ -1075,13 +1075,25 @@ Default is <code class="docutils literal notranslate"><span class="pre">True</sp
 <dl class="class">
 <dt id="filesystem.FileData">
 <em class="property">class </em><code class="sig-prename descclassname">filesystem.</code><code class="sig-name descname">FileData</code><span class="sig-paren">(</span><em class="sig-param">*args</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.FileData" title="Permalink to this definition">¶</a></dt>
-<dd><p>Class used for ingesting and collecting the specified data from a particular COS FITS file.
-This class is a data container that subclasses python’s <code class="docutils literal notranslate"><span class="pre">dict</span></code> object to create a dictionary-like object that’s
-instantiated via a FITS file and lists of keywords and extensions.
+<dd><p>Class used for collecting the requested data from a particular COS FITS file.
+This class subclasses python’s <code class="docutils literal notranslate"><span class="pre">dict</span></code> object to create a dictionary-like object.
 For a complete list of methods, see documentation for <code class="docutils literal notranslate"><span class="pre">dict</span></code></p>
 <dl class="field-list simple">
-<dt class="field-odd">Raises</dt>
-<dd class="field-odd"><p><strong>ValueError</strong> – A <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> is raised if any set of keywords is given without a corresponding set of
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hdu</strong> (<em>fits.HDUList</em>) – opened HDUList from the desired file.</p></li>
+<li><p><strong>header_request</strong> (<em>dict</em>) – dictionary of requested data with extensions as keys and lists of keywords as values.</p></li>
+<li><p><strong>table_request</strong> (<em>dict</em>) – dictionary of requested data with extensions as keys and lists of column names as values.</p></li>
+<li><p><strong>header_defaults</strong> – dictionary of default values to use in case a header keyword is not found.
+This is useful, for example, when attempting to construct a DataModel around a particular file type that has
+similar keywords, but may or may not be missing some values depending on the exposure type (like with
+<cite>rawacq</cite> files: <code class="docutils literal notranslate"><span class="pre">ACQSLEWX</span></code> and <code class="docutils literal notranslate"><span class="pre">ACQSLEWY</span></code> are not always present across different acquisition types, but
+all other data required for the Acq monitors <cite>are</cite> shared across all <cite>rawacq</cite> files.</p></li>
+<li><p><strong>bytes_to_str</strong> (<em>bool</em>) – Option to convert string data from <code class="docutils literal notranslate"><span class="pre">bytes</span></code> to python <code class="docutils literal notranslate"><span class="pre">str</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>ValueError</strong> – A <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> is raised if any set of keywords is given without a corresponding set of
 extensions or if the keywords and extensions are of different lengths.</p>
 </dd>
 </dl>
@@ -1089,7 +1101,10 @@ extensions or if the keywords and extensions are of different lengths.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.filesystem</span> <span class="kn">import</span> <span class="n">FileData</span>
 
 <span class="c1"># Get the desired data from some_fitsfile.fits</span>
-<span class="n">file_data</span> <span class="o">=</span> <span class="n">FileData</span><span class="p">(</span><span class="s1">&#39;some_fitsfile.fits&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;ROOTNAME&#39;</span><span class="p">,</span> <span class="s1">&#39;DETECTOR&#39;</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+<span class="n">file_data</span> <span class="o">=</span> <span class="n">FileData</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span>
+    <span class="s1">&#39;some_fitsfile.fits&#39;</span><span class="p">,</span>
+    <span class="n">header_request</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;ROOTNAME&#39;</span><span class="p">,</span> <span class="s1">&#39;DETECTOR&#39;</span><span class="p">)}</span>
+<span class="p">)</span>
 
 <span class="c1"># file_data is basically a dictionary with an alternate construction method</span>
 
@@ -1104,22 +1119,14 @@ extensions or if the keywords and extensions are of different lengths.</p>
 <span class="c1"># FILENAME some_fitsfile.fits</span>
 <span class="c1"># ROOTNAME lb4c10niq</span>
 <span class="c1"># DETECTOR NUV</span>
-
-<span class="c1"># To grab info from a reference file:</span>
-<span class="n">reference_request</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;LAMPTAB&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;match&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;OPT_ELEM&#39;</span><span class="p">,</span> <span class="s1">&#39;CENWAVE&#39;</span><span class="p">,</span> <span class="s1">&#39;FPOFFSET&#39;</span><span class="p">],</span>  <span class="c1"># Specify columns that determine a match</span>
-        <span class="s1">&#39;columns&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;SEGMENT&#39;</span><span class="p">,</span> <span class="s1">&#39;FP_PIXEL_SHIFT&#39;</span><span class="p">]</span>  <span class="c1"># Specify the desired column data</span>
-    <span class="p">},</span>
-    <span class="s1">&#39;WCPTAB&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;match&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;OPT_ELEM&#39;</span><span class="p">],</span>
-        <span class="s1">&#39;columns&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;XC_RANGE&#39;</span><span class="p">,</span> <span class="s1">&#39;SEARCH_OFFSET&#39;</span><span class="p">]</span>
-    <span class="p">}</span>
-<span class="p">}</span>
-
-<span class="n">file_data</span> <span class="o">=</span> <span class="n">FileData</span><span class="p">(</span><span class="s1">&#39;some_fitsfile.fits&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;ROOTNAME&#39;</span><span class="p">,</span> <span class="s1">&#39;DETECTOR&#39;</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">reference_request</span><span class="o">=</span><span class="n">reference_request</span><span class="p">)</span>
 </pre></div>
 </div>
+<dl class="method">
+<dt id="filesystem.FileData.from_file">
+<em class="property">classmethod </em><code class="sig-name descname">from_file</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">*args</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.FileData.from_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a class instance by opening the file specified by <code class="docutils literal notranslate"><span class="pre">filename</span></code>.</p>
+</dd></dl>
+
 <dl class="method">
 <dt id="filesystem.FileData.get_header_data">
 <code class="sig-name descname">get_header_data</code><span class="sig-paren">(</span><em class="sig-param">hdu</em>, <em class="sig-param">header_keywords</em>, <em class="sig-param">header_extensions</em>, <em class="sig-param">header_defaults=None</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.FileData.get_header_data" title="Permalink to this definition">¶</a></dt>
@@ -1128,15 +1135,9 @@ extensions or if the keywords and extensions are of different lengths.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>hdu</strong> (<em>astropy.io.fits.HDUList</em>) – FITS HDUList object.</p></li>
-<li><p><strong>header_keywords</strong> (<em>list</em>) – <code class="docutils literal notranslate"><span class="pre">list</span></code> or <code class="docutils literal notranslate"><span class="pre">tuple</span></code> of header keywords to extract.</p></li>
-<li><p><strong>header_extensions</strong> (<em>list</em>) – corresponding <cite>list`</cite> or <code class="docutils literal notranslate"><span class="pre">tuple</span></code> of extensions to the keywords.
-Must be the same length as <code class="docutils literal notranslate"><span class="pre">header_keywords</span></code></p></li>
+<li><p><strong>header_request</strong> (<em>dict</em>) – dictionary of requested data with extensions as keys and lists of keywords as values.</p></li>
 <li><p><strong>header_defaults</strong> (<em>dict</em>) – Default, <code class="docutils literal notranslate"><span class="pre">None</span></code>. Dictionary of keywords that if not found should be set with a
-default value.
-This is useful, for example, when attempting to construct a DataModel around a particular file type that has
-similar keywords, but may or may not be missing some values depending on the exposure type (like with
-<cite>rawacq</cite> files: <code class="docutils literal notranslate"><span class="pre">ACQSLEWX</span></code> and <code class="docutils literal notranslate"><span class="pre">ACQSLEWY</span></code> are not always present across different acquisition types, but
-all other data required for the Acq monitors <cite>are</cite> shared across all <cite>rawacq</cite> files.</p></li>
+default value.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -1146,41 +1147,16 @@ all other data required for the Acq monitors <cite>are</cite> shared across all 
 </dd></dl>
 
 <dl class="method">
-<dt id="filesystem.FileData.get_spt_header_data">
-<code class="sig-name descname">get_spt_header_data</code><span class="sig-paren">(</span><em class="sig-param">spt_file</em>, <em class="sig-param">spt_keywords</em>, <em class="sig-param">spt_extensions</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.FileData.get_spt_header_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the specified data from the corresponding <cite>spt</cite> file.
-The <cite>spt</cite> file name is constructed using the input file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Raises</dt>
-<dd class="field-odd"><p><strong>FileNotFoundError</strong> – If the <cite>spt</cite> file is missing or in a different location from the input file.</p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><ul class="simple">
-<li><p><strong>spt_file</strong> (<em>str</em>) – file name of the corresponding <cite>spt</cite> file.</p></li>
-<li><p><strong>spt_keywords</strong> (<em>list</em>) – List of keywords to retrieve from the <cite>spt</cite> file.</p></li>
-<li><p><strong>spt_extensions</strong> (<em>list</em>) – Corresponding list of extensions for the keywords. Must be the same size as
-<code class="docutils literal notranslate"><span class="pre">spt_keywords</span></code>.</p></li>
-</ul>
-</dd>
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">None</span></code>. Updates the instance’s dictionary.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
 <dt id="filesystem.FileData.get_table_data">
-<code class="sig-name descname">get_table_data</code><span class="sig-paren">(</span><em class="sig-param">hdu</em>, <em class="sig-param">data_keywords</em>, <em class="sig-param">data_extensions</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.FileData.get_table_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get specified columns from table data.</p>
+<code class="sig-name descname">get_table_data</code><span class="sig-paren">(</span><em class="sig-param">hdu</em>, <em class="sig-param">table_request</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.FileData.get_table_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the requested columns from the file’s table(s).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Params astropy.io.fits.HDUList hdu</dt>
-<dd class="field-odd"><p>HDUList of the data file.</p>
-</dd>
-<dt class="field-even">Params list data_keywords</dt>
-<dd class="field-even"><p>List of column-name keywords to extract.</p>
-</dd>
-<dt class="field-odd">Params list data_extensions</dt>
-<dd class="field-odd"><p>Corresponding list of extensions for the keywords.</p>
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hdu</strong> (<em>astropy.io.fits.HDUList</em>) – FITS HDUList object.</p></li>
+<li><p><strong>table_request</strong> (<em>dict</em>) – dictionary of requested data with extensions as keys and lists of column names as
+values.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">None</span></code>. Updates the instance’s dictionary.</p>
@@ -1189,34 +1165,142 @@ The <cite>spt</cite> file name is constructed using the input file.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="filesystem.FileData.get_reference_data">
-<code class="sig-name descname">get_reference_data</code><span class="sig-paren">(</span><em class="sig-param">hdu</em>, <em class="sig-param">reference_request</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.FileData.get_reference_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the requested data from the specified reference files.</p>
-<p>The expected dictionary structure is as follows:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">request</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;Reference1_name&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;match&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;matching_col1&#39;</span><span class="p">,</span> <span class="s1">&#39;matching_col2&#39;</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
-        <span class="s1">&#39;columns&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;want_col1&#39;</span><span class="p">,</span> <span class="s1">&#39;want_col2&#39;</span><span class="p">]</span>
-    <span class="p">},</span>
-    <span class="s1">&#39;Reference2_name&#39;</span><span class="p">:</span> <span class="o">...</span>
-<span class="p">}</span>
+<dt id="filesystem.FileData.combine">
+<code class="sig-name descname">combine</code><span class="sig-paren">(</span><em class="sig-param">other</em>, <em class="sig-param">right_name</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.FileData.combine" title="Permalink to this definition">¶</a></dt>
+<dd><p>Combine <code class="docutils literal notranslate"><span class="pre">FileData</span></code> dictionary with another. If there are any matching keys, <code class="docutils literal notranslate"><span class="pre">right_name</span></code> is added.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>other</strong> (<em>dict</em>) – FileData or <code class="docutils literal notranslate"><span class="pre">dict</span></code> to combine.</p></li>
+<li><p><strong>right_name</strong> (<em>str</em>) – label to add in the cases where there are matching keys.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="filesystem.ReferenceData">
+<em class="property">class </em><code class="sig-prename descclassname">filesystem.</code><code class="sig-name descname">ReferenceData</code><span class="sig-paren">(</span><em class="sig-param">*args</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.ReferenceData" title="Permalink to this definition">¶</a></dt>
+<dd><p>A subclass of <code class="docutils literal notranslate"><span class="pre">FileData</span></code> for getting requested data from COS reference files that correspond to the input COS data
+file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_hdu</strong> (<em>fits.HDUList</em>) – <code class="docutils literal notranslate"><span class="pre">HDUList</span></code> from a corresponding COS data file.</p></li>
+<li><p><strong>reference_name</strong> (<em>str</em>) – Header keyword corresponding to the requested reference file.</p></li>
+<li><p><strong>match_keys</strong> (<em>list-like</em>) – Keys used to locate the row in the reference file that applies to the input data file.</p></li>
+<li><p><strong>header_request</strong> (<em>dict</em>) – dictionary of requested data with extensions as keys and lists of keywords as values.</p></li>
+<li><p><strong>table_request</strong> (<em>dict</em>) – dictionary of requested data with extensions as keys and lists of column names as values.</p></li>
+<li><p><strong>header_defaults</strong> – dictionary of default values to use in case a header keyword is not found.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.filesystem</span> <span class="kn">import</span> <span class="n">ReferenceData</span>
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">fits</span>
+
+<span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;path/to/some/cos_file.fits&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">input_hdu</span><span class="p">:</span>
+    <span class="n">refdata</span> <span class="o">=</span> <span class="n">ReferenceData</span><span class="p">(</span>
+        <span class="n">input_hdu</span><span class="p">,</span>
+        <span class="s1">&#39;LAMPTAB&#39;</span><span class="p">,</span>
+        <span class="n">match_keys</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;OPT_ELEM&#39;</span><span class="p">,</span> <span class="s1">&#39;CENWAVE&#39;</span><span class="p">,</span> <span class="s1">&#39;FPOFFSET&#39;</span><span class="p">),</span>
+        <span class="n">table_request</span><span class="o">=</span><span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;TIME&#39;</span><span class="p">,</span> <span class="s1">&#39;SHIFT_DISP&#39;</span><span class="p">,</span> <span class="s1">&#39;SEGMENT&#39;</span><span class="p">)},</span>
+    <span class="p">)</span>
 </pre></div>
 </div>
-<p>Where the reference names are not the <em>file names</em>, but the designated name that corresponds to COS keyword for
-that reference file.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="filesystem.SPTData">
+<em class="property">class </em><code class="sig-prename descclassname">filesystem.</code><code class="sig-name descname">SPTData</code><span class="sig-paren">(</span><em class="sig-param">*args</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.SPTData" title="Permalink to this definition">¶</a></dt>
+<dd><p>A subclass of <code class="docutils literal notranslate"><span class="pre">FileData</span></code> for getting requested data from an SPT file that corresponds with the input filename.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Params astropy.io.fits.HDUList hdu</dt>
-<dd class="field-odd"><p>HDUList of the data file.</p>
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_filename</strong> (<em>str</em>) – path to an input COS data file.</p></li>
+<li><p><strong>header_request</strong> (<em>dict</em>) – dictionary of requested data with extensions as keys and lists of keywords as values.</p></li>
+<li><p><strong>table_request</strong> (<em>dict</em>) – dictionary of requested data with extensions as keys and lists of column names as values.</p></li>
+<li><p><strong>header_defaults</strong> – dictionary of default values to use in case a header keyword is not found.</p></li>
+</ul>
 </dd>
-<dt class="field-even">Reference_request dict</dt>
-<dd class="field-even"><p>Dictionary specifying what data to gather from which reference files.
-The <code class="docutils literal notranslate"><span class="pre">match</span></code> and <code class="docutils literal notranslate"><span class="pre">columns</span></code> keys must be lists.</p>
+</dl>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.filesystem</span> <span class="kn">import</span> <span class="n">SPTData</span>
+
+<span class="n">cos_file</span> <span class="o">=</span> <span class="s1">&#39;/path/to/some/cos_file.fits&#39;</span>
+
+<span class="n">sptdata</span> <span class="o">=</span> <span class="n">SPTData</span><span class="p">(</span><span class="n">cos_file</span><span class="p">,</span> <span class="n">header_request</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s1">&#39;DGESTAR&#39;</span><span class="p">})</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="filesystem.JitterFileData">
+<em class="property">class </em><code class="sig-prename descclassname">filesystem.</code><code class="sig-name descname">JitterFileData</code><span class="sig-paren">(</span><em class="sig-param">*args</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.JitterFileData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for getting requested data from COS Jitter files (either acq jitter files or association jitter files).
+Since association Jitter files have data for multiple exposures across exensions, <code class="docutils literal notranslate"><span class="pre">JitterFileData</span></code> subclasses the
+python <code class="docutils literal notranslate"><span class="pre">list</span></code> and instances are equivalent to a list of <code class="docutils literal notranslate"><span class="pre">FileData</span></code> dictionaries (one per extension) to enable
+collecting requested data for each included exposure.</p>
+<p>For a more complete set of available methods and attributes, see the documentation for python’s <code class="docutils literal notranslate"><span class="pre">list</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> (<em>str</em>) – path to requested COS jitter file.</p></li>
+<li><p><strong>primary_header_keys</strong> (<em>list-like</em>) – Collection of header keywords to retrieve from the primary header.</p></li>
+<li><p><strong>ext_header_keys</strong> (<em>list-like</em>) – Collection of header keywords to retrieve from extension headers.</p></li>
+<li><p><strong>table_keys</strong> (<em>list-like</em>) – Collection of columns to retrieve from table extensions.</p></li>
+<li><p><strong>get_expstart</strong> (<em>bool</em>) – Option to attempt to find the corresponding EXPSTART. Requires the EXPNAME keyword to be
+retrieved.</p></li>
+</ul>
 </dd>
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">None</span></code>. Updates the instance’s dictionary. If there’s a problem with reading the reference file, or
-if requested keys cannot be found, empty arrays will be used for that entry.
-This is due to the fact that reference file format and content has changed over time, and requested data may
-be valid for some versions of files, but not others.</p>
+</dl>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.filesystem</span> <span class="kn">import</span> <span class="n">JitterFileData</span>
+
+<span class="n">asn_jitter</span> <span class="o">=</span> <span class="s1">&#39;/path/to/some/association_jit.fits&#39;</span>
+<span class="n">acq_jitter</span> <span class="o">=</span> <span class="s1">&#39;/path/to/some/single_jit.fits&#39;</span>
+
+<span class="n">asn_jitter_data</span> <span class="o">=</span> <span class="n">JitterFileData</span><span class="p">(</span>
+    <span class="n">asn_jitter</span><span class="p">,</span>
+    <span class="n">primary_header_keys</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;PROPOSID&#39;</span><span class="p">,</span> <span class="s1">&#39;CONFIG&#39;</span><span class="p">),</span>
+    <span class="n">ext_header_keys</span><span class="p">(</span><span class="s1">&#39;EXPNAME&#39;</span><span class="p">),</span>
+    <span class="n">table_keys</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;SI_V2_AVG&#39;</span><span class="p">,</span> <span class="s1">&#39;SI_V3_AVG&#39;</span><span class="p">),</span>
+    <span class="n">get_expstart</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># Setting this tells JitterFileData to try and find EXPSTART from a corresponding file.</span>
+<span class="p">)</span>
+<span class="n">asn_jitter_data</span>
+<span class="c1"># [{...}, {...}, {...}, ...] Results in a list of FileData dictionaries</span>
+
+<span class="c1"># Can reduce the table data collected to a statistic, or several statistics.</span>
+<span class="c1">#   Removes SI_V2_AVG array, adds SI_V2_AVG_mean, SI_V2_AVG_std, and SI_V2_AVG_max</span>
+<span class="n">asn_jitter_data</span><span class="o">.</span><span class="n">reduce_to_stat</span><span class="p">({</span><span class="s1">&#39;SI_V2_AVG&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;mean&#39;</span><span class="p">,</span> <span class="s1">&#39;std&#39;</span><span class="p">,</span> <span class="s1">&#39;max&#39;</span><span class="p">)})</span>
+
+<span class="c1"># Getting data from a jitter file that&#39;s not an association still returns a list</span>
+<span class="n">acq_jitter</span> <span class="o">=</span> <span class="n">JitterFileData</span><span class="p">(</span><span class="n">acq_jitter</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">acq_jitter</span>
+<span class="c1"># [{...}]</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="filesystem.JitterFileData.get_expstart">
+<code class="sig-name descname">get_expstart</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.JitterFileData.get_expstart" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attempt to find EXPSTART from a corresponding <cite>raw</cite> file.
+Will try to locate one of: “rawacq.fits.gz,” “rawtag.fits.gz,” “rawtag_a.fits.gz,” “rawtag_b.fits.gz” with a
+corresponding rootname.</p>
+<p>Additionally retrieve the EXPTYPE keyword if a match is found.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="filesystem.JitterFileData.reduce_to_stat">
+<code class="sig-name descname">reduce_to_stat</code><span class="sig-paren">(</span><em class="sig-param">description</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.JitterFileData.reduce_to_stat" title="Permalink to this definition">¶</a></dt>
+<dd><p>From a <code class="docutils literal notranslate"><span class="pre">description</span></code> dictionary that describes which column data to reduce to which stats, remove the original
+column data array and add keys/values for the requested stats.
+This is useful if collecting data from many jitter files.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>description</strong> (<em>dict</em>) – Dictionary with column names as keys and collection of desired stats.
+Supported options include max, std, and mean.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1224,39 +1308,91 @@ be valid for some versions of files, but not others.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="filesystem.get_file_data">
-<code class="sig-prename descclassname">filesystem.</code><code class="sig-name descname">get_file_data</code><span class="sig-paren">(</span><em class="sig-param">fits_files</em>, <em class="sig-param">keywords</em>, <em class="sig-param">extensions</em>, <em class="sig-param">spt_keywords=None</em>, <em class="sig-param">spt_extensions=None</em>, <em class="sig-param">data_keywords=None</em>, <em class="sig-param">data_extensionsSequence=None</em>, <em class="sig-param">header_defaults=None</em>, <em class="sig-param">reference_request=None</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.get_file_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get data from the specified FITS files and optionally, any information needed from the corresponding <cite>spt</cite> file or
-particular reference files in parallel with <code class="docutils literal notranslate"><span class="pre">dask</span></code>.</p>
-<p>Example Usage:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">glob</span>
-<span class="kn">from</span> <span class="nn">cosmo.filesystem</span> <span class="kn">import</span> <span class="n">get_file_data</span>
-
-<span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">&#39;*fits&#39;</span><span class="p">)</span>  <span class="c1"># Some list of files.</span>
-
-<span class="c1"># Retrieve a bunch of data</span>
-<span class="n">results</span> <span class="o">=</span> <span class="n">get_file_data</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;ROOTNAME&#39;</span><span class="p">,</span> <span class="s1">&#39;APERTURE&#39;</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
-</pre></div>
-</div>
+<dt id="filesystem.get_exposure_data">
+<code class="sig-prename descclassname">filesystem.</code><code class="sig-name descname">get_exposure_data</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.get_exposure_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience function for retrieving data from multiple sources (COS data file, SPT file, and reference file).
+If the data requests include different sources, the results will be combined into a single dictionary.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>fitsfiles</strong> (<em>list</em>) – List of files from which to retrieve data.</p></li>
-<li><p><strong>keywords</strong> (<em>list</em>) – List of keywords to retrieve.</p></li>
-<li><p><strong>extensions</strong> (<em>list</em>) – Corresponding list of extensions for the keywords. Must be the same length as <code class="docutils literal notranslate"><span class="pre">keywords</span></code></p></li>
-<li><p><strong>spt_keywords</strong> (<em>list</em>) – Optional. List of keywords to retrieve from the <cite>spt</cite> file.</p></li>
-<li><p><strong>spt_extensions</strong> (<em>list</em>) – Required if <code class="docutils literal notranslate"><span class="pre">spt_keywords</span></code> is used. Corresponding list of extensions for the <cite>spt</cite>
-keywords.</p></li>
-<li><p><strong>data_keywords</strong> (<em>list</em>) – Optional. List of column-name keywords to extract.</p></li>
-<li><p><strong>data_extensions</strong> (<em>list</em>) – Required if <code class="docutils literal notranslate"><span class="pre">data_keywords</span></code> is used. Corresponding list of extensions for the
-specified columns.</p></li>
+<li><p><strong>filename</strong> (<em>str</em>) – path to the requested COS file.</p></li>
+<li><p><strong>reference_request</strong> (<em>dict</em>) – Dictionary that combines requests for multiple reference files.</p></li>
+<li><p><strong>**kwargs</strong> – <p>request dictionaries that correspond to header and table request arguments in <cite>FileData</cite> and
+<code class="docutils literal notranslate"><span class="pre">SPTData</span></code>.</p>
+</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>List of <code class="docutils literal notranslate"><span class="pre">FileData</span></code> dictionaries containing the extracted data.</p>
+<dd class="field-even"><p>Combined <code class="docutils literal notranslate"><span class="pre">FileData</span></code> dictionary</p>
 </dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">list</span></code></p>
+</dl>
+<p>Example Usage:</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="filesystem.get_jitter_data">
+<code class="sig-prename descclassname">filesystem.</code><code class="sig-name descname">get_jitter_data</code><span class="sig-paren">(</span><em class="sig-param">*args</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.get_jitter_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience function for getting data from a COS Jitter file while guarding against broken files.
+Optionally, reduce requested column arrays to statistics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – <p>See JitterFileData for more on <code class="docutils literal notranslate"><span class="pre">args</span></code></p>
+</p></li>
+<li><p><strong>reduce_to_stats</strong> (<em>dict</em>) – Apply <code class="docutils literal notranslate"><span class="pre">description</span></code> dict to Jitter data to reduce cols to statistics.
+See JitterFileData.reduce_to_stat for more on <code class="docutils literal notranslate"><span class="pre">description</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>list-result of requested Jitter data.</p>
+</dd>
+</dl>
+<p>Example Usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cosmo.filesystem</span> <span class="kn">import</span> <span class="n">get_jitter_data</span>
+
+<span class="n">jit_data</span> <span class="o">=</span> <span class="n">get_jitter_data</span><span class="p">(</span>
+<span class="s1">&#39;/path/to/some/jitter_file.fits&#39;</span><span class="p">,</span>
+<span class="n">primary_header_keys</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;PROPOSID&#39;</span><span class="p">,),</span>
+<span class="n">ext_header_keys</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;EXTNAME&#39;</span><span class="p">,),</span>
+<span class="n">table_keys</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;Roll&#39;</span><span class="p">,),</span>
+<span class="n">reduce_to_stats</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Roll&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;std&#39;</span><span class="p">,</span> <span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="s1">&#39;mean&#39;</span><span class="p">)}</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="filesystem.data_from_exposures">
+<code class="sig-prename descclassname">filesystem.</code><code class="sig-name descname">data_from_exposures</code><span class="sig-paren">(</span><em class="sig-param">fitsfiles</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.data_from_exposures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get data for multiple COS data files from multiple sources in parallel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fitsfiles</strong> (<em>list-like</em>) – Collection of COS data files from which to retrieve data.</p></li>
+<li><p><strong>**kwargs</strong> – <p>See <code class="docutils literal notranslate"><span class="pre">get_exposure_data</span></code> for more kwargs</p>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>List of combined FileData dictionaries per input file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="filesystem.data_from_jitters">
+<code class="sig-prename descclassname">filesystem.</code><code class="sig-name descname">data_from_jitters</code><span class="sig-paren">(</span><em class="sig-param">jitter_files</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#filesystem.data_from_jitters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get data for multiple COS Jitter files.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>jitter_files</strong> (<em>list-like</em>) – Collection of jitter files to retrieve data.</p></li>
+<li><p><strong>**kwargs</strong> – <p>See <code class="docutils literal notranslate"><span class="pre">get_jitter_data</span></code> for more kwargs</p>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>List of <code class="docutils literal notranslate"><span class="pre">JitterFileData</span></code> lists</p>
 </dd>
 </dl>
 </dd></dl>

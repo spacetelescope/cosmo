@@ -162,6 +162,7 @@
  | <a href="#F"><strong>F</strong></a>
  | <a href="#G"><strong>G</strong></a>
  | <a href="#I"><strong>I</strong></a>
+ | <a href="#J"><strong>J</strong></a>
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#N"><strong>N</strong></a>
@@ -190,12 +191,14 @@
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#monitor_helpers.convert_day_of_year">convert_day_of_year() (in module monitor_helpers)</a>
+      <li><a href="api.html#filesystem.FileData.combine">combine() (filesystem.FileData method)</a>
 </li>
-      <li><a href="api.html#DataModel.cosmo_layout">cosmo_layout (DataModel attribute)</a>
+      <li><a href="api.html#monitor_helpers.convert_day_of_year">convert_day_of_year() (in module monitor_helpers)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#DataModel.cosmo_layout">cosmo_layout (DataModel attribute)</a>
+</li>
       <li><a href="api.html#monitor_helpers.create_visibility">create_visibility() (in module monitor_helpers)</a>
 </li>
       <li><a href="api.html#ingest_sms.SMSFinder.currently_ingested">currently_ingested (ingest_sms.SMSFinder attribute)</a>
@@ -212,12 +215,16 @@
         <li><a href="api.html#Monitor.data">(Monitor attribute)</a>
 </li>
       </ul></li>
-      <li><a href="api.html#Monitor.data_model">data_model (Monitor attribute)</a>
+      <li><a href="api.html#filesystem.data_from_exposures">data_from_exposures() (in module filesystem)</a>
 </li>
-      <li><a href="api.html#DataModel">DataModel (built-in class)</a>
+      <li><a href="api.html#filesystem.data_from_jitters">data_from_jitters() (in module filesystem)</a>
+</li>
+      <li><a href="api.html#Monitor.data_model">data_model (Monitor attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#DataModel">DataModel (built-in class)</a>
+</li>
       <li><a href="api.html#Monitor.date">date (Monitor attribute)</a>
 </li>
       <li><a href="api.html#ingest_sms.SMSFile.datetime_format">datetime_format (ingest_sms.SMSFile attribute)</a>
@@ -248,10 +255,10 @@
 </li>
       <li><a href="api.html#ingest_sms.SMSFile.filename">filename (ingest_sms.SMSFile attribute)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#DataModel.files_source">files_source (DataModel attribute)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#ingest_sms.SMSFinder.find_all">find_all() (ingest_sms.SMSFinder method)</a>
 </li>
       <li><a href="api.html#filesystem.find_files">find_files() (in module filesystem)</a>
@@ -259,6 +266,8 @@
       <li><a href="api.html#Monitor.find_outliers">find_outliers() (Monitor method)</a>
 </li>
       <li><a href="api.html#monitor_helpers.fit_line">fit_line() (in module monitor_helpers)</a>
+</li>
+      <li><a href="api.html#filesystem.FileData.from_file">from_file() (filesystem.FileData class method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -268,19 +277,19 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#Monitor.get_data">get_data() (Monitor method)</a>
 </li>
-      <li><a href="api.html#filesystem.get_file_data">get_file_data() (in module filesystem)</a>
+      <li><a href="api.html#filesystem.get_exposure_data">get_exposure_data() (in module filesystem)</a>
+</li>
+      <li><a href="api.html#filesystem.JitterFileData.get_expstart">get_expstart() (filesystem.JitterFileData method)</a>
 </li>
       <li><a href="api.html#filesystem.FileData.get_header_data">get_header_data() (filesystem.FileData method)</a>
 </li>
-      <li><a href="api.html#DataModel.get_new_data">get_new_data() (DataModel method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#filesystem.get_jitter_data">get_jitter_data() (in module filesystem)</a>
+</li>
+      <li><a href="api.html#DataModel.get_new_data">get_new_data() (DataModel method)</a>
+</li>
       <li><a href="api.html#monitor_helpers.get_osm_data">get_osm_data() (in module monitor_helpers)</a>
-</li>
-      <li><a href="api.html#filesystem.FileData.get_reference_data">get_reference_data() (filesystem.FileData method)</a>
-</li>
-      <li><a href="api.html#filesystem.FileData.get_spt_header_data">get_spt_header_data() (filesystem.FileData method)</a>
 </li>
       <li><a href="api.html#filesystem.FileData.get_table_data">get_table_data() (filesystem.FileData method)</a>
 </li>
@@ -303,6 +312,14 @@
       <li><a href="api.html#Monitor.initialize_data">initialize_data() (Monitor method)</a>
 </li>
       <li><a href="api.html#ingest_sms.SMSFile.insert_to_db">insert_to_db() (ingest_sms.SMSFile method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="J">J</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#filesystem.JitterFileData">JitterFileData (class in filesystem)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -380,10 +397,14 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#Monitor.results">results (Monitor attribute)</a>
+      <li><a href="api.html#filesystem.JitterFileData.reduce_to_stat">reduce_to_stat() (filesystem.JitterFileData method)</a>
+</li>
+      <li><a href="api.html#filesystem.ReferenceData">ReferenceData (class in filesystem)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#Monitor.results">results (Monitor attribute)</a>
+</li>
       <li><a href="api.html#Monitor.run_analysis">run_analysis() (Monitor method)</a>
 </li>
   </ul></td>
@@ -398,13 +419,15 @@
 </li>
       <li><a href="api.html#ingest_sms.SMSFile">SMSFile (class in ingest_sms)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#sms_db.SMSFileStats">SMSFileStats (class in sms_db)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#ingest_sms.SMSFinder">SMSFinder (class in ingest_sms)</a>
 </li>
       <li><a href="api.html#sms_db.SMSTable">SMSTable (class in sms_db)</a>
+</li>
+      <li><a href="api.html#filesystem.SPTData">SPTData (class in filesystem)</a>
 </li>
       <li><a href="api.html#Monitor.store_results">store_results() (Monitor method)</a>
 </li>
