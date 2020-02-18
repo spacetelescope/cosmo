@@ -50,8 +50,10 @@ class FUVDarkMonitor(BaseMonitor):
     labels = ['ROOTNAME']
     output = COS_MONITORING
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#fuv-dark-rate-monitors"
+
     segment = None
     location = None
+
     plottype = 'scatter'
     x = 'date'
     y = 'darks'
