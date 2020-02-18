@@ -82,6 +82,7 @@ class FileData(FileDataInterface):
                     self[key] = hdu[ext].data[key]
 
     def combine(self, other, right_name):
+        """Combine two FileData dictionaries into one."""
         for key, value in other.items():
             if key in self:
                 self[f'{right_name}_{key}'] = value
@@ -91,6 +92,9 @@ class FileData(FileDataInterface):
 
 
 class ReferenceData(FileData):
+    """Subclass of FileData that given data requests from a particular type of reference file, find the corresponding
+    reference for a particular exposure as well as the row the matches with the given match_keys.
+    """
     def __init__(self, input_hdu: Union[str, fits.HDUList], reference_name: str, match_keys: Sequence[str],
                  header_request: REQUEST = None, table_request: REQUEST = None, header_defaults: Dict[str, Any] = None):
         self.reference = input_hdu[0].header[reference_name].split('$')[-1]
@@ -151,6 +155,7 @@ class ReferenceData(FileData):
 
 
 class SPTData(FileData):
+    """Subclass of FileData that finds a matching SPT file and retrieves the requested data from it."""
     def __init__(self, input_filename: str, header_request: REQUEST = None, table_request: REQUEST = None,
                  header_defaults: Dict[str, Any] = None):
         self.sptfile = self._create_spt_filename(input_filename)
@@ -248,6 +253,7 @@ class JitterFileData(list):
                 item[key] = item[key][item[key] < 1e30]
 
     def reduce_to_stat(self, description: dict):
+        """Reduce column arrays given in "description" to one or more statistic."""
         supported = ('mean', 'std', 'max')
 
         for filedata in self:
@@ -286,6 +292,7 @@ def get_exposure_data(filename: str, header_request: REQUEST = None, table_reque
                       header_defaults: Dict[str, Any] = None, spt_header_request: REQUEST = None,
                       spt_table_request: REQUEST = None, spt_header_defaults: Dict[str, Any] = None,
                       reference_request: Dict[str, Dict[str, Union[Sequence[str], REQUEST]]] = None):
+    """Get data requested from COS data and corresponding reference files."""
 
     try:
         with fits.open(filename) as hdu:
@@ -329,6 +336,8 @@ def get_exposure_data(filename: str, header_request: REQUEST = None, table_reque
 def get_jitter_data(jitter_file: str, primary_header_keys: Sequence[str] = None,
                     ext_header_keys: Sequence[str] = None, table_keys: Sequence[str] = None,
                     get_expstart: bool = True, reduce_to_stats: Dict[str, Sequence[str]] = None):
+    """Get requested Jitter data and reduce. Optionally, get a corresponding EXPSTART and reduce requested table data.
+    """
     try:
         jit = JitterFileData(jitter_file, primary_header_keys, ext_header_keys, table_keys, get_expstart)
 
@@ -347,6 +356,7 @@ def data_from_exposures(fitsfiles: List[str], header_request: REQUEST = None, ta
                         header_defaults: Dict[str, Any] = None, spt_header_request: REQUEST = None,
                         spt_table_request: REQUEST = None, spt_header_defaults: Dict[str, Any] = None,
                         reference_request: Dict[str, Dict[str, Union[Sequence[str], REQUEST]]] = None):
+    """Get requested data from COS files and their corresponding reference files in parallel."""
     delayed_results = [
         dask.delayed(get_exposure_data)(
             file,

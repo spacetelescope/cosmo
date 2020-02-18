@@ -632,11 +632,19 @@ Cosmo also contains other modules used in supporting either the monitors or data
 
 .. py:class:: FileData(*args, **kwargs)
 
-    Class used for ingesting and collecting the specified data from a particular COS FITS file.
-    This class is a data container that subclasses python's ``dict`` object to create a dictionary-like object that's
-    instantiated via a FITS file and lists of keywords and extensions.
+    Class used for collecting the requested data from a particular COS FITS file.
+    This class subclasses python's ``dict`` object to create a dictionary-like object.
     For a complete list of methods, see documentation for ``dict``
 
+    :param fits.HDUList hdu: opened HDUList from the desired file.
+    :param dict header_request: dictionary of requested data with extensions as keys and lists of keywords as values.
+    :param dict table_request: dictionary of requested data with extensions as keys and lists of column names as values.
+    :param header_defaults: dictionary of default values to use in case a header keyword is not found.
+        This is useful, for example, when attempting to construct a DataModel around a particular file type that has
+        similar keywords, but may or may not be missing some values depending on the exposure type (like with
+        `rawacq` files: ``ACQSLEWX`` and ``ACQSLEWY`` are not always present across different acquisition types, but
+        all other data required for the Acq monitors `are` shared across all `rawacq` files.
+    :param bool bytes_to_str: Option to convert string data from ``bytes`` to python ``str``.
     :raises ValueError: A ``ValueError`` is raised if any set of keywords is given without a corresponding set of
         extensions or if the keywords and extensions are of different lengths.
 
@@ -647,7 +655,10 @@ Cosmo also contains other modules used in supporting either the monitors or data
         from cosmo.filesystem import FileData
 
         # Get the desired data from some_fitsfile.fits
-        file_data = FileData('some_fitsfile.fits', ('ROOTNAME', 'DETECTOR'), (0, 0))
+        file_data = FileData.from_file(
+            'some_fitsfile.fits',
+            header_request={0: ('ROOTNAME', 'DETECTOR')}
+        )
 
         # file_data is basically a dictionary with an alternate construction method
 
@@ -663,113 +674,220 @@ Cosmo also contains other modules used in supporting either the monitors or data
         # ROOTNAME lb4c10niq
         # DETECTOR NUV
 
-        # To grab info from a reference file:
-        reference_request = {
-            'LAMPTAB': {
-                'match': ['OPT_ELEM', 'CENWAVE', 'FPOFFSET'],  # Specify columns that determine a match
-                'columns': ['SEGMENT', 'FP_PIXEL_SHIFT']  # Specify the desired column data
-            },
-            'WCPTAB': {
-                'match': ['OPT_ELEM'],
-                'columns': ['XC_RANGE', 'SEARCH_OFFSET']
-            }
-        }
 
-        file_data = FileData('some_fitsfile.fits', ('ROOTNAME', 'DETECTOR'), (0, 0), reference_request=reference_request)
+    .. py:classmethod:: from_file(filename, *args, **kwargs)
+
+        Create a class instance by opening the file specified by ``filename``.
 
     .. py:method:: get_header_data(hdu, header_keywords, header_extensions, header_defaults=None)
 
         Retrieve the specified header data from the input FITS file.
 
         :param astropy.io.fits.HDUList hdu: FITS HDUList object.
-        :param list header_keywords: ``list`` or ``tuple`` of header keywords to extract.
-        :param list header_extensions: corresponding `list`` or ``tuple`` of extensions to the keywords.
-            Must be the same length as ``header_keywords``
+        :param dict header_request: dictionary of requested data with extensions as keys and lists of keywords as values.
         :param dict header_defaults: Default, ``None``. Dictionary of keywords that if not found should be set with a
             default value.
-            This is useful, for example, when attempting to construct a DataModel around a particular file type that has
-            similar keywords, but may or may not be missing some values depending on the exposure type (like with
-            `rawacq` files: ``ACQSLEWX`` and ``ACQSLEWY`` are not always present across different acquisition types, but
-            all other data required for the Acq monitors `are` shared across all `rawacq` files.
+
         :return: ``None``. This method updates the instance's dictionary.
 
-    .. py:method:: get_spt_header_data(spt_file, spt_keywords, spt_extensions)
+    .. py:method:: get_table_data(hdu, table_request)
 
-        Get the specified data from the corresponding `spt` file.
-        The `spt` file name is constructed using the input file.
+        Get the requested columns from the file's table(s).
 
-        :raises FileNotFoundError: If the `spt` file is missing or in a different location from the input file.
-        :param str spt_file: file name of the corresponding `spt` file.
-        :param list spt_keywords: List of keywords to retrieve from the `spt` file.
-        :param list spt_extensions: Corresponding list of extensions for the keywords. Must be the same size as
-            ``spt_keywords``.
+        :param astropy.io.fits.HDUList hdu: FITS HDUList object.
+        :param dict table_request: dictionary of requested data with extensions as keys and lists of column names as
+            values.
         :return: ``None``. Updates the instance's dictionary.
 
-    .. py:method:: get_table_data(hdu, data_keywords, data_extensions)
+    .. py:method:: combine(other, right_name)
 
-        Get specified columns from table data.
+        Combine ``FileData`` dictionary with another. If there are any matching keys, ``right_name`` is added.
 
-        :params astropy.io.fits.HDUList hdu: HDUList of the data file.
-        :params list data_keywords: List of column-name keywords to extract.
-        :params list data_extensions: Corresponding list of extensions for the keywords.
-        :return: ``None``. Updates the instance's dictionary.
+        :param dict other: FileData or ``dict`` to combine.
+        :param str right_name: label to add in the cases where there are matching keys.
 
-    .. py:method:: get_reference_data(hdu, reference_request)
+.. py:class:: ReferenceData(*args, **kwargs)
 
-        Get the requested data from the specified reference files.
+    A subclass of ``FileData`` for getting requested data from COS reference files that correspond to the input COS data
+    file.
 
-        The expected dictionary structure is as follows:
-
-        .. code-block:: python
-
-            request = {
-                'Reference1_name': {
-                    'match': ['matching_col1', 'matching_col2', ...],
-                    'columns': ['want_col1', 'want_col2']
-                },
-                'Reference2_name': ...
-            }
-
-        Where the reference names are not the *file names*, but the designated name that corresponds to COS keyword for
-        that reference file.
-
-        :params astropy.io.fits.HDUList hdu: HDUList of the data file.
-        :reference_request dict: Dictionary specifying what data to gather from which reference files.
-            The ``match`` and ``columns`` keys must be lists.
-        :return: ``None``. Updates the instance's dictionary. If there's a problem with reading the reference file, or
-            if requested keys cannot be found, empty arrays will be used for that entry.
-            This is due to the fact that reference file format and content has changed over time, and requested data may
-            be valid for some versions of files, but not others.
-
-.. py:function:: get_file_data(fits_files, keywords, extensions, spt_keywords=None, spt_extensions=None, \
-    data_keywords=None, data_extensionsSequence=None, header_defaults=None, reference_request=None)
-
-    Get data from the specified FITS files and optionally, any information needed from the corresponding `spt` file or
-    particular reference files in parallel with ``dask``.
+    :param fits.HDUList input_hdu: ``HDUList`` from a corresponding COS data file.
+    :param str reference_name: Header keyword corresponding to the requested reference file.
+    :param list-like match_keys: Keys used to locate the row in the reference file that applies to the input data file.
+    :param dict header_request: dictionary of requested data with extensions as keys and lists of keywords as values.
+    :param dict table_request: dictionary of requested data with extensions as keys and lists of column names as values.
+    :param header_defaults: dictionary of default values to use in case a header keyword is not found.
 
     Example Usage:
 
     .. code-block:: python
 
-        import glob
-        from cosmo.filesystem import get_file_data
+        from cosmo.filesystem import ReferenceData
+        from astropy.io import fits
 
-        files = glob.glob('*fits')  # Some list of files.
+        with fits.open('path/to/some/cos_file.fits') as input_hdu:
+            refdata = ReferenceData(
+                input_hdu,
+                'LAMPTAB',
+                match_keys=('OPT_ELEM', 'CENWAVE', 'FPOFFSET'),
+                table_request={1: ('TIME', 'SHIFT_DISP', 'SEGMENT')},
+            )
 
-        # Retrieve a bunch of data
-        results = get_file_data(files, ('ROOTNAME', 'APERTURE'), (0, 0))
+.. py:class:: SPTData(*args, **kwargs)
 
-    :param list fitsfiles: List of files from which to retrieve data.
-    :param list keywords: List of keywords to retrieve.
-    :param list extensions: Corresponding list of extensions for the keywords. Must be the same length as ``keywords``
-    :param list spt_keywords: Optional. List of keywords to retrieve from the `spt` file.
-    :param list spt_extensions: Required if ``spt_keywords`` is used. Corresponding list of extensions for the `spt`
-        keywords.
-    :param list data_keywords: Optional. List of column-name keywords to extract.
-    :param list data_extensions: Required if ``data_keywords`` is used. Corresponding list of extensions for the
-        specified columns.
-    :return: List of ``FileData`` dictionaries containing the extracted data.
-    :rtype: ``list``
+    A subclass of ``FileData`` for getting requested data from an SPT file that corresponds with the input filename.
+
+    :param str input_filename: path to an input COS data file.
+    :param dict header_request: dictionary of requested data with extensions as keys and lists of keywords as values.
+    :param dict table_request: dictionary of requested data with extensions as keys and lists of column names as values.
+    :param header_defaults: dictionary of default values to use in case a header keyword is not found.
+
+    Example Usage:
+
+    .. code-block:: python
+
+        from cosmo.filesystem import SPTData
+
+        cos_file = '/path/to/some/cos_file.fits'
+
+        sptdata = SPTData(cos_file, header_request={0: 'DGESTAR'})
+
+.. py:class:: JitterFileData(*args, **kwargs)
+
+    Class for getting requested data from COS Jitter files (either acq jitter files or association jitter files).
+    Since association Jitter files have data for multiple exposures across exensions, ``JitterFileData`` subclasses the
+    python ``list`` and instances are equivalent to a list of ``FileData`` dictionaries (one per extension) to enable
+    collecting requested data for each included exposure.
+
+    For a more complete set of available methods and attributes, see the documentation for python's ``list``.
+
+    :param str filename: path to requested COS jitter file.
+    :param list-like primary_header_keys: Collection of header keywords to retrieve from the primary header.
+    :param list-like ext_header_keys: Collection of header keywords to retrieve from extension headers.
+    :param list-like table_keys: Collection of columns to retrieve from table extensions.
+    :param bool get_expstart: Option to attempt to find the corresponding EXPSTART. Requires the EXPNAME keyword to be
+        retrieved.
+
+    Example Usage:
+
+    .. code-block:: python
+
+        from cosmo.filesystem import JitterFileData
+
+        asn_jitter = '/path/to/some/association_jit.fits'
+        acq_jitter = '/path/to/some/single_jit.fits'
+
+        asn_jitter_data = JitterFileData(
+            asn_jitter,
+            primary_header_keys=('PROPOSID', 'CONFIG'),
+            ext_header_keys('EXPNAME'),
+            table_keys=('SI_V2_AVG', 'SI_V3_AVG'),
+            get_expstart=True  # Setting this tells JitterFileData to try and find EXPSTART from a corresponding file.
+        )
+        asn_jitter_data
+        # [{...}, {...}, {...}, ...] Results in a list of FileData dictionaries
+
+        # Can reduce the table data collected to a statistic, or several statistics.
+        #   Removes SI_V2_AVG array, adds SI_V2_AVG_mean, SI_V2_AVG_std, and SI_V2_AVG_max
+        asn_jitter_data.reduce_to_stat({'SI_V2_AVG': ('mean', 'std', 'max')})
+
+        # Getting data from a jitter file that's not an association still returns a list
+        acq_jitter = JitterFileData(acq_jitter, ...)
+        acq_jitter
+        # [{...}]
+
+    .. py:method:: get_expstart()
+
+        Attempt to find EXPSTART from a corresponding `raw` file.
+        Will try to locate one of: "rawacq.fits.gz," "rawtag.fits.gz," "rawtag_a.fits.gz," "rawtag_b.fits.gz" with a
+        corresponding rootname.
+
+        Additionally retrieve the EXPTYPE keyword if a match is found.
+
+    .. py:method:: reduce_to_stat(description)
+
+        From a ``description`` dictionary that describes which column data to reduce to which stats, remove the original
+        column data array and add keys/values for the requested stats.
+        This is useful if collecting data from many jitter files.
+
+        :param dict description: Dictionary with column names as keys and collection of desired stats.
+            Supported options include max, std, and mean.
+
+
+.. py:function:: get_exposure_data(filename, **kwargs)
+
+    A convenience function for retrieving data from multiple sources (COS data file, SPT file, and reference file).
+    If the data requests include different sources, the results will be combined into a single dictionary.
+
+    :param str filename: path to the requested COS file.
+    :param dict reference_request: Dictionary that combines requests for multiple reference files.
+    :param **kwargs: request dictionaries that correspond to header and table request arguments in `FileData` and
+        ``SPTData``.
+    :return: Combined ``FileData`` dictionary
+
+    Example Usage:
+
+    .. code-block::python
+
+        from cosmo.filesystem import get_exposure_data
+
+        data = get_exposure_data(
+            '/path/to/some/cos_file.fits',
+            header_request={0: ('ROOTNAME', 'DETECTOR')},
+            table_request={1: ('SOME_TABLE_COL')}
+            spt_header_request={0: ('DGESTAR')},
+            reference_request={  # Request data from multiple reference files
+                'LAMPTAB': {
+                    'match_keys': ('OPT_ELEM', 'CENWAVE', 'FPOFFSET'),
+                    'table_request': {1: ('SEGMENT', 'FP_PIXEL_SHIFT')}
+                },
+                'WCPTAB': {
+                    'match_keys': ('OPT_ELEM'),
+                    'table_request': {1: ('XC_RANGE', 'SEARCH_OFFSET')}
+                },
+                ...
+            }
+        )
+
+.. py:function:: get_jitter_data(*args, **kwargs)
+
+    Convenience function for getting data from a COS Jitter file while guarding against broken files.
+    Optionally, reduce requested column arrays to statistics.
+
+    :param *args: See JitterFileData for more on ``args``
+    :param dict reduce_to_stats: Apply ``description`` dict to Jitter data to reduce cols to statistics.
+        See JitterFileData.reduce_to_stat for more on ``description``.
+    :return: list-result of requested Jitter data.
+
+    Example Usage:
+
+    .. code-block:: python
+
+        from cosmo.filesystem import get_jitter_data
+
+        jit_data = get_jitter_data(
+        '/path/to/some/jitter_file.fits',
+        primary_header_keys=('PROPOSID',),
+        ext_header_keys=('EXTNAME',),
+        table_keys=('Roll',),
+        reduce_to_stats={'Roll': ('std', 'max', 'mean')}
+        )
+
+.. py:function:: data_from_exposures(fitsfiles, **kwargs)
+
+    Get data for multiple COS data files from multiple sources in parallel.
+
+    :param list-like fitsfiles: Collection of COS data files from which to retrieve data.
+    :param **kwargs: See ``get_exposure_data`` for more kwargs
+    :return: List of combined FileData dictionaries per input file.
+
+.. py:function:: data_from_jitters(jitter_files, **kwargs)
+
+    Get data for multiple COS Jitter files.
+
+    :param list-like jitter_files: Collection of jitter files to retrieve data.
+    :param **kwargs: See ``get_jitter_data`` for more kwargs
+    :return: List of ``JitterFileData`` lists
 
 .. py:currentmodule:: monitor_helpers
 
