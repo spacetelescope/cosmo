@@ -217,6 +217,61 @@ class NUVDarkDataModel(BaseDataModel):
                 'YCORR'
                 ],
             3: [
+                'TIME',
+                'LATITUDE',
+                'LONGITUDE',
+                'DARKRATE'
+                ]
+
+            }
+
+        # any special data requests
+        # TODO: add spt support for temp, sun_lat, sun_long
+        # TODO: is this a good place to add solar data scraping in the future?
+
+        # this is temporary to find the files from the dark programs until
+        # we can add the dark files to the monitor_data database
+        files = []
+        program_ids = ['15776/']
+        for program in program_ids:
+            new_files_source = os.path.join(FILES_SOURCE, program)
+            subfiles = glob(os.path.join(new_files_source, "*corrtag*"))
+            files += subfiles
+
+        if not files:  # No new files
+            return pd.DataFrame()
+
+        # need to add any other keywords that need to be set
+        data_results = data_from_exposures(files,
+                                           header_request=header_request,
+                                           table_request=table_request)
+
+        return data_results
+
+
+class CorrtagDataModel(BaseDataModel):
+    """Datamodel for all NUV Dark files."""
+    files_source = FILES_SOURCE
+    subdir_pattern = '?????'
+
+    def get_new_data(self):
+        header_request = {
+            0: ['ROOTNAME'],
+            1: [
+                'EXPSTART',
+                'EXPTIME',
+                'EXPTYPE',
+                'DETECTOR'
+                ]
+            }
+
+        table_request = {
+            1: [
+                'TIME',
+                'XCORR',
+                'YCORR'
+                ],
+            3: [
                 'LATITUDE',
                 'LONGITUDE'
                 ]
@@ -230,13 +285,16 @@ class NUVDarkDataModel(BaseDataModel):
 
         # this is temporary to find the files from the dark programs until
         # we can add the dark files to the monitor_data database
-        files = []
-        program_ids = ['15776/']
-        for program in program_ids:
-            new_files_source = os.path.join(FILES_SOURCE, program)
-            subfiles = glob(os.path.join(new_files_source, "*corrtag*"))
-            # TODO: figure out why this wasn't working with find_files()
-            files += subfiles
+        # files = []
+        # program_ids = ['15776/']
+        # for program in program_ids:
+        #     new_files_source = os.path.join(FILES_SOURCE, program)
+        #     subfiles = glob(os.path.join(new_files_source, "*corrtag*"))
+        #     # TODO: figure out why this wasn't working with find_files()
+        #     files += subfiles
+
+        files = find_files('*corrtag*', data_dir=self.files_source,
+                           subdir_pattern=self.subdir_pattern)
 
         if not files:  # No new files
             return pd.DataFrame()
