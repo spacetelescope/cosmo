@@ -204,25 +204,12 @@ class NUVDarkDataModel(BaseDataModel):
     def get_new_data(self):
         header_request = {
             0: ['ROOTNAME'],
-            1: [
-                'EXPSTART',
-                'EXPTIME'
-                ]
+            1: ['EXPSTART','EXPTIME']
             }
 
         table_request = {
-            1: [
-                'TIME',
-                'XCORR',
-                'YCORR'
-                ],
-            3: [
-                'TIME',
-                'LATITUDE',
-                'LONGITUDE',
-                'DARKRATE'
-                ]
-
+            1: ['TIME','XCORR','YCORR'],
+            3: ['TIME','LATITUDE','LONGITUDE','DARKRATE']
             }
 
         # any special data requests
@@ -232,7 +219,10 @@ class NUVDarkDataModel(BaseDataModel):
         # this is temporary to find the files from the dark programs until
         # we can add the dark files to the monitor_data database
         files = []
-        program_ids = ['15776/']
+        # 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17
+        program_ids = ['15776/', '15538/', '14942/', '14521/', '14442/', '13974/',
+                       '13528/', '13126/', '12720/', '12420/', '11894/']
+        # program_ids = ['15776/']
         for program in program_ids:
             new_files_source = os.path.join(FILES_SOURCE, program)
             subfiles = glob(os.path.join(new_files_source, "*corrtag*"))
