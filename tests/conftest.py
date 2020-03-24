@@ -9,6 +9,9 @@ TEST_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cosmocon
 if os.environ['MONITOR_CONFIG'] != TEST_CONFIG:
     raise TypeError('Tests should only be executed with the testing configuration file')
 
+if os.environ['COSMO_SMS_DB'] != 'test.db':
+    raise TypeError('Test should only be executed with a test database')
+
 
 @pytest.fixture(scope='session', autouse=True)
 def db_cleanup():
