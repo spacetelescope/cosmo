@@ -107,13 +107,14 @@ Running Tests
 COSMO includes a suite of tests for the package.
 For developers, it's a good idea to execute these tests whenever there are changes to the code or environment.
 
-Before executing tests, set the ``MONITOR_CONFIG`` and ``COSMO_CONFIG`` environment variables to the test configuration
-that's included with the repository: ``cosmo/tests/cosmoconfig_tests.yaml``.
+Before executing tests, set the ``MONITOR_CONFIG`` environment variable to the test configuration
+that's included with the repository: ``cosmo/tests/cosmoconfig_tests.yaml``, and set the ``COSMO_SMS_DB`` environment
+variable to `'test.db'`.
 
 .. note::
 
-    If tests are executed before setting the ``MONITOR_CONFIG`` and ``COSMO_CONFIG`` environment variables to the test
-    configuration file, the tests *will not execute*.
+    If tests are executed before setting the ``MONITOR_CONFIG`` and ``COSMO_SMS_DB`` environment variables to the test
+    configurations, the tests *will not execute*.
 
 If you're in the project directory, you can execute the tests with::
 
