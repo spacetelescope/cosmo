@@ -20,7 +20,9 @@ After an environment has been prepared, clone the repository::
 Then install using pip::
 
     cd cosmo
-    pip install .
+    pip install -e .
+
+The ``-e`` argument is required for users who will also be developing and execute tests.
 
 Configuration
 --------------
