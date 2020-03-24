@@ -123,6 +123,9 @@ def get_osm_data(datamodel, detector: str) -> pd.DataFrame:
             ignore_index=True
         )
 
+    if datamodel.new_data is None:
+        return data
+
     if not datamodel.new_data.empty:
         new_data = datamodel.new_data[datamodel.new_data.DETECTOR == detector].reset_index(drop=True)
         data = data.append(new_data, sort=True, ignore_index=True)
