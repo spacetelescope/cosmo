@@ -28,6 +28,7 @@ env:
         - SETUP_CMD='test'
         - COSMO_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
         - MONITOR_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
+        - COSMO_SMS_DB='/home/travis/build/spacetelescope/cosmo/tests/test.db'
         - CRDS_SERVER_URL='https://hst-crds.stsci.edu'
         - CRDS_PATH='/home/travis/build/spacetelescope/cosmo/tests/data/test_crds_cache'
 
