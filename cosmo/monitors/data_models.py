@@ -196,23 +196,22 @@ class JitterDataModel(BaseDataModel):
         return data_results[~data_results.EXPTYPE.str.contains('ACQ|DARK|FLAT')]
 
 
-class FUVDarkDataModel(BaseDataModel):
-    files_source = FILES_SOURCE
+class DarkDataModel(BaseDataModel):
     cosmo_layout = False
+#     fuv_program_ids = ['15771/', '15533/', '14940/', '14520/', '14436/', '13968/', '13521/', '13121/', '12716/', '12423/',
+#                   '11895/']
+#     nuv_program_ids = ['15776/', '15538/', '14942/', '14521/', '14442/', '13974/',
+#                        '13528/', '13126/', '12720/', '12420/', '11894/']
+    fuv_program_ids = ["15771/"]
+    nuv_program_ids = ["15776/"]
+    program_id = fuv_program_ids + nuv_program_ids
+    # subdir_pattern = '?????'
 
-    """program_ids = ['15771/', '15533/', '14940/', '14520/', '14436/', '13968/', '13521/', '13121/', '12716/', '12423/',
-                   '11895/']"""
-    program_ids = ['15771/', '15533/']
-
-    primary_key = 'ROOTNAME'
-
-    def get_new_data(self):
-        """Retrieve data"""
+    def get_new_data(self):  # this way when you get new data it will be based on whether it is fuv or nuv
         header_request = {
             0: ['ROOTNAME', 'SEGMENT'],
             1: ['EXPTIME', 'EXPSTART']
         }
-
         table_request = {
             1: ['PHA', 'XCORR', 'YCORR', 'TIME'],
             3: ['TIME', 'LATITUDE', 'LONGITUDE']
@@ -220,10 +219,17 @@ class FUVDarkDataModel(BaseDataModel):
 
         files = []
 
-        for prog_id in self.program_ids:
+        # this is not finding files for some reason. i need to explore that
+#         for prog_id in self.program_id:
+#             new_files_source = os.path.join(FILES_SOURCE, prog_id)
+#             print(new_files_source)
+#             files += find_files('*corrtag*', data_dir=new_files_source)
+#             print(files)
 
-            new_files_source = os.path.join(FILES_SOURCE, prog_id)
-            files += find_files('*corrtag*', data_dir=new_files_source, subdir_pattern=None)
+        for program in self.program_id:
+            new_files_source = os.path.join(FILES_SOURCE, program)
+            subfiles = glob(os.path.join(new_files_source, "*corrtag*"))
+            files += subfiles
 
         if self.model is not None:
             currently_ingested = [item.FILENAME for item in self.model.select(self.model.FILENAME)]
