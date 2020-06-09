@@ -125,7 +125,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
             (2011.172, 2013.205),  # FGS realignment
             (2013.205, 2014.055),  # SIAF update
             (2014.055, 2019.352),  # FGS realignment
-            (2019.352, None)
+            (2019.352, 2020.148), # FGS realignment
+            (2020.148, None) # FHST alignment (Fixed Head Star Trackers)
         ],
 
         'F2': [
@@ -133,7 +134,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
             (2013.205, 2014.055),  # FGS realignment
             (2014.055, 2015.327),  # SIAF update
             (2016.123, 2019.352),  # FGS realignment
-            (2019.352, None)
+            (2019.352, 2020.148), # FGS realignment
+            (2020.148, None) # FHST alignment (Fixed Head Star Trackers)
         ],
 
         'F3': [(None, 2019.352), (2019.352, None)]
@@ -148,11 +150,12 @@ class AcqImageV2V3Monitor(BaseMonitor):
         'FGS2 Deactivated': 2015.327,
         'FGS2 Reactivated': 2016.123,
         'GAIA Guide Stars': 2017.272,
-        'FGS Realignment 3': 2019.352
+        'FGS Realignment 3': 2019.352,
+        'FHST Alignment' : 2020.148,
     }
 
-    fgs1_breaks = ['FGS Realignment 1', 'FGS Realignment 2', 'SIAF Update', 'FGS Realignment 3']
-    fgs2_breaks = ['FGS Realignment 2', 'SIAF Update', 'FGS2 Deactivated', 'FGS2 Reactivated', 'FGS Realignment 3']
+    fgs1_breaks = ['FGS Realignment 1', 'FGS Realignment 2', 'SIAF Update', 'FGS Realignment 3', 'FHST Alignment']
+    fgs2_breaks = ['FGS Realignment 2', 'SIAF Update', 'FGS2 Deactivated', 'FGS2 Reactivated', 'FGS Realignment 3', 'FHST Alignment']
     fgs3_breaks = ['FGS Realignment 3']
 
     def get_data(self):
@@ -355,7 +358,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 'showarrow': True,
                 'ax': ax,
                 'ay': -30,
-            } for item, ax in zip(self.fgs_events.items(), [-60, 50, -20, 20, -50, 20, 50, 60])
+            } for item, ax in zip(self.fgs_events.items(), [-60, 50, -20, 20, -50, 20, 50, 60, 80])
             for xref, yaxis in zip(['x1', 'x2'], ['yaxis1', 'yaxis2'])
         ]
 
