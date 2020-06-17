@@ -154,9 +154,10 @@ class AcqImageV2V3Monitor(BaseMonitor):
         'FHST Alignment': 2020.150
     }
 
-    fgs1_breaks = ['FGS Realignment 1', 'FGS Realignment 2', 'SIAF Update', 'FGS Realignment 3']
-    fgs2_breaks = ['FGS Realignment 2', 'SIAF Update', 'FGS2 Deactivated', 'FGS2 Reactivated', 'FGS Realignment 3']
-    fgs3_breaks = ['FGS Realignment 3']
+    fgs1_breaks = ['FGS Realignment 1', 'FGS Realignment 2', 'SIAF Update', 'FGS Realignment 3', 'FHST Alignment']
+    fgs2_breaks = ['FGS Realignment 2', 'SIAF Update', 'FGS2 Deactivated', 'FGS2 Reactivated', 'FGS Realignment 3',
+                   'FHST Alignment]
+    fgs3_breaks = ['FGS Realignment 3', 'FHST Alignment']
 
     def get_data(self):
         """Filter ACQIMAGE data for V2V3 plot. These filter options attempt to weed out outliers that might result from
