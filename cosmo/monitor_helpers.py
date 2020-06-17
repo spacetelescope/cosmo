@@ -11,7 +11,7 @@ def convert_day_of_year(date: Union[float, str]) -> Time:
     """Convert day of the year (defined as yyyy.ddd where ddd is the day number of that year) to an astropy Time object.
     Some important dates for the COS team were recorded in this format.
     """
-    return Time(datetime.datetime.strptime(str(date), '%Y.%j'), format='datetime')
+    return Time(datetime.datetime.strptime('{:.3f}'.format(date), '%Y.%j'), format='datetime')
 
 
 def fit_line(x: Sequence, y: Sequence) -> Tuple[np.poly1d, np.ndarray]:
