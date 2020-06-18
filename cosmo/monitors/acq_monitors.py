@@ -125,8 +125,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
             (2011.172, 2013.205),  # FGS realignment
             (2013.205, 2014.055),  # SIAF update
             (2014.055, 2019.352),  # FGS realignment
-            (2019.352, 2020.149),  # FHST realignment
-            (2020.149, None)
+            (2019.352, 2020.150),  # FHST realignment
+            (2020.150, None)
         ],
 
         'F2': [
@@ -134,11 +134,11 @@ class AcqImageV2V3Monitor(BaseMonitor):
             (2013.205, 2014.055),  # FGS realignment
             (2014.055, 2015.327),  # SIAF update
             (2016.123, 2019.352),  # FGS realignment
-            (2019.352, 2020.149),  # FHST realignment
-            (2020.149, None)
+            (2019.352, 2020.150),  # FHST realignment
+            (2020.150, None)
         ],
 
-        'F3': [(None, 2019.352), (2019.352, 2020.149), (2020.149, None)]
+        'F3': [(None, 2019.352), (2019.352, 2020.150), (2020.150, None)]
     }
 
     # Define important events for vertical line placement.
@@ -151,12 +151,13 @@ class AcqImageV2V3Monitor(BaseMonitor):
         'FGS2 Reactivated': 2016.123,
         'GAIA Guide Stars': 2017.272,
         'FGS Realignment 3': 2019.352,
-        'FHST Realignment': 2020.149
+        'FHST Alignment': 2020.150
     }
 
-    fgs1_breaks = ['FGS Realignment 1', 'FGS Realignment 2', 'SIAF Update', 'FGS Realignment 3']
-    fgs2_breaks = ['FGS Realignment 2', 'SIAF Update', 'FGS2 Deactivated', 'FGS2 Reactivated', 'FGS Realignment 3']
-    fgs3_breaks = ['FGS Realignment 3']
+    fgs1_breaks = ['FGS Realignment 1', 'FGS Realignment 2', 'SIAF Update', 'FGS Realignment 3', 'FHST Alignment']
+    fgs2_breaks = ['FGS Realignment 2', 'SIAF Update', 'FGS2 Deactivated', 'FGS2 Reactivated', 'FGS Realignment 3',
+                   'FHST Alignment']
+    fgs3_breaks = ['FGS Realignment 3', 'FHST Alignment']
 
     def get_data(self):
         """Filter ACQIMAGE data for V2V3 plot. These filter options attempt to weed out outliers that might result from

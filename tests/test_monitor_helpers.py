@@ -21,7 +21,7 @@ class TestConvertDayofYear:
         convert_day_of_year(good_date)
 
     def test_date_type_fail(self, bad_date):
-        with pytest.raises(ValueError):  # The format shouldn't match
+        with pytest.raises((ValueError, TypeError)):  # The format shouldn't match
             convert_day_of_year(bad_date)
 
 
