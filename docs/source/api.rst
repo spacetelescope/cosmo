@@ -17,7 +17,6 @@ and produce outputs (typically plots).
 
 The examples described below include assumptions about the existing implementation with respect to the configuration
 file.
-For more help with the configuration file, see this section: :ref:`Settings via a Configuration File`
 
 DataModels
 ^^^^^^^^^^

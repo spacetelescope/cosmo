@@ -27,6 +27,9 @@ def select_all_acq(model: Union[Model, None], exptype: str, new_data_df: pd.Data
             ignore_index=True
         )
 
+    if new_data_df is None:
+        return data
+
     if not new_data_df.empty:
         new_data = new_data_df[new_data_df.EXPTYPE == exptype].reset_index(drop=True)
         data = data.append(new_data, sort=True, ignore_index=True)

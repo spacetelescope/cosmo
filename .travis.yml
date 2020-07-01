@@ -26,8 +26,11 @@ env:
         - CONDA_DEPS='stsci coverage'
         - CONDA_DOC_DEPS="$CONDA_DEPS sphinx"
         - SETUP_CMD='test'
-        - COSMO_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
         - MONITOR_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
+        - COSMO_FILES_SOURCE='/home/travis/build/spacetelescope/cosmo/tests/data'
+        - COSMO_SMS_SOURCE='/home/travis/build/spacetelescope/cosmo/tests/data'
+        - COSMO_OUTPUT='/home/travis/build/spacetelescope/cosmo/tests'
+        - COSMO_SMS_DB='/home/travis/build/spacetelescope/cosmo/tests/test.db'
         - CRDS_SERVER_URL='https://hst-crds.stsci.edu'
         - CRDS_PATH='/home/travis/build/spacetelescope/cosmo/tests/data/test_crds_cache'
 

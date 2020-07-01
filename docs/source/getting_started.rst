@@ -20,39 +20,28 @@ After an environment has been prepared, clone the repository::
 Then install using pip::
 
     cd cosmo
-    pip install .
+    pip install -e .
+
+The ``-e`` argument is required for users who will also be developing and execute tests.
 
 Configuration
 --------------
-COSMO Settings with a configuration file
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-To manage configurations, COSMO uses a ``yaml`` configuration file.
-Create a yaml configuration file with the following format:
+COSMO Settings with a ``monitorframe`` Configuration File and Environment Variables
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+To manage configurations, COSMO primarily uses environment variables on top of the ``monitorframe`` configuration file.
 
-.. code-block:: yaml
+Use the following, minimum set of environment variables to configure COSMO:
 
-    # Settings for obtaining data from files
-    filesystem:
-      source: ''  # Path to the source files
+.. code-block::
 
-    # Settings for obtaining data from sms files and setting up the sms database
-    sms:
-      source: ''  # This is the path where the sms files exist
-      db_settings:  # These are database keyword arguments
-        database: ''  # Path to sqlite database file
-        pragmas:  # sqlite database connection configurations.
-          journal_mode: 'wal'
-          foreign_keys: 1
-          ignore_check_constraints: 0
-          synchronous: 0
+    COSMO_FILES_SOURCE='path/to/data/files'
+    COSMO_OUTPUT='path/to/monitor/output'
+    COSMO_SMS_SOURCE='path/to/sms/files'
 
-    output: ''
+Additional environment variables are available for further configuring the SMS database and are described in the
+:ref:`sms-database` section.
 
-For more information on sqlite pragma statements, see `this <https://www.sqlite.org/pragma.html>`_.
-
-Once the file is ready, set it as an environment variable, ``COSMO_CONFIG``.
-
-``monitorframe`` also requires a ``yaml`` configuration file with the following:
+``monitorframe`` requires a ``yaml`` configuration file with the following:
 
 .. code-block:: yaml
 
@@ -76,10 +65,9 @@ Once the file is ready, set it as an environment variable, ``COSMO_CONFIG``.
           ignore_check_constraints: 0
           synchronous: 0
 
-This configuration file should be set to an environment variable called ``MONITOR_CONFIG``.
+For more information on sqlite pragma statements, see `this <https://www.sqlite.org/pragma.html>`_.
 
-You can store both of these configurations in one file and have both of the environment variables point to that single
-file.
+This configuration file should be set to an environment variable called ``MONITOR_CONFIG``.
 
 .. warning::
 
@@ -119,13 +107,14 @@ Running Tests
 COSMO includes a suite of tests for the package.
 For developers, it's a good idea to execute these tests whenever there are changes to the code or environment.
 
-Before executing tests, set the ``MONITOR_CONFIG`` and ``COSMO_CONFIG`` environment variables to the test configuration
-that's included with the repository: ``cosmo/tests/cosmoconfig_tests.yaml``.
+Before executing tests, set the ``MONITOR_CONFIG`` environment variable to the test configuration
+that's included with the repository: ``cosmo/tests/cosmoconfig_tests.yaml``, and set the ``COSMO_SMS_DB`` environment
+variable to `'test.db'`.
 
 .. note::
 
-    If tests are executed before setting the ``MONITOR_CONFIG`` and ``COSMO_CONFIG`` environment variables to the test
-    configuration file, the tests *will not execute*.
+    If tests are executed before setting the ``MONITOR_CONFIG`` and ``COSMO_SMS_DB`` environment variables to the test
+    configurations, the tests *will not execute*.
 
 If you're in the project directory, you can execute the tests with::
 

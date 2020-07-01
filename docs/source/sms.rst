@@ -27,9 +27,24 @@ change across versions.
 The "largest" version alpha-numerically corresponds to the most up-to-date version of the SMS.
 This is the version that should be used for comparisons with COS data products.
 
+.. _sms-database:
+
 SMS Database
 ------------
-The SMS Database is comprised of two tables, ``SMSFileStats`` and ``SMSTable``.
+Further configuration of the SMS database can be accomplished with the following environment variables (defaults as
+comments):
+
+.. code-block::
+
+    COSMO_SMS_DB  # 'sms.db'
+    COSMO_SMS_DB_JOURNAL  # 'wal'
+    COSMO_SMS_DB_FORIEGN_KEYS  # 1
+    COSMO_SMS_DB_IGNORE_CHECK_CONSTRAINTS  # 0
+    COSMO_SMS_DB_SYNCHRONOUS  # 0
+
+The first item is the path to the database file, while the remaining options are supported pragma statements.
+
+The SMS Database itself is comprised of two tables, ``SMSFileStats`` and ``SMSTable``.
 
 The SMSFileStats table records information about the report files themselves including the SMS ID, Version ID, date of
 ingestion and a "FILEID," which is the combination of the SMS ID and Version ID and is used as a reference in SMSTable.
