@@ -170,7 +170,6 @@ class DarkMonitor(BaseMonitor):
 
         datemin = self.data[self.x].min()
         datemax = self.data[self.x].max()
-        print(datemin, datemax)
 
         # sunpy_data = sunpy_retriever(date_min, date_max)
         solar_data = get_solar_data(NOAA_URL, datemin, datemax)

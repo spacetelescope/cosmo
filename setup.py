@@ -16,7 +16,7 @@ setup(
         'setuptools',
         'numpy>=1.11.1',
         'astropy>=1.0.1',
-        'plotly>=4.0.0',
+        'plotly>=4.9.0',
         'dask',
         'pandas>=0.25.0',
         'pytest',

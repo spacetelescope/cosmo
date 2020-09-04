@@ -12,6 +12,7 @@ from ..sms import SMSTable
 from .. import SETTINGS
 
 FILES_SOURCE = SETTINGS['filesystem']['source']
+PROGRAMS = SETTINGS['dark_programs']
 
 
 def dgestar_to_fgs(results: List[dict]) -> None:
@@ -196,19 +197,9 @@ class JitterDataModel(BaseDataModel):
 
 class DarkDataModel(BaseDataModel):
     cosmo_layout = False
-    # fuv_program_ids = ['15771/', '15533/', '14940/', '14520/', '14436/',
-    #                    '13968/', '13521/', '13121/', '12716/', '12423/',
-    #                    '11895/']
-    # nuv_program_ids = ['15776/', '15538/', '14942/', '14521/', '14442/',
-    #                    '13974/', '13528/', '13126/', '12720/', '12420/',
-    #                    '11894/']
-    # fuv_program_ids = ["15771/"]
-    nuv_program_ids = ["15776/"]
-    # program_id = fuv_program_ids + nuv_program_ids
-    program_id = nuv_program_ids
 
     def get_new_data(self):
-        # this way when you get new data it will get all the dark data
+        # this way when you get new data it will get all the data
         header_request = {
             0: ['ROOTNAME', 'SEGMENT'], 1: ['EXPTIME', 'EXPSTART']
             }
@@ -219,7 +210,9 @@ class DarkDataModel(BaseDataModel):
 
         files = []
 
-        for prog_id in self.program_id:
+        program_ids = self.get_program_ids(PROGRAMS)
+
+        for prog_id in program_ids:
             new_files_source = os.path.join(FILES_SOURCE, prog_id)
             files += find_files('*corrtag*', data_dir=new_files_source)
 
@@ -234,7 +227,14 @@ class DarkDataModel(BaseDataModel):
             return pd.DataFrame()
 
         data_results = data_from_exposures(files,
-                                           header_request=header_request,
-                                           table_request=table_request)
+            header_request=header_request, table_request=table_request)
 
         return data_results
+
+    def get_program_ids(self, pid_file):
+        programs_df = pd.read_csv(pid_file, delim_whitespace=True)
+        all_programs = []
+        for col, col_data in programs_df.iteritems():
+            all_programs += col_data.to_numpy(dtype=str).tolist()
+
+        return all_programs
