@@ -21,10 +21,13 @@ setup(
         'pandas>=0.25.0',
         'pytest',
         'pyyaml',
-        'peewee',
+        'peewee>=3.13.3',  # needs this for database model reasons
         'crds',
+        'sunpy[all]',
         'monitorframe @ git+https://github.com/spacetelescope/monitor-framework@v1.2.0#egg=monitorframe'
     ],
+    dependency_links=['http://github.com/spacetelescope/monitor-framework'
+                      '/tarball/master#egg=monitorframe'],
     package_data={'cosmo': ['pytest.ini']},
     entry_points={
         'console_scripts':
