@@ -132,9 +132,12 @@ class DarkMonitor(BaseMonitor):
     inherited by specific segment and region dark monitors"""
     labels = ['ROOTNAME']
     output = COS_MONITORING
-    docs = "https://spacetelescope.github.io/cosmo/monitors.html#dark-rate-monitors"
+    docs = "https://spacetelescope.github.io/cosmo/monitors.html#dark-rate" \
+           "-monitors"
     segment = None
     location = None
+    multi = False
+    sub_names = None
     data_model = DarkDataModel
     plottype = 'scatter'
     x = 'date'
@@ -142,31 +145,96 @@ class DarkMonitor(BaseMonitor):
 
     def get_data(self):  # -> Any: fix this later,
         # should be fine in the monitor, just not in jupyter notebook
+        if self.multi:
+            # prime the pump
+            exploded_df = self.filter_data(self.location[0])
+            exploded_df["region"] = 0
+            for index, location in enumerate(self.location[1:]):
+                sub_exploded_df = self.filter_data(location)
+                sub_exploded_df["region"] = index + 1
+                exploded_df = exploded_df.append(sub_exploded_df)
+
+        else:
+            exploded_df = self.filter_data(self.location)
+
+        return exploded_df
+
+    def filter_data(self, location):
         filtered_rows = []
         for _, row in self.model.new_data.iterrows():
             if row.EXPSTART == 0:
                 continue
             if row.SEGMENT == self.segment:
                 if row.SEGMENT == "N/A":  # NUV
-                    filtered_rows.append(
-                        dark_filter(row, False, self.location))
+                    filtered_rows.append(dark_filter(row, False, location))
                 else:  # Any of the FUV situations
-                    filtered_rows.append(dark_filter(row, True, self.location))
+                    filtered_rows.append(dark_filter(row, True, location))
         filtered_df = pd.concat(filtered_rows).reset_index(drop=True)
 
         return explode_df(filtered_df, ['darks', 'date'])
 
     def plot(self):
         # make the interactive plots with sub-solar plots
-        pio.templates.default = "simple_white"
-        self.figure = make_subplots(rows=2, cols=1, subplot_titles=(
-        self.name, "Solar Radio Flux"))
+        if self.multi:
+            rows = len(self.location) + 1
+            self.sub_names += ["Solar Radio Flux"]
+            titles = tuple(self.sub_names)
+        else:
+            # only one region means two subplots
+            rows = 2
+            titles = (self.name, "Solar Radio Flux")
 
-        self.figure.add_trace(
-            go.Scatter(x=self.data[self.x], y=self.data[self.y],
-                       mode="markers", marker=dict(color="black", size=5),
-                       hovertext=self.labels, hoverinfo="x+y+text",
-                       name="Mean Dark Rate"), row=1, col=1)
+        fig_height = 750
+        delta = 250
+        if rows > 3:
+            fig_height = delta * rows
+
+        pio.templates.default = "simple_white"
+
+        self.figure = make_subplots(rows=rows, cols=1, shared_xaxes=True,
+                                    subplot_titles=titles, x_title="Year",
+                                    vertical_spacing=0.05)
+        self.figure.update_layout(height=fig_height, width=1200,
+                                  title_text=self.name)
+
+        if self.multi:
+            # prime the pump again
+            region_x_data = self.data[self.x].where(self.data["region"] == 0)
+            region_y_data = self.data[self.y].where(self.data["region"] == 0)
+            self.figure.add_trace(
+                go.Scatter(x=region_x_data, y=region_y_data, mode="markers",
+                           marker=dict(color="black", size=2),
+                           hovertext=self.labels, hoverinfo="x+y+text",
+                           name="Mean Dark Rate"), row=1, col=1)
+            self.figure.update_yaxes(
+                title_text="Mean Dark Rate<br>(counts/pix/sec)", row=1, col=1)
+            for index, location in enumerate(self.location[1:]):
+                index = index + 1
+                region_x_data = self.data[self.x].where(
+                    self.data["region"] == index)
+                region_y_data = self.data[self.y].where(
+                    self.data["region"] == index)
+                self.figure.add_trace(
+                    go.Scatter(x=region_x_data, y=region_y_data,
+                               showlegend=False, mode="markers",
+                               marker=dict(color="black", size=2),
+                               hovertext=self.labels, hoverinfo="x+y+text",
+                               name="Mean Dark Rate"), row=index + 1, col=1)
+                self.figure.update_yaxes(
+                    title_text="Mean Dark Rate<br>(counts/pix/sec)",
+                    row=index + 1, col=1)
+
+        else:
+            # single plot
+            self.figure.add_trace(
+                go.Scatter(x=self.data[self.x], y=self.data[self.y],
+                           mode="markers", marker=dict(color="black", size=2),
+                           hovertext=self.labels, hoverinfo="x+y+text",
+                           name="Mean Dark Rate"), row=1, col=1)
+            self.figure.update_yaxes(
+                title_text="Mean Dark Rate<br>(counts/pix/sec)", row=1, col=1)
+
+        ## this is solar stuff only until the next ##
 
         datemin = self.data[self.x].min()
         datemax = self.data[self.x].max()
@@ -179,18 +247,18 @@ class DarkMonitor(BaseMonitor):
 
         self.figure.add_trace(
             go.Scatter(x=solar_time, y=solar_flux, mode="lines",
-                       name="10.7 cm"), row=2, col=1)
+                       line=dict(dash="dot", color="#0F2080"),
+                       name="10.7 cm"), row=rows, col=1)
 
         self.figure.add_trace(
             go.Scatter(x=solar_time, y=solar_flux_smooth, mode="lines",
-                       name="10.7 cm Smoothed"), row=2, col=1)
+                       line=dict(color="#85C0F9"), name="10.7 cm Smoothed"),
+            row=rows, col=1)
 
-        self.figure['layout']['xaxis1'].update(title="Year")
-        self.figure['layout']['yaxis1'].update(
-            title="Mean Dark Rate (counts/pix/sec)")
-        self.figure['layout']['xaxis2'].update(title="Year",
-                                               range=[datemin, datemax])
-        self.figure['layout']['yaxis2'].update(title="Solar Radio Flux")
+        self.figure.update_yaxes(title_text="Solar Radio Flux", row=rows,
+                                 col=1)
+
+        ##
 
         self.figure.update_xaxes(showgrid=True, showline=True, mirror=True)
         self.figure.update_yaxes(showgrid=True, showline=True, mirror=True)
@@ -207,11 +275,35 @@ class DarkMonitor(BaseMonitor):
 # ----------------------------------------------------------------------------#
 
 
+class FUVADarkMonitor(DarkMonitor):
+    name = 'FUVA Dark Monitor'
+    segment = 'FUVA'
+    multi = True
+    location = [(1060, 15250, 296, 375), (1060, 1260, 296, 734),
+                (1060, 15250, 660, 734), (15119, 15250, 296, 734),
+                (1260, 15119, 375, 660)]
+    sub_names = ["FUVA Dark Monitor - Bottom", "FUVA Dark Monitor - Left",
+                 "FUVA Dark Monitor - Top", "FUVA Dark Monitor - Right",
+                 "FUVA Dark Monitor - Inner"]
+
+
+class FUVBDarkMonitor(DarkMonitor):
+    name = 'FUVB Dark Monitor'
+    segment = 'FUVB'
+    multi = True
+    location = [(809, 15182, 360, 405), (809, 1000, 360, 785),
+                (809, 15182, 740, 785), (14990, 15182, 360, 785),
+                (1000, 14990, 405, 740)]
+    sub_names = ["FUVB Dark Monitor - Bottom", "FUVB Dark Monitor - Left",
+                 "FUVB Dark Monitor - Top", "FUVB Dark Monitor - Right",
+                 "FUVB Dark Monitor - Inner"]
+
+
 class FUVABottomDarkMonitor(DarkMonitor):
     """FUVA dark monitor for bottom edge"""
     segment = 'FUVA'
     location = (1060, 15250, 296, 375)
-    name = f'FUVA Dark Monitor - Bottom'
+    name = 'FUVA Dark Monitor - Bottom'
 
 
 class FUVALeftDarkMonitor(DarkMonitor):
