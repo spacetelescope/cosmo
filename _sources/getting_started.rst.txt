@@ -46,7 +46,8 @@ Create a yaml configuration file with the following format:
           ignore_check_constraints: 0
           synchronous: 0
 
-    output: ''
+    output: ''  # Path to desired out directory
+    dark_programs: ''  # Path to file with dark program PIDs
 
 For more information on sqlite pragma statements, see `this <https://www.sqlite.org/pragma.html>`_.
 
@@ -80,6 +81,17 @@ This configuration file should be set to an environment variable called ``MONITO
 
 You can store both of these configurations in one file and have both of the environment variables point to that single
 file.
+
+The ``dark_programs`` keyword refers to a text file that you will need to
+populate with the dark program PIDs you are interested in monitoring, should
+you choose to run the dark monitor. The format is a simple two column file:
+
+.. code-block::
+
+    FUV NUV
+    <PID> <PID>
+    <PID> <PID>
+    . . .
 
 .. warning::
 

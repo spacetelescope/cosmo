@@ -381,17 +381,244 @@ Hover text for each data point includes the following::
 
 Dark Rate Monitors
 ------------------
+The Dark Rate Monitors compile a wealth of information,
+including:
+
+- Dark Rate vs. Time
+- Solar Flux vs. Time
+- Histogram to display the distribution of the data
+- ETC Reported Rates
+- Dark Rate Orbital Variation
+
+The parent monitor, ``DarkMonitor`` (which itself is a subclass of
+``BaseMonitor``), is responsible for almost the entirety of the computations
+and plotting routines. It is not intended to be run as its own monitor, but
+rather be subclassed by an FUV or NUV Dark Monitor, of which there already
+exist a few predefined types (see below). The general format of an expected
+and acceptable child class is:
+
+.. code-block:: python
+
+    class ChildDarkMonitor(DarkMonitor):
+        """<Segment> Dark Monitor for <some regions>."""
+        segment = '<FUVA/FUVB/N/A>'
+        # Choose FUVA/FUVB or N/A depending on segment
+        # NUV = N/A because that is what is in the header
+        location = (<xcorr min>, <xcorr max>, <ycorr min>, <ycorr max>)
+        # tuple of coordinate boundaries for your region
+        name = '<Segment> Dark Monitor - <Region>'
+
+``segment``, ``location``, and ``name`` are the only required parameters to
+successfully build a child monitor, but there are two other optional
+parameters, ``multi`` and ``sub_names``.  These are only necessary to create
+dark rate plots with multiple subregions, and have defaults of ``False`` and
+``None``, respectively. By default, the above example will produce an
+interactive plot with two subplots--one being the region of interest as
+defined by ``location``, the second being the accompanying solar flux vs.
+time profile. Should you wish to examine multiple regions simultaneously, a
+child class might look like:
+
+.. code-block:: python
+
+    class ChildDarkMonitor(DarkMonitor):
+        """<Segment> Dark Monitor for <some regions>."""
+        segment = '<FUVA/FUVB/N/A>'
+        # see above
+        multi = True
+        location = [(<region>, <one>, <location>, <boundaries>),
+                    (<region>, <two>, <location>, <boundaries>), ...]
+        # list of tuples, where each tuple corresponds to boundary
+        # coordinates of each region, format = (xmin, xmax, ymin, ymax)
+        name = '<Segment> Dark Monitor - <Region>'
+        sub_names = ["Name of Region 1", "Name of Region 2", ...]
+        # list of strings of names for sub regions. these will appear on
+        # subplots. must match length of location
+
+Because of this functionality, the ``DarkMonitor`` can evaluate various
+regions, but there are several built in monitors which are listed below.
 
 FUV Dark Rate Monitors
 ^^^^^^^^^^^^^^^^^^^^^^
 
-.. note::
+The following FUV Dark Rate Monitors have already been defined:
 
-    This monitor is under construction.
+.. code-block:: python
+
+    class FUVADarkMonitor(DarkMonitor):
+        """FUVA Dark Monitor for all edges and inner region."""
+        name = 'FUVA Dark Monitor'
+        segment = 'FUVA'
+        multi = True
+        location = [(1060, 15250, 296, 375), (1060, 1260, 296, 734),
+                    (1060, 15250, 660, 734), (15119, 15250, 296, 734),
+                    (1260, 15119, 375, 660)]
+        sub_names = ["FUVA Dark Monitor - Bottom", "FUVA Dark Monitor - Left",
+                     "FUVA Dark Monitor - Top", "FUVA Dark Monitor - Right",
+                     "FUVA Dark Monitor - Inner"]
+
+
+    class FUVBDarkMonitor(DarkMonitor):
+        """FUVB Dark Monitor for all edges and inner region."""
+        name = 'FUVB Dark Monitor'
+        segment = 'FUVB'
+        multi = True
+        location = [(809, 15182, 360, 405), (809, 1000, 360, 785),
+                    (809, 15182, 740, 785), (14990, 15182, 360, 785),
+                    (1000, 14990, 405, 740)]
+        sub_names = ["FUVB Dark Monitor - Bottom", "FUVB Dark Monitor - Left",
+                     "FUVB Dark Monitor - Top", "FUVB Dark Monitor - Right",
+                     "FUVB Dark Monitor - Inner"]
+
+
+    class FUVABottomDarkMonitor(DarkMonitor):
+        """FUVA Dark Monitor for bottom edge."""
+        segment = 'FUVA'
+        location = (1060, 15250, 296, 375)
+        name = 'FUVA Dark Monitor - Bottom'
+
+
+    class FUVALeftDarkMonitor(DarkMonitor):
+        """FUVA Dark Monitor for left edge."""
+        name = 'FUVA Dark Monitor - Left'
+        segment = 'FUVA'
+        location = (1060, 1260, 296, 734)
+
+
+    class FUVATopDarkMonitor(DarkMonitor):
+        """FUVA Dark Monitor for top edge."""
+        name = 'FUVA Dark Monitor - Top'
+        segment = 'FUVA'
+        location = (1060, 15250, 660, 734)
+
+
+    class FUVARightDarkMonitor(DarkMonitor):
+        """FUVA Dark Monitor for right edge."""
+        name = 'FUVA Dark Monitor - Right'
+        segment = 'FUVA'
+        location = (15119, 15250, 296, 734)
+
+
+    class FUVAInnerDarkMonitor(DarkMonitor):
+        """FUVA Dark Monitor for inner region."""
+        name = 'FUVA Dark Monitor - Inner'
+        segment = 'FUVA'
+        location = (1260, 15119, 375, 660)
+
+
+    class FUVBBottomDarkMonitor(DarkMonitor):
+        """FUVB Dark Monitor for bottom edge."""
+        name = 'FUVB Dark Monitor - Bottom'
+        segment = 'FUVB'
+        location = (809, 15182, 360, 405)
+
+
+    class FUVBLeftDarkMonitor(DarkMonitor):
+        """FUVB Dark Monitor for left edge."""
+        name = 'FUVB Dark Monitor - Left'
+        segment = 'FUVB'
+        location = (809, 1000, 360, 785)
+
+
+    class FUVBTopDarkMonitor(DarkMonitor):
+        """FUVB Dark Monitor for top edge."""
+        name = 'FUVB Dark Monitor - Top'
+        segment = 'FUVB'
+        location = (809, 15182, 740, 785)
+
+
+    class FUVBRightDarkMonitor(DarkMonitor):
+        """FUVB Dark Monitor for right edge."""
+        name = 'FUVB Dark Monitor - Right'
+        segment = 'FUVB'
+        location = (14990, 15182, 360, 785)
+
+
+    class FUVBInnerDarkMonitor(DarkMonitor):
+        """FUVB Dark Monitor for inner region."""
+        name = 'FUVB Dark Monitor - Inner'
+        segment = 'FUVB'
+        location = (1000, 14990, 405, 740)
+
+Generally, you should only expect to use ``FUVADarkMonitor`` and
+``FUVBDarkMonitor``, as they include all pre-defined regions of the detector.
 
 NUV Dark Rate Monitors
 ^^^^^^^^^^^^^^^^^^^^^^
 
+There is only one NUV Dark Monitor, although more be written should a
+certain region be more interesting to investigate. It is defined as follows:
+
+.. code-block:: python
+
+    class NUVDarkMonitor(DarkMonitor):
+        """NUV Dark Monitor for full detector."""
+        name = "NUV Dark Monitor"
+        segment = "N/A"
+        location = (0, 1024, 0, 1024)
+
+Use
+^^^
+
 .. note::
 
-    This monitor is under construction.
+    You may do all of the following from either an ``ipython`` session or
+    jupyter notebook in an environment with ``cosmo`` installed, not to
+    mention that you may incorporate these usages into
+    another external module.
+
+Basic Usage
++++++++++++
+The command line code for utilizing the Dark Monitor features is the same as
+the other monitors. Begin by instantiating an instance of the monitor you
+wish to run:
+
+.. code-block:: python
+
+    from cosmo.monitors.dark_monitors import <MonitorClass>
+    dark_monitor = <MonitorClass>()
+    dark_monitor.monitor()
+
+And that's it! The package will do everything else for you. You can check
+your output directory for the automatically generated plot with the Dark
+Rate vs. Time and Solar Flux vs. Time. For other plot options, read on.
+
+Histograms & ETC Rates
+++++++++++++++++++++++
+The distributions of the dark rates may be generated to its own file (ending
+in ``_hist``) with:
+
+.. code-block:: python
+
+    from cosmo.monitors.dark_monitors import <MonitorClass>
+    dark_monitor = <MonitorClass>()
+    dark_monitor.plot_histogram(nbins)
+
+Where ``nbins`` is the number of bins you would like to use to bin the
+distribution. This is an optional parameter with a default of 100.
+
+The ETC Rates that are usually reported bi-annually are included in the
+legend of this plot but should you wish to simply have the values returned
+without the plot you may do:
+
+.. code-block:: python
+
+    from cosmo.monitors.dark_monitors import <MonitorClass>
+    dark_monitor = <MonitorClass>()
+    dark_monitor.track(nbins)
+
+Where ``nbins`` has the same significance.
+
+Orbital Variation in Dark Rate
+++++++++++++++++++++++++++++++
+There are fairly mild fluctuations in the dark rate as a function of the
+position of the target. We track these fluctuations only visually in a plot
+with the latitude and longitude. This plot is generated to its own file
+(ending in ``_orbital``) with:
+
+.. code-block:: python
+
+    from cosmo.monitors.dark_monitors import <MonitorClass>
+    dark_monitor = <MonitorClass>()
+    dark_monitor.plot_orbital_variation()
+
+Coming next: more updates and new monitors!

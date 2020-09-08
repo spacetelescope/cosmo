@@ -14,7 +14,7 @@ AcqDataModel
 ------------
 The ``AcqDataModel`` is used with the Target Acquisition monitors.
 
-AcqDataModel includes the following data:
+``AcqDataModel`` includes the following data:
 
 - ACQSLEWX: Slew value in the X direction.
   Default of 0 for Acquisition types that don't record this keyword.
@@ -47,7 +47,7 @@ OSMDataModel
 ------------
 The ``OSMDataModel`` is used with the OSM Monitors.
 
-OSMDataModel includes the following data:
+``OSMDataModel`` includes the following data:
 
 - ROOTNAME: Exposure rootname.
 - EXPSTART: Time at the start of the exposure (mjd).
@@ -77,3 +77,24 @@ OSMDataModel includes the following data:
 
 These data are gathered from *lampflash* files, LAMPTAB files and WCPTAB files (the LAMPTAB and WCPTAB used depends on
 the *lampflash* file).
+
+DarkDataModel
+-------------
+The ``DarkDataModel`` is used with the Dark Monitors.
+
+``DarkDataModel`` includes the following data:
+
+- ROOTNAME: Exposure rootname.
+- SEGMENT: The SEGMENT column of a given exposure.
+- EXPTIME: The exposure duration.
+- EXPSTART: Time at the start of the exposure (mjd).
+- PHA: The PHA (Pulse Height Amplitude) column of a given exposure.
+- XCORR: The XCORR column of a given exposure.
+- YCORR: The YCORR column of a given exposure.
+- TIME: The TIME column of a given exposure (s).
+- TIME(TIME_3): The TIME column of the third extension of a given exposure (s).
+- LATITUDE: The LATITUDE column of the third extension a given exposure.
+- LONGITUDE: The LONGITUDE column of the third extension a given exposure.
+
+These data are primarily gathered from the *corrtag* files,
+with the addition of solar data collected from NOAA.
