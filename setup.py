@@ -16,15 +16,18 @@ setup(
         'setuptools',
         'numpy>=1.11.1',
         'astropy>=1.0.1',
-        'plotly>=4.0.0',
+        'plotly>=4.9.0',
         'dask',
         'pandas>=0.25.0',
         'pytest',
         'pyyaml',
-        'peewee',
+        'peewee>=3.13.3',  # needs this for database model reasons
         'crds',
+        'sunpy[all]',
         'monitorframe @ git+https://github.com/spacetelescope/monitor-framework@v1.2.0#egg=monitorframe'
     ],
+    dependency_links=['http://github.com/spacetelescope/monitor-framework'
+                      '/tarball/master#egg=monitorframe'],
     package_data={'cosmo': ['pytest.ini']},
     entry_points={
         'console_scripts':
