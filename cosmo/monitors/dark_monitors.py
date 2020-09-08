@@ -203,7 +203,7 @@ class DarkMonitor(BaseMonitor):
             region_y_data = self.data[self.y].where(self.data["region"] == 0)
             self.figure.add_trace(
                 go.Scatter(x=region_x_data, y=region_y_data, mode="markers",
-                           marker=dict(color="black", size=2),
+                           marker=dict(color="black", size=5),
                            hovertext=self.labels, hoverinfo="x+y+text",
                            name="Mean Dark Rate"), row=1, col=1)
             self.figure.update_yaxes(
@@ -217,7 +217,7 @@ class DarkMonitor(BaseMonitor):
                 self.figure.add_trace(
                     go.Scatter(x=region_x_data, y=region_y_data,
                                showlegend=False, mode="markers",
-                               marker=dict(color="black", size=2),
+                               marker=dict(color="black", size=5),
                                hovertext=self.labels, hoverinfo="x+y+text",
                                name="Mean Dark Rate"), row=index + 1, col=1)
                 self.figure.update_yaxes(
@@ -228,7 +228,7 @@ class DarkMonitor(BaseMonitor):
             # single plot
             self.figure.add_trace(
                 go.Scatter(x=self.data[self.x], y=self.data[self.y],
-                           mode="markers", marker=dict(color="black", size=2),
+                           mode="markers", marker=dict(color="black", size=5),
                            hovertext=self.labels, hoverinfo="x+y+text",
                            name="Mean Dark Rate"), row=1, col=1)
             self.figure.update_yaxes(
@@ -247,7 +247,7 @@ class DarkMonitor(BaseMonitor):
 
         self.figure.add_trace(
             go.Scatter(x=solar_time, y=solar_flux, mode="lines",
-                       line=dict(dash="dot", color="#0F2080"),
+                       line=dict(dash="longdash", color="#0F2080"),
                        name="10.7 cm"), row=rows, col=1)
 
         self.figure.add_trace(
@@ -263,12 +263,123 @@ class DarkMonitor(BaseMonitor):
         self.figure.update_xaxes(showgrid=True, showline=True, mirror=True)
         self.figure.update_yaxes(showgrid=True, showline=True, mirror=True)
 
+    def plot_histogram(self, nbins=100):
+        if self.data is None:
+            self.data = self.get_data()
+
+        dist995, lines = self.calculate_histogram(nbins)
+        full_names = [f"Mean: {lines[0]:.2e}", f"Median: {lines[0]:.2e}",
+                      f"2 sigma: {lines[2]:.2e}", f"3 sigma: {lines[3]:.2e}",
+                      f"95%: {lines[4]:.2e}", f"99%: {lines[5]:.2e}"]
+
+        # histogram
+        fig = go.Figure(data=[
+            go.Histogram(x=self.data[self.y], nbinsx=nbins, showlegend=False)])
+
+        # value lines--have to do a shape and trace for both of them until
+        # plotly adds vertical line plotting features (because shapes can't
+        # be in the legend, only traces)
+        # also f strings and latex together is super annoying. have to
+        # triple bracket the latex part
+        fig.add_trace(
+            go.Scatter(x=[lines[0], lines[0]], y=[0, 1], mode="lines",
+                       line=dict(color="#DC267F"), name=full_names[0]))
+        fig.add_shape(
+            dict(type="line", xref="x", yref="paper", x0=lines[0], y0=0,
+                 x1=lines[0], y1=1, line=dict(color="#DC267F")))
+
+        fig.add_trace(
+            go.Scatter(x=[lines[1], lines[1]], y=[0, 1], mode="lines",
+                       line=dict(color="#DC267F", dash="dash"),
+                       name=full_names[1]))
+        fig.add_shape(
+            dict(type="line", xref="x", yref="paper", x0=lines[1], y0=0,
+                 x1=lines[1], y1=1, line=dict(color="#DC267F", dash="dash")))
+
+        fig.add_trace(
+            go.Scatter(x=[lines[2], lines[2]], y=[0, 1], mode="lines",
+                       line=dict(color="#FE6100"), name=full_names[2]))
+        fig.add_shape(
+            dict(type="line", xref="x", yref="paper", x0=lines[2], y0=0,
+                 x1=lines[2], y1=1, line=dict(color="#FE6100")))
+
+        fig.add_trace(
+            go.Scatter(x=[lines[3], lines[3]], y=[0, 1], mode="lines",
+                       line=dict(color="#FE6100", dash="dash"),
+                       name=full_names[3]))
+        fig.add_shape(
+            dict(type="line", xref="x", yref="paper", x0=lines[3], y0=0,
+                 x1=lines[3], y1=1, line=dict(color="#FE6100", dash="dash")))
+
+        fig.add_trace(
+            go.Scatter(x=[lines[4], lines[4]], y=[0, 1], mode="lines",
+                       line=dict(color="#FFB000"), name=full_names[4]))
+        fig.add_shape(
+            dict(type="line", xref="x", yref="paper", x0=lines[4], y0=0,
+                 x1=lines[4], y1=1, line=dict(color="#FFB000")))
+
+        fig.add_trace(
+            go.Scatter(x=[lines[5], lines[5]], y=[0, 1], mode="lines",
+                       line=dict(color="#FFB000", dash="dash"),
+                       name=full_names[5]))
+        fig.add_shape(
+            dict(type="line", xref="x", yref="paper", x0=lines[5], y0=0,
+                 x1=lines[5], y1=1, line=dict(color="#FFB000", dash="dash")))
+
+        datemin = self.data[self.x].min()
+        datemax = self.data[self.x].max()
+        fig.update_xaxes(range=[0, dist995], title_text="Counts/Pix/Sec")
+        fig.update_yaxes(rangemode="tozero", title_text="Frequency")
+        fig.update_layout(
+            title_text=self.name + f" Histogram: {datemin:%Y-%m-%d} - "
+                                   f"{datemax:%Y-%m-%d}")
+        fig.update_layout(xaxis=dict(showexponent='all', exponentformat='e'))
+        fig.update_layout(yaxis_showgrid=True)
+
+        # fix this naming convention later
+        if not self.output:
+            output = f'{os.path.join(os.getcwd(), f"{self._filename}_hist.html")}'
+        else:
+            # you would think you could use self.output but that gets
+            # updated somewhere
+            # in the superclass to include the full plot name so we can't
+            # use that.
+            # kind of a bug
+            output = os.path.join(COS_MONITORING,
+                                  f"{self._filename}_hist.html")
+
+        fig.write_html(output)
+
+    def calculate_histogram(self, nbins=100):
+        if self.data is None:
+            self.data = self.get_data()
+
+        counts, bins = np.histogram(self.data[self.y], bins=nbins)
+        cuml_dist = np.cumsum(counts)
+        count_99 = abs(cuml_dist / float(cuml_dist.max()) - .99).argmin()
+        count_95 = abs(cuml_dist / float(cuml_dist.max()) - .95).argmin()
+        # only used for plotting
+        count995 = abs(cuml_dist / float(cuml_dist.max()) - .995).argmin()
+
+        mean = self.data[self.y].mean()
+        med = np.median(self.data[self.y])
+        std = self.data[self.y].std()
+        onesig = med + std
+        twosig = med + (2 * std)
+        threesig = med + (3 * std)
+        dist95 = bins[count_95]
+        dist99 = bins[count_99]
+        dist995 = bins[count995]
+        values = [mean, med, onesig, twosig, threesig, dist95, dist99]
+
+        return dist995, values
+
+    def track(self, nbins=100):
+        _, track_list = self.calculate_histogram(nbins)
+        return track_list
+
     def store_results(self):
         # TODO: Define results to store
-        pass
-
-    def track(self):
-        # TODO: Define something to track
         pass
 
 
