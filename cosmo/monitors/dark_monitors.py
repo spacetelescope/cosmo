@@ -56,10 +56,6 @@ def dark_filter(df_row, filter_pha, location):
     lat = df_row['LATITUDE'][::time_step][:-1]
     lon = df_row['LONGITUDE'][::time_step][:-1]
 
-    # try commenting these out, since lat and lon don't seem to be used
-    #     lat = df_row['LATITUDE'][::time_step][:-1]
-    #     lon = df_row['LONGITUDE'][::time_step][:-1]
-
     # filtering pha
     if filter_pha:
         event_df = df_row[
@@ -71,16 +67,16 @@ def dark_filter(df_row, filter_pha, location):
 
     # creating event dataframe and filtering it by location on the detector
     npix = (location[1] - location[0]) * (location[3] - location[2])
-    index = np.where((event_df['XCORR'] > location[0]) &
-                     (event_df['XCORR'] < location[1]) &
-                     (event_df['YCORR'] > location[2]) &
-                     (event_df['YCORR'] < location[3]))
+    index = np.where((event_df['XCORR'] > location[0]) & (
+                event_df['XCORR'] < location[1]) & (
+                                 event_df['YCORR'] > location[2]) & (
+                                 event_df['YCORR'] < location[3]))
     filtered_row = event_df.iloc[index].reset_index(drop=True)
 
     # filtered events only need to be further filtered by PHA if not NUV
     if filter_pha:
         filtered_row = filtered_row[(filtered_row['PHA'] > good_pha[0]) & (
-                    filtered_row['PHA'] < good_pha[1])]
+                filtered_row['PHA'] < good_pha[1])]
 
     counts = np.histogram(filtered_row.TIME, bins=time_bins)[0]
 
@@ -90,10 +86,10 @@ def dark_filter(df_row, filter_pha, location):
 
     dark_rate = counts / npix / time_step
 
-    return pd.DataFrame(
-        {'segment': df_row['SEGMENT'], 'darks': [dark_rate],
-         'date': [date], 'ROOTNAME': df_row['ROOTNAME']}
-        )
+    return pd.DataFrame({
+        'segment': df_row['SEGMENT'], 'darks': [dark_rate], 'date': [date],
+        'rootname': df_row['ROOTNAME'], 'latitude': [lat], "longitude": [lon]
+        })
 
 
 def get_solar_data(url, datemin, datemax, box=4):
@@ -171,7 +167,8 @@ class DarkMonitor(BaseMonitor):
                     filtered_rows.append(dark_filter(row, True, location))
         filtered_df = pd.concat(filtered_rows).reset_index(drop=True)
 
-        return explode_df(filtered_df, ['darks', 'date'])
+        return explode_df(filtered_df,
+                          ['darks', 'date', 'latitude', 'longitude'])
 
     def plot(self):
         # make the interactive plots with sub-solar plots
@@ -328,8 +325,10 @@ class DarkMonitor(BaseMonitor):
 
         datemin = self.data[self.x].min()
         datemax = self.data[self.x].max()
-        fig.update_xaxes(range=[0, dist995], title_text="Counts/Pix/Sec")
-        fig.update_yaxes(rangemode="tozero", title_text="Frequency")
+        fig.update_xaxes(range=[0, dist995], title_text="Counts/Pix/Sec",
+                         showline=True)
+        fig.update_yaxes(rangemode="tozero", title_text="Frequency",
+                         showline=True)
         fig.update_layout(
             title_text=self.name + f" Histogram: {datemin:%Y-%m-%d} - "
                                    f"{datemax:%Y-%m-%d}")
@@ -378,10 +377,48 @@ class DarkMonitor(BaseMonitor):
         _, track_list = self.calculate_histogram(nbins)
         return track_list
 
+    def plot_orbital_variation(self):
+        if self.data is None:
+            self.data = self.get_data()
+
+        colormin = self.data["darks"].min()
+        colormax = self.data["darks"].max()
+        fig = go.Figure(data=[
+            go.Scatter(x=self.data["longitude"], y=self.data["latitude"],
+                       mode="markers",
+                       marker=dict(color=self.data["darks"], size=2,
+                                   colorscale='Viridis', opacity=0.5,
+                                   colorbar=dict(thickness=20,
+                                                 exponentformat="e",
+                                                 title=dict(
+                                                     text="Dark Rate")),
+                                   cmin=colormin, cmax=colormax))])
+
+        datemin = self.data[self.x].min()
+        datemax = self.data[self.x].max()
+        fig.update_layout(
+            title_text=self.name + f" Orbital Variation: {datemin:%Y-%m-%d} - "
+                                   f"{datemax:%Y-%m-%d}")
+        fig.update_xaxes(title_text="Longitude", showline=True)
+        fig.update_yaxes(title_text="Latitude", showline=True)
+
+        if not self.output:
+            output = os.path.join(os.getcwd(),
+                                  f"{self._filename}_orbital.html")
+        else:
+            # you would think you could use self.output but that gets
+            # updated somewhere
+            # in the superclass to include the full plot name so we can't
+            # use that.
+            # kind of a bug
+            output = os.path.join(COS_MONITORING,
+                                  f"{self._filename}_orbital.html")
+
+        fig.write_html(output)
+
     def store_results(self):
         # TODO: Define results to store
         pass
-
 
 # ----------------------------------------------------------------------------#
 
