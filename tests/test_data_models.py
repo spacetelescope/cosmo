@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 import pytest
 
-from cosmo.monitors.data_models import AcqDataModel, OSMDataModel
+from cosmo.monitors.data_models import AcqDataModel, OSMDataModel, \
+    DarkDataModel
 from cosmo.sms import SMSFinder
 
 
@@ -119,3 +120,35 @@ class TestAcqDataModel:
 
         assert self.acqmodel.model is not None
         assert len(list(self.acqmodel.model.select())) == 9
+
+
+class TestDarkDataModel:
+
+    @pytest.fixture(autouse=True)
+    def darkmodel(self, request, make_datamodel):
+        darkmodel = make_datamodel(DarkDataModel)
+
+        request.cls.darkmodel = darkmodel  # Add the data model to the test
+        # class
+
+        yield
+
+        if request.cls.darkmodel.model is not None:
+            request.cls.darkmodel.model.drop_table(safe=True)
+
+    def test_data_collection(self):
+        assert isinstance(self.darkmodel.new_data, pd.DataFrame)
+        assert len(self.darkmodel.new_data) == 9  # There are 9 test data sets
+
+    def test_content_collected(self):
+        keys_that_should_be_there = (
+            # Header keywords
+            "ROOTNAME", "SEGMENT", "EXPTIME", "EXPSTART",
+            # Table keywords data extension
+            "PHA", "XCORR", "YCORR", "TIME",
+            # Table keywords third extension
+            "TIME_3", "LATITUDE", "LONGITUDE")
+        # seems like TIME_3 might not work...should check that
+
+        for key in keys_that_should_be_there:
+            assert key in self.darkmodel.new_data
