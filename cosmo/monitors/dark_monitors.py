@@ -49,6 +49,10 @@ NOAA_URL = 'https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle
 
 
 def dark_filter(df_row, filter_pha, location):
+    """Given a row corresponding to a dark corrtag file, filter it based on
+    the location and PHA (if FUV), and calculate dark rate information. Will
+    return the exploded dataframe with the correct dark information for that
+    one file."""
     good_pha = (2, 23)
     # time step stuff
     time_step = 25
@@ -140,6 +144,10 @@ class DarkMonitor(BaseMonitor):
     y = 'darks'
 
     def get_data(self):  # -> Any: fix this later,
+        """Required method to get the data necessary for plotting in the
+        correct format. Takes care of all data organization and "explosion"
+        of dataframes. Returns full dataframe with correct calculations and
+        columns."""
         # should be fine in the monitor, just not in jupyter notebook
         if self.multi:
             # prime the pump
@@ -156,6 +164,10 @@ class DarkMonitor(BaseMonitor):
         return exploded_df
 
     def filter_data(self, location):
+        """Given a location (region) on the detector, filter down the new
+        data from the DataModel as appropriate and perform dark filtering
+        and "explosion" of dataframe as necessary. Return the fully
+        "exploded" data for that location."""
         filtered_rows = []
         for _, row in self.model.new_data.iterrows():
             if row.EXPSTART == 0:
@@ -171,6 +183,9 @@ class DarkMonitor(BaseMonitor):
                           ['darks', 'date', 'latitude', 'longitude'])
 
     def plot(self):
+        """Make the interactive subplots, including the solar plot, based on
+        how many locations (regions) are given. Write out the file to the
+        correct outpath."""
         # make the interactive plots with sub-solar plots
         if self.multi:
             rows = len(self.location) + 1
@@ -261,6 +276,9 @@ class DarkMonitor(BaseMonitor):
         self.figure.update_yaxes(showgrid=True, showline=True, mirror=True)
 
     def plot_histogram(self, nbins=100):
+        """Make the interactive histogram which displays the distribution of
+        the data and the ETC dark rates. Write out the file to the
+        correct outpath."""
         if self.data is None:
             self.data = self.get_data()
 
@@ -350,6 +368,8 @@ class DarkMonitor(BaseMonitor):
         fig.write_html(output)
 
     def calculate_histogram(self, nbins=100):
+        """Calculate the histogram distribution for the important plot and
+        ETC values."""
         if self.data is None:
             self.data = self.get_data()
 
@@ -374,10 +394,13 @@ class DarkMonitor(BaseMonitor):
         return dist995, values
 
     def track(self, nbins=100):
+        """Track histogram values: Mean, Median, 2 Sigma, 3 Sigma, 95%, 99%"""
         _, track_list = self.calculate_histogram(nbins)
         return track_list
 
     def plot_orbital_variation(self):
+        """Make the orbital variation plot and write out the file to the
+        correct outpath."""
         if self.data is None:
             self.data = self.get_data()
 
@@ -424,6 +447,7 @@ class DarkMonitor(BaseMonitor):
 
 
 class FUVADarkMonitor(DarkMonitor):
+    """FUVA Dark Monitor for all edges and inner region."""
     name = 'FUVA Dark Monitor'
     segment = 'FUVA'
     multi = True
@@ -436,6 +460,7 @@ class FUVADarkMonitor(DarkMonitor):
 
 
 class FUVBDarkMonitor(DarkMonitor):
+    """FUVB Dark Monitor for all edges and inner region."""
     name = 'FUVB Dark Monitor'
     segment = 'FUVB'
     multi = True
@@ -448,76 +473,77 @@ class FUVBDarkMonitor(DarkMonitor):
 
 
 class FUVABottomDarkMonitor(DarkMonitor):
-    """FUVA dark monitor for bottom edge"""
+    """FUVA Dark Monitor for bottom edge."""
     segment = 'FUVA'
     location = (1060, 15250, 296, 375)
     name = 'FUVA Dark Monitor - Bottom'
 
 
 class FUVALeftDarkMonitor(DarkMonitor):
-    """FUVA dark monitor for left edge"""
+    """FUVA Dark Monitor for left edge."""
     name = 'FUVA Dark Monitor - Left'
     segment = 'FUVA'
     location = (1060, 1260, 296, 734)
 
 
 class FUVATopDarkMonitor(DarkMonitor):
-    """FUVA dark monitor for top edge"""
+    """FUVA Dark Monitor for top edge."""
     name = 'FUVA Dark Monitor - Top'
     segment = 'FUVA'
     location = (1060, 15250, 660, 734)
 
 
 class FUVARightDarkMonitor(DarkMonitor):
-    """FUVA dark monitor for right edge"""
+    """FUVA Dark Monitor for right edge."""
     name = 'FUVA Dark Monitor - Right'
     segment = 'FUVA'
     location = (15119, 15250, 296, 734)
 
 
 class FUVAInnerDarkMonitor(DarkMonitor):
-    """FUVA dark monitor for inner region"""
+    """FUVA Dark Monitor for inner region."""
     name = 'FUVA Dark Monitor - Inner'
     segment = 'FUVA'
     location = (1260, 15119, 375, 660)
 
 
 class FUVBBottomDarkMonitor(DarkMonitor):
-    """FUVB dark monitor for bottom edge"""
+    """FUVB Dark Monitor for bottom edge."""
     name = 'FUVB Dark Monitor - Bottom'
     segment = 'FUVB'
     location = (809, 15182, 360, 405)
 
 
 class FUVBLeftDarkMonitor(DarkMonitor):
-    """FUVB dark monitor for left edge"""
+    """FUVB Dark Monitor for left edge."""
     name = 'FUVB Dark Monitor - Left'
     segment = 'FUVB'
     location = (809, 1000, 360, 785)
 
 
 class FUVBTopDarkMonitor(DarkMonitor):
-    """FUVB dark monitor for top edge"""
+    """FUVB Dark Monitor for top edge."""
     name = 'FUVB Dark Monitor - Top'
     segment = 'FUVB'
     location = (809, 15182, 740, 785)
 
 
 class FUVBRightDarkMonitor(DarkMonitor):
-    """FUVB dark monitor for right edge"""
+    """FUVB Dark Monitor for right edge."""
     name = 'FUVB Dark Monitor - Right'
     segment = 'FUVB'
     location = (14990, 15182, 360, 785)
 
 
 class FUVBInnerDarkMonitor(DarkMonitor):
-    """FUVB dark monitor for inner region"""
+    """FUVB Dark Monitor for inner region."""
     name = 'FUVB Dark Monitor - Inner'
     segment = 'FUVB'
     location = (1000, 14990, 405, 740)
 
 
 class NUVDarkMonitor(DarkMonitor):
+    """NUV Dark Monitor for full detector."""
     name = "NUV Dark Monitor"
     segment = "N/A"
     location = (0, 1024, 0, 1024)

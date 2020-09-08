@@ -19,9 +19,9 @@ def dgestar_to_fgs(results: List[dict]) -> None:
     """Add a FGS key to each row dictionary."""
     for item in results:
         item.update({
-                        'FGS': item['DGESTAR'][-2:]
-                        })  # The dominant guide star key is the last 2
-        # values in the string
+            'FGS': item['DGESTAR'][-2:]
+            })  # The dominant guide star key is the last 2  # values in the
+        # string
 
 
 class AcqDataModel(BaseDataModel):
@@ -60,8 +60,9 @@ class AcqDataModel(BaseDataModel):
             return pd.DataFrame()
 
         data_results = data_from_exposures(files,
-            header_request=header_request, header_defaults=header_defaults,
-            spt_header_request=spt_header_request, )
+                                           header_request=header_request,
+                                           header_defaults=header_defaults,
+                                           spt_header_request=spt_header_request, )
 
         dgestar_to_fgs(data_results)
 
@@ -111,13 +112,13 @@ class OSMDataModel(BaseDataModel):
 
         data_results = pd.DataFrame(
             data_from_exposures(files, header_request=header_request,
-                table_request=table_request,
-                reference_request=reference_request))
+                                table_request=table_request,
+                                reference_request=reference_request))
 
         # Remove any rows that have empty data columns
-        data_results = data_results.drop(data_results[
-            data_results.apply(lambda x: not bool(len(x.SHIFT_DISP)),
-                               axis=1)].index.values).reset_index(drop=True)
+        data_results = data_results.drop(data_results[data_results.apply(
+            lambda x: not bool(len(x.SHIFT_DISP)),
+            axis=1)].index.values).reset_index(drop=True)
 
         # Add tsince data from SMSTable.
         try:
@@ -183,7 +184,8 @@ class JitterDataModel(BaseDataModel):
 
         data_results = pd.DataFrame(
             data_from_jitters(files, primary_header_keys,
-                extension_header_keys, data_keys, reduce_to_stats=reduce))
+                              extension_header_keys, data_keys,
+                              reduce_to_stats=reduce))
 
         # Remove any NaNs or inf that may occur from the statistics
         # calculations.
@@ -195,10 +197,23 @@ class JitterDataModel(BaseDataModel):
             ~data_results.EXPTYPE.str.contains('ACQ|DARK|FLAT')]
 
 
+def get_program_ids(pid_file):
+    """Retrieve the program IDs from the given text file."""
+    programs_df = pd.read_csv(pid_file, delim_whitespace=True)
+    all_programs = []
+    for col, col_data in programs_df.iteritems():
+        all_programs += col_data.to_numpy(dtype=str).tolist()
+
+    return all_programs
+
+
 class DarkDataModel(BaseDataModel):
+    """DataModel for dark corrtag files."""
     cosmo_layout = False
 
     def get_new_data(self):
+        """Set the model for what data is to be retrieved from each dark
+        file."""
         # this way when you get new data it will get all the data
         header_request = {
             0: ['ROOTNAME', 'SEGMENT'], 1: ['EXPTIME', 'EXPSTART']
@@ -210,7 +225,7 @@ class DarkDataModel(BaseDataModel):
 
         files = []
 
-        program_ids = self.get_program_ids(PROGRAMS)
+        program_ids = get_program_ids(PROGRAMS)
 
         for prog_id in program_ids:
             new_files_source = os.path.join(FILES_SOURCE, prog_id)
@@ -227,14 +242,7 @@ class DarkDataModel(BaseDataModel):
             return pd.DataFrame()
 
         data_results = data_from_exposures(files,
-            header_request=header_request, table_request=table_request)
+                                           header_request=header_request,
+                                           table_request=table_request)
 
         return data_results
-
-    def get_program_ids(self, pid_file):
-        programs_df = pd.read_csv(pid_file, delim_whitespace=True)
-        all_programs = []
-        for col, col_data in programs_df.iteritems():
-            all_programs += col_data.to_numpy(dtype=str).tolist()
-
-        return all_programs
