@@ -12,7 +12,7 @@ sms:
       synchronous: 0
 
 output: ''
-dark_programs: 'programs_test.txt'
+dark_programs: './programs_test.txt'
 
 # Monitor data database
 data:
