@@ -12,6 +12,7 @@ sms:
       synchronous: 0
 
 output: ''
+dark_programs: ''
 
 # Monitor data database
 data:

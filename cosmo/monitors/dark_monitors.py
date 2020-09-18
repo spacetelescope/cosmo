@@ -130,18 +130,23 @@ def get_solar_data(url, datemin, datemax, box=4):
 class DarkMonitor(BaseMonitor):
     """Abstracted Dark Monitor. Not meant to be used directly but rather
     inherited by specific segment and region dark monitors"""
-    labels = ['ROOTNAME']
+    labels = ['rootname']
     output = COS_MONITORING
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#dark-rate" \
            "-monitors"
     segment = None
     location = None
-    multi = False
-    sub_names = None
     data_model = DarkDataModel
     plottype = 'scatter'
     x = 'date'
     y = 'darks'
+    # # # defaults, can change these but optional definitions in the Monitor
+    # objects # # #
+    multi = False
+    sub_names = None
+    filter_saa = True
+    inner_region = 4  # number region that corresponds to the inner_region,
+    # for FUV use only.
 
     def get_data(self):  # -> Any: fix this later,
         """Required method to get the data necessary for plotting in the
@@ -179,8 +184,14 @@ class DarkMonitor(BaseMonitor):
                     filtered_rows.append(dark_filter(row, True, location))
         filtered_df = pd.concat(filtered_rows).reset_index(drop=True)
 
-        return explode_df(filtered_df,
-                          ['darks', 'date', 'latitude', 'longitude'])
+        exploded_df = explode_df(filtered_df,
+                                 ['darks', 'date', 'latitude', 'longitude'])
+        # after exploding, add SAA filtering if required
+        if self.filter_saa:
+            exploded_df["no_saa"] = np.where(
+                exploded_df.eval("latitude > 10 or longitude < 260"), 1, 0)
+
+        return exploded_df
 
     def plot(self):
         """Make the interactive subplots, including the solar plot, based on
@@ -282,14 +293,14 @@ class DarkMonitor(BaseMonitor):
         if self.data is None:
             self.data = self.get_data()
 
-        dist995, lines = self.calculate_histogram(nbins)
+        dist995, dark_column, lines = self.calculate_histogram(nbins)
         full_names = [f"Mean: {lines[0]:.2e}", f"Median: {lines[0]:.2e}",
                       f"2 sigma: {lines[2]:.2e}", f"3 sigma: {lines[3]:.2e}",
                       f"95%: {lines[4]:.2e}", f"99%: {lines[5]:.2e}"]
 
         # histogram
-        fig = go.Figure(data=[
-            go.Histogram(x=self.data[self.y], nbinsx=nbins, showlegend=False)])
+        fig = go.Figure(
+            data=[go.Histogram(x=dark_column, nbinsx=nbins, showlegend=False)])
 
         # value lines--have to do a shape and trace for both of them until
         # plotly adds vertical line plotting features (because shapes can't
@@ -373,16 +384,26 @@ class DarkMonitor(BaseMonitor):
         if self.data is None:
             self.data = self.get_data()
 
-        counts, bins = np.histogram(self.data[self.y], bins=nbins)
+        # filter out the flag == 0 / grab the flag == 1 from self.data[self.y]
+        if self.filter_saa:
+            dark_column = self.data[self.y].loc[self.data["no_saa"] == 1]
+            if "FUV" in self.segment:
+                dark_column = self.data[self.y].loc[
+                    (self.data["no_saa"] == 1) & (
+                                self.data["region"] == self.inner_region)]
+        else:
+            dark_column = self.data[self.y]
+
+        counts, bins = np.histogram(dark_column, bins=nbins)
         cuml_dist = np.cumsum(counts)
         count_99 = abs(cuml_dist / float(cuml_dist.max()) - .99).argmin()
         count_95 = abs(cuml_dist / float(cuml_dist.max()) - .95).argmin()
         # only used for plotting
         count995 = abs(cuml_dist / float(cuml_dist.max()) - .995).argmin()
 
-        mean = self.data[self.y].mean()
-        med = np.median(self.data[self.y])
-        std = self.data[self.y].std()
+        mean = dark_column.mean()
+        med = np.median(dark_column)
+        std = dark_column.std()
         onesig = med + std
         twosig = med + (2 * std)
         threesig = med + (3 * std)
@@ -391,11 +412,10 @@ class DarkMonitor(BaseMonitor):
         dist995 = bins[count995]
         values = [mean, med, onesig, twosig, threesig, dist95, dist99]
 
-        return dist995, values
+        return dist995, dark_column, values
 
     def track(self, nbins=100):
-        """Track histogram values: Mean, Median, 2 Sigma, 3 Sigma, 95%, 99%"""
-        _, track_list = self.calculate_histogram(nbins)
+        _, _, track_list = self.calculate_histogram(nbins)
         return track_list
 
     def plot_orbital_variation(self):
@@ -413,8 +433,7 @@ class DarkMonitor(BaseMonitor):
                                    colorscale='Viridis', opacity=0.5,
                                    colorbar=dict(thickness=20,
                                                  exponentformat="e",
-                                                 title=dict(
-                                                     text="Dark Rate")),
+                                                 title=dict(text="Dark Rate")),
                                    cmin=colormin, cmax=colormax))])
 
         datemin = self.data[self.x].min()
@@ -442,6 +461,7 @@ class DarkMonitor(BaseMonitor):
     def store_results(self):
         # TODO: Define results to store
         pass
+
 
 # ----------------------------------------------------------------------------#
 
