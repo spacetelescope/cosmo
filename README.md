@@ -9,7 +9,7 @@ COSMO is made up of a series of monitors and their data built on the light-weigh
 [monitorframe framework](https://github.com/spacetelescope/monitor-framework).
 These monitors are important for ensuring that COS is operating nominally as well as extending its mission lifetime.
 
-Check out the COSMO documenation [here](https://spacetelescope.github.io/cosmo/)
+Check out the COSMO documentation [here](https://spacetelescope.github.io/cosmo/).
 # Contributing
 Please open a new [issue](https://github.com/spacetelescope/cosmo/issues) or new
 [pull request](https://github.com/spacetelescope/cosmo/pulls) for
