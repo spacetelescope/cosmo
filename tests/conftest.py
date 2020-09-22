@@ -3,11 +3,16 @@ import pytest
 
 from glob import glob
 
-TEST_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cosmoconfig_test.yaml')
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+TEST_CONFIG = os.path.join(HERE, 'cosmoconfig_test.yaml')
 
 # Check to make sure that the test config file is being used. If not, don't run the tests
-if os.environ['COSMO_CONFIG'] != TEST_CONFIG:
+if os.environ['MONITOR_CONFIG'] != TEST_CONFIG:
     raise TypeError('Tests should only be executed with the testing configuration file')
+
+if os.environ['COSMO_SMS_DB'] != os.path.join(HERE, 'test.db'):
+    raise TypeError('Test should only be executed with a test database')
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -46,7 +51,7 @@ def data_dir():
 
 @pytest.fixture(scope='session')
 def here():
-    return os.path.dirname(os.path.abspath(__file__))
+    return HERE
 
 
 @pytest.fixture(scope='session', autouse=True)
