@@ -58,8 +58,19 @@ class AcqDataModel(BaseDataModel):
         if self.model is not None:
             currently_ingested = [item.FILENAME for item in self.model.select(self.model.FILENAME)]
 
+            ##finds index values for all files that are in the currently_ingested list
+            ##should remove any repeated instances of the same file (e.g., fits and fits.gz)
+            del_list = []
             for file in currently_ingested:
-                files.remove(file)
+                indx = file.index('.fits')
+                prefix = file[:indx]
+                for i, f in enumerate(files):
+                    if(prefix in f):
+                        del_list.append(i)
+
+            for index in sorted(del_list, reverse=True):
+                del files[index]
+            
 
         if not files:  # No new files
             return pd.DataFrame()
