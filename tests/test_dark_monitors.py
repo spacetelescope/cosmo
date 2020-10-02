@@ -5,6 +5,7 @@ from cosmo.monitors.dark_monitors import DarkMonitor, FUVADarkMonitor, \
     FUVBDarkMonitor, NUVDarkMonitor
 from cosmo.monitors.data_models import DarkDataModel
 
+TEST_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/')
 
 @pytest.fixture(params=[False, True])
 def set_darkmonitor(request, data_dir, here):

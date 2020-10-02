@@ -146,7 +146,21 @@ class DarkMonitor(BaseMonitor):
     sub_names = None
     filter_saa = True
     inner_region = 4  # number region that corresponds to the inner_region,
+
     # for FUV use only.
+
+    def __init__(self, datemin=None, datemax=None, *args):
+        """Class Initialization to subclass superclass __init__ and add
+        optional date parameters."""
+        super().__init__(*args)
+        if datemin:
+            self.datemin = datemin
+        else:
+            self.datemin = "2009-01-01"  # earliest start date
+        if datemax:
+            self.datemax = datemax
+        else:
+            self.datemax = self.date  # this is defined in the superclass
 
     def get_data(self):  # -> Any: fix this later,
         """Required method to get the data necessary for plotting in the
@@ -186,6 +200,12 @@ class DarkMonitor(BaseMonitor):
 
         exploded_df = explode_df(filtered_df,
                                  ['darks', 'date', 'latitude', 'longitude'])
+
+        # filtering on date
+        index = np.where((exploded_df["date"] >= self.datemin) & (
+                    exploded_df["date"] <= self.datemax))
+        exploded_df = exploded_df.iloc[index].reset_index(drop=True)
+
         # after exploding, add SAA filtering if required
         if self.filter_saa:
             exploded_df["no_saa"] = np.where(
@@ -214,11 +234,17 @@ class DarkMonitor(BaseMonitor):
 
         pio.templates.default = "simple_white"
 
+        datemin = self.data[self.x].min()
+        datemax = self.data[self.x].max()
+
         self.figure = make_subplots(rows=rows, cols=1, shared_xaxes=True,
                                     subplot_titles=titles, x_title="Year",
                                     vertical_spacing=0.05)
         self.figure.update_layout(height=fig_height, width=1200,
-                                  title_text=self.name)
+                                  title_text=self.name + f": "
+                                                         f"{
+        datemin:%Y-%m-%d} - "
+                                                         f"{datemax:%Y-%m-%d}")
 
         if self.multi:
             # prime the pump again
@@ -226,7 +252,8 @@ class DarkMonitor(BaseMonitor):
             region_y_data = self.data[self.y].where(self.data["region"] == 0)
             self.figure.add_trace(
                 go.Scatter(x=region_x_data, y=region_y_data, mode="markers",
-                           marker=dict(color="black", size=5),
+                           marker=dict(color=self.data["no_saa"],
+                                       colorscale=["red", "black"], size=5),
                            hovertext=self.labels, hoverinfo="x+y+text",
                            name="Mean Dark Rate"), row=1, col=1)
             self.figure.update_yaxes(
@@ -240,9 +267,11 @@ class DarkMonitor(BaseMonitor):
                 self.figure.add_trace(
                     go.Scatter(x=region_x_data, y=region_y_data,
                                showlegend=False, mode="markers",
-                               marker=dict(color="black", size=5),
-                               hovertext=self.labels, hoverinfo="x+y+text",
-                               name="Mean Dark Rate"), row=index + 1, col=1)
+                               marker=dict(color=self.data["no_saa"],
+                                           colorscale=["red", "black"],
+                                           size=5), hovertext=self.labels,
+                               hoverinfo="x+y+text", name="Mean Dark Rate"),
+                    row=index + 1, col=1)
                 self.figure.update_yaxes(
                     title_text="Mean Dark Rate<br>(counts/pix/sec)",
                     row=index + 1, col=1)
@@ -251,16 +280,15 @@ class DarkMonitor(BaseMonitor):
             # single plot
             self.figure.add_trace(
                 go.Scatter(x=self.data[self.x], y=self.data[self.y],
-                           mode="markers", marker=dict(color="black", size=5),
+                           mode="markers",
+                           marker=dict(color=self.data["no_saa"],
+                                       colorscale=["red", "black"], size=5),
                            hovertext=self.labels, hoverinfo="x+y+text",
                            name="Mean Dark Rate"), row=1, col=1)
             self.figure.update_yaxes(
                 title_text="Mean Dark Rate<br>(counts/pix/sec)", row=1, col=1)
 
         ## this is solar stuff only until the next ##
-
-        datemin = self.data[self.x].min()
-        datemax = self.data[self.x].max()
 
         # sunpy_data = sunpy_retriever(date_min, date_max)
         solar_data = get_solar_data(NOAA_URL, datemin, datemax)
@@ -270,8 +298,8 @@ class DarkMonitor(BaseMonitor):
 
         self.figure.add_trace(
             go.Scatter(x=solar_time, y=solar_flux, mode="lines",
-                       line=dict(dash="longdash", color="#0F2080"),
-                       name="10.7 cm"), row=rows, col=1)
+                       line=dict(dash="dot", color="#0F2080"), name="10.7 cm"),
+            row=rows, col=1)
 
         self.figure.add_trace(
             go.Scatter(x=solar_time, y=solar_flux_smooth, mode="lines",
@@ -294,9 +322,9 @@ class DarkMonitor(BaseMonitor):
             self.data = self.get_data()
 
         dist995, dark_column, lines = self.calculate_histogram(nbins)
-        full_names = [f"Mean: {lines[0]:.2e}", f"Median: {lines[0]:.2e}",
-                      f"2 sigma: {lines[2]:.2e}", f"3 sigma: {lines[3]:.2e}",
-                      f"95%: {lines[4]:.2e}", f"99%: {lines[5]:.2e}"]
+        full_names = [f"Mean: {lines[0]:.2e}", f"Median: {lines[1]:.2e}",
+                      f"2 sigma: {lines[3]:.2e}", f"3 sigma: {lines[4]:.2e}",
+                      f"95%: {lines[5]:.2e}", f"99%: {lines[6]:.2e}"]
 
         # histogram
         fig = go.Figure(
@@ -305,8 +333,9 @@ class DarkMonitor(BaseMonitor):
         # value lines--have to do a shape and trace for both of them until
         # plotly adds vertical line plotting features (because shapes can't
         # be in the legend, only traces)
-        # also f strings and latex together is super annoying. have to
-        # triple bracket the latex part
+        # also the indexing is all weird but it is correct (has to do with
+        # the onesig)
+        # should fix this later
         fig.add_trace(
             go.Scatter(x=[lines[0], lines[0]], y=[0, 1], mode="lines",
                        line=dict(color="#DC267F"), name=full_names[0]))
@@ -323,34 +352,34 @@ class DarkMonitor(BaseMonitor):
                  x1=lines[1], y1=1, line=dict(color="#DC267F", dash="dash")))
 
         fig.add_trace(
-            go.Scatter(x=[lines[2], lines[2]], y=[0, 1], mode="lines",
+            go.Scatter(x=[lines[3], lines[3]], y=[0, 1], mode="lines",
                        line=dict(color="#FE6100"), name=full_names[2]))
         fig.add_shape(
-            dict(type="line", xref="x", yref="paper", x0=lines[2], y0=0,
-                 x1=lines[2], y1=1, line=dict(color="#FE6100")))
-
-        fig.add_trace(
-            go.Scatter(x=[lines[3], lines[3]], y=[0, 1], mode="lines",
-                       line=dict(color="#FE6100", dash="dash"),
-                       name=full_names[3]))
-        fig.add_shape(
             dict(type="line", xref="x", yref="paper", x0=lines[3], y0=0,
-                 x1=lines[3], y1=1, line=dict(color="#FE6100", dash="dash")))
+                 x1=lines[3], y1=1, line=dict(color="#FE6100")))
 
         fig.add_trace(
             go.Scatter(x=[lines[4], lines[4]], y=[0, 1], mode="lines",
-                       line=dict(color="#FFB000"), name=full_names[4]))
+                       line=dict(color="#FE6100", dash="dash"),
+                       name=full_names[3]))
         fig.add_shape(
             dict(type="line", xref="x", yref="paper", x0=lines[4], y0=0,
-                 x1=lines[4], y1=1, line=dict(color="#FFB000")))
+                 x1=lines[4], y1=1, line=dict(color="#FE6100", dash="dash")))
 
         fig.add_trace(
             go.Scatter(x=[lines[5], lines[5]], y=[0, 1], mode="lines",
+                       line=dict(color="#FFB000"), name=full_names[4]))
+        fig.add_shape(
+            dict(type="line", xref="x", yref="paper", x0=lines[5], y0=0,
+                 x1=lines[5], y1=1, line=dict(color="#FFB000")))
+
+        fig.add_trace(
+            go.Scatter(x=[lines[6], lines[6]], y=[0, 1], mode="lines",
                        line=dict(color="#FFB000", dash="dash"),
                        name=full_names[5]))
         fig.add_shape(
-            dict(type="line", xref="x", yref="paper", x0=lines[5], y0=0,
-                 x1=lines[5], y1=1, line=dict(color="#FFB000", dash="dash")))
+            dict(type="line", xref="x", yref="paper", x0=lines[6], y0=0,
+                 x1=lines[6], y1=1, line=dict(color="#FFB000", dash="dash")))
 
         datemin = self.data[self.x].min()
         datemax = self.data[self.x].max()
@@ -390,7 +419,7 @@ class DarkMonitor(BaseMonitor):
             if "FUV" in self.segment:
                 dark_column = self.data[self.y].loc[
                     (self.data["no_saa"] == 1) & (
-                                self.data["region"] == self.inner_region)]
+                            self.data["region"] == self.inner_region)]
         else:
             dark_column = self.data[self.y]
 
@@ -415,6 +444,7 @@ class DarkMonitor(BaseMonitor):
         return dist995, dark_column, values
 
     def track(self, nbins=100):
+        "Tracking method to track ETC Dark Rate measurements."
         _, _, track_list = self.calculate_histogram(nbins)
         return track_list
 
