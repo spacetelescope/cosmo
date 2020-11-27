@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import os
+from glob import glob
 
 from typing import List
 from monitorframe.datamodel import BaseDataModel
@@ -203,3 +205,50 @@ class JitterDataModel(BaseDataModel):
         data_results = data_results.replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
 
         return data_results[~data_results.EXPTYPE.str.contains('ACQ|DARK|FLAT')]
+
+
+class FUVDarkDataModel(BaseDataModel):
+    files_source = FILES_SOURCE
+    cosmo_layout = False
+
+    """program_ids = ['15771/', '15533/', '14940/', '14520/', '14436/', '13968/', '13521/', '13121/', '12716/', '12423/',
+                   '11895/']"""
+    program_ids = ['15771/', '15533/']
+
+    primary_key = 'ROOTNAME'
+
+    def get_new_data(self):
+        """Retrieve data"""
+        header_request = {
+            0: ['ROOTNAME', 'SEGMENT'],
+            1: ['EXPTIME', 'EXPSTART']
+        }
+
+        table_request = {
+            1: ['PHA', 'XCORR', 'YCORR', 'TIME'],
+            3: ['TIME', 'LATITUDE', 'LONGITUDE']
+        }
+
+        files = []
+
+        for prog_id in self.program_ids:
+
+            new_files_source = os.path.join(FILES_SOURCE, prog_id)
+            files += find_files('*corrtag*', data_dir=new_files_source, subdir_pattern=None)
+
+        if self.model is not None:
+            currently_ingested = [item.FILENAME for item in self.model.select(self.model.FILENAME)]
+
+            for file in currently_ingested:
+                files.remove(file)
+
+        if not files:   # No new files
+            return pd.DataFrame()
+
+        data_results = data_from_exposures(
+            files,
+            header_request=header_request,
+            table_request=table_request
+        )
+
+        return data_results
