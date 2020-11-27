@@ -71,3 +71,7 @@ target/
 
 # Finder
 .DS_Store
+
+# Misc
+testoutputs/
+*.ipynb
