@@ -21,12 +21,14 @@ os: linux
 env:
     global:
         # SET DEFAULTS TO AVOID REPEATING IN MOST CASES
+        # For now dark monitor path is set as blank
         - CONDA_ARGS='--quiet'
         - CONDA_INSTALL="conda install $CONDA_ARGS"
         - CONDA_DEPS='stsci coverage'
         - CONDA_DOC_DEPS="$CONDA_DEPS sphinx"
         - SETUP_CMD='test'
         - MONITOR_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
+        - DARK_PROGRAMS=''
         - COSMO_FILES_SOURCE='/home/travis/build/spacetelescope/cosmo/tests/data'
         - COSMO_SMS_SOURCE='/home/travis/build/spacetelescope/cosmo/tests/data'
         - COSMO_OUTPUT='/home/travis/build/spacetelescope/cosmo/tests'
