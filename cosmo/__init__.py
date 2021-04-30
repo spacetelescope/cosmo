@@ -3,6 +3,7 @@ import os
 SETTINGS = {
     'filesystem': {'source': os.environ['COSMO_FILES_SOURCE']},
     'output': os.environ['COSMO_OUTPUT'],
+    'dark_programs': os.environ['DARK_PROGRAMS'],
     'sms': {
         'source': os.environ['COSMO_SMS_SOURCE'],
         'db_settings': {
