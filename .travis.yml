@@ -27,6 +27,7 @@ env:
         - CONDA_DOC_DEPS="$CONDA_DEPS sphinx"
         - SETUP_CMD='test'
         - MONITOR_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
+        - DARK_PROGRAMS=''
         - COSMO_FILES_SOURCE='/home/travis/build/spacetelescope/cosmo/tests/data'
         - COSMO_SMS_SOURCE='/home/travis/build/spacetelescope/cosmo/tests/data'
         - COSMO_OUTPUT='/home/travis/build/spacetelescope/cosmo/tests'
