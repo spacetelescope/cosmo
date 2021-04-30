@@ -166,7 +166,7 @@ class TestFindFiles:
     def test_finds_files_cosmo_layout(self, data_dir):
         files = find_files('*', data_dir=data_dir)
 
-        assert len(files) == 1  # only one "program" directory with only one file in it
+        assert len(files) == 51  # only one "program" directory with only one file in it
 
 
 class TestFileData:
