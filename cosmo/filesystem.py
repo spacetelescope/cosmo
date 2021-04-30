@@ -278,7 +278,7 @@ class JitterFileData(list):
                 del filedata[key]
 
 
-def find_files(file_pattern: str, data_dir: str = FILES_SOURCE, subdir_pattern: Union[str, None] = '?????') -> list:
+def find_files(file_pattern: str, data_dir: str = FILES_SOURCE, subdir_pattern: Union[str, None] = None) -> list:
     """Find COS data files from a source directory. The default is the cosmo data directory subdirectories layout
     pattern. A different subdirectory pattern can be used or
     """
