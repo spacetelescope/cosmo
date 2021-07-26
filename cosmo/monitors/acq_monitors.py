@@ -157,7 +157,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
         'FHST Alignment': 2020.150,
         '3GS-F1G Hybrid Mode': 2021.061,
         'Revert to Normal Mode': 2021.070,
-        'Hybrid Mode Start': 2021.145
+        'Hybrid Mode Start': 2021.145,
+        'Gyro High Mode Switch': 2021.205
     }
 
     fgs1_breaks = ['FGS Realignment 1', 'FGS Realignment 2', 'SIAF Update', 'FGS Realignment 3', 'FHST Alignment']
@@ -365,7 +366,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 'showarrow': True,
                 'ax': ax,
                 'ay': -30,
-            } for item, ax in zip(self.fgs_events.items(), [-60, 50, -20, 20, -50, 20, 50, -50, 60, -50, 50, 50])
+            } for item, ax in zip(self.fgs_events.items(), [-60, 50, -20, 20, -50, 20, 50, -50, 60, -50, 50, 50, 50])
             for xref, yaxis in zip(['x1', 'x2'], ['yaxis1', 'yaxis2'])
         ]
 
