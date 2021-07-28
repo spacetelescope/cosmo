@@ -454,7 +454,7 @@ class SpecAcqBaseMonitor(BaseMonitor):
         fgs_groups, std_results = self.results  # groups are stored in the results attribute since track returns them.
 
         trace_count = {'F1': 0, 'F2': 0, 'F3': 0}
-        lp_colors = ['#1f77b4', '#2ca02c', '#8c564b', '#bcbd22']  # blue, green, brown, yellow-green
+        lp_colors = ['#1f77b4', '#2ca02c', '#8c564b', '#bcbd22', '#17bd9b', '#4928bf']  # blue, green, brown, yellow-green, cyan, purple
         detector_symbols = {'NUV': 'x', 'FUV': 'circle'}
         for name, group in fgs_groups:
             lp_groups = group.groupby('LIFE_ADJ')
