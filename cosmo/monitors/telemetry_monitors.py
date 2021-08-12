@@ -14,7 +14,7 @@ import pytimedinput
 selected_filetypes = ['LD2LMP1T','LMMCETMP']
 TIMEOUT=0.5
 telemetry_dir = Path("/grp/hst/cos/Telemetry/")
-plots_dir = Path("/user/nkerman/Projects/Monitors/telemetry_monitoring/plots/")
+plots_dir = Path("/user/nkerman/Projects/Monitors/telemetry_plots/")
 # %%
 # Find all the telemetry data files:
 all_files = list(telemetry_dir.glob('*'))
