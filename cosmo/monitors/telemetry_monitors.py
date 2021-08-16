@@ -12,15 +12,9 @@ import subprocess
 import pytimedinput
 import numpy as np
 # %%
-<<<<<<< HEAD
 # USER INPUTS (those not queried on CLI):
-selected_filetypes = ['LD2LMP1T']#,'LMMCETMP'] # TODO: check/remove this limit
-TIMEOUT=0.5
-=======
-# USER INPUTS:
-selected_filetypes = ['LD2LMP1T','LMMCETMP']
-TIMEOUT=0.0
->>>>>>> 4b2f37246268e098c03e02045aff4bc5a845ea84
+selected_filetypes = ['LD2LMP1T','LMMCETMP'] # Only filters to these if the if statement below is not commented out (search for "selected_filetypes")
+TIMEOUT=0.0 # TODO: frequently check/remove this limit
 telemetry_dir = Path("/grp/hst/cos/Telemetry/")
 plots_dir = Path("/user/nkerman/Projects/Monitors/telemetry_plots/")
 # %%
@@ -62,7 +56,7 @@ def my_input(prompt, timeout=10.):
 # However it only gives until TIMEOUT seconds to respond, then sets defaults.
 def ask_user_dates(verbose=False, timeout=10.):
     try: # In case non-interactive terminal, set to default:
-        user_min_date = my_input(f"Start date? [{timeout} seconds to respond],[Enter for default {def_min_date}]", TIMEOUT)
+        user_min_date = my_input(f"Start date? [{timeout} seconds to respond],[Enter for default {def_min_date}]", timeout)
     except:
         user_min_date = def_min_date
         print(f"setting to default of {def_min_date}")
@@ -77,7 +71,7 @@ def ask_user_dates(verbose=False, timeout=10.):
     mindex, min_date = find_closest_date(read_data_full,float(user_min_date))
     try: # In case non-interactive terminal, set to default:
         user_max_date = def_max_date
-        user_max_date = my_input(f"End date?   [{timeout} seconds to respond],[Enter for default {def_max_date}]", TIMEOUT)
+        user_max_date = my_input(f"End date?   [{timeout} seconds to respond],[Enter for default {def_max_date}]", timeout)
     except:
         print(f"setting to default of {def_min_date}")
     if user_max_date in ["N","n",None]:
@@ -108,9 +102,9 @@ def find_closest_date(dataframe, target, verbose=False, category='MJD'):
         print(found_row)
     return found_row.name,found_row[category]
 # %%
-def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_low=0.005, q_hi=0.995, open_file=False, show_plot=False):
-    fig = go.Figure()
-
+def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_low=0.005, q_hi=0.995, plot_lines=True, open_file=False, show_plot=False):
+    
+    fig = go.Figure() # Set up the figure
     miny,maxy = get_quantiles(dataframe, q_low, q_hi)
     # Date limits as MJD:
     minx, maxx = trimmed_data['MJD'].min(),trimmed_data['MJD'].max()
@@ -128,20 +122,47 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
             print("Not a valid plot_by selection ['mjd', 'datetime']")
             exit
 
-        fig.add_trace(go.Scattergl(
-            x=x_box, 
-            y=y_box,
-            text=f"Quantile range: {q_low} - {q_hi}",
-            name=f'99% Range',
-            fill="toself",
-            fillcolor='rgba(256,220,150,0.2)',
-            line=None))
-    
-    fig.add_trace(
-        go.Scattergl(x=dataframe['datetime'],y=dataframe['Data'], mode="markers", name=f'{filetype}')
+        fig.add_trace(
+            go.Scattergl(
+                x=x_box, 
+                y=y_box,
+                text=f"Quantile range: {q_low} - {q_hi}",
+                name=f'99% Range',
+                fill="toself",
+                fillcolor='rgba(256,220,150,0.2)',
+                line={
+                    "color":"rgba(256,100,0,0.7)"
+                }
+            )
         )
-
-    # fig.show()
+    if plot_lines:
+        data_trace_mode = "lines+markers"
+    else: 
+        data_trace_mode = "markers"
+    fig.add_trace(
+        go.Scattergl(
+            x=dataframe['datetime'],
+            y=dataframe['Data'],
+            mode=data_trace_mode,
+            line={"shape": 'hv', "color": 'rgba(200,100,100,0.25)'},
+            marker={"color": 'rgba(0,100,256,0.99)'},
+            name=f'{filetype}')
+        )
+    fig.update_layout( # Give proper axis labels, title, and choose font
+        title={
+            "text": f"{filetype} Monitor",
+            "x": 0.5,
+            'xanchor': 'center',
+        },
+        xaxis_title=plot_by.upper(),
+        yaxis_title=filetype,
+        font={
+            "family":"serif",
+            "size":24,
+            "color":"black"
+        }
+        )
+    
     new_filename = f'{plots_dir}/{filetype}_{minx:.1f}to{maxx:.1f}.html'
     if show_plot:
         fig.show()
@@ -172,9 +193,10 @@ for item_num, filetype in enumerate(file_dict.keys()):
             # Actually cut the data to that size:
             trimmed_data = read_data_full[mindex:maxdex]
 
-            build_plot(dataframe=trimmed_data, filetype=filetype ,plot_by="datetime", plot_quantbox=True, q_low=0.005, q_hi=0.995, open_file=False, show_plot=False)
+            build_plot(dataframe=trimmed_data, filetype=filetype ,plot_by="datetime", plot_quantbox=True, q_low=0.005, q_hi=0.995, plot_lines=True, open_file=False, show_plot=False)
         except Exception as ex:
             print(f"Something went wrong on file: {filetype}")
+            print(ex)
 # %% # NEW STUFF HERE!
 def step_wise(model_dataframe, targ_x, category="MJD", step_pos="right"):
     """
