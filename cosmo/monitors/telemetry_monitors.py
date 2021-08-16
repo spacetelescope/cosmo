@@ -1,6 +1,7 @@
 #! /user/nkerman/miniconda3/envs/cosmo_env/bin/python
 # %%
 # Imports cell:
+import enum
 from os import read
 from pathlib import Path
 import pandas as pd
@@ -9,9 +10,10 @@ import plotly.graph_objects as go
 from astropy.time import Time
 import subprocess
 import pytimedinput
+import numpy as np
 # %%
-# USER INPUTS:
-selected_filetypes = ['LD2LMP1T','LMMCETMP']
+# USER INPUTS (those not queried on CLI):
+selected_filetypes = ['LD2LMP1T']#,'LMMCETMP'] # TODO: check/remove this limit
 TIMEOUT=0.5
 telemetry_dir = Path("/grp/hst/cos/Telemetry/")
 plots_dir = Path("/user/nkerman/Projects/Monitors/telemetry_plots/")
@@ -157,3 +159,36 @@ for item_num, filetype in enumerate(file_dict.keys()):
             build_plot(dataframe=trimmed_data, filetype=filetype ,plot_by="datetime", plot_quantbox=True, q_low=0.005, q_hi=0.995, open_file=False)
         except:
             print(f"Something went wrong on file: {filetype}")
+
+# %% # NEW STUFF HERE!
+def step_wise(model_dataframe, targ_x, category="MJD", step_pos="right"):
+    """
+    A stepwise function that rises/falls at the location of the next datapoint
+      i.e. if: x=[1,3,9] and y=[0,1,0]
+         then: the function rises at 3, and falls at 9
+    
+    Pseudocode:
+    * find the nearest (on the left/lower end) value in xarr to the input targ_x
+    * find the index of that xarr value
+    * return the yarr value at that index
+    """
+    found_row = model_dataframe.iloc[(model_dataframe[category] - targ_x).abs().argsort()[0]]
+    found_selector = found_row[category]
+    closest_index=found_row.name
+    if step_pos == "right":
+        if targ_x < found_selector:
+            closest_index -= 1
+    return model_dataframe.iloc[closest_index]
+
+# %%
+def step_wise2(model_dataframe, target):
+    """
+    Equivalent to step_wise and not much faster (tested it).
+    """
+    delta = model_dataframe['MJD'] - target
+    abs_delta = abs(delta)
+    closest_index = abs_delta.argsort()[0]
+    if delta[closest_index] > 0:
+        closest_index = closest_index - 1
+    return model_dataframe['Data'][closest_index]
+
