@@ -51,9 +51,13 @@ def my_input(prompt, timeout=10.):
     return user_string
 # %%
 # This cell checks for user input, 
-# TODO Wish I could get it to only give 30 seconds, in case we forget to turn off before running for the evening 
+# However it only gives until TIMEOUT seconds to respond, then sets defaults.
 def ask_user_dates(verbose=False, timeout=10.):
-    user_min_date = my_input(f"Start date? [{timeout} seconds to respond],[Enter for default {def_min_date}]",timeout)
+    try: # In case non-interactive terminal, set to default:
+        user_min_date = my_input(f"Start date? [{timeout} seconds to respond],[Enter for default {def_min_date}]", TIMEOUT)
+    except:
+        user_min_date = def_min_date
+        print(f"setting to default of {def_min_date}")
     if user_min_date in ["N","n",None]:
         user_min_date = def_min_date
     try: 
@@ -63,8 +67,11 @@ def ask_user_dates(verbose=False, timeout=10.):
             print(f"could not convert string to float; setting to default of {def_min_date}")
         user_min_date = def_min_date
     mindex, min_date = find_closest_date(read_data_full,float(user_min_date))
-
-    user_max_date = my_input(f"End date?   [{timeout} seconds to respond],[Enter for default {def_max_date}]",timeout)
+    try: # In case non-interactive terminal, set to default:
+        user_max_date = def_max_date
+        user_max_date = my_input(f"End date?   [{timeout} seconds to respond],[Enter for default {def_max_date}]", TIMEOUT)
+    except:
+        print(f"setting to default of {def_min_date}")
     if user_max_date in ["N","n",None]:
         user_max_date = def_max_date
     try: 
@@ -93,7 +100,7 @@ def find_closest_date(dataframe, target, verbose=False, category='MJD'):
         print(found_row)
     return found_row.name,found_row[category]
 # %%
-def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_low=0.005, q_hi=0.995, open_file=False):
+def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_low=0.005, q_hi=0.995, open_file=False, show_plot=False):
     fig = go.Figure()
 
     miny,maxy = get_quantiles(dataframe, q_low, q_hi)
@@ -128,7 +135,10 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
 
     # fig.show()
     new_filename = f'{plots_dir}/{filetype}_{minx:.1f}to{maxx:.1f}.html'
+    if show_plot:
+        fig.show()
     fig.write_html(new_filename)
+
 
     if open_file:
         subprocess.run(['open', new_filename], check=True)
@@ -154,6 +164,7 @@ for item_num, filetype in enumerate(file_dict.keys()):
             # Actually cut the data to that size:
             trimmed_data = read_data_full[mindex:maxdex]
 
-            build_plot(dataframe=trimmed_data, filetype=filetype ,plot_by="datetime", plot_quantbox=True, q_low=0.005, q_hi=0.995, open_file=False)
-        except:
+            build_plot(dataframe=trimmed_data, filetype=filetype ,plot_by="datetime", plot_quantbox=True, q_low=0.005, q_hi=0.995, open_file=False, show_plot=False)
+        except Exception as ex:
             print(f"Something went wrong on file: {filetype}")
+            print(ex)
