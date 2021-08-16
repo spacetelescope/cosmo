@@ -12,7 +12,7 @@ import pytimedinput
 # %%
 # USER INPUTS:
 selected_filetypes = ['LD2LMP1T','LMMCETMP']
-TIMEOUT=0.5
+TIMEOUT=0.0
 telemetry_dir = Path("/grp/hst/cos/Telemetry/")
 plots_dir = Path("/user/nkerman/Projects/Monitors/telemetry_plots/")
 # %%
@@ -113,7 +113,7 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
             print("Not a valid plot_by selection ['mjd', 'datetime']")
             exit
 
-        fig.add_trace(go.Scatter(
+        fig.add_trace(go.Scattergl(
             x=x_box, 
             y=y_box,
             text=f"Quantile range: {q_low} - {q_hi}",
@@ -123,7 +123,7 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
             line=None))
     
     fig.add_trace(
-        go.Scatter(x=dataframe['datetime'],y=dataframe['Data'], mode="markers", name=f'{filetype}')
+        go.Scattergl(x=dataframe['datetime'],y=dataframe['Data'], mode="markers", name=f'{filetype}')
         )
 
     # fig.show()
