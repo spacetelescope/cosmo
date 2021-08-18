@@ -1,7 +1,6 @@
 #! /user/nkerman/miniconda3/envs/cosmo_env/bin/python
 # %%
 # Imports cell:
-import enum
 from os import read
 from pathlib import Path
 import pandas as pd
@@ -13,10 +12,11 @@ import pytimedinput
 import numpy as np
 # %%
 # USER INPUTS (those not queried on CLI):
-selected_filetypes = ['LD2LMP1T','LMMCETMP'] # Only filters to these if the if statement below is not commented out (search for "selected_filetypes")
+selected_filetypes = ['LOSM1POS','LOSM2POS','LD2LMP1T','LMMCETMP'] # Only filters to these if the if statement below is not commented out (search for "selected_filetypes")
 TIMEOUT=0.0 # TODO: frequently check/remove this limit
 telemetry_dir = Path("/grp/hst/cos/Telemetry/")
 plots_dir = Path("/user/nkerman/Projects/Monitors/telemetry_plots/")
+osm_plots_dir = Path("/user/nkerman/Projects/Monitors/telemetry_plots/OSM_plots/")
 # %%
 # Find all the telemetry data files:
 all_files = list(telemetry_dir.glob('*'))
@@ -172,6 +172,112 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
     if open_file:
         subprocess.run(['open', new_filename], check=True)
 # %%
+# OSM1 position
+osm1_dict = { #Sets conversion of the position to the graph height
+    'Unknown': -3,
+    '--': -2,
+    'AbMvFail': -1,
+    'RelMvReq': 0,
+    'G140L': 1,
+    'G130M': 2,
+    'G160M': 3,
+    'NCM1': 4,
+    'NCM1FLAT': 5,
+}
+osm1_color_dict = { #Sets conversion of the position to the graph color
+    'Unknown': "darkgray",
+    '--': "gray",
+    'AbMvFail': "red",
+    'RelMvReq': "black",
+    'G140L': "chocolate",
+    'G130M': "darkblue",
+    'G160M': "crimson",
+    'NCM1': "gold",
+    'NCM1FLAT': "darkgoldenrod",
+}
+# OSM2 position
+osm2_dict = { #Sets conversion of the position to the graph height
+    'Unknown': -3,
+    '--': -2,
+    'AbMvFail': -1,
+    'RelMvReq': 0,
+    'G230L': 1,
+    'G185M': 2,
+    'G225M': 3,
+    'G285M': 4,
+    'TA1Image': 5,
+    'TA1Brght': 6
+}
+osm2_color_dict = { #Sets conversion of the position to the graph color
+    'Unknown': "darkgray",
+    '--': "gray",
+    'AbMvFail': "red",
+    'RelMvReq': "black",
+    'G230L': "chocolate",
+    'G185M': "darkblue",
+    'G225M': "darkgreen",
+    'G285M': "crimson",
+    'TA1Image': "gold",
+    'TA1Brght': "darkgoldenrod"
+}
+
+# %%
+def build_osm_plot(dataframe, filetype, plot_by="datetime", plot_lines=True, valdict=osm1_dict, colordict=osm1_color_dict):
+    """
+    The OSM plots have text values, not numerical values of their Data column 
+    We'll need to translate this to a number, then plot with that number labeled as the position string
+    """
+    name_conversion_df = pd.DataFrame.from_dict(data = valdict, orient= 'index')
+    color_conversion_df = pd.DataFrame.from_dict(data = colordict, orient= 'index')
+    
+    # TODO: These two lines raise the SettingWithCopyWarning
+    #   But I CAN'T figure out why! 
+    dataframe.loc[:,'Datanum'] = dataframe.Data.map(lambda x: valdict[x])
+    dataframe.loc[:,'Graphcolor'] = dataframe.Data.map(lambda x: colordict[x])
+    
+    # Date limits as MJD:
+    minx, maxx = trimmed_data['MJD'].min(),trimmed_data['MJD'].max()
+    # Or Date limits as datetimes
+    minx_dt,maxx_dt = Time(minx,format='mjd').to_datetime(), Time(maxx,format='mjd').to_datetime() 
+    
+    fig = go.Figure() # Set up the figure
+    fig.add_trace(
+        go.Scattergl(
+            x=dataframe['datetime'],
+            y=dataframe['Datanum'],
+            mode='markers+lines',
+            name = filetype,
+            line={"shape": 'hv', "color": 'rgba(150,190,190,0.35)'},
+            marker = dict(
+                color = dataframe['Graphcolor'],
+            )
+        )
+    )
+    fig.update_layout(
+        yaxis=dict(
+            tickmode = 'array',
+            tickvals = list(valdict.values()),
+            ticktext = list(valdict.keys())
+        ),
+        title={
+                "text": f"{filetype} Monitor",
+                "x": 0.5,
+                'xanchor': 'center',
+        },
+        xaxis_title=plot_by.upper(),
+        yaxis_title=f"OSM State {filetype}",
+        font={
+            "family":"serif",
+            "size":24,
+            "color":"black"
+        }
+    )
+    fig['layout']['yaxis']['showgrid'] = False
+    # fig.show()
+    new_filename = f'{osm_plots_dir}/{filetype}_{minx:.1f}to{maxx:.1f}.html'
+    fig.write_html(new_filename)
+
+# %%
 
 for item_num, filetype in enumerate(file_dict.keys()):
 
@@ -195,8 +301,13 @@ for item_num, filetype in enumerate(file_dict.keys()):
 
             build_plot(dataframe=trimmed_data, filetype=filetype ,plot_by="datetime", plot_quantbox=True, q_low=0.005, q_hi=0.995, plot_lines=True, open_file=False, show_plot=False)
         except Exception as ex:
-            print(f"Something went wrong on file: {filetype}")
-            print(ex)
+            if 'OSM1' in filetype:
+                build_osm_plot(dataframe=trimmed_data,filetype=filetype,plot_by="datetime")
+            elif 'OSM2' in filetype:
+                build_osm_plot(dataframe=trimmed_data,filetype=filetype,plot_by="datetime", valdict=osm2_dict, colordict=osm2_color_dict)
+            else:
+                print(f"Something went wrong on file: {filetype}")
+                print(ex)
 # %% # NEW STUFF HERE!
 def step_wise(model_dataframe, targ_x, category="MJD", step_pos="right"):
     """
