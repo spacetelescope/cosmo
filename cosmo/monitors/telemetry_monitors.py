@@ -12,7 +12,9 @@ import pytimedinput
 import numpy as np
 # %%
 # USER INPUTS (those not queried on CLI):
-selected_filetypes = ['LOSM1POS','LOSM2POS','LD2LMP1T','LMMCETMP'] # Only filters to these if the if statement below is not commented out (search for "selected_filetypes")
+selected_filetypes = ['LOSMLAMB','LOSM1POS','LOSM2POS','LD2LMP1T','LMMCETMP'] # Only filters to these if the if statement below is not commented out (search for "selected_filetypes")
+color_by_data_list = ['LOSMLAMB'] # Do you want to color the datapoints based on their y value?
+skip_quantbox_list = ['LOSMLAMB'] # Do you want to skip plotting the default quantile box (encloses 99% of datapoints by default)
 TIMEOUT=0.0 # TODO: frequently check/remove this limit
 telemetry_dir = Path("/grp/hst/cos/Telemetry/")
 plots_dir = Path("/user/nkerman/Projects/Monitors/telemetry_plots/")
@@ -102,7 +104,7 @@ def find_closest_date(dataframe, target, verbose=False, category='MJD'):
         print(found_row)
     return found_row.name,found_row[category]
 # %%
-def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_low=0.005, q_hi=0.995, plot_lines=True, open_file=False, show_plot=False):
+def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_low=0.005, q_hi=0.995, plot_lines=True, open_file=False, show_plot=False,color_by_data=False):
     
     fig = go.Figure() # Set up the figure
     miny,maxy = get_quantiles(dataframe, q_low, q_hi)
@@ -139,13 +141,23 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
         data_trace_mode = "lines+markers"
     else: 
         data_trace_mode = "markers"
+    if color_by_data:
+        datapt_mode = {
+            "color": dataframe['Data'],
+            "cmin": dataframe['Data'].min(),
+            "cmax": dataframe['Data'].max(),
+            "colorscale": "rainbow"
+        }
+    else:
+        datapt_mode = {"color": 'rgba(0,100,256,0.99)'}
+
     fig.add_trace(
         go.Scattergl(
             x=dataframe['datetime'],
             y=dataframe['Data'],
             mode=data_trace_mode,
             line={"shape": 'hv', "color": 'rgba(200,100,100,0.25)'},
-            marker={"color": 'rgba(0,100,256,0.99)'},
+            marker=datapt_mode,
             name=f'{filetype}')
         )
     fig.update_layout( # Give proper axis labels, title, and choose font
@@ -298,8 +310,19 @@ for item_num, filetype in enumerate(file_dict.keys()):
 
             # Actually cut the data to that size:
             trimmed_data = read_data_full[mindex:maxdex]
+            
+            # Do we want to color the datapoints by the data (y) value?
+            if filetype in color_by_data_list:
+                color_by_data = True
+            else:
+                color_by_data = False
+            # Do we want to skip plotting the quantile box?
+            if filetype in skip_quantbox_list:
+                plot_quantbox = False
+            else:
+                plot_quantbox = True
 
-            build_plot(dataframe=trimmed_data, filetype=filetype ,plot_by="datetime", plot_quantbox=True, q_low=0.005, q_hi=0.995, plot_lines=True, open_file=False, show_plot=False)
+            build_plot(dataframe=trimmed_data, filetype=filetype ,plot_by="datetime", plot_quantbox=plot_quantbox, q_low=0.005, q_hi=0.995, plot_lines=True, open_file=False, show_plot=False, color_by_data=color_by_data)
         except Exception as ex:
             if 'OSM1' in filetype:
                 build_osm_plot(dataframe=trimmed_data,filetype=filetype,plot_by="datetime")
@@ -308,7 +331,8 @@ for item_num, filetype in enumerate(file_dict.keys()):
             else:
                 print(f"Something went wrong on file: {filetype}")
                 print(ex)
-# %% # NEW STUFF HERE!
+# %% 
+# To calculate an individual value:
 def step_wise(model_dataframe, targ_x, category="MJD", step_pos="right"):
     """
     A stepwise function that rises/falls at the location of the next datapoint
