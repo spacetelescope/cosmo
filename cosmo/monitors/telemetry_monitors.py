@@ -12,13 +12,20 @@ import pytimedinput
 import numpy as np
 # %%
 # USER INPUTS (those not queried on CLI):
-selected_filetypes = ['LOSMLAMB','LOSM1POS','LOSM2POS','LD2LMP1T','LMMCETMP'] # Only filters to these if the if statement below is not commented out (search for "selected_filetypes")
+selected_filetypes = ['LMMCETMP','LOSMLAMB','LOSM1POS','LOSM2POS','LD2LMP1T'] # Only filters to these if the if statement below is not commented out (search for "selected_filetypes")
+TIMEOUT=0.0 # TODO: frequently check/remove this limit
 color_by_data_list = ['LOSMLAMB'] # Do you want to color the datapoints based on their y value?
 skip_quantbox_list = ['LOSMLAMB'] # Do you want to skip plotting the default quantile box (encloses 99% of datapoints by default)
-TIMEOUT=0.0 # TODO: frequently check/remove this limit
 telemetry_dir = Path("/grp/hst/cos/Telemetry/")
 plots_dir = Path("/user/nkerman/Projects/Monitors/telemetry_plots/")
 osm_plots_dir = Path("/user/nkerman/Projects/Monitors/telemetry_plots/OSM_plots/")
+mnemonics_file = Path("../telemetry_support/COSMnemonics.xls")
+zooms_file = Path("../telemetry_support/default_telemetry_zooms.csv")
+# %%
+# Read in the file which tells us what the filenames mean:
+mnemon_df = pd.read_excel(mnemonics_file, sheet_name=0)
+# Read in the file which specifies manual zooms/limits:
+zoom_df = pd.read_csv(zooms_file)
 # %%
 # Find all the telemetry data files:
 all_files = list(telemetry_dir.glob('*'))
@@ -162,7 +169,7 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
         )
     fig.update_layout( # Give proper axis labels, title, and choose font
         title={
-            "text": f"{filetype} Monitor",
+            "text": f"{filetype}: {desciption} Monitor",
             "x": 0.5,
             'xanchor': 'center',
         },
@@ -173,6 +180,12 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
             "size":24,
             "color":"black"
         }
+        )
+    if filetype in zoom_df['Mnemonic'].values:
+        fig.update_layout(
+            yaxis=dict(
+                range=[zoom_df.loc[zoom_df['Mnemonic']==filetype].min_y,zoom_df.loc[zoom_df['Mnemonic']==filetype].max_y]
+            )
         )
     
     new_filename = f'{plots_dir}/{filetype}_{minx:.1f}to{maxx:.1f}.html'
@@ -272,7 +285,7 @@ def build_osm_plot(dataframe, filetype, plot_by="datetime", plot_lines=True, val
             ticktext = list(valdict.keys())
         ),
         title={
-                "text": f"{filetype} Monitor",
+                "text": f"{filetype}: {desciption} Monitor",
                 "x": 0.5,
                 'xanchor': 'center',
         },
@@ -295,10 +308,11 @@ for item_num, filetype in enumerate(file_dict.keys()):
 
     # while item_num < 2: # If you want to limit to the first N files
     
-    # if filetype in selected_filetypes: # or if want to limit to a set of filetypes
+    if filetype in selected_filetypes: # or if want to limit to a set of filetypes
         
         try:
-            print(f"{item_num}: Running for {filetype}")
+            desciption = mnemon_df.loc[mnemon_df['Mnemonic']==filetype]['Description'].values[0]
+            print(f"{item_num}: Running for {filetype}: {desciption}")
             read_data_full = read_data(telemetry_dir/filetype)
 
             # Set the default min/max date of the plot to the last year since most recent point:
