@@ -305,10 +305,10 @@ def build_osm_plot(dataframe, filetype, plot_by="datetime", plot_lines=True, val
 # %%
 
 for item_num, filetype in enumerate(file_dict.keys()):
-
-    # while item_num < 2: # If you want to limit to the first N files
     
-    if filetype in selected_filetypes: # or if want to limit to a set of filetypes
+    # RUN CONDITIONALS (to limit which files are run)
+    # while item_num < 2: # If you want to limit to the first N files
+    # if filetype in selected_filetypes: # or if want to limit to a set of filetypes
         
         try:
             desciption = mnemon_df.loc[mnemon_df['Mnemonic']==filetype]['Description'].values[0]
