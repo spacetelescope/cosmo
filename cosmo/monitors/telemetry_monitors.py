@@ -1,7 +1,8 @@
 #! /user/nkerman/miniconda3/envs/cosmo_env/bin/python
 # %%
 # Imports cell:
-from os import read
+import os
+from sys import exit as s_exit
 from pathlib import Path
 import pandas as pd
 import plotly.express as px
@@ -16,11 +17,34 @@ selected_filetypes = ['LMMCETMP','LOSMLAMB','LOSM1POS','LOSM2POS','LD2LMP1T'] # 
 TIMEOUT=0.0 # TODO: frequently check/remove this limit
 color_by_data_list = ['LOSMLAMB'] # Do you want to color the datapoints based on their y value?
 skip_quantbox_list = ['LOSMLAMB'] # Do you want to skip plotting the default quantile box (encloses 99% of datapoints by default)
-telemetry_dir = Path("/grp/hst/cos/Telemetry/")
-plots_dir = Path("/user/nkerman/Projects/Monitors/telemetry_plots/")
-osm_plots_dir = Path("/user/nkerman/Projects/Monitors/telemetry_plots/OSM_plots/")
-mnemonics_file = Path("../telemetry_support/COSMnemonics.xls")
-zooms_file = Path("../telemetry_support/default_telemetry_zooms.csv")
+class bcolors: # We may wish to print some colored output to the terminal
+    # citation https://stackoverflow.com/questions/287871/how-to-print-colored-text-to-the-terminal
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    DKGREEN = '\033[32m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+try:
+    telemetry_dir = Path(os.environ['TELEMETRY_DATADIR'])
+    plots_dir = Path(os.environ['TELEMETRY_PLOTSDIR'])
+    osm_plots_dir = plots_dir/"OSM_plots/"
+    mnemonics_file = Path(os.environ['TELEMETRY_MNEMONICS'])
+    zooms_file = Path(os.environ['TELEMETRY_ZOOMS'])
+    print(telemetry_dir,plots_dir,osm_plots_dir,mnemonics_file,zooms_file)
+except Exception as nameExcept:
+    print(f"""
+    It seems that you are lacking some of the necessary environment variables. These include:
+    {bcolors.DKGREEN}TELEMETRY_DATADIR{bcolors.ENDC} : Path to directory containing all the telemetry files 
+    {bcolors.DKGREEN}TELEMETRY_ZOOMS{bcolors.ENDC} : Path to the (CSV) file containing your list of default zooms for each telemetry variable
+    {bcolors.DKGREEN}TELEMETRY_MNEMONICS{bcolors.ENDC} : Path to the (Excel) file containing your list of mnemonics for each telemetry variable
+    {bcolors.DKGREEN}TELEMETRY_PLOTSDIR{bcolors.ENDC} : Path to directory where you want to save the output plots of each telemetry variable
+    """)
+    s_exit(1)
 # %%
 # Read in the file which tells us what the filenames mean:
 mnemon_df = pd.read_excel(mnemonics_file, sheet_name=0)
@@ -308,7 +332,7 @@ for item_num, filetype in enumerate(file_dict.keys()):
     
     # RUN CONDITIONALS (to limit which files are run)
     # while item_num < 2: # If you want to limit to the first N files
-    # if filetype in selected_filetypes: # or if want to limit to a set of filetypes
+    if filetype in selected_filetypes: # or if want to limit to a set of filetypes
         
         try:
             desciption = mnemon_df.loc[mnemon_df['Mnemonic']==filetype]['Description'].values[0]
