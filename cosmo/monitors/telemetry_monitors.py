@@ -208,7 +208,7 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
     if filetype in zoom_df['Mnemonic'].values:
         fig.update_layout(
             yaxis=dict(
-                range=[zoom_df.loc[zoom_df['Mnemonic']==filetype].min_y,zoom_df.loc[zoom_df['Mnemonic']==filetype].max_y]
+                range=[zoom_df.loc[zoom_df['Mnemonic']==filetype].min_y.item(),zoom_df.loc[zoom_df['Mnemonic']==filetype].max_y.item()]
             )
         )
     
@@ -216,7 +216,8 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
     if show_plot:
         fig.show()
     fig.write_html(new_filename)
-
+    if verbose:
+        print(f"Saved to: {new_filename}")
 
     if open_file:
         subprocess.run(['open', new_filename], check=True)
@@ -325,11 +326,13 @@ def build_osm_plot(dataframe, filetype, plot_by="datetime", plot_lines=True, val
     # fig.show()
     new_filename = f'{osm_plots_dir}/{filetype}_{minx:.1f}to{maxx:.1f}.html'
     fig.write_html(new_filename)
+    if verbose:
+        print(f"Saved to: {new_filename}")
 
 # %%
 
 for item_num, filetype in enumerate(file_dict.keys()):
-    
+    verbose = True
     # RUN CONDITIONALS (to limit which files are run)
     # while item_num < 2: # If you want to limit to the first N files
     if filetype in selected_filetypes: # or if want to limit to a set of filetypes
