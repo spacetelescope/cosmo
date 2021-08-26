@@ -2,7 +2,8 @@
 # %%
 # Imports cell:
 import os
-from sys import exit as s_exit
+import argparse
+import sys
 from pathlib import Path
 import pandas as pd
 import plotly.express as px
@@ -14,7 +15,7 @@ import numpy as np
 # %%
 # USER INPUTS (those not queried on CLI):
 selected_filetypes = ['LMMCETMP','LOSMLAMB','LOSM1POS','LOSM2POS','LD2LMP1T'] # Only filters to these if the if statement below is not commented out (search for "selected_filetypes")
-TIMEOUT=0.0 # TODO: frequently check/remove this limit
+TIMEOUT=2.0 # TODO: frequently check/remove this limit
 color_by_data_list = ['LOSMLAMB'] # Do you want to color the datapoints based on their y value?
 skip_quantbox_list = ['LOSMLAMB'] # Do you want to skip plotting the default quantile box (encloses 99% of datapoints by default)
 class bcolors: # We may wish to print some colored output to the terminal
@@ -35,7 +36,6 @@ try:
     osm_plots_dir = plots_dir/"OSM_plots/"
     mnemonics_file = Path(os.environ['TELEMETRY_MNEMONICS'])
     zooms_file = Path(os.environ['TELEMETRY_ZOOMS'])
-    print(telemetry_dir,plots_dir,osm_plots_dir,mnemonics_file,zooms_file)
 except Exception as nameExcept:
     print(f"""
     It seems that you are lacking some of the necessary environment variables. These include:
@@ -43,8 +43,27 @@ except Exception as nameExcept:
     {bcolors.DKGREEN}TELEMETRY_ZOOMS{bcolors.ENDC} : Path to the (CSV) file containing your list of default zooms for each telemetry variable
     {bcolors.DKGREEN}TELEMETRY_MNEMONICS{bcolors.ENDC} : Path to the (Excel) file containing your list of mnemonics for each telemetry variable
     {bcolors.DKGREEN}TELEMETRY_PLOTSDIR{bcolors.ENDC} : Path to directory where you want to save the output plots of each telemetry variable
+
+    We recommend checking and sourcing your {bcolors.OKBLUE}'cosmo/cosmo/telemetry_support/telem_mon_env_variables.sh'{bcolors.ENDC} file
     """)
-    s_exit(1)
+    sys.exit(1)
+# %%
+# Deal with CLI Arguments:
+parser = argparse.ArgumentParser()
+parser.add_argument("-v", "--verbose", help="increase output verbosity (Boolean)", action="store_true")
+parser.add_argument("-u", "--ask-user", help="Ask user for each Telemetry file's begin/end dates (Boolean). Note, these are overridden by any begindate/enddate specified!", action="store_true")
+parser.add_argument("-b", "--begindate", help="The date you'd like to begin the monitors on. If none specified, defaults to 365.25 days before last datapoint in Telemetry file or --ask-user. If specified, overrides ask-user dates.")
+parser.add_argument("-e", "--enddate", help="The date you'd like to begin the monitors on. If none specified, defaults day of last datapoint in Telemetry file or --ask-user. If specified, overrides ask-user dates.")
+args = parser.parse_args()
+
+if args.verbose:
+    print("Verbosity turned on")
+    verbose = True
+else:
+    verbose = False
+
+
+# sys.exit(0) # Delete this!
 # %%
 # Read in the file which tells us what the filenames mean:
 mnemon_df = pd.read_excel(mnemonics_file, sheet_name=0)
@@ -80,7 +99,6 @@ def read_data(filetype, verbose=False):
 # %%
 def my_input(prompt, timeout=10.):
     user_string, timedout_bool = pytimedinput.timedInput(prompt,timeout)
-    print(timedout_bool)
     if timedout_bool:
         user_string = ""
     return user_string
@@ -92,28 +110,28 @@ def ask_user_dates(verbose=False, timeout=10.):
         user_min_date = my_input(f"Start date? [{timeout} seconds to respond],[Enter for default {def_min_date}]", timeout)
     except:
         user_min_date = def_min_date
-        print(f"setting to default of {def_min_date}")
+        print(f"setting to default of {def_min_date} unless overridden by begindate/enddate arguments.")
     if user_min_date in ["N","n",None]:
         user_min_date = def_min_date
     try: 
         float(user_min_date)
     except ValueError:
         if verbose: 
-            print(f"could not convert string to float; setting to default of {def_min_date}")
+            print(f"could not convert string to float; setting to default of {def_min_date} unless overridden by begindate/enddate arguments.")
         user_min_date = def_min_date
     mindex, min_date = find_closest_date(read_data_full,float(user_min_date))
     try: # In case non-interactive terminal, set to default:
         user_max_date = def_max_date
         user_max_date = my_input(f"End date?   [{timeout} seconds to respond],[Enter for default {def_max_date}]", timeout)
     except:
-        print(f"setting to default of {def_min_date}")
+        print(f"setting to default of {def_min_date} unless overridden by begindate/enddate arguments.")
     if user_max_date in ["N","n",None]:
         user_max_date = def_max_date
     try: 
         float(user_max_date)
     except ValueError:
         if verbose: 
-            print(f"could not convert string to float; setting to default of {def_max_date}")
+            print(f"could not convert string to float; setting to default of {def_max_date} unless overridden by begindate/enddate arguments.")
         user_max_date = def_max_date
 
     maxdex, max_date = find_closest_date(read_data_full,float(user_max_date))
@@ -140,7 +158,7 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
     fig = go.Figure() # Set up the figure
     miny,maxy = get_quantiles(dataframe, q_low, q_hi)
     # Date limits as MJD:
-    minx, maxx = trimmed_data['MJD'].min(),trimmed_data['MJD'].max()
+    minx, maxx = dataframe['MJD'].min(),dataframe['MJD'].max()
     # Or Date limits as datetimes
     minx_dt,maxx_dt = Time(minx,format='mjd').to_datetime(), Time(maxx,format='mjd').to_datetime() 
 
@@ -286,7 +304,7 @@ def build_osm_plot(dataframe, filetype, plot_by="datetime", plot_lines=True, val
     dataframe.loc[:,'Graphcolor'] = dataframe.Data.map(lambda x: colordict[x])
     
     # Date limits as MJD:
-    minx, maxx = trimmed_data['MJD'].min(),trimmed_data['MJD'].max()
+    minx, maxx = dataframe['MJD'].min(),dataframe['MJD'].max()
     # Or Date limits as datetimes
     minx_dt,maxx_dt = Time(minx,format='mjd').to_datetime(), Time(maxx,format='mjd').to_datetime() 
     
@@ -332,27 +350,37 @@ def build_osm_plot(dataframe, filetype, plot_by="datetime", plot_lines=True, val
 # %%
 
 for item_num, filetype in enumerate(file_dict.keys()):
-    verbose = True
     # RUN CONDITIONALS (to limit which files are run)
     # while item_num < 2: # If you want to limit to the first N files
     if filetype in selected_filetypes: # or if want to limit to a set of filetypes
         
         try:
             desciption = mnemon_df.loc[mnemon_df['Mnemonic']==filetype]['Description'].values[0]
-            print(f"{item_num}: Running for {filetype}: {desciption}")
+            print(f"{item_num}: Running for {filetype}: {desciption} monitor")
             read_data_full = read_data(telemetry_dir/filetype)
 
             # Set the default min/max date of the plot to the last year since most recent point:
             def_max_date = read_data_full['MJD'].iloc[-1]
             def_min_date = def_max_date - 365.25
+        
+        # Get the start/end dates in the correct format:
+            if args.ask_user:
+                print("Asking the user for dates:\n")
+                # Solicit the min/max date of the plot from the user, with defaults if no numerical date detected
+                mindex, user_min_date, maxdex, user_max_date = ask_user_dates(verbose = verbose, timeout=TIMEOUT)
+            else:
+                mindex, user_min_date = find_closest_date(read_data_full,def_min_date)
+                maxdex, user_max_date = find_closest_date(read_data_full,def_max_date)
+            
+            if args.begindate: # If user specifies begin/end dates, these will OVERRIDE all other dates
+                mindex, user_min_date = find_closest_date(read_data_full,float(args.begindate))
+            if args.enddate:
+                maxdex, user_max_date = find_closest_date(read_data_full,float(args.enddate))
 
-            # Solicit the min/max date of the plot from the user, with defaults if no numerical date detected
-            mindex, user_min_date, maxdex, user_max_date = ask_user_dates(verbose = False, timeout=TIMEOUT)
-
-            # Actually cut the data to that size:
+        # Actually cut the data to that size:
             trimmed_data = read_data_full[mindex:maxdex]
             
-            # Do we want to color the datapoints by the data (y) value?
+        # Do we want to color the datapoints by the data (y) value?
             if filetype in color_by_data_list:
                 color_by_data = True
             else:
