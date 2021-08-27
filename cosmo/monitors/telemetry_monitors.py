@@ -1,4 +1,4 @@
-#! /user/nkerman/miniconda3/envs/cosmo_env/bin/python
+#!/usr/bin/env python
 # %%
 # Initial quick-loading imports:
 import argparse
@@ -8,8 +8,8 @@ from pathlib import Path
 # USER INPUTS (those not queried on CLI):
 selected_filetypes = ['LMMCETMP','LOSMLAMB','LOSM1POS','LOSM2POS','LD2LMP1T'] # Only filters to these if the if statement below is not commented out (search for "selected_filetypes")
 TIMEOUT=15.0 # TODO: frequently check/remove this limit
-color_by_data_list = ['LOSMLAMB'] # Do you want to color the datapoints based on their y value?
-skip_quantbox_list = ['LOSMLAMB'] # Do you want to skip plotting the default quantile box (encloses 99% of datapoints by default)
+color_by_data_list = ['LOSMLAMB','LOSM1POS','LOSM2POS'] # Do you want to color the datapoints based on their y value?
+skip_quantbox_list = ['LOSMLAMB','LOSM1POS','LOSM2POS'] # Do you want to skip plotting the default quantile box (encloses 99% of datapoints by default)
 class bcolors: # We may wish to print some colored output to the terminal
     # citation https://stackoverflow.com/questions/287871/how-to-print-colored-text-to-the-terminal
     HEADER = '\033[95m'
@@ -17,6 +17,7 @@ class bcolors: # We may wish to print some colored output to the terminal
     OKCYAN = '\033[96m'
     DKGREEN = '\033[32m'
     OKGREEN = '\033[92m'
+    DKRED = '\033[31m'
     WARNING = '\033[93m'
     FAIL = '\033[91m'
     ENDC = '\033[0m'
@@ -24,12 +25,15 @@ class bcolors: # We may wish to print some colored output to the terminal
     UNDERLINE = '\033[4m'
 
 # Deal with CLI Arguments:
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-v", "--verbose", help="increase output verbosity (Boolean)", action="store_true")
 parser.add_argument("-u", "--ask-user", help="Ask user for each Telemetry file's begin/end dates (Boolean). Note, these are overridden by any begindate/enddate specified!", action="store_true")
+parser.add_argument("-t", "--timeout", type=float, help=f"If asking the user for begin/end dates, how long to give them to respond before setting default. Defaults to {bcolors.DKRED}{TIMEOUT}{bcolors.ENDC}")
 parser.add_argument("-b", "--begindate", type=float, help="The date you'd like to begin the monitors on. If none specified, defaults to 365.25 days before last datapoint in Telemetry file or --ask-user. If specified, overrides ask-user dates.")
 parser.add_argument("-e", "--enddate", type=float, help="The date you'd like to begin the monitors on. If none specified, defaults day of last datapoint in Telemetry file or --ask-user. If specified, overrides ask-user dates.")
-parser.add_argument("-o", "--outdir", type=str, help="The directory to save plots in. If specified, overrides the directory specified by the environment variable '{bcolors.DKGREEN}TELEMETRY_PLOTSDIR{bcolors.ENDC}'.")
+parser.add_argument("-o", "--outdir", type=str, help=f"The directory to save plots in. If specified, overrides the directory specified by the environment variable '{bcolors.DKGREEN}TELEMETRY_PLOTSDIR{bcolors.ENDC}'.")
+parser.add_argument("-f", "--filetypes", type=str, help=f"The filetypes to run the monitors code on. Must be in the {bcolors.DKGREEN}TELEMETRY_DATADIR{bcolors.ENDC} location", nargs='+')
 args = parser.parse_args()
 if args.verbose:
     print("Verbosity turned on...")
@@ -38,12 +42,12 @@ else:
     verbose = False
 
 try:
-    telemetry_dir = Path(environ['TELEMETRY_DATADIR'])
     if args.outdir:
         plots_dir = Path(args.outdir)
     else:
         plots_dir = Path(environ['TELEMETRY_PLOTSDIR'])
     osm_plots_dir = plots_dir/"OSM_plots/"
+    telemetry_dir = Path(environ['TELEMETRY_DATADIR'])
     mnemonics_file = Path(environ['TELEMETRY_MNEMONICS'])
     zooms_file = Path(environ['TELEMETRY_ZOOMS'])
     plots_dir.mkdir(exist_ok=True)
@@ -68,6 +72,8 @@ from astropy.time import Time
 import subprocess
 if args.ask_user: # If querying user with timeout import a timed input pkg
     import pytimedinput
+    if args.timeout:
+        TIMEOUT = args.timeout
 # %%
 # Read in the file which tells us what the filenames mean:
 mnemon_df = pd.read_excel(mnemonics_file, sheet_name=0)
@@ -82,6 +88,13 @@ for file in telemetry_dir.glob('*'):
         ftype = file.name
         file_dict[ftype] = file
 
+if args.filetypes:
+    selected_filetypes = [filetype.upper() for filetype in args.filetypes if filetype.upper() in list(file_dict.keys())]
+    assert len(selected_filetypes) > 0, f"If specifying filetypes, you must actually list some filetypes in the{bcolors.DKGREEN} TELEMETRY_DATADIR{bcolors.ENDC} directory."
+else:
+    selected_filetypes = list(file_dict.keys())
+if verbose:
+    print(f"We will create monitors for these {len(selected_filetypes)} files:\n{selected_filetypes}")
 # %%
 def read_data(filetype, verbose=False):
     # Read in the data to a pandas dataframe:
