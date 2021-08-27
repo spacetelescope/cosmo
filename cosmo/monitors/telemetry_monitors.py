@@ -39,10 +39,15 @@ else:
 
 try:
     telemetry_dir = Path(environ['TELEMETRY_DATADIR'])
-    plots_dir = Path(environ['TELEMETRY_PLOTSDIR'])
+    if args.outdir:
+        plots_dir = Path(args.outdir)
+    else:
+        plots_dir = Path(environ['TELEMETRY_PLOTSDIR'])
     osm_plots_dir = plots_dir/"OSM_plots/"
     mnemonics_file = Path(environ['TELEMETRY_MNEMONICS'])
     zooms_file = Path(environ['TELEMETRY_ZOOMS'])
+    plots_dir.mkdir(exist_ok=True)
+    osm_plots_dir.mkdir(exist_ok=True)
 except Exception as nameExcept:
     print(nameExcept)
     print(f"""
