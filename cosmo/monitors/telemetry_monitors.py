@@ -1,21 +1,13 @@
 #! /user/nkerman/miniconda3/envs/cosmo_env/bin/python
 # %%
-# Imports cell:
-import os
+# Initial quick-loading imports:
 import argparse
-import sys
+from os import environ
+from sys import exit as sysex
 from pathlib import Path
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from astropy.time import Time
-import subprocess
-import pytimedinput
-import numpy as np
-# %%
 # USER INPUTS (those not queried on CLI):
 selected_filetypes = ['LMMCETMP','LOSMLAMB','LOSM1POS','LOSM2POS','LD2LMP1T'] # Only filters to these if the if statement below is not commented out (search for "selected_filetypes")
-TIMEOUT=2.0 # TODO: frequently check/remove this limit
+TIMEOUT=15.0 # TODO: frequently check/remove this limit
 color_by_data_list = ['LOSMLAMB'] # Do you want to color the datapoints based on their y value?
 skip_quantbox_list = ['LOSMLAMB'] # Do you want to skip plotting the default quantile box (encloses 99% of datapoints by default)
 class bcolors: # We may wish to print some colored output to the terminal
@@ -30,13 +22,29 @@ class bcolors: # We may wish to print some colored output to the terminal
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+
+# Deal with CLI Arguments:
+parser = argparse.ArgumentParser()
+parser.add_argument("-v", "--verbose", help="increase output verbosity (Boolean)", action="store_true")
+parser.add_argument("-u", "--ask-user", help="Ask user for each Telemetry file's begin/end dates (Boolean). Note, these are overridden by any begindate/enddate specified!", action="store_true")
+parser.add_argument("-b", "--begindate", type=float, help="The date you'd like to begin the monitors on. If none specified, defaults to 365.25 days before last datapoint in Telemetry file or --ask-user. If specified, overrides ask-user dates.")
+parser.add_argument("-e", "--enddate", type=float, help="The date you'd like to begin the monitors on. If none specified, defaults day of last datapoint in Telemetry file or --ask-user. If specified, overrides ask-user dates.")
+parser.add_argument("-o", "--outdir", type=str, help="The directory to save plots in. If specified, overrides the directory specified by the environment variable '{bcolors.DKGREEN}TELEMETRY_PLOTSDIR{bcolors.ENDC}'.")
+args = parser.parse_args()
+if args.verbose:
+    print("Verbosity turned on...")
+    verbose = True
+else:
+    verbose = False
+
 try:
-    telemetry_dir = Path(os.environ['TELEMETRY_DATADIR'])
-    plots_dir = Path(os.environ['TELEMETRY_PLOTSDIR'])
+    telemetry_dir = Path(environ['TELEMETRY_DATADIR'])
+    plots_dir = Path(environ['TELEMETRY_PLOTSDIR'])
     osm_plots_dir = plots_dir/"OSM_plots/"
-    mnemonics_file = Path(os.environ['TELEMETRY_MNEMONICS'])
-    zooms_file = Path(os.environ['TELEMETRY_ZOOMS'])
+    mnemonics_file = Path(environ['TELEMETRY_MNEMONICS'])
+    zooms_file = Path(environ['TELEMETRY_ZOOMS'])
 except Exception as nameExcept:
+    print(nameExcept)
     print(f"""
     It seems that you are lacking some of the necessary environment variables. These include:
     {bcolors.DKGREEN}TELEMETRY_DATADIR{bcolors.ENDC} : Path to directory containing all the telemetry files 
@@ -46,24 +54,15 @@ except Exception as nameExcept:
 
     We recommend checking and sourcing your {bcolors.OKBLUE}'cosmo/cosmo/telemetry_support/telem_mon_env_variables.sh'{bcolors.ENDC} file
     """)
-    sys.exit(1)
+    sysex(1)
 # %%
-# Deal with CLI Arguments:
-parser = argparse.ArgumentParser()
-parser.add_argument("-v", "--verbose", help="increase output verbosity (Boolean)", action="store_true")
-parser.add_argument("-u", "--ask-user", help="Ask user for each Telemetry file's begin/end dates (Boolean). Note, these are overridden by any begindate/enddate specified!", action="store_true")
-parser.add_argument("-b", "--begindate", help="The date you'd like to begin the monitors on. If none specified, defaults to 365.25 days before last datapoint in Telemetry file or --ask-user. If specified, overrides ask-user dates.")
-parser.add_argument("-e", "--enddate", help="The date you'd like to begin the monitors on. If none specified, defaults day of last datapoint in Telemetry file or --ask-user. If specified, overrides ask-user dates.")
-args = parser.parse_args()
-
-if args.verbose:
-    print("Verbosity turned on")
-    verbose = True
-else:
-    verbose = False
-
-
-# sys.exit(0) # Delete this!
+# Slower imports:
+import pandas as pd
+import plotly.graph_objects as go
+from astropy.time import Time
+import subprocess
+if args.ask_user: # If querying user with timeout import a timed input pkg
+    import pytimedinput
 # %%
 # Read in the file which tells us what the filenames mean:
 mnemon_df = pd.read_excel(mnemonics_file, sheet_name=0)
@@ -171,7 +170,7 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
             y_box=[miny,miny,maxy,maxy,miny]
         else:
             print("Not a valid plot_by selection ['mjd', 'datetime']")
-            exit
+            sysex(0)
 
         fig.add_trace(
             go.Scattergl(
@@ -226,7 +225,10 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
     if filetype in zoom_df['Mnemonic'].values:
         fig.update_layout(
             yaxis=dict(
-                range=[zoom_df.loc[zoom_df['Mnemonic']==filetype].min_y.item(),zoom_df.loc[zoom_df['Mnemonic']==filetype].max_y.item()]
+                range=[
+                    zoom_df.loc[zoom_df['Mnemonic']==filetype].min_y.item(),
+                    zoom_df.loc[zoom_df['Mnemonic']==filetype].max_y.item()
+                ]
             )
         )
     
@@ -299,9 +301,12 @@ def build_osm_plot(dataframe, filetype, plot_by="datetime", plot_lines=True, val
     color_conversion_df = pd.DataFrame.from_dict(data = colordict, orient= 'index')
     
     # TODO: These two lines raise the SettingWithCopyWarning
-    #   But I CAN'T figure out why! 
+    #   But I CAN'T figure out why! As a result, briefly suppress the warning
+    #   https://stackoverflow.com/questions/42105859/pandas-map-to-a-new-column-settingwithcopywarning/42106022
+    pd.options.mode.chained_assignment = None 
     dataframe.loc[:,'Datanum'] = dataframe.Data.map(lambda x: valdict[x])
     dataframe.loc[:,'Graphcolor'] = dataframe.Data.map(lambda x: colordict[x])
+    pd.options.mode.chained_assignment = "warn" 
     
     # Date limits as MJD:
     minx, maxx = dataframe['MJD'].min(),dataframe['MJD'].max()
@@ -356,7 +361,7 @@ for item_num, filetype in enumerate(file_dict.keys()):
         
         try:
             desciption = mnemon_df.loc[mnemon_df['Mnemonic']==filetype]['Description'].values[0]
-            print(f"{item_num}: Running for {filetype}: {desciption} monitor")
+            print(f"{item_num}/{len(file_dict.keys())}: Running for {bcolors.BOLD}{filetype}: {bcolors.UNDERLINE}{desciption}{bcolors.ENDC} monitor")
             read_data_full = read_data(telemetry_dir/filetype)
 
             # Set the default min/max date of the plot to the last year since most recent point:
@@ -373,9 +378,9 @@ for item_num, filetype in enumerate(file_dict.keys()):
                 maxdex, user_max_date = find_closest_date(read_data_full,def_max_date)
             
             if args.begindate: # If user specifies begin/end dates, these will OVERRIDE all other dates
-                mindex, user_min_date = find_closest_date(read_data_full,float(args.begindate))
+                mindex, user_min_date = find_closest_date(read_data_full,args.begindate)
             if args.enddate:
-                maxdex, user_max_date = find_closest_date(read_data_full,float(args.enddate))
+                maxdex, user_max_date = find_closest_date(read_data_full,args.enddate)
 
         # Actually cut the data to that size:
             trimmed_data = read_data_full[mindex:maxdex]
