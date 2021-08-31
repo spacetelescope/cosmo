@@ -50,16 +50,18 @@ try:
     telemetry_dir = Path(environ['TELEMETRY_DATADIR'])
     mnemonics_file = Path(environ['TELEMETRY_MNEMONICS'])
     zooms_file = Path(environ['TELEMETRY_ZOOMS'])
+    texts_file = Path(environ['TELEMETRY_TEXTS'])
     plots_dir.mkdir(exist_ok=True)
     osm_plots_dir.mkdir(exist_ok=True)
 except Exception as nameExcept:
     print(nameExcept)
     print(f"""
     It seems that you are lacking some of the necessary environment variables. These include:
-    {bcolors.DKGREEN}TELEMETRY_DATADIR{bcolors.ENDC} : Path to directory containing all the telemetry files 
-    {bcolors.DKGREEN}TELEMETRY_ZOOMS{bcolors.ENDC} : Path to the (CSV) file containing your list of default zooms for each telemetry variable
-    {bcolors.DKGREEN}TELEMETRY_MNEMONICS{bcolors.ENDC} : Path to the (Excel) file containing your list of mnemonics for each telemetry variable
-    {bcolors.DKGREEN}TELEMETRY_PLOTSDIR{bcolors.ENDC} : Path to directory where you want to save the output plots of each telemetry variable
+    {bcolors.DKGREEN}TELEMETRY_DATADIR{bcolors.ENDC} : Path to {bcolors.OKCYAN}directory{bcolors.ENDC} containing all the telemetry files 
+    {bcolors.DKGREEN}TELEMETRY_ZOOMS{bcolors.ENDC} : Path to the {bcolors.OKCYAN}(CSV) file{bcolors.ENDC} containing your list of default zooms for each telemetry variable
+    {bcolors.DKGREEN}TELEMETRY_MNEMONICS{bcolors.ENDC} : Path to the {bcolors.OKCYAN}(Excel) file{bcolors.ENDC} containing your list of mnemonics for each telemetry variable
+    {bcolors.DKGREEN}TELEMETRY_TEXTS{bcolors.ENDC} : Path to the {bcolors.OKCYAN}(JSON) file{bcolors.ENDC} where you specify the numerical value of each telemetry variable whose value is a text string (i.e. the OSM positions)
+    {bcolors.DKGREEN}TELEMETRY_PLOTSDIR{bcolors.ENDC} : Path to {bcolors.OKCYAN}directory{bcolors.ENDC} where you want to save the output plots of each telemetry variable
 
     We recommend checking and sourcing your {bcolors.OKBLUE}'cosmo/cosmo/telemetry_support/telem_mon_env_variables.sh'{bcolors.ENDC} file
     """)
@@ -379,7 +381,7 @@ for item_num, filetype in enumerate(file_dict.keys()):
         
         try:
             desciption = mnemon_df.loc[mnemon_df['Mnemonic']==filetype]['Description'].values[0]
-            print(f"{item_num}/{len(file_dict.keys())}: Running for {bcolors.BOLD}{filetype}: {bcolors.UNDERLINE}{desciption}{bcolors.ENDC} monitor")
+            print(f"{item_num+1}/{len(file_dict.keys())}: Running for {bcolors.BOLD}{filetype}: {bcolors.UNDERLINE}{desciption}{bcolors.ENDC} monitor")
             read_data_full = read_data(telemetry_dir/filetype)
 
             # Set the default min/max date of the plot to the last year since most recent point:
