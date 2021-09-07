@@ -46,13 +46,13 @@ try:
         plots_dir = Path(args.outdir)
     else:
         plots_dir = Path(environ['TELEMETRY_PLOTSDIR'])
-    osm_plots_dir = plots_dir/"OSM_plots/"
+    text_plots_dir = plots_dir/"TEXT_plots/"
     telemetry_dir = Path(environ['TELEMETRY_DATADIR'])
     mnemonics_file = Path(environ['TELEMETRY_MNEMONICS'])
     zooms_file = Path(environ['TELEMETRY_ZOOMS'])
     texts_file = Path(environ['TELEMETRY_TEXTS'])
     plots_dir.mkdir(exist_ok=True)
-    osm_plots_dir.mkdir(exist_ok=True)
+    text_plots_dir.mkdir(exist_ok=True)
 except Exception as nameExcept:
     print(nameExcept)
     print(f"""
@@ -262,72 +262,57 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
     if open_file:
         subprocess.run(['open', new_filename], check=True)
 # %%
-# OSM1 position
-osm1_dict = { #Sets conversion of the position to the graph height
-    'Unknown': -3,
-    '--': -2,
-    'AbMvFail': -1,
-    'RelMvReq': 0,
-    'G140L': 1,
-    'G130M': 2,
-    'G160M': 3,
-    'NCM1': 4,
-    'NCM1FLAT': 5,
-}
-osm1_color_dict = { #Sets conversion of the position to the graph color
-    'Unknown': "darkgray",
-    '--': "gray",
-    'AbMvFail': "red",
-    'RelMvReq': "black",
-    'G140L': "chocolate",
-    'G130M': "darkblue",
-    'G160M': "crimson",
-    'NCM1': "gold",
-    'NCM1FLAT': "darkgoldenrod",
-}
-# OSM2 position
-osm2_dict = { #Sets conversion of the position to the graph height
-    'Unknown': -3,
-    '--': -2,
-    'AbMvFail': -1,
-    'RelMvReq': 0,
-    'G230L': 1,
-    'G185M': 2,
-    'G225M': 3,
-    'G285M': 4,
-    'TA1Image': 5,
-    'TA1Brght': 6
-}
-osm2_color_dict = { #Sets conversion of the position to the graph color
-    'Unknown': "darkgray",
-    '--': "gray",
-    'AbMvFail': "red",
-    'RelMvReq': "black",
-    'G230L': "chocolate",
-    'G185M': "darkblue",
-    'G225M': "darkgreen",
-    'G285M': "crimson",
-    'TA1Image': "gold",
-    'TA1Brght': "darkgoldenrod"
-}
+dataframe_2d = pd.read_json( # Read in the json file of the dataframe of dataframes:
+    texts_file,
+    dtype=pd.DataFrame
+)
 
-# %%
-def build_osm_plot(dataframe, filetype, plot_by="datetime", plot_lines=True, valdict=osm1_dict, colordict=osm1_color_dict):
+def get_df_row(df_of_dfs, row):
     """
-    The OSM plots have text values, not numerical values of their Data column 
+    Given a dataframe of dataframes (as in the json file which we read in above) get a row, meaning an individual dataframe.
+    This will correspond to an individual telemetry filetype's dataframe.
+    """
+    return pd.DataFrame(df_of_dfs[df_of_dfs.Name == row].Data.values[0])
+
+def lookup_df_value(dataframe, row, column):
+    """
+    Shorthand function to get the scalar value at position in dataframe.
+    """
+    return dataframe.loc[dataframe.Name == row,column][0]
+
+# EXAMPLE usage, to get the numerical equivalent of G130M for the LOSM1POS monitor:
+#   osm1pos_df = get_df_row(dataframe_2d, 'LOSM1POS')
+#   desired_value = lookup_df_value(osm1pos_df, 'G130M', 'Data')
+# %%
+def build_text_plot(dataframe, filetype, plot_by="datetime", plot_lines=True, df_of_dfs=dataframe_2d):
+    """
+    The OSM plots, and some others, have text values, not numerical values of their Data column 
     We'll need to translate this to a number, then plot with that number labeled as the position string
     """
-    name_conversion_df = pd.DataFrame.from_dict(data = valdict, orient= 'index')
-    color_conversion_df = pd.DataFrame.from_dict(data = colordict, orient= 'index')
+    current_row = get_df_row(df_of_dfs, row=filetype)
     
-    # TODO: These two lines raise the SettingWithCopyWarning
+    # NOTE: These two lines raise the SettingWithCopyWarning
     #   But I CAN'T figure out why! As a result, briefly suppress the warning
     #   https://stackoverflow.com/questions/42105859/pandas-map-to-a-new-column-settingwithcopywarning/42106022
     pd.options.mode.chained_assignment = None 
-    dataframe.loc[:,'Datanum'] = dataframe.Data.map(lambda x: valdict[x])
-    dataframe.loc[:,'Graphcolor'] = dataframe.Data.map(lambda x: colordict[x])
-    pd.options.mode.chained_assignment = "warn" 
+    dataframe.loc[:,'Datanum'] = dataframe.Data.map(lambda x: lookup_df_value(current_row, x, 'Data'))
     
+    try: # Some of the dataframes have specified colors
+        dataframe.loc[:,'Graphcolor'] = dataframe.Data.map(lambda x: lookup_df_value(current_row, x, 'Color'))
+        found_graph_colors = True
+        markerdict= dict(
+            color = dataframe['Graphcolor'],
+        )
+    except: # Some do not have specified colors
+        found_graph_colors = False
+        markerdict={
+            "color": dataframe['Datanum'],
+            "cmin": dataframe['Datanum'].min(),
+            "cmax": dataframe['Datanum'].max(),
+            "colorscale": "rainbow"
+        }
+    pd.options.mode.chained_assignment = "warn" 
+
     # Date limits as MJD:
     minx, maxx = dataframe['MJD'].min(),dataframe['MJD'].max()
     # Or Date limits as datetimes
@@ -341,16 +326,14 @@ def build_osm_plot(dataframe, filetype, plot_by="datetime", plot_lines=True, val
             mode='markers+lines',
             name = filetype,
             line={"shape": 'hv', "color": 'rgba(150,190,190,0.35)'},
-            marker = dict(
-                color = dataframe['Graphcolor'],
-            )
+            marker=markerdict
         )
     )
     fig.update_layout(
         yaxis=dict(
             tickmode = 'array',
-            tickvals = list(valdict.values()),
-            ticktext = list(valdict.keys())
+            tickvals = list(current_row.Data.values),
+            ticktext = list(current_row.Name.values)
         ),
         title={
                 "text": f"{filetype}: {desciption} Monitor",
@@ -358,7 +341,7 @@ def build_osm_plot(dataframe, filetype, plot_by="datetime", plot_lines=True, val
                 'xanchor': 'center',
         },
         xaxis_title=plot_by.upper(),
-        yaxis_title=f"OSM State {filetype}",
+        yaxis_title=f"{filetype} State",
         font={
             "family":"serif",
             "size":24,
@@ -367,20 +350,23 @@ def build_osm_plot(dataframe, filetype, plot_by="datetime", plot_lines=True, val
     )
     fig['layout']['yaxis']['showgrid'] = False
     # fig.show()
-    new_filename = f'{osm_plots_dir}/{filetype}_{minx:.1f}to{maxx:.1f}.html'
+    new_filename = f'{text_plots_dir}/{filetype}_{minx:.1f}to{maxx:.1f}.html'
     fig.write_html(new_filename)
     if verbose:
         print(f"Saved to: {new_filename}")
 
 # %%
-
 for item_num, filetype in enumerate(file_dict.keys()):
     # RUN CONDITIONALS (to limit which files are run)
     # while item_num < 2: # If you want to limit to the first N files
     if filetype in selected_filetypes: # or if want to limit to a set of filetypes
         
-        try:
-            desciption = mnemon_df.loc[mnemon_df['Mnemonic']==filetype]['Description'].values[0]
+        try: # To do the entire data gathering and plotting process
+            try: # To query the excel file for the mnemonic's proper description
+                desciption = mnemon_df.loc[mnemon_df['Mnemonic']==filetype]['Description'].values[0]
+            except:
+                desciption = "Unknown Mnemonic"
+            # TODO: fix the counter below such that it counts out of the monitors actually being run - Low priority
             print(f"{item_num+1}/{len(file_dict.keys())}: Running for {bcolors.BOLD}{filetype}: {bcolors.UNDERLINE}{desciption}{bcolors.ENDC} monitor")
             read_data_full = read_data(telemetry_dir/filetype)
 
@@ -416,15 +402,13 @@ for item_num, filetype in enumerate(file_dict.keys()):
             else:
                 plot_quantbox = True
 
-            build_plot(dataframe=trimmed_data, filetype=filetype ,plot_by="datetime", plot_quantbox=plot_quantbox, q_low=0.005, q_hi=0.995, plot_lines=True, open_file=False, show_plot=False, color_by_data=color_by_data)
+            build_plot(dataframe=trimmed_data, filetype=filetype, plot_by="datetime", plot_quantbox=plot_quantbox, q_low=0.005, q_hi=0.995, plot_lines=True, open_file=False, show_plot=False, color_by_data=color_by_data)
         except Exception as ex:
-            if 'OSM1' in filetype:
-                build_osm_plot(dataframe=trimmed_data,filetype=filetype,plot_by="datetime")
-            elif 'OSM2' in filetype:
-                build_osm_plot(dataframe=trimmed_data,filetype=filetype,plot_by="datetime", valdict=osm2_dict, colordict=osm2_color_dict)
-            else:
+            try:
+                build_text_plot(dataframe=trimmed_data, filetype=filetype, plot_by="datetime")
+            except Exception as ex2:
                 print(f"Something went wrong on file: {filetype}")
-                print(ex)
+                print("Two exceptions:\n", ex, '\n', ex2)
 # %% 
 # To calculate an individual value:
 def step_wise(model_dataframe, targ_x, category="MJD", step_pos="right"):
