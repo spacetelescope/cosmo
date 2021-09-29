@@ -17,7 +17,7 @@ COS_MONITORING = SETTINGS['output']
 
 LP_MOVES = {
     i + 2: datetime.datetime.strptime(date, '%Y-%m-%d')
-    for i, date in enumerate(['2012-07-23', '2015-02-09', '2017-10-02'])
+    for i, date in enumerate(['2012-07-23', '2015-02-09', '2017-10-02', '2021-10-04', '2022-10-04'])
 }
 
 
@@ -161,7 +161,7 @@ class BaseFuvOsmShiftMonitor(BaseMonitor):
                         size=[
                             10 if time > LP_MOVES[4] and lp == 3 else 6
                             for lp, time in zip(group.LIFE_ADJ, Time(group.EXPSTART, format='mjd').to_datetime())
-                        ]  # Set the size to distinguish exposures taken at LP3 after the move to LP4
+                        ]  # Set the size to distinguish exposures taken at LP3 after the move to LP4; leaving this as-is but may need to update for LP5/LP6
                     )
                 ),
                 row=2,
@@ -207,7 +207,7 @@ class BaseFuvOsmShiftMonitor(BaseMonitor):
                             size=[
                                 10 if time > LP_MOVES[4] and lp == 3 else 6
                                 for lp, time in zip(group.LIFE_ADJ, Time(group.EXPSTART, format='mjd').to_datetime())
-                            ]  # Set the size to distinguish exposures taken at LP3 after the move to LP4
+                            ]  # Set the size to distinguish exposures taken at LP3 after the move to LP4; eaving this as-is but may need to update for LP5/LP6
                         )
                     ),
                     row=2,
@@ -276,7 +276,7 @@ class BaseFuvOsmShiftMonitor(BaseMonitor):
                 'showarrow': True,
                 'ax': -ax,
                 'ay': -30,
-            } for (key, lp_time), ax in zip(LP_MOVES.items(), [30, 10, -10])
+            } for (key, lp_time), ax in zip(LP_MOVES.items(), [30, 10, -10, -10, -10]) ##offsets for LP labels
         ]
 
         self.figure.update_layout(
