@@ -207,7 +207,7 @@ class BaseFuvOsmShiftMonitor(BaseMonitor):
                             size=[
                                 10 if time > LP_MOVES[4] and lp == 3 else 6
                                 for lp, time in zip(group.LIFE_ADJ, Time(group.EXPSTART, format='mjd').to_datetime())
-                            ]  # Set the size to distinguish exposures taken at LP3 after the move to LP4; eaving this as-is but may need to update for LP5/LP6
+                            ]  # Set the size to distinguish exposures taken at LP3 after the move to LP4; leaving this as-is but may need to update for LP5/LP6
                         )
                     ),
                     row=2,
