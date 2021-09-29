@@ -21,6 +21,7 @@ os: linux
 env:
     global:
         # SET DEFAULTS TO AVOID REPEATING IN MOST CASES
+        # For now dark monitor path is set as blank
         - CONDA_ARGS='--quiet'
         - CONDA_INSTALL="conda install $CONDA_ARGS"
         - CONDA_DEPS='stsci coverage'
