@@ -5,8 +5,19 @@ on:
   pull_request:
 
 env:
-    # USE UTF8 ENCODING. SHOULD BE DEFAULT, BUT THIS IS INSURANCE AGAINST FUTURE CHANGES
+  CRDS_SERVER_URL: 'https://hst-crds.stsci.edu'
+  DARK_PROGRAMS:
+  MONITOR_CONFIG: '$GITHUB_WORKSPACE/tests/cosmoconfig_test.yaml'
+  # USE UTF8 ENCODING. SHOULD BE DEFAULT, BUT THIS IS INSURANCE AGAINST FUTURE CHANGES
   PYTHONIOENCODING: UTF8
+
+#        - 
+#        - 
+#        - COSMO_FILES_SOURCE='/home/travis/build/spacetelescope/cosmo/tests/data'
+#        - COSMO_SMS_SOURCE='/home/travis/build/spacetelescope/cosmo/tests/data'
+#        - COSMO_OUTPUT='/home/travis/build/spacetelescope/cosmo/tests'
+#        - COSMO_SMS_DB='/home/travis/build/spacetelescope/cosmo/tests/test.db'
+#        - CRDS_PATH='/home/travis/build/spacetelescope/cosmo/tests/data/test_crds_cache'
 
 jobs:
   build:
@@ -27,10 +38,19 @@ jobs:
         python-version: '3.7'
         channels: http://ssb.stsci.edu/astroconda
 
-    - name: conda install dependencies
+    - name: install dependencies
       run: |
         conda install -c anaconda setuptools
-        conda install stsci coverage
+        conda install stsci coverage sphinx
+        pip install codecov
+
+    - name: install from source
+      run: pip install .
+
+    - name: run tests
+      run: coverage run -m pytest
+
+
 
 
 ############################
@@ -44,34 +64,9 @@ jobs:
 #            - texlive-latex-extra
 #            - dvipng
 
-#env:
-#    global:
-#        # SET DEFAULTS TO AVOID REPEATING IN MOST CASES
-#        # For now dark monitor path is set as blank
-#        - CONDA_DEPS='stsci coverage'
-#        - CONDA_DOC_DEPS="$CONDA_DEPS sphinx"
-#        - SETUP_CMD='test'
-#        - MONITOR_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
-#        - DARK_PROGRAMS=''
-#        - COSMO_FILES_SOURCE='/home/travis/build/spacetelescope/cosmo/tests/data'
-#        - COSMO_SMS_SOURCE='/home/travis/build/spacetelescope/cosmo/tests/data'
-#        - COSMO_OUTPUT='/home/travis/build/spacetelescope/cosmo/tests'
-#        - COSMO_SMS_DB='/home/travis/build/spacetelescope/cosmo/tests/test.db'
-#        - CRDS_SERVER_URL='https://hst-crds.stsci.edu'
-#        - CRDS_PATH='/home/travis/build/spacetelescope/cosmo/tests/data/test_crds_cache'
-
-
     # DOCUMENTATION DEPENDENCIES
 #    - if [[ $SETUP_CMD == build_sphinx* ]]; then conda install numpy=$NUMPY_VERSION $CONDA_DOC_DEPS; fi
 
-    # Codecov
-#    - pip install codecov
-
-    # Install package with pip
-#    - pip install .
-
-#script:
-#    - coverage run -m pytest
 
 #after_success: codecov
 
