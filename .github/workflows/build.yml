@@ -39,8 +39,7 @@ jobs:
     - name: install dependencies
       run: |
         conda install -c anaconda setuptools
-        conda install stsci coverage sphinx
-        pip install codecov
+        conda install stsci coverage
 
     - name: install from source
       run: pip install .
@@ -48,23 +47,7 @@ jobs:
     - name: run tests
       run: coverage run -m pytest
 
-
-
-
-############################
-
-# The apt packages below are needed for sphinx builds, which can no longer
-# be installed with sudo apt-get.
-#addons:
-#    apt:
-#        packages:
-#            - graphviz
-#            - texlive-latex-extra
-#            - dvipng
-
-    # DOCUMENTATION DEPENDENCIES
-#    - if [[ $SETUP_CMD == build_sphinx* ]]; then conda install numpy=$NUMPY_VERSION $CONDA_DOC_DEPS; fi
-
-
-#after_success: codecov
-
+    - name: run codecov
+      uses: codecov/codecov-action@v2
+      with:
+        verbose: true
