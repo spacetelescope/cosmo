@@ -7,7 +7,6 @@ on:
 env:
   CRDS_SERVER_URL: 'https://hst-crds.stsci.edu'
   DARK_PROGRAMS:
-  MONITOR_CONFIG: $GITHUB_WORKSPACE/tests/cosmoconfig_test.yaml
   # USE UTF8 ENCODING. SHOULD BE DEFAULT, BUT THIS IS INSURANCE AGAINST FUTURE CHANGES
   PYTHONIOENCODING: UTF8
 
@@ -26,6 +25,8 @@ jobs:
     defaults:
       run:
         shell: bash -l {0}
+    env:
+      MONITOR_CONFIG: $GITHUB_WORKSPACE/tests/cosmoconfig_test.yaml
 
     steps:
     - name: checkout code
