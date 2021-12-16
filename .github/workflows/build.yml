@@ -16,10 +16,10 @@ jobs:
       run:
         shell: bash -l {0}
     env:
-      COSMO_FILES_SOURCE: ${{ github.workspace }}/tests/data'
-      COSMO_OUTPUT: ${{ github.workspace }}/tests'
-      COSMO_SMS_DB: ${{ github.workspace }}/tests/test.db'
-      COSMO_SMS_SOURCE: ${{ github.workspace }}/tests/data'
+      COSMO_FILES_SOURCE: ${{ github.workspace }}/tests/data
+      COSMO_OUTPUT: ${{ github.workspace }}/tests
+      COSMO_SMS_DB: ${{ github.workspace }}/tests/test.db
+      COSMO_SMS_SOURCE: ${{ github.workspace }}/tests/data
       CRDS_SERVER_URL: 'https://hst-crds.stsci.edu'
       CRDS_PATH: ${{ github.workspace }}/tests/data/test_crds_cache
       DARK_PROGRAMS:
