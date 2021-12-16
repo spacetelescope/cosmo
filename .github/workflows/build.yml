@@ -26,7 +26,7 @@ jobs:
       run:
         shell: bash -l {0}
     env:
-      MONITOR_CONFIG: ${{ GITHUB_WORKSPACE }}/tests/cosmoconfig_test.yaml
+      MONITOR_CONFIG: ${{ github.workspace }}/tests/cosmoconfig_test.yaml
 
     steps:
     - name: checkout code
