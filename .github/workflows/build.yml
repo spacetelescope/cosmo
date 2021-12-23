@@ -26,28 +26,28 @@ jobs:
       MONITOR_CONFIG: ${{ github.workspace }}/tests/cosmoconfig_test.yaml
 
     steps:
-    - name: checkout code
-      uses: actions/checkout@v2
+      - name: checkout code
+        uses: actions/checkout@v2
 
-    - name: install conda
-      uses: conda-incubator/setup-miniconda@v2
-      with:
-        auto-update-conda: true
-        python-version: '3.7'
-        channels: http://ssb.stsci.edu/astroconda
+      - name: install conda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          python-version: '3.7'
+          channels: http://ssb.stsci.edu/astroconda
 
-    - name: install dependencies
-      run: |
-        conda install -c anaconda setuptools
-        conda install stsci coverage
+      - name: install dependencies
+        run: |
+          conda install -c anaconda setuptools
+          conda install stsci coverage
 
-    - name: install from source
-      run: pip install .
+      - name: install from source
+        run: pip install .
 
-    - name: run tests
-      run: coverage run -m pytest
+      - name: run tests
+        run: coverage run -m pytest
 
-    - name: run codecov
-      uses: codecov/codecov-action@v2
-      with:
-        verbose: true
+      - name: run codecov
+        uses: codecov/codecov-action@v2
+        with:
+          verbose: true
