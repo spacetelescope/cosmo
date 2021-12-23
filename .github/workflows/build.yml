@@ -40,6 +40,7 @@ jobs:
         run: |
           conda install -c anaconda setuptools
           conda install stsci coverage
+          pip install codecov
 
       - name: install from source
         run: pip install .
