@@ -23,7 +23,7 @@ The following monitors are executed at a *monthly* cadence:
 - ``AcqPeakdMonitor``
 - ``AcqPeakxdMonitor``
 - ``AcqImageV2V3Monitor``
-- ``FuvOsmShift1Moniotr``
+- ``FuvOsmShift1Monitor``
 - ``FuvOsmShift2Monitor``
 - ``NuvOsmShift1Monitor``
 - ``NuvOsmShift2Monitor``
