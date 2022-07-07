@@ -183,8 +183,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
         'FHST Alignment': 2020.150,
         '3GS-F1G Hybrid Mode': 2021.061,
         'Revert to Normal Mode': 2021.070,
-        'Hybrid Mode Start': 2021.145,
-        'Gyro High Mode Switch': 2021.205
+        'Gyro Hybrid Low Mode Switch': 2021.145,
+        'Gyro Hybrid High Mode Switch': 2021.205
     }
 
     fgs1_breaks = ['FGS Realignment 1', 'FGS Realignment 2', 'SIAF Update', 'FGS Realignment 3', 'FHST Alignment']
@@ -480,7 +480,7 @@ class SpecAcqBaseMonitor(BaseMonitor):
         fgs_groups, std_results = self.results  # groups are stored in the results attribute since track returns them.
 
         trace_count = {'F1': 0, 'F2': 0, 'F3': 0}
-        lp_colors = ['#1f77b4', '#2ca02c', '#8c564b', '#bcbd22']  # blue, green, brown, yellow-green
+        lp_colors = ['#1f77b4', '#2ca02c', '#8c564b', '#bcbd22', '#8317bb', '#3ee0d8']  # blue, green, brown, yellow-green, purple, cyan
         detector_symbols = {'NUV': 'x', 'FUV': 'circle'}
         for name, group in fgs_groups:
             lp_groups = group.groupby('LIFE_ADJ')
