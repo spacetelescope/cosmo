@@ -25,25 +25,25 @@ class bcolors: # We may wish to print some colored output to the terminal
     UNDERLINE = '\033[4m'
 
 # Deal with CLI Arguments:
-
-parser = argparse.ArgumentParser()
-parser.add_argument("-v", "--verbose", help="increase output verbosity (Boolean)", action="store_true")
-parser.add_argument("-u", "--ask-user", help="Ask user for each Telemetry file's begin/end dates (Boolean). Note, these are overridden by any begindate/enddate specified!", action="store_true")
-parser.add_argument("-t", "--timeout", type=float, help=f"If asking the user for begin/end dates, how long to give them to respond before setting default. Defaults to {bcolors.DKRED}{TIMEOUT}{bcolors.ENDC}")
-parser.add_argument("-b", "--begindate", type=float, help="The date you'd like to begin the monitors on. If none specified, defaults to 365.25 days before last datapoint in Telemetry file or --ask-user. If specified, overrides ask-user dates.")
-parser.add_argument("-e", "--enddate", type=float, help="The date you'd like to begin the monitors on. If none specified, defaults day of last datapoint in Telemetry file or --ask-user. If specified, overrides ask-user dates.")
-parser.add_argument("-o", "--outdir", type=str, help=f"The directory to save plots in. If specified, overrides the directory specified by the environment variable '{bcolors.DKGREEN}TELEMETRY_PLOTSDIR{bcolors.ENDC}'.")
-parser.add_argument("-f", "--filetypes", type=str, help=f"The filetypes to run the monitors code on. Must be in the {bcolors.DKGREEN}TELEMETRY_DATADIR{bcolors.ENDC} location", nargs='+')
-args = parser.parse_args()
-if args.verbose:
-    print("Verbosity turned on...")
-    verbose = True
-else:
-    verbose = False
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-v", "--verbose", help="increase output verbosity (Boolean)", action="store_true")
+    parser.add_argument("-u", "--ask-user", help="Ask user for each Telemetry file's begin/end dates (Boolean). Note, these are overridden by any begindate/enddate specified!", action="store_true")
+    parser.add_argument("-t", "--timeout", type=float, help=f"If asking the user for begin/end dates, how long to give them to respond before setting default. Defaults to {bcolors.DKRED}{TIMEOUT}{bcolors.ENDC}")
+    parser.add_argument("-b", "--begindate", type=float, help="The date you'd like to begin the monitors on. If none specified, defaults to 365.25 days before last datapoint in Telemetry file or --ask-user. If specified, overrides ask-user dates.")
+    parser.add_argument("-e", "--enddate", type=float, help="The date you'd like to begin the monitors on. If none specified, defaults day of last datapoint in Telemetry file or --ask-user. If specified, overrides ask-user dates.")
+    parser.add_argument("-o", "--outdir", type=str, help=f"The directory to save plots in. If specified, overrides the directory specified by the environment variable '{bcolors.DKGREEN}TELEMETRY_PLOTSDIR{bcolors.ENDC}'.")
+    parser.add_argument("-f", "--filetypes", type=str, help=f"The filetypes to run the monitors code on. Must be in the {bcolors.DKGREEN}TELEMETRY_DATADIR{bcolors.ENDC} location", nargs='+')
+    args = parser.parse_args()
+    if args.verbose:
+        print("Verbosity turned on...")
+        verbose = True
+    else:
+        verbose = False
 
 try:
-    if args.outdir:
-        plots_dir = Path(args.outdir)
+    if (__name__ == "__main__") and (args.outdir):
+            plots_dir = Path(args.outdir)
     else:
         plots_dir = Path(environ['TELEMETRY_PLOTSDIR'])
     text_plots_dir = plots_dir/"TEXT_plots/"
@@ -67,15 +67,18 @@ except Exception as nameExcept:
     """)
     sysex(1)
 # %%
+"""
+"""
 # Slower imports:
 import pandas as pd
 import plotly.graph_objects as go
 from astropy.time import Time
 import subprocess
-if args.ask_user: # If querying user with timeout import a timed input pkg
-    import pytimedinput
-    if args.timeout:
-        TIMEOUT = args.timeout
+if __name__ == "__main__":
+    if args.ask_user: # If querying user with timeout import a timed input pkg
+        import pytimedinput
+        if args.timeout:
+            TIMEOUT = args.timeout
 # %%
 # Read in the file which tells us what the filenames mean:
 mnemon_df = pd.read_excel(mnemonics_file, sheet_name=0)
@@ -89,14 +92,14 @@ for file in telemetry_dir.glob('*'):
     if (not file.is_dir()) and (file.is_file()):
         ftype = file.name
         file_dict[ftype] = file
-
-if args.filetypes:
-    selected_filetypes = [filetype.upper() for filetype in args.filetypes if filetype.upper() in list(file_dict.keys())]
-    assert len(selected_filetypes) > 0, f"If specifying filetypes, you must actually list some filetypes in the{bcolors.DKGREEN} TELEMETRY_DATADIR{bcolors.ENDC} directory."
-else:
-    selected_filetypes = list(file_dict.keys())
-if verbose:
-    print(f"We will create monitors for these {len(selected_filetypes)} files:\n{selected_filetypes}")
+if __name__ == "__main__":
+    if args.filetypes:
+        selected_filetypes = [filetype.upper() for filetype in args.filetypes if filetype.upper() in list(file_dict.keys())]
+        assert len(selected_filetypes) > 0, f"If specifying filetypes, you must actually list some filetypes in the{bcolors.DKGREEN} TELEMETRY_DATADIR{bcolors.ENDC} directory."
+    else:
+        selected_filetypes = list(file_dict.keys())
+    if verbose:
+        print(f"We will create monitors for these {len(selected_filetypes)} files:\n{selected_filetypes}")
 # %%
 def read_data(filetype, verbose=False):
     # Read in the data to a pandas dataframe:
@@ -191,7 +194,17 @@ def build_plot(dataframe, filetype, plot_by="datetime", plot_quantbox=True, q_lo
         else:
             print("Not a valid plot_by selection ['mjd', 'datetime']")
             sysex(0)
+        
+        # for shutdown_date in [55237, 56047, 57260, 57990, 58230, 58311, 59229, 59329, 59346, 59483]:
+        # TODO make this only show shutdowns IN DATA RANGE! otherwise messed up xlimits
+        #     fig.add_vrect(
+        #         x0=Time(shutdown_date-1,format='mjd').to_datetime(), 
+        #         x1=Time(shutdown_date+45,format='mjd').to_datetime(),
+        #         fillcolor="orange", opacity=0.2, 
+        #         name=f"Shutdown {Time(shutdown_date,format='mjd').to_datetime()}"
+        #     )
 
+        
         fig.add_trace(
             go.Scattergl(
                 x=x_box, 
@@ -356,59 +369,60 @@ def build_text_plot(dataframe, filetype, plot_by="datetime", plot_lines=True, df
         print(f"Saved to: {new_filename}")
 
 # %%
-for item_num, filetype in enumerate(file_dict.keys()):
-    # RUN CONDITIONALS (to limit which files are run)
-    # while item_num < 2: # If you want to limit to the first N files
-    if filetype in selected_filetypes: # or if want to limit to a set of filetypes
-        
-        try: # To do the entire data gathering and plotting process
-            try: # To query the excel file for the mnemonic's proper description
-                desciption = mnemon_df.loc[mnemon_df['Mnemonic']==filetype]['Description'].values[0]
-            except:
-                desciption = "Unknown Mnemonic"
-            # TODO: fix the counter below such that it counts out of the monitors actually being run - Low priority
-            print(f"{item_num+1}/{len(file_dict.keys())}: Running for {bcolors.BOLD}{filetype}: {bcolors.UNDERLINE}{desciption}{bcolors.ENDC} monitor")
-            read_data_full = read_data(telemetry_dir/filetype)
-
-            # Set the default min/max date of the plot to the last year since most recent point:
-            def_max_date = read_data_full['MJD'].iloc[-1]
-            def_min_date = def_max_date - 365.25
-        
-        # Get the start/end dates in the correct format:
-            if args.ask_user:
-                print("Asking the user for dates:\n")
-                # Solicit the min/max date of the plot from the user, with defaults if no numerical date detected
-                mindex, user_min_date, maxdex, user_max_date = ask_user_dates(verbose = verbose, timeout=TIMEOUT)
-            else:
-                mindex, user_min_date = find_closest_date(read_data_full,def_min_date)
-                maxdex, user_max_date = find_closest_date(read_data_full,def_max_date)
+if __name__ == "__main__":
+    for item_num, filetype in enumerate(file_dict.keys()):
+        # RUN CONDITIONALS (to limit which files are run)
+        # while item_num < 2: # If you want to limit to the first N files
+        if filetype in selected_filetypes: # or if want to limit to a set of filetypes
             
-            if args.begindate: # If user specifies begin/end dates, these will OVERRIDE all other dates
-                mindex, user_min_date = find_closest_date(read_data_full,args.begindate)
-            if args.enddate:
-                maxdex, user_max_date = find_closest_date(read_data_full,args.enddate)
+            try: # To do the entire data gathering and plotting process
+                try: # To query the excel file for the mnemonic's proper description
+                    desciption = mnemon_df.loc[mnemon_df['Mnemonic']==filetype]['Description'].values[0]
+                except:
+                    desciption = "Unknown Mnemonic"
+                # TODO: fix the counter below such that it counts out of the monitors actually being run - Low priority
+                print(f"{item_num+1}/{len(file_dict.keys())}: Running for {bcolors.BOLD}{filetype}: {bcolors.UNDERLINE}{desciption}{bcolors.ENDC} monitor")
+                read_data_full = read_data(telemetry_dir/filetype)
 
-        # Actually cut the data to that size:
-            trimmed_data = read_data_full[mindex:maxdex]
+                # Set the default min/max date of the plot to the last year since most recent point:
+                def_max_date = read_data_full['MJD'].iloc[-1]
+                def_min_date = def_max_date - 365.25
             
-        # Do we want to color the datapoints by the data (y) value?
-            if filetype in color_by_data_list:
-                color_by_data = True
-            else:
-                color_by_data = False
-            # Do we want to skip plotting the quantile box?
-            if filetype in skip_quantbox_list:
-                plot_quantbox = False
-            else:
-                plot_quantbox = True
+            # Get the start/end dates in the correct format:
+                if args.ask_user:
+                    print("Asking the user for dates:\n")
+                    # Solicit the min/max date of the plot from the user, with defaults if no numerical date detected
+                    mindex, user_min_date, maxdex, user_max_date = ask_user_dates(verbose = verbose, timeout=TIMEOUT)
+                else:
+                    mindex, user_min_date = find_closest_date(read_data_full,def_min_date)
+                    maxdex, user_max_date = find_closest_date(read_data_full,def_max_date)
+                
+                if args.begindate: # If user specifies begin/end dates, these will OVERRIDE all other dates
+                    mindex, user_min_date = find_closest_date(read_data_full,args.begindate)
+                if args.enddate:
+                    maxdex, user_max_date = find_closest_date(read_data_full,args.enddate)
 
-            build_plot(dataframe=trimmed_data, filetype=filetype, plot_by="datetime", plot_quantbox=plot_quantbox, q_low=0.005, q_hi=0.995, plot_lines=True, open_file=False, show_plot=False, color_by_data=color_by_data)
-        except Exception as ex:
-            try:
-                build_text_plot(dataframe=trimmed_data, filetype=filetype, plot_by="datetime")
-            except Exception as ex2:
-                print(f"Something went wrong on file: {filetype}")
-                print("Two exceptions:\n", ex, '\n', ex2)
+            # Actually cut the data to that size:
+                trimmed_data = read_data_full[mindex:maxdex]
+                
+            # Do we want to color the datapoints by the data (y) value?
+                if filetype in color_by_data_list:
+                    color_by_data = True
+                else:
+                    color_by_data = False
+                # Do we want to skip plotting the quantile box?
+                if filetype in skip_quantbox_list:
+                    plot_quantbox = False
+                else:
+                    plot_quantbox = True
+
+                build_plot(dataframe=trimmed_data, filetype=filetype, plot_by="datetime", plot_quantbox=plot_quantbox, q_low=0.005, q_hi=0.995, plot_lines=True, open_file=False, show_plot=False, color_by_data=color_by_data)
+            except Exception as ex:
+                try:
+                    build_text_plot(dataframe=trimmed_data, filetype=filetype, plot_by="datetime")
+                except Exception as ex2:
+                    print(f"Something went wrong on file: {filetype}")
+                    print("Two exceptions:\n", ex, '\n', ex2)
 # %% 
 # To calculate an individual value:
 def step_wise(model_dataframe, targ_x, category="MJD", step_pos="right"):
