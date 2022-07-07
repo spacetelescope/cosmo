@@ -44,6 +44,8 @@ class AcqImageMonitor(BaseMonitor):
     output = COS_MONITORING
 
     run = 'monthly'
+    overplot_recents = 30 # How many days since last datapoint found
+                          # Can also just be True/False - True plots 30 days since TODAY
 
     def get_data(self):
         data = select_all_acq(self.model.model, 'ACQ/IMAGE', self.model.new_data)
@@ -83,7 +85,31 @@ class AcqImageMonitor(BaseMonitor):
             marginal_x='histogram',
             marginal_y='histogram',
         )
-
+        if self.overplot_recents:
+            # Filter to just past N days (N=overplot_recent)
+            if type(self.overplot_recents) in [int, float]:
+                past_month = filtered[max(filtered["EXPSTART"]) - filtered["EXPSTART"] < self.overplot_recents]
+            elif self.overplot_recents == True:
+                past_month = filtered[Time.now().mjd - filtered["EXPSTART"] < 30]
+            # Plot the last N days (N=overplot_recent)
+            self.figure.add_trace(
+                go.Scattergl(
+                    x=past_month.ACQSLEWX,
+                    y=past_month.ACQSLEWY,
+                    mode='markers',
+                    marker = {
+                        'color':'black',
+                        'size':12,
+                        'symbol':'circle-open',
+                        'line':{
+                            'width':2
+                        },
+                    },
+                    hovertext=self.labels,
+                    name=f'Past {self.overplot_recents} days'
+                )
+            )
+        # Now overplot the outliers
         outliers = self.data[self.outliers['slews']]
 
         self.figure.add_trace(

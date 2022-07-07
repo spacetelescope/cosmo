@@ -73,13 +73,13 @@ performance order to identify any systematic trends or issues with COS target ac
 
 ACQIMAGE Monitor
 ^^^^^^^^^^^^^^^^
-.. note::
+The ``AcqImage`` monitor plots the offset of ACQ/IMAGE mode acquisitions in ACQSLEWX and ACQSLEWY. It highlights the most recent points from N days since the last acquisition with black rings around the point. This allows the viewer to examine the monitor for any recent trends. Here, N is set by the ``overplot_recents`` variable in ``acq_monitors.py``. It can be set to:
 
-    This monitor is still in development.
-    Output and tracking will be described in more detail once it is finalized.
+- ``False``: Do not highlight the recent points.
+- ``True``: The past 30 days since today (when the monitor was run).
+- ``numerical N, e.g. 30``: The past N days since the last acquisition in the dataset. Unless manually changed, the **default** is 30 days. 
 
-The ``AcqImage`` monitor is intended to be a more generalized monitor that keeps track of acquisition statuses and slew
-statistics.
+The ``AcqImage`` monitor is intended to be a more generalized monitor that keeps track of acquisition statuses and slew statistics.
 
 Spectroscopic Acquisition Monitors: ACQPEAKD and ACQPEAKXD
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
