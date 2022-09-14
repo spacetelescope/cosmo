@@ -139,12 +139,14 @@ class FUVOSMDriftMonitor(BaseMonitor):
 
         # Create trace visibility options
         traces = list(trace_counts.values())
-        all_visible = create_visibility(traces, [True, True, True, True, True])  # all lps, lp -1, lp 1, lp 2...
-        lp_neg1 = create_visibility(traces, [True, False, False, False, False])
-        lp_1 = create_visibility(traces, [False, True, False, False, False])
-        lp_2 = create_visibility(traces, [False, False, True, False, False])
-        lp_3 = create_visibility(traces, [False, False, False, True, False])
-        lp_4 = create_visibility(traces, [False, False, False, False, True])
+        all_visible = create_visibility(traces, [True, True, True, True, True, True, True])  # all lps, lp -1, lp 1, lp 2...
+        lp_neg1 = create_visibility(traces, [True, False, False, False, False, False, False])
+        lp_1 = create_visibility(traces, [False, True, False, False, False, False, False])
+        lp_2 = create_visibility(traces, [False, False, True, False, False, False, False])
+        lp_3 = create_visibility(traces, [False, False, False, True, False, False, False])
+        lp_4 = create_visibility(traces, [False, False, False, False, True, False, False])
+        lp_5 = create_visibility(traces, [False, False, False, False, False, True, False])
+        lp_6 = create_visibility(traces, [False, False, False, False, False, False, True])
 
         updatemenus = [
             go.layout.Updatemenu(
@@ -153,7 +155,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
                         label=label,
                         method='update',
                         args=[{'visible': visible}, {'title': title}]
-                    ) for label, title, visible in zip(labels, titles, [all_visible, lp_neg1, lp_1, lp_2, lp_3, lp_4])
+                    ) for label, title, visible in zip(labels, titles, [all_visible, lp_neg1, lp_1, lp_2, lp_3, lp_4, lp_5, lp_6])
                 ]
             )
         ]
