@@ -373,7 +373,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 'line': {
                     'width': 3,
                 },
-                'name': key
+                'name': key,
+                'size':3
             } for key, value in self.fgs_events.items() for xref, y_axis in zip(['x1', 'x2'], ['yaxis1', 'yaxis2'])
         ]
 
@@ -390,11 +391,16 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 'yref': 'paper',
                 'text': f'{item[0]}<br>{convert_day_of_year(item[1]).to_datetime().date()}',
                 'showarrow': True,
-                'ax': ax,
-                'ay': -30,
-            } for item, ax in zip(self.fgs_events.items(), [-60, 50, -20, 20, -50, 20, 50, -50, 60, -50, 50, 50, 50])
-            for xref, yaxis in zip(['x1', 'x2'], ['yaxis1', 'yaxis2'])
-        ]
+                'ax':  ax,
+                'ay': ay,
+            } #for item, ax in zip(self.fgs_events.items(), 
+              #  [-60, 50, -20, 20, -50, 20, 50, -50, 60, -50, 50, 50, 50])
+            for item, ax, ay in zip(self.fgs_events.items(), 
+                [-60, 60, -20, 60, -50, 50, 60, -60, -40, 0, 120, 120, 100],
+                [-30, 20, -30, 20, -30, -30, 20, -30, -65, -35, -60, -10, 40]) 
+            for xref, yaxis in zip(['xaxis1', 'xaxis2'], ['yaxis1', 'yaxis2'])
+            #for xref, y in zip(['x1', 'x2'], )
+        ] ##try yanchor
 
         # Create visibility toggles for buttons
         # F1 traces are created first, so the order for the list of traces is f1 traces then f2 traces
