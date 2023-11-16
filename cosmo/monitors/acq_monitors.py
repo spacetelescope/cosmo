@@ -3,6 +3,7 @@ import plotly.graph_objs as go
 import plotly.express as px
 import datetime
 import pandas as pd
+import os
 
 from peewee import Model
 from monitorframe.monitor import BaseMonitor
@@ -446,8 +447,9 @@ class AcqImageV2V3Monitor(BaseMonitor):
         self.figure.update_layout(layout)
 
     def store_results(self):
-        # TODO: define what results to store and how
-        pass
+        # stores dataframe into a csv file automatically when 'cosmo --monthly' is ran
+        # csv file will be stored in the directory user has established as their output directory
+        self.data.to_csv(os.path.join(os.path.dirname(self.output), f'{self._filename}.csv'))
 
 
 class SpecAcqBaseMonitor(BaseMonitor):
