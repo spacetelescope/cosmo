@@ -3,6 +3,7 @@ import plotly.graph_objs as go
 import plotly.express as px
 import datetime
 import pandas as pd
+import os
 
 from peewee import Model
 from monitorframe.monitor import BaseMonitor
@@ -291,7 +292,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 y=-df[slew],
                 mode='markers',
                 hovertext=df.hover_text,
-                visible=False,
+                visible=True,
                 legendgroup=f'Group {breakpoint_index + 1}',
                 name=f'{slew.strip("SLEW")} Group {breakpoint_index + 1}'
             )
@@ -303,7 +304,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
                     f'Slope: {line_fit[1]:.4f} arcsec/year<br>Offset (from fit) at time of first data point: '
                     f'{fit[0]:.3f}<br>'
                 ),
-                visible=False,
+                visible=True,
                 legendgroup=f'Group {breakpoint_index + 1}',
                 line=dict(width=4)
             )
@@ -334,7 +335,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
         """
         fgs_groups, _ = self.results  # retrieve the groups already found in track.
 
-        traces_per_fgs = {'F1': 0, 'F2': 0, 'F3': 0}
+        traces_per_fgs = {'F1': 0, 'F2': 0, 'F3': 0, 'All': 0} 
 
         for name, group in fgs_groups:
             # Filter dataframe by time per breakpoint
@@ -371,7 +372,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 'xref': xref,
                 'yref': 'paper',
                 'line': {
-                    'width': 3,
+                    'width': 3
                 },
                 'name': key,
                 'size':3
@@ -393,14 +394,12 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 'showarrow': True,
                 'ax':  ax,
                 'ay': ay,
-            } #for item, ax in zip(self.fgs_events.items(), 
-              #  [-60, 50, -20, 20, -50, 20, 50, -50, 60, -50, 50, 50, 50])
+            }
             for item, ax, ay in zip(self.fgs_events.items(), 
                 [-60, 60, -20, 60, -50, 50, 60, -60, -40, 0, 120, 120, 100],
                 [-30, 20, -30, 20, -30, -30, 20, -30, -65, -35, -60, -10, 40]) 
             for xref, yaxis in zip(['xaxis1', 'xaxis2'], ['yaxis1', 'yaxis2'])
-            #for xref, y in zip(['x1', 'x2'], )
-        ] ##try yanchor
+        ]
 
         # Create visibility toggles for buttons
         # F1 traces are created first, so the order for the list of traces is f1 traces then f2 traces
@@ -409,12 +408,14 @@ class AcqImageV2V3Monitor(BaseMonitor):
         visibility = [
             create_visibility(n_traces, [True, False, False]),  # F1
             create_visibility(n_traces, [False, True, False]),  # F2
-            create_visibility(n_traces, [False, False, True])  # F3
+            create_visibility(n_traces, [False, False, True]),  # F3
+            create_visibility(n_traces, [True, True, True])     # All of the above
         ]
 
-        labels = ['FGS1', 'FGS2', 'FGS3']
+        labels = ['FGS1', 'FGS2', 'FGS3', 'All']
         titles = [f'<a href="{self.docs}">{fgs + self.name}</a>' for fgs in labels]
-        shapes = [lines + fgs1_breaks, lines + fgs2_breaks, lines + fgs3_breaks]
+        shapes = [lines + fgs1_breaks, lines + fgs2_breaks, lines + fgs3_breaks,
+                  lines + fgs1_breaks + fgs2_breaks + fgs3_breaks]
 
         # Create buttons
         updatemenus = [
@@ -446,8 +447,9 @@ class AcqImageV2V3Monitor(BaseMonitor):
         self.figure.update_layout(layout)
 
     def store_results(self):
-        # TODO: define what results to store and how
-        pass
+        # stores dataframe into a csv file automatically when 'cosmo --monthly' is ran
+        # csv file will be stored in the directory user has established as their output directory
+        self.data.to_csv(os.path.join(os.path.dirname(self.output), f'{self._filename}.csv'))
 
 
 class SpecAcqBaseMonitor(BaseMonitor):
