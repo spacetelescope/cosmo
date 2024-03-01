@@ -36,11 +36,11 @@ def compute_segment_diff(df: pd.DataFrame, shift: str, segment1: str, segment2: 
             # absolute time calculated from FUVA
             lamp_time = absolute_time(df=group[group.SEGMENT == segment1])
 
-            segmnet1_df, segment2_df = group[group.SEGMENT == segment1], group[group.SEGMENT == segment2]
+            segment1_df, segment2_df = group[group.SEGMENT == segment1], group[group.SEGMENT == segment2]
 
             # Use the FUVA dataframe to create a "results" dataframe
-            diff_df = segmnet1_df.assign(
-                seg_diff=segmnet1_df[shift].values - segment2_df[shift].values
+            diff_df = segment1_df.assign(
+                seg_diff=segment1_df[shift].values - segment2_df[shift].values
             ).reset_index(drop=True)
 
             diff_df['lamp_time'] = lamp_time.to_datetime()
