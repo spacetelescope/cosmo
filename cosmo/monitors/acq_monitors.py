@@ -17,7 +17,7 @@ from .. import SETTINGS
 COS_MONITORING = SETTINGS['output']
 
 # pandas.DataFrame.append is no longer supported.  Replaced with concat.  (Dixon, 3/2026)
-# Added colors for LP7 and 10 to lp_colors.  (Dixon, 3/2026)
+# Added colors for up to 13 lifetime positions.  (Dixon, 4/9/2026)
 
 def select_all_acq(model: Union[Model, None], exptype: str, new_data_df: pd.DataFrame = None) -> pd.DataFrame:
     """Get all ingested acq data of a particular exptype and combine it with any new data found."""
@@ -511,7 +511,7 @@ class SpecAcqBaseMonitor(BaseMonitor):
 
         trace_count = {'F1': 0, 'F2': 0, 'F3': 0}
 
-        lp_color = ['#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15A', '#19D3F3', '#FF6692', '#B6E880', '#FF97FF', '#FECB52']
+        lp_color = ['blue', 'orange', 'green', 'purple', 'brown', 'pink', 'olive', 'cyan', 'gold', 'magenta', 'black', 'lime', 'salmon']
 
         detector_symbols = {'NUV': 'x', 'FUV': 'circle'}
         for name, group in fgs_groups:

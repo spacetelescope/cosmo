@@ -83,7 +83,9 @@ def get_aperture_drift_data(datamodel: ScienceDataModel, detector: str) -> pd.Da
          [[-11, 126], [ -98, -153], [ -98, -153], [ 22, 126]],  # LP6
          [[-49, 126], [ -98, -153], [ -98, -153], [ 32, 126]],  # LP7
          [[206, 126], [ -73, -153], [ -73, -153], [206, 126]],  # LP8
-         [[206, 126], [ -73, -153], [ -73, -153], [206, 126]]]  # LP10
+         [[206, 126], [ -73, -153], [ -73, -153], [206, 126]],  # LP10
+         [[270, 126], [  -9, -153], [  -9, -153], [270, 126]],  # LP11
+         [[ 90, 126], [-189, -153], [-189, -153], [ 90, 126]]]  # LP12
         )
 
     length = len(df)
@@ -91,7 +93,7 @@ def get_aperture_drift_data(datamodel: ScienceDataModel, detector: str) -> pd.Da
     j = np.empty(length, dtype=np.int_)
     k = np.empty(length, dtype=np.int_)
 
-    for n, lp in enumerate([1, 2, 3, 4, 5, 6, 7, 8, 10]):
+    for n, lp in enumerate([1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12]):
         i[df.LIFE_ADJ == lp] = n
 
     for n, aperture in enumerate(['PSA', 'BOA', 'FCA', 'WCA']):
@@ -122,13 +124,14 @@ class BaseApertureShiftMonitor(BaseMonitor):
     labels = ['ROOTNAME', 'LIFE_ADJ', 'PROPOSID', 'OPT_ELEM', 'SEGMENT', 'PROP_TYP']
 
     subplots = True,
-    subplot_layout = (4, 2)     # 4 rows, 2 columns
+    subplot_layout = (5, 2)     # 5 rows, 2 columns
 
     # This is the format of your plot grid:
     # [ (1,1) x1,y1 ]  [ (1,2) x2,y2 ]
     # [ (2,1) x3,y3 ]  [ (2,2) x4,y4 ]
     # [ (3,1) x5,y5 ]  [ (3,2) x6,y6 ]
-    # [ (4,1) x7,y7 ]  [ (4,2) x8,y8 ]  The axes labels and x/y combinations need to match this layout.
+    # [ (4,1) x7,y7 ]  [ (4,2) x8,y8 ]
+    # [ (5,1) x9,y9 ]  [ (5,2) x10,y10 ]  The axes labels and x/y combinations need to match this layout.
 
     detector = None     # FUV or NUV
     shift = None        # For now, it's always SHIFT_APERY
@@ -144,13 +147,13 @@ class BaseApertureShiftMonitor(BaseMonitor):
         Plot aperture shift as a function of time.  Separate subplots for each lifetime position.
         Buttons allow the user to select among the four apertures.
         """
-        locations = [(1,1), (1,2), (2,1), (2,2), (3,1), (3,2), (4,1), (4,2)]
+        locations = [(1,1), (1,2), (2,1), (2,2), (3,1), (3,2), (4,1), (4,2), (5,1), (5,2)]
 
         trace_counts = {}
 
-        # Outer loop creates eight plots for each aperture.  User selects aperture using buttons.
+        # Outer loop creates ten subplots for each aperture.  User selects aperture using buttons.
         for aperture, ap_group in self.data.groupby('APERTURE'):
-            # Inner loop plots aperturte shift v time with each lifetime position in a separate subplot.
+            # Inner loop plots aperture shift v time with each lifetime position in a separate subplot.
             i = 0
             for life_adj, lp_group in ap_group.groupby('LIFE_ADJ'):
                 axes = locations[i]
@@ -206,6 +209,8 @@ class BaseApertureShiftMonitor(BaseMonitor):
             xaxis6=dict(title='Date'),
             xaxis7=dict(title='Date'),
             xaxis8=dict(title='Date'),
+            xaxis9=dict(title='Date'),
+            xaxis10=dict(title='Date'),
             yaxis=dict(title='Aperture Shift [steps]'),
             yaxis2=dict(title='Aperture Shift [steps]'),
             yaxis3=dict(title='Aperture Shift [steps]'),
@@ -214,16 +219,22 @@ class BaseApertureShiftMonitor(BaseMonitor):
             yaxis6=dict(title='Aperture Shift [steps]'),
             yaxis7=dict(title='Aperture Shift [steps]'),
             yaxis8=dict(title='Aperture Shift [steps]'),
+            yaxis9=dict(title='Aperture Shift [steps]'),
+            yaxis10=dict(title='Aperture Shift [steps]'),
+            width=1600,                                   # Width in pixels
+            height=1200,                                  # Height in pixels
+            autosize=False,
+            # margin=dict(l=50, r=50, b=50, t=50),         # Optional: adjust margins
             updatemenus=updatemenus
         )
 
         self.figure.update_layout(layout)
 
-        # Label the whole figure and its eight subplots.
+        # Label the whole figure and each of its subplots.
         self.figure.add_annotation(
             text=self.name, # The text content
             x=0.5, # X position in subplot coordinates
-            y=1.1, # Y position in subplot coordinates
+            y=1.07, # Y position in subplot coordinates
             xref="paper", yref="paper", # Coordinate reference: subplot coordinates
             font=dict(size=20),
             showarrow=False # Do not show an arrow
@@ -290,6 +301,22 @@ class BaseApertureShiftMonitor(BaseMonitor):
             x=1.0, # X position in subplot coordinates
             y=1.2, # Y position in subplot coordinates
             xref="x8 domain", yref="y8 domain", # Coordinate reference: subplot coordinates
+            font=dict(size=15),
+            showarrow=False # Do not show an arrow
+        )
+        if (trace_counts['PSA'] > 8): self.figure.add_annotation(
+            text="LP11 " + self.shift, # The text content
+            x=1.0, # X position in subplot coordinates
+            y=1.2, # Y position in subplot coordinates
+            xref="x9 domain", yref="y9 domain", # Coordinate reference: subplot coordinates
+            font=dict(size=15),
+            showarrow=False # Do not show an arrow
+        )
+        if (trace_counts['PSA'] > 9): self.figure.add_annotation(
+            text="LP12 " + self.shift, # The text content
+            x=1.0, # X position in subplot coordinates
+            y=1.2, # Y position in subplot coordinates
+            xref="x10 domain", yref="y10 domain", # Coordinate reference: subplot coordinates
             font=dict(size=15),
             showarrow=False # Do not show an arrow
         )

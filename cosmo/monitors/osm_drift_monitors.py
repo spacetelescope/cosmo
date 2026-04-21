@@ -59,7 +59,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
 
     # This is the format of your plot grid:
     # [ (1,1)  x1,y1 ]
-    # [ (2,1) x2,y2 ]
+    # [ (2,1)  x2,y2 ]
 
     run = 'monthly'
 
@@ -144,16 +144,18 @@ class FUVOSMDriftMonitor(BaseMonitor):
 
         # Create trace visibility options
         traces = list(trace_counts.values())
-        all_visible = create_visibility(traces, [True, True, True, True, True, True, True, True, True])  # all lps, lp -1, lp 1, lp 2...
-        lp_neg1 = create_visibility(traces, [True, False, False, False, False, False, False, False, False])
-        lp_1 = create_visibility(traces, [False, True, False, False, False, False, False, False, False])
-        lp_2 = create_visibility(traces, [False, False, True, False, False, False, False, False, False])
-        lp_3 = create_visibility(traces, [False, False, False, True, False, False, False, False, False])
-        lp_4 = create_visibility(traces, [False, False, False, False, True, False, False, False, False])
-        lp_5 = create_visibility(traces, [False, False, False, False, False, True, False, False, False])
-        lp_6 = create_visibility(traces, [False, False, False, False, False, False, True, False, False])
-        lp_7 = create_visibility(traces, [False, False, False, False, False, False, False, True, False])
-        lp_10 = create_visibility(traces, [False, False, False, False, False, False, False, False, True])
+        all_visible = create_visibility(traces, [True, True, True, True, True, True, True, True, True, True, True])  # all lps, lp -1, lp 1, lp 2...
+        lp_neg1 = create_visibility(traces, [True, False, False, False, False, False, False, False, False, False, False])
+        lp_1 = create_visibility(traces, [False, True, False, False, False, False, False, False, False, False, False])
+        lp_2 = create_visibility(traces, [False, False, True, False, False, False, False, False, False, False, False])
+        lp_3 = create_visibility(traces, [False, False, False, True, False, False, False, False, False, False, False])
+        lp_4 = create_visibility(traces, [False, False, False, False, True, False, False, False, False, False, False])
+        lp_5 = create_visibility(traces, [False, False, False, False, False, True, False, False, False, False, False])
+        lp_6 = create_visibility(traces, [False, False, False, False, False, False, True, False, False, False, False])
+        lp_7 = create_visibility(traces, [False, False, False, False, False, False, False, True, False, False, False])
+        lp_10 = create_visibility(traces, [False, False, False, False, False, False, False, False, True, False, False])
+        lp_11 = create_visibility(traces, [False, False, False, False, False, False, False, False, False, True, False])
+        lp_12 = create_visibility(traces, [False, False, False, False, False, False, False, False, False, False, True])
 
         updatemenus = [
             go.layout.Updatemenu(
@@ -162,7 +164,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
                         label=label,
                         method='update',
                         args=[{'visible': visible}, {'title': title}]
-                    ) for label, title, visible in zip(labels, titles, [all_visible, lp_neg1, lp_1, lp_2, lp_3, lp_4, lp_5, lp_6, lp_7, lp_10])
+                    ) for label, title, visible in zip(labels, titles, [all_visible, lp_neg1, lp_1, lp_2, lp_3, lp_4, lp_5, lp_6, lp_7, lp_10, lp_11, lp_12])
                 ]
             )
         ]
@@ -179,7 +181,15 @@ class FUVOSMDriftMonitor(BaseMonitor):
 
         self.figure.update_layout(layout)
 
-        # Label the two subplots.
+        # Label the whole figure and each of its subplots.
+        self.figure.add_annotation(
+            text=self.name, # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.07, # Y position in subplot coordinates
+            xref="paper", yref="paper", # Coordinate reference: subplot coordinates
+            font=dict(size=20),
+            showarrow=False # Do not show an arrow
+        )
         self.figure.add_annotation(
             text="SHIFT1 Drift Rate", # The text content
             x=0.5, # X position in subplot coordinates
@@ -333,7 +343,15 @@ class NUVOSMDriftMonitor(BaseMonitor):
 
         self.figure.update_layout(layout)
 
-        # Label the four subplots.
+        # Label the whole figure and each of its subplots.
+        self.figure.add_annotation(
+            text=self.name, # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.07, # Y position in subplot coordinates
+            xref="paper", yref="paper", # Coordinate reference: subplot coordinates
+            font=dict(size=20),
+            showarrow=False # Do not show an arrow
+        )
         self.figure.add_annotation(
             text="OSM1 SHIFT1", # The text content
             x=0.5, # X position in subplot coordinates
