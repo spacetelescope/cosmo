@@ -5,11 +5,14 @@ from astropy.time import Time
 from monitorframe.monitor import BaseMonitor
 
 from .data_models import OSMDataModel
-from ..monitor_helpers import explode_df, create_visibility, get_osm_data
+from ..monitor_helpers import explode_df, create_visibility, get_osm_data, get_prop_typ
 from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
 
+# Added PROP_TYP keyword to plots.  (Dixon, 3/18/2026)
+# Added traces for LP7 and LP10 to plots.  (Dixon, 3/2026)
+# Changed colorscale from 'Viridis' to 'bluered.'  (Dixon, 3/2026)
 
 def get_osmdrift_data(datamodel: OSMDataModel, detector: str) -> pd.DataFrame:
     """Get OSM Drift monitoring data."""
@@ -36,6 +39,9 @@ def get_osmdrift_data(datamodel: OSMDataModel, detector: str) -> pd.DataFrame:
         REL_TSINCEOSM2=lambda x: x.TIME + x.TSINCEOSM2,
     )
 
+    # Add PROP_TYP keyword.
+    exploded = get_prop_typ(exploded)
+
     return exploded
 
 
@@ -46,7 +52,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
     data_model = OSMDataModel
     output = COS_MONITORING
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-drift-monitor"
-    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'OPT_ELEM', 'SEGMENT']
+    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'OPT_ELEM', 'SEGMENT', 'PROP_TYP']
 
     subplots = True
     subplot_layout = (2, 1)  # 2 rows, 1 column
@@ -74,7 +80,6 @@ class FUVOSMDriftMonitor(BaseMonitor):
         """Plot the Drift rate (from SHIFT1 and SHIFT2) as a function of the time since the last OSM1 move."""
         locations = [(1, 1), (2, 1)]  # row and column positions for the plot
         y_names = ['SHIFT1_DRIFT', 'SHIFT2_DRIFT']
-        titles = ['OSM1 SHIFT1', 'OSM1 SHIFT2']
 
         # Set the min and max for the scale so that each plot is plotted on the same scale
         c_min = self.data.EXPSTART.min()
@@ -89,7 +94,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
 
             # Plot per grating
             for grating, grating_group in group.groupby('OPT_ELEM'):
-                for i, (y, name, axes) in enumerate(zip(y_names, titles, locations)):
+                for i, (y, axes) in enumerate(zip(y_names, locations)):
                     self.figure.add_trace(
                         go.Scattergl(
                             x=grating_group.REL_TSINCEOSM1,
@@ -103,7 +108,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
                                 color=grating_group.EXPSTART,
                                 cmin=c_min,
                                 cmax=c_max,
-                                colorscale='Viridis',
+                                colorscale='bluered',
                                 showscale=True,
                                 colorbar=dict(
                                     title='Observation Date',
@@ -116,7 +121,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
                                         f'{Time(self.data.EXPSTART.mean(), format="mjd").to_datetime().date()}',
                                         f'{Time(self.data.EXPSTART.max(), format="mjd").to_datetime().date()}'
                                     ],
-                                    len=0.57,
+                                    len=0.4,
                                     y=0,
                                     yanchor='bottom'
                                 ),
@@ -139,14 +144,16 @@ class FUVOSMDriftMonitor(BaseMonitor):
 
         # Create trace visibility options
         traces = list(trace_counts.values())
-        all_visible = create_visibility(traces, [True, True, True, True, True, True, True])  # all lps, lp -1, lp 1, lp 2...
-        lp_neg1 = create_visibility(traces, [True, False, False, False, False, False, False])
-        lp_1 = create_visibility(traces, [False, True, False, False, False, False, False])
-        lp_2 = create_visibility(traces, [False, False, True, False, False, False, False])
-        lp_3 = create_visibility(traces, [False, False, False, True, False, False, False])
-        lp_4 = create_visibility(traces, [False, False, False, False, True, False, False])
-        lp_5 = create_visibility(traces, [False, False, False, False, False, True, False])
-        lp_6 = create_visibility(traces, [False, False, False, False, False, False, True])
+        all_visible = create_visibility(traces, [True, True, True, True, True, True, True, True, True])  # all lps, lp -1, lp 1, lp 2...
+        lp_neg1 = create_visibility(traces, [True, False, False, False, False, False, False, False, False])
+        lp_1 = create_visibility(traces, [False, True, False, False, False, False, False, False, False])
+        lp_2 = create_visibility(traces, [False, False, True, False, False, False, False, False, False])
+        lp_3 = create_visibility(traces, [False, False, False, True, False, False, False, False, False])
+        lp_4 = create_visibility(traces, [False, False, False, False, True, False, False, False, False])
+        lp_5 = create_visibility(traces, [False, False, False, False, False, True, False, False, False])
+        lp_6 = create_visibility(traces, [False, False, False, False, False, False, True, False, False])
+        lp_7 = create_visibility(traces, [False, False, False, False, False, False, False, True, False])
+        lp_10 = create_visibility(traces, [False, False, False, False, False, False, False, False, True])
 
         updatemenus = [
             go.layout.Updatemenu(
@@ -155,7 +162,7 @@ class FUVOSMDriftMonitor(BaseMonitor):
                         label=label,
                         method='update',
                         args=[{'visible': visible}, {'title': title}]
-                    ) for label, title, visible in zip(labels, titles, [all_visible, lp_neg1, lp_1, lp_2, lp_3, lp_4, lp_5, lp_6])
+                    ) for label, title, visible in zip(labels, titles, [all_visible, lp_neg1, lp_1, lp_2, lp_3, lp_4, lp_5, lp_6, lp_7, lp_10])
                 ]
             )
         ]
@@ -172,6 +179,22 @@ class FUVOSMDriftMonitor(BaseMonitor):
 
         self.figure.update_layout(layout)
 
+        # Label the two subplots.
+        self.figure.add_annotation(
+            text="SHIFT1 Drift Rate", # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.1, # Y position in subplot coordinates
+            xref="x domain", yref="y domain", # Coordinate reference: subplot coordinates
+            showarrow=False, # Do not show an arrow
+        )
+        self.figure.add_annotation(
+            text="SHIFT2 Drift Rate", # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.1, # Y position in subplot coordinates
+            xref="x2 domain", yref="y2 domain", # Coordinate reference: subplot coordinates
+            showarrow=False, # Do not show an arrow
+        )
+
     def store_results(self):
         # This will be implemented with the database backend.
         pass
@@ -181,7 +204,7 @@ class NUVOSMDriftMonitor(BaseMonitor):
     data_model = OSMDataModel
     output = COS_MONITORING
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-drift-monitor"
-    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'OPT_ELEM']
+    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'OPT_ELEM', 'PROP_TYP']
 
     subplots = True
     subplot_layout = (2, 2)
@@ -212,7 +235,6 @@ class NUVOSMDriftMonitor(BaseMonitor):
         # Set up the different parametrization for the four plots.
         x_names = ['REL_TSINCEOSM1', 'REL_TSINCEOSM1', 'REL_TSINCEOSM2', 'REL_TSINCEOSM2']
         y_names = ['SHIFT1_DRIFT', 'SHIFT2_DRIFT', 'SHIFT1_DRIFT', 'SHIFT2_DRIFT']
-        titles = ['OSM1 SHIFT1', 'OSM1 SHIFT2', 'OSM2 SHIFT1', 'OSM2 SHIFT2']
         locations = [(1, 1), (2, 1), (1, 2), (2, 2)]
 
         # Set the min and max for the scale so that each plot is plotted on the same scale
@@ -228,7 +250,7 @@ class NUVOSMDriftMonitor(BaseMonitor):
 
             # Plot per grating
             for grating, grating_group in group.groupby('OPT_ELEM'):
-                for i, (x, y, axes, name) in enumerate(zip(x_names, y_names, locations, titles)):
+                for i, (x, y, axes) in enumerate(zip(x_names, y_names, locations)):
                     self.figure.add_trace(
                         go.Scattergl(
                             x=grating_group[x],
@@ -242,7 +264,7 @@ class NUVOSMDriftMonitor(BaseMonitor):
                                 color=grating_group.EXPSTART,
                                 cmin=c_min,
                                 cmax=c_max,
-                                colorscale='Viridis',
+                                colorscale='bluered',
                                 showscale=True,
                                 colorbar=dict(
                                     title='Observation Date',
@@ -310,6 +332,37 @@ class NUVOSMDriftMonitor(BaseMonitor):
         )
 
         self.figure.update_layout(layout)
+
+        # Label the four subplots.
+        self.figure.add_annotation(
+            text="OSM1 SHIFT1", # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.1, # Y position in subplot coordinates
+            xref="x domain", yref="y domain", # Coordinate reference: subplot coordinates
+            showarrow=False, # Do not show an arrow
+        )
+        self.figure.add_annotation(
+            text="OSM1 SHIFT2", # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.1, # Y position in subplot coordinates
+            xref="x2 domain", yref="y2 domain", # Coordinate reference: subplot coordinates
+            showarrow=False, # Do not show an arrow
+        )
+        self.figure.add_annotation(
+            text="OSM2 SHIFT1", # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.1, # Y position in subplot coordinates
+            xref="x3 domain", yref="y3 domain", # Coordinate reference: subplot coordinates
+            showarrow=False, # Do not show an arrow
+        )
+        self.figure.add_annotation(
+            text="OSM2 SHIFT2", # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.1, # Y position in subplot coordinates
+            xref="x4 domain", yref="y4 domain", # Coordinate reference: subplot coordinates
+            showarrow=False, # Do not show an arrow
+        )
+
 
     def store_results(self):
         pass

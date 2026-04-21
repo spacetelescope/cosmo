@@ -6,6 +6,11 @@ from itertools import repeat
 from astropy.time import Time, TimeDelta
 from typing import Union, Tuple, Sequence, List
 
+from . import SETTINGS
+ANCILLARY_DB = SETTINGS['ancillary_db']
+
+
+# pandas.DataFrame.append is no longer supported.  Replaced with concat.  (Dixon, 3/16//2026)
 
 def convert_day_of_year(date: Union[float, str]) -> Time:
     """Convert day of the year (defined as yyyy.ddd where ddd is the day number of that year) to an astropy Time object.
@@ -33,10 +38,10 @@ def explode_df(df: pd.DataFrame, list_keywords: list) -> pd.DataFrame:
     """
     idx = df.index.repeat(df[list_keywords[0]].str.len())  # Repeat values based on the number of elements in the arrays
     unpacked = pd.concat([pd.DataFrame({x: np.concatenate(df[x].values)}) for x in list_keywords], axis=1)
-    unpacked.index = idx  # assigns repeated index to the unpacked dataframe, unpacked.
+    unpacked.index = idx  # assigns repeated index to the unpacked dataframe.
 
     # Join unpacked df to the original df and drop the old columns
-    exploded = unpacked.join(df.drop(list_keywords, 1), how='left').reset_index(drop=True)
+    exploded = unpacked.join(df.drop(columns=list_keywords), how='left').reset_index(drop=True)
 
     if exploded.isna().values.any():  # If there are NaNs, then it didn't make sense to "explode" the input df
         raise ValueError('Elements in columns to be exploded are not the same length across rows.')
@@ -111,8 +116,8 @@ def get_osm_data(datamodel, detector: str) -> pd.DataFrame:
         query = datamodel.model.select().where(datamodel.model.DETECTOR == detector)
 
         # Need to convert the stored array columns back into... arrays
-        data = data.append(
-            datamodel.query_to_pandas(
+        data = pd.concat(
+            [data, datamodel.query_to_pandas(
                 query,
                 array_cols=[
                     'TIME',
@@ -124,7 +129,7 @@ def get_osm_data(datamodel, detector: str) -> pd.DataFrame:
                     'SEARCH_OFFSET',
                     'FP_PIXEL_SHIFT'
                 ],
-            ),
+            )],
             sort=True,
             ignore_index=True
         )
@@ -134,6 +139,22 @@ def get_osm_data(datamodel, detector: str) -> pd.DataFrame:
 
     if not datamodel.new_data.empty:
         new_data = datamodel.new_data[datamodel.new_data.DETECTOR == detector].reset_index(drop=True)
-        data = data.append(new_data, sort=True, ignore_index=True)
+        data = pd.concat([data, new_data], sort=True, ignore_index=True)
 
     return data
+
+
+def get_prop_typ(primary) -> pd.DataFrame:
+    """Read PROP_TYP keyword from CSV file.
+    Can delete this when PROP_TYP keyword is added to main database."""
+
+    # Read ancillary DataFrame.  Drop duplicate entries.
+    file_path = ANCILLARY_DB
+    ancillary = pd.read_csv(file_path, usecols=['ROOTNAME', 'PROP_TYP'])
+    ancillary = ancillary.drop_duplicates(subset=["ROOTNAME"])
+
+    # Merge data and ancillary DataFrames.
+    df = primary.join(ancillary.set_index("ROOTNAME"), on="ROOTNAME")
+
+    return df
+
