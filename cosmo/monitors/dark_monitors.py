@@ -1,4 +1,3 @@
-
 import os
 import json
 import datetime
@@ -23,6 +22,9 @@ from ..monitor_helpers import explode_df, absolute_time
 
 COS_MONITORING = SETTINGS['output']
 NOAA_URL = 'https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle-indices.json'
+
+# pandas.DataFrame.append is no longer supported.  Replaced with concat.  (Dixon, 3/2026)
+# Changed colorscale from 'Viridis' to 'bluered.'  (Dixon, 3/2026)
 
 # ----------------------------------------------------------------------------#
 
@@ -157,11 +159,14 @@ class DarkMonitor(BaseMonitor):
         if self.multi:
             # prime the pump
             exploded_df = self.filter_data(self.location[0])
+            filtered_rows = []
             exploded_df["region"] = 0
             for index, location in enumerate(self.location[1:]):
                 sub_exploded_df = self.filter_data(location)
                 sub_exploded_df["region"] = index + 1
-                exploded_df = exploded_df.append(sub_exploded_df)
+                # exploded_df = exploded_df.append(sub_exploded_df)
+                filtered_rows.append(sub_exploded_df)
+            exploded_df = df.concat(exploded_df, filtered_rows)
 
         else:
             exploded_df = self.filter_data(self.location)
@@ -430,7 +435,7 @@ class DarkMonitor(BaseMonitor):
             go.Scatter(x=self.data["longitude"], y=self.data["latitude"],
                        mode="markers",
                        marker=dict(color=self.data["darks"], size=2,
-                                   colorscale='Viridis', opacity=0.5,
+                                   colorscale='bluered', opacity=0.5,
                                    colorbar=dict(thickness=20,
                                                  exponentformat="e",
                                                  title=dict(text="Dark Rate")),

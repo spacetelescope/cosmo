@@ -1,5 +1,9 @@
 # Misc
 *pkl
+.github/
+other/
+cosmo_db/
+cosmo_output/
 
 #-- package config files
 configure.yaml
