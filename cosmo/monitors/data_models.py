@@ -14,6 +14,7 @@ from .. import SETTINGS
 FILES_SOURCE = SETTINGS['filesystem']['source']
 #PROGRAMS = SETTINGS['dark_programs']
 
+# Added ScienceDataModel.  (Dixon, 3/2026)
 
 def dgestar_to_fgs(results: List[dict]) -> None:
     """Add a FGS key to each row dictionary."""
@@ -102,7 +103,8 @@ class OSMDataModel(BaseDataModel):
     def get_new_data(self):
         """Retrieve data."""
         header_request = {
-            0: ['ROOTNAME', 'DETECTOR', 'LIFE_ADJ', 'OPT_ELEM', 'CENWAVE', 'FPPOS', 'PROPOSID', 'OBSET_ID'],
+            0: ['ROOTNAME', 'DETECTOR', 'LIFE_ADJ', 'OPT_ELEM', 'CENWAVE',
+                'FPPOS', 'PROPOSID', 'OBSET_ID'],
             1: ['EXPSTART']
         }
 
@@ -267,3 +269,89 @@ def get_program_ids(pid_file):
 #                                           table_request=table_request)
 #
 #        return data_results
+class DarkDataModel(BaseDataModel):
+    """DataModel for dark corrtag files."""
+    cosmo_layout = False
+    files_source = FILES_SOURCE
+
+    def get_new_data(self):
+        """Set the model for what data is to be retrieved from each dark
+        file."""
+        # this way when you get new data it will get all the data
+        header_request = {
+            0: ['ROOTNAME', 'SEGMENT'], 1: ['EXPTIME', 'EXPSTART']
+            }
+        table_request = {
+            1: ['PHA', 'XCORR', 'YCORR', 'TIME'],
+            3: ['TIME', 'LATITUDE', 'LONGITUDE']
+            }
+
+        files = []
+
+        program_ids = get_program_ids(PROGRAMS)
+        
+        for prog_id in program_ids:
+            new_files_source = os.path.join(FILES_SOURCE, prog_id)
+            files += find_files('*corrtag*', data_dir=new_files_source)
+
+        if self.model is not None:
+            currently_ingested = [item.FILENAME for item in
+                                  self.model.select(self.model.FILENAME)]
+
+            for file in currently_ingested:
+                files.remove(file)
+
+        if not files:  # No new files
+            return pd.DataFrame()
+
+        data_results = data_from_exposures(files,
+                                           header_request=header_request,
+                                           table_request=table_request)
+
+        return data_results
+
+
+class ScienceDataModel(BaseDataModel):
+    """DataModel for science corrtag files."""
+    cosmo_layout = True
+    files_source = FILES_SOURCE
+    subdir_pattern = '?????'
+
+    def get_new_data(self):
+        """Determine what data is to be retrieved from each science file."""
+        header_request = {
+            # 0: ['APERTURE', 'APERXPOS', 'APERYPOS', 'DETECTOR',
+            0: ['APERTURE', 'DETECTOR',
+                'LIFE_ADJ', 'OPT_ELEM', 'PROPOSID', 'ROOTNAME', 'SEGMENT'],
+            1: ['EXPSTART']
+            }
+
+        files = find_files('*corrtag*', data_dir=self.files_source, subdir_pattern=self.subdir_pattern)
+
+        if self.model is not None:
+            currently_ingested = [item.FILENAME for item in self.model.select(self.model.FILENAME)]
+
+            ## Finds index values for all files that are in the currently_ingested list.
+            ## Should remove repeated instances of the same file (e.g., fits and fits.gz).
+            del_list = []
+            for file in currently_ingested:
+                indx = file.index('.fits')
+                prefix = file[:indx]
+                for i, f in enumerate(files):
+                    if(prefix in f):
+                        del_list.append(i)
+
+            for index in sorted(del_list, reverse=True):
+                del files[index]
+
+        if not files:   # No new files
+            return pd.DataFrame()
+
+        data_results = pd.DataFrame(
+            data_from_exposures(
+                files,
+                header_request=header_request
+            )
+        )
+
+        return data_results

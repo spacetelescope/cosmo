@@ -11,19 +11,21 @@ from astropy.time import Time
 from typing import List, Union
 
 from .data_models import AcqDataModel
-from ..monitor_helpers import fit_line, convert_day_of_year, create_visibility, v2v3
+from ..monitor_helpers import fit_line, convert_day_of_year, create_visibility, v2v3, get_prop_typ
 from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
 
+# pandas.DataFrame.append is no longer supported.  Replaced with concat.  (Dixon, 3/2026)
+# Added colors for up to 13 lifetime positions.  (Dixon, 4/9/2026)
 
 def select_all_acq(model: Union[Model, None], exptype: str, new_data_df: pd.DataFrame = None) -> pd.DataFrame:
     """Get all ingested acq data of a particular exptype and combine it with any new data found."""
     data = pd.DataFrame()
 
     if model is not None:
-        data = data.append(
-            pd.DataFrame(model.select().where(model.EXPTYPE == exptype).dicts()),
+        data = pd.concat(
+            [data, pd.DataFrame(model.select().where(model.EXPTYPE == exptype).dicts())],
             sort=True,
             ignore_index=True
         )
@@ -33,7 +35,10 @@ def select_all_acq(model: Union[Model, None], exptype: str, new_data_df: pd.Data
 
     if not new_data_df.empty:
         new_data = new_data_df[new_data_df.EXPTYPE == exptype].reset_index(drop=True)
-        data = data.append(new_data, sort=True, ignore_index=True)
+        data = pd.concat([data, new_data], sort=True, ignore_index=True)
+
+    # Add PROP_TYP keyword.
+    data = get_prop_typ(data)
 
     return data
 
@@ -41,7 +46,7 @@ def select_all_acq(model: Union[Model, None], exptype: str, new_data_df: pd.Data
 class AcqImageMonitor(BaseMonitor):
     data_model = AcqDataModel
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#acqimage-monitor"
-    labels = ['ROOTNAME', 'PROPOSID', 'FGS']
+    labels = ['ROOTNAME', 'PROPOSID', 'FGS', 'PROP_TYP']
     output = COS_MONITORING
 
     run = 'monthly'
@@ -139,7 +144,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
     name = 'V2V3 Offset Monitor'
     data_model = AcqDataModel
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#fgs-monitoring-v2v3-offset-monitor"
-    labels = ['ROOTNAME', 'PROPOSID']
+    labels = ['ROOTNAME', 'PROPOSID', 'PROP_TYP']
 
     subplots = True
     subplot_layout = (2, 1)
@@ -437,6 +442,7 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
         # Create layout
         layout = go.Layout(
+            title=f'<a href="{self.docs}">{self.name}</a>',
             updatemenus=updatemenus,
             hovermode='closest',
             xaxis=dict(title='Datetime', matches='x2'),
@@ -446,6 +452,22 @@ class AcqImageV2V3Monitor(BaseMonitor):
             legend=dict(tracegroupgap=15)
         )
         self.figure.update_layout(layout)
+
+        # Label the two subplots.
+        self.figure.add_annotation(
+            text="V2 Offset vs. Time", # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.1, # Y position in subplot coordinates
+            xref="x domain", yref="y domain", # Coordinate reference: subplot coordinates
+            showarrow=False # Do not show an arrow
+        )
+        self.figure.add_annotation(
+            text="V3 Offset vs. Time", # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.1, # Y position in subplot coordinates
+            xref="x2 domain", yref="y2 domain", # Coordinate reference: subplot coordinates
+            showarrow=False # Do not show an arrow
+        )
 
     def store_results(self):
         # stores dataframe into a csv file automatically when 'cosmo --monthly' is ran
@@ -458,7 +480,7 @@ class SpecAcqBaseMonitor(BaseMonitor):
     docs = (
         "https://spacetelescope.github.io/cosmo/monitors.html#spectroscopic-acquisition-monitors-acqpeakd-and-acqpeakxd"
     )
-    labels = ['ROOTNAME', 'PROPOSID', 'LIFE_ADJ', 'OPT_ELEM', 'CENWAVE', 'DETECTOR']
+    labels = ['ROOTNAME', 'PROPOSID', 'LIFE_ADJ', 'OPT_ELEM', 'CENWAVE', 'DETECTOR', 'PROP_TYP']
     output = COS_MONITORING
     slew = None
 
@@ -491,10 +513,14 @@ class SpecAcqBaseMonitor(BaseMonitor):
         trace_count = {'F1': 0, 'F2': 0, 'F3': 0}
         lp_colors = ['#808080', '#1f77b4', '#2ca02c', '#8c564b', '#bcbd22', '#8317bb', '#3ee0d8', '#ff6347', "#00008b"]
         # grey (LP-1), blue (LP1), green (LP2), brown (LP3), yellow-green (LP4), purple (LP5), cyan (LP6), tomato (LP7), darkblue (LP10)
+
+        lp_color = ['blue', 'orange', 'green', 'purple', 'brown', 'pink', 'olive', 'cyan', 'gold', 'magenta', 'black', 'lime', 'salmon']
+
         detector_symbols = {'NUV': 'x', 'FUV': 'circle'}
         for name, group in fgs_groups:
             lp_groups = group.groupby('LIFE_ADJ')
 
+            i = 0
             for lp, lp_group in lp_groups:
                 trace_count[name] += 1
                 if lp >= 10: # This is for LP10 and LP infinity compatibility, although only 9 colors are specified at present
@@ -512,8 +538,10 @@ class SpecAcqBaseMonitor(BaseMonitor):
                     name=f'{name} LP{lp}',
                     legendgroup=f'LP{lp}',
                     marker_color=mkcolor,
+                    marker_color=lp_color[i], # Use the mapped colors defined above
                     marker_symbol=[detector_symbols[detector] for detector in lp_group.DETECTOR]
                 )
+                i += 1
 
                 self.figure.add_trace(scatter)
 
@@ -565,15 +593,26 @@ class SpecAcqBaseMonitor(BaseMonitor):
 
         # Create layout
         layout = go.Layout(
-            updatemenus=updatemenus,
+            title=f'<a href="{self.docs}">{self.name}</a>',
             hovermode='closest',
             xaxis=dict(title='Datetime'),
             yaxis=dict(title='Offset (-Slew) [arcseconds]'),
             shapes=self.shapes,
-            annotations=self.annotations
+            annotations=self.annotations,
+            updatemenus=updatemenus
         )
 
         self.figure.update_layout(layout)
+
+        # Label the plot.
+        self.figure.add_annotation(
+            text=self.name, # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.1, # Y position in subplot coordinates
+            xref="x domain", yref="y domain", # Coordinate reference: subplot coordinates
+            showarrow=False # Do not show an arrow
+        )
+
 
     def store_results(self):
         # TODO: Define what to store
@@ -652,5 +691,5 @@ class AcqPeakxdMonitor(SpecAcqBaseMonitor):
             'showarrow': True,
             'ax': -30,
             'ay': -30,
-        }
+        },
     ]

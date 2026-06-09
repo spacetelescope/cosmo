@@ -10,8 +10,13 @@ from monitorframe.monitor import BaseMonitor
 from typing import Union, List
 
 from .data_models import OSMDataModel
-from ..monitor_helpers import absolute_time, explode_df, create_visibility, get_osm_data
+from ..monitor_helpers import absolute_time, explode_df, create_visibility, get_osm_data, get_prop_typ
 from .. import SETTINGS
+
+# Added date for LP7/LP10 to plots.  (Dixon, 3/2026)
+# Changed colorscale from 'Viridis' to 'bluered.'  (Dixon, 3/2026)
+# Fixed bug in calculation of rolling mean.  (Dixon, 3/2026)
+# Added PROP_TYP keyword to output.  (Dixon, 3/18/2026)
 
 COS_MONITORING = SETTINGS['output']
 
@@ -27,10 +32,19 @@ lp_names = ['LP2', 'LP3', 'LP4', 'LP5', 'LP6', 'LP7+LP10']
 # List of dates to be processed
 lp_move_dates = ['2012-07-23', '2015-02-09', '2017-10-02', '2021-10-04', '2022-10-04', '2025-11-03']
 
+## CJ EDIT to (hopefully) resolve conflict
 LP_MOVES = {
     key: datetime.datetime.strptime(date, '%Y-%m-%d')
     for key, date in zip(lp_names, lp_move_dates)
 }
+LP_MOVES.update({
+    i + 2: datetime.datetime.strptime(date, '%Y-%m-%d')
+    for i, date in enumerate([
+        '2012-07-23', '2015-02-09', '2017-10-02',
+        '2021-10-04', '2022-10-04', '2025-11-01'
+    ])
+})
+
 
 
 def match_dfs(df1: pd.DataFrame, df2: pd.DataFrame, key: str) -> pd.DataFrame:
@@ -100,7 +114,7 @@ class BaseFuvOsmShiftMonitor(BaseMonitor):
     data_model = OSMDataModel
     output = COS_MONITORING
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-shift-monitors"
-    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'CENWAVE', 'SEGMENT']
+    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'CENWAVE', 'SEGMENT', 'PROP_TYP']
 
     subplots = True
     subplot_layout = (2, 1)
@@ -111,7 +125,12 @@ class BaseFuvOsmShiftMonitor(BaseMonitor):
         """Get new data from the data model. Expand the data around individual flashes and filter on FUV."""
         data = get_osm_data(self.model, 'FUV')
 
-        return explode_df(data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+        exploded = explode_df(data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+
+        # Add PROP_TYP keyword.
+        exploded = get_prop_typ(exploded)
+        
+        return exploded
 
     def track(self) -> pd.DataFrame:
         """Track the difference in shift, A-B"""
@@ -168,7 +187,7 @@ class BaseFuvOsmShiftMonitor(BaseMonitor):
                         cmax=len(df.CENWAVE.unique()) - 1,  # Individual plots need to be on the same scale
                         cmin=0,
                         color=list(repeat(i, len(group))),
-                        colorscale='Viridis',
+                        colorscale='bluered',
                         symbol=[fp_symbols[fp] for fp in group.FPPOS],
                         size=[
                             10 if time > LP_MOVES['LP4'] and lp == 3 else 6
@@ -288,11 +307,12 @@ class BaseFuvOsmShiftMonitor(BaseMonitor):
                 'showarrow': True,
                 'ax': -ax,
                 'ay': -30,
-            } for (key, lp_time), ax in zip(LP_MOVES.items(), [30, 10, 10, 5, -10, 0]) ##offsets for LP labels
+            } for (key, lp_time), ax in zip(LP_MOVES.items(), [30, 10, -10, -10, -10, 30]) ##offsets for LP labels
         ]
 
         self.figure.update_layout(
             go.Layout(
+                title=f'<a href="{self.docs}">{self.name}</a>',
                 xaxis=dict(title='Datetime', matches='x2'),
                 xaxis2=dict(title='Datetime'),
                 yaxis2=dict(title='Shift [pix]', domain=[0.3, 1], gridwidth=5),
@@ -301,6 +321,22 @@ class BaseFuvOsmShiftMonitor(BaseMonitor):
                 updatemenus=updatemenus,
                 annotations=annotations
             )
+        )
+
+        # Label the two subplots.
+        self.figure.add_annotation(
+            text="Difference: A - B", # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.15, # Y position in subplot coordinates
+            xref="x domain", yref="y domain", # Coordinate reference: subplot coordinates
+            showarrow=False, # Do not show an arrow
+        )
+        self.figure.add_annotation(
+            text="FUV " + self.shift + " vs. Time", # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.15, # Y position in subplot coordinates
+            xref="x2 domain", yref="y2 domain", # Coordinate reference: subplot coordinates
+            showarrow=False, # Do not show an arrow
         )
 
     def store_results(self):
@@ -338,7 +374,7 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
     data_model = OSMDataModel
     output = COS_MONITORING
     docs = "https://spacetelescope.github.io/cosmo/monitors.html#osm-shift-monitors"
-    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'CENWAVE', 'SEGMENT']
+    labels = ['ROOTNAME', 'LIFE_ADJ', 'FPPOS', 'PROPOSID', 'CENWAVE', 'SEGMENT', 'PROP_TYP']
 
     subplots = True,
     subplot_layout = (3, 1)
@@ -412,7 +448,8 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
             group = group.set_index(abstime.to_datetime())
             group = group.sort_index()
 
-            rolling_mean = group.rolling('180D').mean()
+            # rolling_mean = group.rolling('180D').mean()
+            rolling_mean = group[self.shift].rolling('180D').mean()
 
             self.figure.add_trace(
                 go.Scattergl(
@@ -426,7 +463,7 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
                         cmax=len(df.OPT_ELEM.unique()) - 1,  # Individual plots need to be on the same scale
                         cmin=0,
                         color=list(repeat(i, len(group))),
-                        colorscale='Viridis',
+                        colorscale='bluered',
                         opacity=0.5
                     )
                 ),
@@ -438,7 +475,8 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
             self.figure.add_trace(
                 go.Scattergl(
                     x=rolling_mean.index,
-                    y=rolling_mean[self.shift],
+                    # y=rolling_mean[self.shift],
+                    y=rolling_mean,
                     name=f'{grating} Rolling Mean',
                     mode='lines',
                     visible=False
@@ -520,16 +558,40 @@ class BaseNuvOsmShiftMonitor(BaseMonitor):
 
         # Set layout
         layout = go.Layout(
+            title=f'<a href="{self.docs}">{self.name}</a>',
             xaxis=dict(title='Datetime', matches='x2'),
             xaxis2=dict(title='Datetime', matches='x3'),
             xaxis3=dict(title='Datetime', matches='x1'),
-            yaxis=dict(title='Shift (B -C) [pix]', domain=[0, 0.18]),
+            yaxis=dict(title='Shift (B - C) [pix]', domain=[0, 0.18]),
             yaxis2=dict(title='Shift (C - A) [pix]', domain=[0.3, .48]),
             yaxis3=dict(title='Shift [pix]', domain=[0.6, 1]),
             updatemenus=updatemenus,
         )
 
         self.figure.update_layout(layout)
+
+        # Label the three subplots.
+        self.figure.add_annotation(
+            text="Difference: B - C", # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.2, # Y position in subplot coordinates
+            xref="x domain", yref="y domain", # Coordinate reference: subplot coordinates
+            showarrow=False, # Do not show an arrow
+        )
+        self.figure.add_annotation(
+            text="Difference: C - A", # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.2, # Y position in subplot coordinates
+            xref="x2 domain", yref="y2 domain", # Coordinate reference: subplot coordinates
+            showarrow=False, # Do not show an arrow
+        )
+        self.figure.add_annotation(
+            text="NUV " + self.shift + " vs. TIME", # The text content
+            x=0.5, # X position in subplot coordinates
+            y=1.1, # Y position in subplot coordinates
+            xref="x3 domain", yref="y3 domain", # Coordinate reference: subplot coordinates
+            showarrow=False, # Do not show an arrow
+        )
 
     def store_results(self):
         # TODO: decide on what results to store and how
@@ -563,6 +625,9 @@ class NuvOsmShift1Monitor(BaseNuvOsmShiftMonitor):
         # "Unpack" the array items in the XC_RANGE column and SEARCH_OFFSET column
         exploded.XC_RANGE = exploded.apply(lambda x: x.XC_RANGE[0], axis=1)
         exploded.SEARCH_OFFSET = exploded.apply(lambda x: x.SEARCH_OFFSET[0], axis=1)
+
+        # Add PROP_TYP keyword.
+        exploded = get_prop_typ(exploded)
 
         return exploded
 
@@ -615,7 +680,12 @@ class NuvOsmShift2Monitor(BaseNuvOsmShiftMonitor):
         """Filter on detector."""
         data = get_osm_data(self.model, 'NUV')
 
-        return explode_df(data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+        exploded = explode_df(data, ['TIME', 'SHIFT_DISP', 'SHIFT_XDISP', 'SEGMENT'])
+
+        # Add PROP_TYP keyword.
+        exploded = get_prop_typ(exploded)
+
+        return exploded
 
     def find_outliers(self) -> dict:
         bc_results = self.results['B-C'].seg_diff
