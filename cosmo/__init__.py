@@ -3,6 +3,7 @@ import os
 SETTINGS = {
     'filesystem': {'source': os.environ['COSMO_FILES_SOURCE']},
     'output': os.environ['COSMO_OUTPUT'],
+    #'dark_programs': os.environ['DARK_PROGRAMS'],
     'dark_programs': os.environ['DARK_PROGRAMS'],
     'ancillary_db': os.environ['ANCILLARY_DB'],
     'sms': {

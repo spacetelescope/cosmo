@@ -190,7 +190,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
         '3GS-F1G Hybrid Mode': 2021.061,
         'Revert to Normal Mode': 2021.070,
         'Gyro Hybrid Low Mode Switch': 2021.145,
-        'Gyro Hybrid High Mode Switch': 2021.205
+        'Gyro Hybrid High Mode Switch': 2021.205,
+        'Reduced Gyro Mode Switch': 2024.166
     }
 
     fgs1_breaks = ['FGS Realignment 1', 'FGS Realignment 2', 'SIAF Update', 'FGS Realignment 3', 'FHST Alignment']
@@ -401,8 +402,8 @@ class AcqImageV2V3Monitor(BaseMonitor):
                 'ay': ay,
             }
             for item, ax, ay in zip(self.fgs_events.items(), 
-                [-60, 60, -20, 60, -50, 50, 60, -60, -40, 0, 120, 120, 100],
-                [-30, 20, -30, 20, -30, -30, 20, -30, -65, -35, -60, -10, 40]) 
+                [-60, 60, -20, 60, -50, 50, 60, -60, -40, 0, 120, 120, 100, 60],
+                [-30, 20, -30, 20, -30, -30, 20, -30, -65, -35, -60, -10, 40, -30])
             for xref, yaxis in zip(['xaxis1', 'xaxis2'], ['yaxis1', 'yaxis2'])
         ]
 
@@ -510,6 +511,8 @@ class SpecAcqBaseMonitor(BaseMonitor):
         fgs_groups, std_results = self.results  # groups are stored in the results attribute since track returns them.
 
         trace_count = {'F1': 0, 'F2': 0, 'F3': 0}
+        lp_colors = ['#808080', '#1f77b4', '#2ca02c', '#8c564b', '#bcbd22', '#8317bb', '#3ee0d8', '#ff6347', "#00008b"]
+        # grey (LP-1), blue (LP1), green (LP2), brown (LP3), yellow-green (LP4), purple (LP5), cyan (LP6), tomato (LP7), darkblue (LP10)
 
         lp_color = ['blue', 'orange', 'green', 'purple', 'brown', 'pink', 'olive', 'cyan', 'gold', 'magenta', 'black', 'lime', 'salmon']
 
@@ -520,6 +523,12 @@ class SpecAcqBaseMonitor(BaseMonitor):
             i = 0
             for lp, lp_group in lp_groups:
                 trace_count[name] += 1
+                if lp >= 10: # This is for LP10 and LP infinity compatibility, although only 9 colors are specified at present
+                    mkcolor = lp_colors[lp-2]
+                elif lp == -1:
+                    mkcolor = lp_colors[0] 
+                else: # for LP1 through LP7
+                    mkcolor = lp_colors[lp] 
                 scatter = go.Scatter(  # Scatter plot
                     x=Time(lp_group.EXPSTART, format='mjd').to_datetime(),
                     y=-lp_group[self.slew],
@@ -528,6 +537,7 @@ class SpecAcqBaseMonitor(BaseMonitor):
                     visible=False,
                     name=f'{name} LP{lp}',
                     legendgroup=f'LP{lp}',
+                    marker_color=mkcolor,
                     marker_color=lp_color[i], # Use the mapped colors defined above
                     marker_symbol=[detector_symbols[detector] for detector in lp_group.DETECTOR]
                 )
@@ -615,6 +625,8 @@ class AcqPeakdMonitor(SpecAcqBaseMonitor):
     data_model = AcqDataModel
     slew = 'ACQSLEWX'
 
+    run = 'monthly' # experimental to find out why monitor is not working - 10/14/2025, DS
+
     # Transparent box highlighting good offset range
     shapes = [
         go.layout.Shape(
@@ -637,6 +649,8 @@ class AcqPeakxdMonitor(SpecAcqBaseMonitor):
     name = 'AcqPeakxd Monitor'
     data_model = AcqDataModel
     slew = 'ACQSLEWY'
+
+    run = 'monthly' # experimental to find out why monitor is not working - 10/14/2025, DS
 
     peakxd_update = datetime.datetime.strptime('2017-10-02', '%Y-%m-%d')
 
