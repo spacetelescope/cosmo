@@ -137,7 +137,8 @@ def runner():
 
         return
 
-    if args.ingestion:
+    #if args.ingestion:
+    if args.ingest:
         pytest.main(shlex.split(default_pytest_args + ' -m ingest'))
 
         return

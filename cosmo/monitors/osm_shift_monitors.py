@@ -15,9 +15,21 @@ from .. import SETTINGS
 
 COS_MONITORING = SETTINGS['output']
 
+# The following dictionary was in effect until LP6, but the simulatenous moves to LP7 and LP10 necessiatated a restructuring
+#LP_MOVES = {
+#    i + 2: datetime.datetime.strptime(date, '%Y-%m-%d')
+#    for i, date in enumerate(['2012-07-23', '2015-02-09', '2017-10-02', '2021-10-04', '2022-10-04', '2025-11-03'])
+#}
+
+# Re-construct the dictionary with LP names specified
+lp_names = ['LP2', 'LP3', 'LP4', 'LP5', 'LP6', 'LP7+LP10']
+
+# List of dates to be processed
+lp_move_dates = ['2012-07-23', '2015-02-09', '2017-10-02', '2021-10-04', '2022-10-04', '2025-11-03']
+
 LP_MOVES = {
-    i + 2: datetime.datetime.strptime(date, '%Y-%m-%d')
-    for i, date in enumerate(['2012-07-23', '2015-02-09', '2017-10-02', '2021-10-04', '2022-10-04'])
+    key: datetime.datetime.strptime(date, '%Y-%m-%d')
+    for key, date in zip(lp_names, lp_move_dates)
 }
 
 
@@ -159,7 +171,7 @@ class BaseFuvOsmShiftMonitor(BaseMonitor):
                         colorscale='Viridis',
                         symbol=[fp_symbols[fp] for fp in group.FPPOS],
                         size=[
-                            10 if time > LP_MOVES[4] and lp == 3 else 6
+                            10 if time > LP_MOVES['LP4'] and lp == 3 else 6
                             for lp, time in zip(group.LIFE_ADJ, Time(group.EXPSTART, format='mjd').to_datetime())
                         ]  # Set the size to distinguish exposures taken at LP3 after the move to LP4; leaving this as-is but may need to update for LP5/LP6
                     )
@@ -205,7 +217,7 @@ class BaseFuvOsmShiftMonitor(BaseMonitor):
                             color='red',
                             symbol=[fp_symbols[fp] for fp in group.FPPOS],
                             size=[
-                                10 if time > LP_MOVES[4] and lp == 3 else 6
+                                10 if time > LP_MOVES['LP4'] and lp == 3 else 6
                                 for lp, time in zip(group.LIFE_ADJ, Time(group.EXPSTART, format='mjd').to_datetime())
                             ]  # Set the size to distinguish exposures taken at LP3 after the move to LP4; leaving this as-is but may need to update for LP5/LP6
                         )
@@ -272,11 +284,11 @@ class BaseFuvOsmShiftMonitor(BaseMonitor):
                 'y': 1,
                 'xref': 'x',
                 'yref': 'paper',
-                'text': f'Start of LP{key}<br>{lp_time.date()}',
+                'text': f'Start of {key}<br>{lp_time.date()}',
                 'showarrow': True,
                 'ax': -ax,
                 'ay': -30,
-            } for (key, lp_time), ax in zip(LP_MOVES.items(), [30, 10, -10, -10, -10]) ##offsets for LP labels
+            } for (key, lp_time), ax in zip(LP_MOVES.items(), [30, 10, 10, 5, -10, 0]) ##offsets for LP labels
         ]
 
         self.figure.update_layout(

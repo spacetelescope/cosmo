@@ -1,0 +1,14 @@
+# Settings for obtaining data from files
+filesystem:
+  source: '/grp/hst/cos2/cosmo'
+# Settings for obtaining data from sms files and setting up the sms database
+sms:
+  source: '/eng/cmd/COS_SRT_Reports'  # This is the path where the sms files exist
+  db_settings:  # These are database keyword arguments
+    database: '/user/dsom/INSCOS/Monitors/codecosmo/cosmo/cosmo_db/sms.db' # Path to sqlite database file
+    pragmas:  # sqlite database connection configurations.
+      journal_mode: 'wal'
+      foreign_keys: 1
+      ignore_check_constraints: 0
+      synchronous: 0
+output: '/user/dsom/INSCOS/Monitors/codecosmo/cosmo/cosmo_output'

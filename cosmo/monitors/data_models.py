@@ -12,7 +12,7 @@ from ..sms import SMSTable
 from .. import SETTINGS
 
 FILES_SOURCE = SETTINGS['filesystem']['source']
-PROGRAMS = SETTINGS['dark_programs']
+#PROGRAMS = SETTINGS['dark_programs']
 
 
 def dgestar_to_fgs(results: List[dict]) -> None:
@@ -180,42 +180,42 @@ class OSMDataModel(BaseDataModel):
         return merged
 
 
-class JitterDataModel(BaseDataModel):
-    files_source = FILES_SOURCE
-    subdir_pattern = '?????'
-
-    def get_new_data(self):
-        primary_header_keys = ('PROPOSID', 'CONFIG')
-        extension_header_keys = ('EXPNAME',)
-
-        data_keys = ('SI_V2_AVG', 'SI_V3_AVG')
-        reduce = {'SI_V2_AVG': ('mean', 'std', 'max'), 'SI_V3_AVG': ('mean', 'std', 'max')}
-
-        files = find_files('*jit*', data_dir=self.files_source, subdir_pattern=self.subdir_pattern)
-
-        if self.model is not None:
-            currently_ingested = [item.FILENAME for item in self.model.select(self.model.FILENAME)]
-
-            for file in currently_ingested:
-                files.remove(file)
-
-        if not files:   # No new files
-            return pd.DataFrame()
-
-        data_results = pd.DataFrame(
-            data_from_jitters(
-                files,
-                primary_header_keys,
-                extension_header_keys,
-                data_keys,
-                reduce_to_stats=reduce
-            )
-        )
-
-        # Remove any NaNs or inf that may occur from the statistics calculations.
-        data_results = data_results.replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
-
-        return data_results[~data_results.EXPTYPE.str.contains('ACQ|DARK|FLAT')]
+#class JitterDataModel(BaseDataModel):
+#    files_source = FILES_SOURCE
+#    subdir_pattern = '?????'
+#
+#    def get_new_data(self):
+#        primary_header_keys = ('PROPOSID', 'CONFIG')
+#        extension_header_keys = ('EXPNAME',)
+#
+#        data_keys = ('SI_V2_AVG', 'SI_V3_AVG')
+#        reduce = {'SI_V2_AVG': ('mean', 'std', 'max'), 'SI_V3_AVG': ('mean', 'std', 'max')}
+#
+#        files = find_files('*jit*', data_dir=self.files_source, subdir_pattern=self.subdir_pattern)
+#
+#        if self.model is not None:
+#            currently_ingested = [item.FILENAME for item in self.model.select(self.model.FILENAME)]
+#
+#            for file in currently_ingested:
+#                files.remove(file)
+#
+#        if not files:   # No new files
+#            return pd.DataFrame()
+#
+#        data_results = pd.DataFrame(
+#            data_from_jitters(
+#                files,
+#                primary_header_keys,
+#                extension_header_keys,
+#                data_keys,
+#                reduce_to_stats=reduce
+#            )
+#        )
+#
+#        # Remove any NaNs or inf that may occur from the statistics calculations.
+#        data_results = data_results.replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
+#
+#        return data_results[~data_results.EXPTYPE.str.contains('ACQ|DARK|FLAT')]
    
 
 def get_program_ids(pid_file):
@@ -227,43 +227,43 @@ def get_program_ids(pid_file):
 
     return all_programs
 
-class DarkDataModel(BaseDataModel):
-    """DataModel for dark corrtag files."""
-    cosmo_layout = False
-    files_source = FILES_SOURCE
-
-    def get_new_data(self):
-        """Set the model for what data is to be retrieved from each dark
-        file."""
-        # this way when you get new data it will get all the data
-        header_request = {
-            0: ['ROOTNAME', 'SEGMENT'], 1: ['EXPTIME', 'EXPSTART']
-            }
-        table_request = {
-            1: ['PHA', 'XCORR', 'YCORR', 'TIME'],
-            3: ['TIME', 'LATITUDE', 'LONGITUDE']
-            }
-
-        files = []
-
-        program_ids = get_program_ids(PROGRAMS)
-        
-        for prog_id in program_ids:
-            new_files_source = os.path.join(FILES_SOURCE, prog_id)
-            files += find_files('*corrtag*', data_dir=new_files_source)
-
-        if self.model is not None:
-            currently_ingested = [item.FILENAME for item in
-                                  self.model.select(self.model.FILENAME)]
-
-            for file in currently_ingested:
-                files.remove(file)
-
-        if not files:  # No new files
-            return pd.DataFrame()
-
-        data_results = data_from_exposures(files,
-                                           header_request=header_request,
-                                           table_request=table_request)
-
-        return data_results
+#class DarkDataModel(BaseDataModel):
+#    """DataModel for dark corrtag files."""
+#    cosmo_layout = False
+#    files_source = FILES_SOURCE
+#
+#    def get_new_data(self):
+#        """Set the model for what data is to be retrieved from each dark
+#        file."""
+#        # this way when you get new data it will get all the data
+#        header_request = {
+#            0: ['ROOTNAME', 'SEGMENT'], 1: ['EXPTIME', 'EXPSTART']
+#            }
+#        table_request = {
+#            1: ['PHA', 'XCORR', 'YCORR', 'TIME'],
+#            3: ['TIME', 'LATITUDE', 'LONGITUDE']
+#            }
+#
+#        files = []
+#
+#        program_ids = get_program_ids(PROGRAMS)
+#        
+#        for prog_id in program_ids:
+#            new_files_source = os.path.join(FILES_SOURCE, prog_id)
+#            files += find_files('*corrtag*', data_dir=new_files_source)
+#
+#        if self.model is not None:
+#            currently_ingested = [item.FILENAME for item in
+#                                  self.model.select(self.model.FILENAME)]
+#
+#            for file in currently_ingested:
+#                files.remove(file)
+#
+#        if not files:  # No new files
+#            return pd.DataFrame()
+#
+#        data_results = data_from_exposures(files,
+#                                           header_request=header_request,
+#                                           table_request=table_request)
+#
+#        return data_results
