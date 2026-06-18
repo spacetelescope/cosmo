@@ -754,7 +754,7 @@ Cosmo also contains other modules used in supporting either the monitors or data
 .. py:class:: JitterFileData(*args, **kwargs)
 
     Class for getting requested data from COS Jitter files (either acq jitter files or association jitter files).
-    Since association Jitter files have data for multiple exposures across exensions, ``JitterFileData`` subclasses the
+    Since association Jitter files have data for multiple exposures across extensions, ``JitterFileData`` subclasses the
     python ``list`` and instances are equivalent to a list of ``FileData`` dictionaries (one per extension) to enable
     collecting requested data for each included exposure.
 

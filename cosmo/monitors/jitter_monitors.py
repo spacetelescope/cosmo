@@ -81,7 +81,7 @@ def view_jitter(jitter_file: str) -> go.Figure:
         {
             'title': f'{os.path.basename(jitter_file)} {jitter_data[0]["CONFIG"]}',
             'xaxis': {'title': 'Datetime'},
-            'yaxis': {'title': 'V2 Jitter (averaged over 3 seconds) [arceconds]'},
+            'yaxis': {'title': 'V2 Jitter (averaged over 3 seconds) [arcseconds]'},
             'xaxis2': {'title': 'Datetime'},
             'yaxis2': {'title': 'V3 Jitter (averaged over 3 seconds) [arcseconds]'}
         }
